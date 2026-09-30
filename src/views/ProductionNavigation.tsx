@@ -55,6 +55,14 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
   useEffect(() => {
     if (!session || !visible) return;
     return productionApi.subscribeRealtime((event) => {
+      if (event.type === 'navigation.route-updated' && event.data.navigation_session_id === session.id) {
+        void productionApi.activeNavigation().then((active) => {
+          if (!active || active.id !== session.id) return;
+          setSession(active); setMatchingEnabled(false); setMatches([]);
+          setGpsMessage('Пасажира підтверджено. Дорожній маршрут оновлено через точки посадки й висадки.');
+        }).catch((error: unknown) => setGpsMessage(error instanceof Error ? error.message : 'Не вдалося оновити дорожній маршрут.'));
+        return;
+      }
       if (event.type !== 'navigation.match.passenger-confirmed') return;
       void productionApi.navigationMatches(session.id).then((current) => {
         setMatches(current);
@@ -100,6 +108,12 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
       map.remove(); mapRef.current = null; tileLayerRef.current = null; routeRef.current = null; positionRef.current = null;
     };
   }, [session?.id]);
+
+  useEffect(() => {
+    if (!session || !mapRef.current || !routeRef.current) return;
+    routeRef.current.setLatLngs(session.route.map(([lon, lat]) => [lat, lon]));
+    mapRef.current.fitBounds(routeRef.current.getBounds(), { padding: [35, 35] });
+  }, [session?.route_version]);
 
   useEffect(() => {
     if (!session || !mapRef.current || !positionRef.current) return;

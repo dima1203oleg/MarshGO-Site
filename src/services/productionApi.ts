@@ -91,7 +91,8 @@ export type ApiRealtimeEvent =
   | { type: 'proposal.accepted'; data: { proposal_id: string; demand_id: string; booking_id: string; status: string; price_minor: number; departure_at: string } }
   | { type: 'proposal.closed'; data: { proposal_id: string; demand_id: string; status: string; reason: string } }
   | { type: 'navigation.match.driver-interested'; data: { candidate_id: string; demand_id: string; status: 'driver_interested' } }
-  | { type: 'navigation.match.passenger-confirmed'; data: { candidate_id: string; demand_id: string; status: 'passenger_confirmed' } };
+  | { type: 'navigation.match.passenger-confirmed'; data: { candidate_id: string; demand_id: string; status: 'passenger_confirmed' } }
+  | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
 export type ApiNavigationSession = {
