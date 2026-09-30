@@ -147,7 +147,7 @@ export type ApiStoredJourney = {
   strategy: ApiJourneyStrategy;
   state: string;
   passenger_count: number;
-  total_price_minor: number;
+  total_price_minor: number | null;
   confirmed_price_minor: number | null;
   legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string }>;
 };
