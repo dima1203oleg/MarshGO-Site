@@ -53,6 +53,19 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
   }, []);
 
   useEffect(() => {
+    if (!session || !visible) return;
+    return productionApi.subscribeRealtime((event) => {
+      if (event.type !== 'navigation.match.passenger-confirmed') return;
+      void productionApi.navigationMatches(session.id).then((current) => {
+        setMatches(current);
+        if (current.some((match) => match.id === event.data.candidate_id)) {
+          setGpsMessage('Пасажир підтвердив взаємний інтерес. Зупиніться безпечно, щоб погодити ціну. Бронювання ще немає.');
+        }
+      }).catch((error: unknown) => setGpsMessage(error instanceof Error ? error.message : 'Не вдалося оновити стан попутника.'));
+    }, () => undefined);
+  }, [session?.id, visible]);
+
+  useEffect(() => {
     if (!session || session.state !== 'active' || !matchingEnabled || !session.current_location_at || !visible) return;
     let current = true;
     const refresh = () => productionApi.refreshNavigationMatches(session.id)
