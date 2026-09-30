@@ -55,6 +55,14 @@ export type ApiBooking = {
   completion_confirmation_count: number;
   current_user_confirmed_completion: boolean;
 };
+export type ApiRendezvousLocation = { coordinates: [number, number]; accuracyMeters: number; capturedAt: string; freshness: 'LIVE' | 'STALE' } | null;
+export type ApiRendezvous = {
+  id: string; bookingId: string; journeyLegId: string | null; state: string;
+  pickup: { label: string; coordinates: [number, number] };
+  plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
+  locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
+  locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
+};
 export type ApiRescueAlternative = ApiOffer & {
   origin_distance_m: number;
   destination_distance_m: number;
@@ -101,6 +109,7 @@ export type ApiRealtimeEvent =
   | { type: 'navigation.match.driver-interested'; data: { candidate_id: string; demand_id: string; status: 'driver_interested' } }
   | { type: 'navigation.match.passenger-confirmed'; data: { candidate_id: string; demand_id: string; status: 'passenger_confirmed' } }
   | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } }
+  | { type: `rendezvous.${string}`; data: { rendezvous_id: string; state?: string; participant?: 'driver' | 'passenger'; coordinates?: [number, number]; accuracyMeters?: number; capturedAt?: string; near_pickup?: boolean } }
   | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'REPLANNING' } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
@@ -319,6 +328,22 @@ export const productionApi = {
     return request<{ id: string; status: string }>(`/demands/${demandId}/cancel`, { method: 'POST' });
   },
   bookings() { return request<ApiBooking[]>('/bookings'); },
+  bookingRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous`); },
+  activateRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous/activate`, { method: 'POST' }); },
+  sendRendezvousLocation(rendezvousId: string, location: { longitude: number; latitude: number; accuracyMeters: number; capturedAt: string }) {
+    return request<{ rendezvousId: string; storedEphemerally: true; expiresInSeconds: number; nearPickup: boolean; arrivalRequiresUserConfirmation: true }>(
+      `/rendezvous/${encodeURIComponent(rendezvousId)}/location`, { method: 'POST', body: JSON.stringify(location) },
+    );
+  },
+  rendezvousStatus(rendezvousId: string, action: 'approaching' | 'arrived' | 'delayed' | 'will_arrive' | 'cannot_make_it', minutes?: number) {
+    return request<{ id: string; state: string; locationSharingEnabled: boolean }>(
+      `/rendezvous/${encodeURIComponent(rendezvousId)}/status`, { method: 'POST', body: JSON.stringify({ action, ...(minutes ? { minutes } : {}) }) },
+    );
+  },
+  rendezvousBoarding(rendezvousId: string) {
+    return request<{ id: string; state: string }>(`/rendezvous/${encodeURIComponent(rendezvousId)}/boarding`, { method: 'POST' });
+  },
+  endRendezvous(rendezvousId: string) { return request<{ id: string; state: string }>(`/rendezvous/${encodeURIComponent(rendezvousId)}/end`, { method: 'POST' }); },
   notifications(cursor?: string | null) {
     const query = new URLSearchParams({ limit: '30' });
     if (cursor) query.set('cursor', cursor);
@@ -439,7 +464,7 @@ export const productionApi = {
         next.onmessage = (message) => {
           try {
             const event = JSON.parse(String(message.data)) as ApiRealtimeEvent | { type: string };
-            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type.startsWith('booking.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.')) onEvent(event as ApiRealtimeEvent);
+            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type.startsWith('booking.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.') || event.type.startsWith('rendezvous.')) onEvent(event as ApiRealtimeEvent);
           } catch { /* Ignore malformed realtime frames; persisted REST history remains authoritative. */ }
         };
         next.onerror = () => next.close();
