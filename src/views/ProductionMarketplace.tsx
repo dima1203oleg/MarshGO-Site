@@ -42,6 +42,8 @@ export function ProductionMarketplace() {
   const [devCode, setDevCode] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [authIntro, setAuthIntro] = useState(true);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [onboardingPermissionMessage, setOnboardingPermissionMessage] = useState('');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [searchOriginPlace, setSearchOriginPlace] = useState<ApiPlace | null>(null);
@@ -853,14 +855,30 @@ export function ProductionMarketplace() {
     finally { setNotificationsLoading(false); }
   };
 
+  const continueToPhoneLogin = () => {
+    setOnboardingStep(0);
+    setShowLogin(true);
+  };
+  const requestOnboardingLocation = () => {
+    if (!navigator.geolocation) {
+      setOnboardingPermissionMessage('Цей браузер не надає доступу до геолокації. Її можна ввімкнути пізніше в налаштуваннях пристрою.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      () => setOnboardingPermissionMessage('Доступ увімкнено. Геолокація потрібна лише під час активної навігації або зустрічі.'),
+      () => setOnboardingPermissionMessage('Дозвіл не надано. Його можна ввімкнути пізніше перед навігацією.'),
+      { enableHighAccuracy: false, maximumAge: 30_000, timeout: 12_000 },
+    );
+  };
+
   if (loading) return <main className="grid min-h-[100svh] place-items-center bg-[#f5f8fd] text-sm text-slate-500">Завантажуємо захищену сесію…</main>;
   if (!user || showLogin) return (
-    <main className={`auth-screen relative flex min-h-[100svh] overflow-hidden bg-[#081b35] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe text-white ${authIntro ? 'items-stretch' : 'items-end sm:items-center sm:justify-center'}`}>
+    <main className={`auth-screen relative flex min-h-[100svh] overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe ${onboardingStep > 0 ? 'bg-[#f4f8ff] text-[#14243b]' : 'bg-[#081b35] text-white'} ${authIntro ? 'items-stretch' : 'items-end sm:items-center sm:justify-center'}`}>
       {authIntro && <img src="/images/welcome-road.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-[center_58%]" />}
-      <div className={`absolute inset-0 ${authIntro ? 'bg-[linear-gradient(180deg,rgba(4,17,37,.45)_0%,rgba(5,22,44,.08)_34%,rgba(5,15,29,.28)_57%,rgba(3,10,19,.9)_100%)]' : 'bg-[radial-gradient(ellipse_at_55%_35%,rgba(41,131,255,.65),transparent_48%),linear-gradient(180deg,#113d75_0%,#122f54_48%,#08121f_100%)]'}`} />
-      {!authIntro && <div className="absolute inset-x-0 bottom-0 h-[48%] bg-[linear-gradient(0deg,rgba(4,10,18,.88),transparent)]" />}
+      <div className={`absolute inset-0 ${authIntro ? 'bg-[linear-gradient(180deg,rgba(4,17,37,.45)_0%,rgba(5,22,44,.08)_34%,rgba(5,15,29,.28)_57%,rgba(3,10,19,.9)_100%)]' : onboardingStep > 0 ? 'bg-[linear-gradient(180deg,#f4f8ff_0%,#ffffff_58%,#edf4ff_100%)]' : 'bg-[radial-gradient(ellipse_at_55%_35%,rgba(41,131,255,.65),transparent_48%),linear-gradient(180deg,#113d75_0%,#122f54_48%,#08121f_100%)]'}`} />
+      {!authIntro && onboardingStep === 0 && <div className="absolute inset-x-0 bottom-0 h-[48%] bg-[linear-gradient(0deg,rgba(4,10,18,.88),transparent)]" />}
       <section className={`relative z-10 mx-auto flex w-full max-w-md flex-col ${authIntro ? 'min-h-[calc(100svh-env(safe-area-inset-top))] items-center pb-1 text-center' : 'pb-2'}`}>
-        {!authIntro && <button onClick={() => { setAuthIntro(true); setShowLogin(false); setStatusMessage(''); }} className="mb-6 grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-white/10" aria-label="Назад"><ArrowLeft size={19}/></button>}
+        {!authIntro && onboardingStep === 0 && <button onClick={() => { setAuthIntro(true); setShowLogin(false); setStatusMessage(''); }} className="mb-6 grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-white/10" aria-label="Назад"><ArrowLeft size={19}/></button>}
         {authIntro ? <>
           <div className="mt-[max(3rem,10svh)] flex flex-col items-center drop-shadow-[0_2px_16px_rgba(4,12,28,.3)]">
             <BrandMark size="lg" className="mb-3 ring-1 ring-white/60 shadow-[0_0_38px_rgba(56,189,248,.42)]" />
@@ -874,10 +892,44 @@ export function ProductionMarketplace() {
             <p className="mt-3 max-w-sm text-sm leading-5 text-blue-50/90">Попутки, автобуси та міські маршрути — шукайте разом.</p>
           </div>
           <div className="w-full">
-            <button onClick={() => setAuthIntro(false)} className="w-full rounded-2xl bg-blue-600 px-5 py-[1.05rem] text-sm font-bold shadow-lg shadow-blue-950/45">Почати</button>
-            <button onClick={() => setAuthIntro(false)} className="mt-3 w-full rounded-2xl border border-white/50 bg-slate-950/25 px-5 py-3.5 text-sm font-semibold backdrop-blur-sm">У мене вже є акаунт</button>
+            <button onClick={() => { setAuthIntro(false); setOnboardingStep(1); setShowLogin(false); }} className="w-full rounded-2xl bg-blue-600 px-5 py-[1.05rem] text-sm font-bold shadow-lg shadow-blue-950/45">Почати</button>
+            <button onClick={() => { setAuthIntro(false); setOnboardingStep(0); setShowLogin(true); }} className="mt-3 w-full rounded-2xl border border-white/50 bg-slate-950/25 px-5 py-3.5 text-sm font-semibold backdrop-blur-sm">У мене вже є акаунт</button>
           </div>
-        </> : <>
+        </> : onboardingStep > 0 ? <section className="mx-auto flex min-h-[calc(100svh-env(safe-area-inset-top))] w-full max-w-md flex-col pb-2 pt-2 text-[#14243b]">
+          <header className="flex items-center justify-between">
+            <button onClick={() => onboardingStep === 1 ? setAuthIntro(true) : setOnboardingStep(onboardingStep - 1)} aria-label="Назад" className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={19}/></button>
+            <BrandMark size="sm"/>
+            <button onClick={continueToPhoneLogin} className="px-2 py-2 text-xs font-semibold text-slate-500">Пропустити</button>
+          </header>
+          <div className="mt-7 flex gap-1.5" aria-label={`Крок ${onboardingStep} з 3`}>{[1,2,3].map(step=><span key={step} className={`h-1.5 flex-1 rounded-full ${step<=onboardingStep?'bg-blue-600':'bg-slate-200'}`}/>)}</div>
+          {onboardingStep === 1 ? <>
+            <div className="mt-10 grid min-h-48 place-items-center rounded-[2rem] bg-gradient-to-br from-blue-50 via-white to-sky-100">
+              <div className="grid grid-cols-3 gap-3">{[{Icon:CarFront,label:'Попутки',tone:'text-blue-600 bg-blue-100'},{Icon:Ticket,label:'Автобуси',tone:'text-emerald-600 bg-emerald-100'},{Icon:Navigation,label:'Маршрути',tone:'text-amber-600 bg-amber-100'}].map(({Icon,label,tone})=><div key={label} className="flex w-20 flex-col items-center gap-2 rounded-2xl bg-white p-3 shadow-sm"><span className={`grid h-11 w-11 place-items-center rounded-xl ${tone}`}><Icon size={22}/></span><small className="text-[10px] font-bold text-slate-600">{label}</small></div>)}</div>
+            </div>
+            <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-blue-700">Подорожі простіше</p>
+            <h1 className="mt-2 text-[1.8rem] font-extrabold leading-tight tracking-tight text-[#081b35]">Усі поїздки —<br/>в одному додатку</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Шукайте реальні пропозиції MARSHGO Community і зберігайте маршрути в одному місці.</p>
+            <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Автобуси, таксі та громадський транспорт з’являться після підключення перевірених партнерів.</p>
+          </> : onboardingStep === 2 ? <>
+            <div className="mt-10 grid min-h-48 place-items-center rounded-[2rem] bg-gradient-to-br from-blue-50 via-white to-indigo-100"><div className="w-full max-w-xs space-y-2">{[{Icon:Clock3,title:'Найшвидше',caption:'Пріоритет — час'},{Icon:Ticket,title:'Найдешевше',caption:'Пріоритет — ціна'},{Icon:ShieldCheck,title:'Найнадійніше',caption:'Зручніші пересадки'}].map(({Icon,title,caption})=><div key={title} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 shadow-sm"><span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-50 text-blue-600"><Icon size={18}/></span><span><b className="block text-xs">{title}</b><small className="text-[10px] text-slate-500">{caption}</small></span><span className="ml-auto h-4 w-4 rounded-full border border-slate-300"/></div>)}</div></div>
+            <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-blue-700">Ваші пріоритети</p>
+            <h1 className="mt-2 text-[1.8rem] font-extrabold leading-tight tracking-tight text-[#081b35]">Обирайте, що<br/>важливо саме вам</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Серверний планувальник упорядкує доступні варіанти за часом, ціною чи надійністю.</p>
+            <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Зараз планувальник використовує реальні Community-пропозиції. Інші види транспорту ще не підключені.</p>
+          </> : <>
+            <div className="mt-10 grid min-h-48 place-items-center rounded-[2rem] bg-gradient-to-br from-blue-50 via-white to-sky-100"><span className="grid h-24 w-24 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/20"><MapPin size={44}/></span></div>
+            <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-blue-700">Керування дозволами</p>
+            <h1 className="mt-2 text-[1.8rem] font-extrabold leading-tight tracking-tight text-[#081b35]">Дозвольте MARSHGO<br/>бути корисним</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Геолокація використовується лише під час активної навігації або зустрічі з водієм. Її можна не вмикати зараз.</p>
+            {onboardingPermissionMessage&&<p role="status" className="mt-4 rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-900">{onboardingPermissionMessage}</p>}
+            <button onClick={requestOnboardingLocation} className="mt-5 w-full rounded-2xl border border-blue-100 bg-white py-3.5 text-sm font-bold text-blue-700">Дозволити геолокацію</button>
+          </>}
+          <div className="mt-auto pt-8">
+            {onboardingStep < 3 ? <button onClick={() => setOnboardingStep(onboardingStep + 1)} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20">Далі <ArrowRight size={17}/></button> : <button onClick={continueToPhoneLogin} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20">Продовжити <ArrowRight size={17}/></button>}
+            {onboardingStep === 3&&<button onClick={continueToPhoneLogin} className="mt-2 w-full py-3 text-sm font-semibold text-slate-500">Не зараз</button>}
+            <p className="mt-3 text-center text-[10px] text-slate-500">Крок {onboardingStep} з 3</p>
+          </div>
+        </section> : <>
         <div className="mb-8 flex items-center gap-3"><BrandMark/><div><strong className="text-2xl tracking-tight">MARSH<span className="text-sky-400">GO</span></strong><p className="text-xs text-blue-100/80">One Route. Every Way.</p></div></div>
         {!otpRequested ? <>
           <h1 className="text-3xl font-extrabold">Вхід за номером телефону</h1><p className="mt-2 text-sm text-blue-100/80">Створіть профіль або увійдіть за номером.</p>
