@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
 import {
-  ArrowLeft,
-  ShieldCheck,
-  ShieldAlert,
-  Users,
-  Car,
-  FileCheck,
-  Activity,
-  ToggleLeft,
-  ToggleRight,
-  CheckCircle2,
-  AlertTriangle
+  ArrowLeft
 } from 'lucide-react';
 import { User, Vehicle, TransportOffer, PassengerDemand } from '../types';
 
@@ -25,7 +15,6 @@ interface AdminViewProps {
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
-  user,
   vehicle,
   offers,
   demands,

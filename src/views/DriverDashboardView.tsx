@@ -3,18 +3,11 @@ import {
   Car,
   Compass,
   Users,
-  PlusCircle,
   ShieldCheck,
-  TrendingUp,
-  MapPin,
-  Clock,
   ArrowRight,
-  Sparkles,
   Camera,
   Leaf,
-  DollarSign,
-  Calculator,
-  Share2
+  Calculator
 } from 'lucide-react';
 import { User, Vehicle } from '../types';
 import { DriverTrustBar } from '../components/DriverTrustBar';

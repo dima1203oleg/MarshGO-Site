@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Search, Car, Navigation, Sparkles, Shield, ArrowRight } from 'lucide-react';
+import { X, Search, Car, Navigation, ArrowRight } from 'lucide-react';
 
 interface ActionDrawerProps {
   isOpen: boolean;

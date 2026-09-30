@@ -2,29 +2,17 @@ import React, { useState } from 'react';
 import {
   ArrowLeft,
   ShieldCheck,
-  Star,
-  Users,
   Clock,
-  MapPin,
   Luggage,
   Wind,
   Zap,
   CheckCircle2,
-  ChevronRight,
   Share2,
-  AlertCircle,
-  Map,
   Navigation,
-  Layers,
-  ZoomIn,
-  ZoomOut,
   Check,
-  Copy,
-  Calculator,
-  ShieldAlert
+  Calculator
 } from 'lucide-react';
 import { TransportOffer, Booking } from '../types';
-import { MapPreview } from '../components/MapPreview';
 import { LiveRouteMap } from '../components/LiveRouteMap';
 import { FuelCostCalculatorModal } from '../components/FuelCostCalculatorModal';
 import { SafetyTripModal } from '../components/SafetyTripModal';
@@ -47,7 +35,6 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [selectedSeats, setSelectedSeats] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<'cash_to_driver' | 'online_sandbox'>('cash_to_driver');
-  const [termsAgreed, setTermsAgreed] = useState(true);
   const [isCopied, setIsCopied] = useState<boolean>(false);
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [isFuelCalculatorOpen, setIsFuelCalculatorOpen] = useState(false);
@@ -99,7 +86,6 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
   };
 
   const handleConfirmBooking = () => {
-    if (!termsAgreed) return;
     onBook(offer.id, selectedSeats);
   };
 

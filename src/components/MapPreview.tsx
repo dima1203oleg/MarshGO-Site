@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigation, MapPin, Compass, ShieldCheck } from 'lucide-react';
+import { Navigation, Compass, ShieldCheck } from 'lucide-react';
 
 interface Waypoint {
   name: string;
@@ -28,7 +28,6 @@ export const MapPreview: React.FC<MapPreviewProps> = ({
   origin,
   destination,
   intermediateStops = [],
-  waypoints,
   activeDetour,
   className = 'h-64 sm:h-80'
 }) => {

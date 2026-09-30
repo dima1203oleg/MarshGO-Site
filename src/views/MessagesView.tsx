@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import {
   ArrowLeft,
-  Send,
-  MessageSquare,
-  ShieldCheck,
-  CheckCircle2,
-  Car,
-  Clock
+  Send
 } from 'lucide-react';
 import { ChatMessage } from '../types';
 

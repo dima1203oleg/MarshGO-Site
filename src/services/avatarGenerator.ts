@@ -80,13 +80,6 @@ export function generateAvatarSvg(seed: string = 'marshgo_user', customOpts?: Av
   const expression = customOpts?.expression || EXPRESSIONS[(h >> 4) % EXPRESSIONS.length];
 
   const p = PALETTES[paletteKey] || PALETTES.blue;
-  const initials = seed
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w[0]?.toUpperCase())
-    .slice(0, 2)
-    .join('') || 'MG';
-
   // Hair style: 0 = short/neat, 1 = modern crop, 2 = wavy, 3 = cap
   const hairStyle = (h >> 3) % 4;
 

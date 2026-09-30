@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Compass, Plus, Clock, User as UserIcon, MessageSquare } from 'lucide-react';
+import { Search, Compass, Plus, Clock, User as UserIcon } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: string;

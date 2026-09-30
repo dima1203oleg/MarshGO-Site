@@ -2,15 +2,10 @@ import React from 'react';
 import {
   Car,
   Clock,
-  MapPin,
   ShieldCheck,
   Users,
   ChevronRight,
   Sparkles,
-  Luggage,
-  Wind,
-  Zap,
-  Info,
   Star,
   Bookmark,
   Ban
@@ -30,7 +25,6 @@ interface OfferCardProps {
 
 export const OfferCard: React.FC<OfferCardProps> = ({
   offer,
-  passengerCount = 1,
   onSelect,
   isFavorite = false,
   onToggleFavorite
@@ -38,9 +32,6 @@ export const OfferCard: React.FC<OfferCardProps> = ({
   const isCommunity = offer.category === 'community';
   const isPerCar = offer.priceUnit === 'per_car';
   const isPerDay = offer.priceUnit === 'per_day';
-
-  // Calculate actual total for requested passengers
-  const totalAmount = isPerCar || isPerDay ? offer.priceAmount : offer.priceAmount * passengerCount;
 
   // Category labels and theme
   const categoryMeta: Record<string, { label: string; badgeClass: string; icon: React.ReactNode }> = {

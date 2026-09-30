@@ -9,9 +9,6 @@ import {
   Zap,
   Bookmark,
   Car,
-  HelpCircle,
-  Compass,
-  MapPin,
   ChevronRight
 } from 'lucide-react';
 
@@ -163,14 +160,19 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
   const handleDismiss = () => {
     try {
       localStorage.setItem('mg_onboarding_completed', 'true');
-    } catch {}
+    } catch {
+      // Onboarding can still be dismissed when browser storage is unavailable.
+    }
+    onNavigateHome?.();
     onClose();
   };
 
   const handleComplete = () => {
     try {
       localStorage.setItem('mg_onboarding_completed', 'true');
-    } catch {}
+    } catch {
+      // Completing the tour does not depend on persistent browser storage.
+    }
     onClose();
   };
 

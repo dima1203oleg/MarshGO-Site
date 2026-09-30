@@ -3,7 +3,6 @@ import {
   Ban,
   X,
   UserX,
-  ShieldAlert,
   Search,
   Trash2,
   Plus,

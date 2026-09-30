@@ -3,10 +3,6 @@ import {
   Car,
   X,
   Plus,
-  ShieldCheck,
-  Check,
-  Camera,
-  CheckCircle2,
   AlertCircle
 } from 'lucide-react';
 import { Vehicle } from '../types';

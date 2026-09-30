@@ -1,14 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-  MapPin,
-  Navigation,
   ArrowRightLeft,
-  Search,
-  Check,
-  RotateCcw,
-  Sparkles,
-  Info,
-  Maximize2,
   X,
   Compass,
   ArrowRight

@@ -2,13 +2,8 @@ import React, { useState } from 'react';
 import {
   ArrowLeft,
   Car,
-  Camera,
   Trash2,
-  Star,
-  Plus,
-  ShieldCheck,
-  Check,
-  CheckCircle2
+  Plus
 } from 'lucide-react';
 import { Vehicle } from '../types';
 import { AddVehicleModal } from '../components/AddVehicleModal';
@@ -38,8 +33,6 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
   onSetActiveVehicle,
   onAddVehicle
 }) => {
-  const [newPhotoUrl, setNewPhotoUrl] = useState('');
-  const [photoCaption, setPhotoCaption] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isAddVehicleModalOpen, setIsAddVehicleModalOpen] = useState(false);
 
@@ -55,16 +48,6 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
 
   const handleAddSample = (sample: { label: string; url: string }) => {
     onAddPhoto(sample.url, sample.label);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2000);
-  };
-
-  const handleCustomAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPhotoUrl.trim()) return;
-    onAddPhoto(newPhotoUrl.trim(), photoCaption || 'Фото авто');
-    setNewPhotoUrl('');
-    setPhotoCaption('');
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2000);
   };

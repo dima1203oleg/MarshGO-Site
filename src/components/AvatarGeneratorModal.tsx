@@ -37,7 +37,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
   const [randomSeed, setRandomSeed] = useState<string>(() => `${userName}_${Date.now()}`);
 
   const [previewAvatar, setPreviewAvatar] = useState<string>(() =>
-    generateAvatarSvg(userName, {
+    currentAvatar || generateAvatarSvg(userName, {
       palette: 'blue',
       accessory: 'sunglasses',
       expression: 'smile'

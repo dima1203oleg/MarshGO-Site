@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Clock, Users, ArrowRight, Check, Send } from 'lucide-react';
+import { MapPin, Clock, Users, Check, Send } from 'lucide-react';
 import { PassengerDemand } from '../types';
 
 interface DemandCardProps {
@@ -13,7 +13,6 @@ export const DemandCard: React.FC<DemandCardProps> = ({
   demand,
   onPropose,
   onQuickAcceptBudget,
-  isOwner = false
 }) => {
   return (
     <div className="bg-white rounded-2xl border border-[#DFE7F1] p-4 sm:p-5 hover:border-[#1769F4] transition shadow-sm hover:shadow-md">

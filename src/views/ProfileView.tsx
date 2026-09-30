@@ -1,22 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
-  User as UserIcon,
   ShieldCheck,
   Car,
-  Settings,
   HelpCircle,
   FileText,
   RotateCcw,
-  CheckCircle2,
   Lock,
   ArrowRight,
   Sparkles,
-  Camera,
   Ban,
   Plus,
   Trash2,
   Check,
-  PieChart,
   X
 } from 'lucide-react';
 import { User, Vehicle, Booking } from '../types';

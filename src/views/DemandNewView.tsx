@@ -2,12 +2,7 @@ import React, { useState } from 'react';
 import {
   ArrowLeft,
   MapPin,
-  Calendar,
-  Clock,
-  Users,
-  DollarSign,
   Sparkles,
-  ShieldCheck,
   CheckCircle2
 } from 'lucide-react';
 import { PassengerDemand } from '../types';

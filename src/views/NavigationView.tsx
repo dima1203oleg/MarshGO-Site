@@ -1,21 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
-  Navigation,
-  Compass,
   MapPin,
-  ShieldCheck,
-  ShieldAlert,
   Volume2,
   VolumeX,
   Play,
   Square,
-  Users,
   Check,
   X,
-  AlertTriangle,
-  RotateCcw,
-  Sparkles
+  AlertTriangle
 } from 'lucide-react';
 import { NavigationSession, MatchCandidate } from '../types';
 import { MapPreview } from '../components/MapPreview';
@@ -40,7 +33,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const [origin, setOrigin] = useState('Стрий');
   const [destination, setDestination] = useState('Львів');
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [isSimulatedSpeed, setIsSimulatedSpeed] = useState(true);
+  const isSimulatedSpeed = true;
   const [gpsStale, setGpsStale] = useState(false);
   const [dismissedCandidates, setDismissedCandidates] = useState<string[]>([]);
   const [acceptedNotice, setAcceptedNotice] = useState<string | null>(null);

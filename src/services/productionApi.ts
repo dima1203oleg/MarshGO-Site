@@ -286,6 +286,7 @@ export const productionApi = {
     );
   },
   navigationSession(id: string) { return request<ApiNavigationSession>(`/navigation/sessions/${id}`); },
+  rerouteNavigation(id: string) { return request<ApiNavigationSession>(`/navigation/sessions/${id}/reroute`, { method: 'POST' }); },
   sendNavigationLocation(id: string, input: { coordinates: [number, number]; accuracyMeters: number; capturedAt: string }) {
     return request<{ accepted: boolean; onRoute: boolean; capturedAt: string }>(`/navigation/sessions/${id}/location`, {
       method: 'POST', body: JSON.stringify(input),

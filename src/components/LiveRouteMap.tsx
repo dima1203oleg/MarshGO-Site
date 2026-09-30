@@ -1,21 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import {
-  Navigation,
-  Layers,
-  ZoomIn,
-  ZoomOut,
   Maximize2,
   Compass,
   Play,
   Pause,
-  RotateCcw,
-  CheckCircle2,
-  Clock,
-  Car,
-  MapPin,
-  Sparkles,
-  Radio
+  Car
 } from 'lucide-react';
 import { TransportOffer } from '../types';
 

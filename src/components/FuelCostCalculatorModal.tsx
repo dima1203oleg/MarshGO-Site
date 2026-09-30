@@ -2,14 +2,7 @@ import React, { useState } from 'react';
 import {
   Calculator,
   X,
-  Fuel,
-  Users,
-  Route,
-  Sparkles,
-  ShieldCheck,
-  TrendingDown,
-  Info,
-  Check
+  TrendingDown
 } from 'lucide-react';
 
 interface FuelCostCalculatorModalProps {
@@ -51,8 +44,8 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
   defaultDestination = 'Київ',
   defaultDistanceKm = 475
 }) => {
-  const [origin, setOrigin] = useState(defaultOrigin);
-  const [destination, setDestination] = useState(defaultDestination);
+  const origin = defaultOrigin;
+  const destination = defaultDestination;
   const [fuelTypeId, setFuelTypeId] = useState('a95');
   const [distanceKm, setDistanceKm] = useState<number>(() => {
     const key = `${defaultOrigin.toLowerCase()}-${defaultDestination.toLowerCase()}`;

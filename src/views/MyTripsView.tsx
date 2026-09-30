@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
 import {
-  Calendar,
   Clock,
-  MapPin,
   Car,
   QrCode,
   Phone,
   Share2,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  ArrowRight,
-  Star,
-  MessageSquare
+  Star
 } from 'lucide-react';
 import { Booking } from '../types';
 import { RatingModal } from '../components/RatingModal';

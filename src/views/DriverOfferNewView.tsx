@@ -2,13 +2,8 @@ import React, { useState } from 'react';
 import {
   ArrowLeft,
   Car,
-  MapPin,
-  Calendar,
-  Clock,
-  Users,
   ShieldCheck,
   CheckCircle2,
-  AlertCircle,
   Plus,
   Check
 } from 'lucide-react';

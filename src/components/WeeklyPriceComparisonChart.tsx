@@ -1,15 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import {
-  TrendingDown,
-  TrendingUp,
   Calendar,
   Sparkles,
   ChevronDown,
-  ChevronUp,
-  ArrowRight,
-  Info,
-  DollarSign,
-  Tag
+  ChevronUp
 } from 'lucide-react';
 import { TransportOffer } from '../types';
 
@@ -41,7 +35,6 @@ export interface DayPriceInfo {
 export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProps> = ({
   origin,
   destination,
-  selectedDate = '',
   currentOffers,
   onSelectDay,
   className = ''

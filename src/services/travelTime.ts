@@ -46,9 +46,9 @@ export function calculateEstimatedTravelTime(
   const bodyType = (vehicle?.bodyType || '').toLowerCase();
   const makeModel = `${vehicle?.make || ''} ${vehicle?.model || ''}`.toLowerCase();
 
-  let avgSpeed = 85;
-  let vehicleTypeLabel = 'Легкове авто (Седан / Хетчбек)';
-  let vehicleTypeIconType: TravelTimeDetails['vehicleTypeIconType'] = 'sedan';
+  let avgSpeed: number;
+  let vehicleTypeLabel: string;
+  let vehicleTypeIconType: TravelTimeDetails['vehicleTypeIconType'];
 
   if (category === 'bus') {
     avgSpeed = 62;

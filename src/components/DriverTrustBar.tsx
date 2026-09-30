@@ -8,9 +8,7 @@ import {
   CheckCircle2,
   Sparkles,
   Info,
-  TrendingUp,
-  Zap,
-  Lock
+  TrendingUp
 } from 'lucide-react';
 
 interface DriverTrustBarProps {
