@@ -44,6 +44,6 @@ export function reduceMapTileHealth(
   return { status, loaded, failed };
 }
 
-export function leafletTileKey(coords: { z: number; x: number; y: number }): string {
+export function mapTileKey(coords: { z: number; x: number; y: number }): string {
   return `${coords.z}/${coords.x}/${coords.y}`;
 }

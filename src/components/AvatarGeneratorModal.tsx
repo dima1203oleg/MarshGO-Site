@@ -27,7 +27,7 @@ interface AvatarGeneratorModalProps {
 export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
   isOpen,
   onClose,
-  currentAvatar,
+  currentAvatar: _currentAvatar,
   userName,
   onSaveAvatar
 }) => {
@@ -37,7 +37,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
   const [randomSeed, setRandomSeed] = useState<string>(() => `${userName}_${Date.now()}`);
 
   const [previewAvatar, setPreviewAvatar] = useState<string>(() =>
-    currentAvatar || generateAvatarSvg(userName, {
+    generateAvatarSvg(userName, {
       palette: 'blue',
       accessory: 'sunglasses',
       expression: 'smile'

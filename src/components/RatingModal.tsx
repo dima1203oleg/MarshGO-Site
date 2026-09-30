@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Star, CheckCircle2 } from 'lucide-react';
+import { X, Star,  CheckCircle2 } from 'lucide-react';
 import { Booking } from '../types';
 
 interface RatingModalProps {

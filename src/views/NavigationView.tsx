@@ -8,7 +8,7 @@ import {
   Square,
   Check,
   X,
-  AlertTriangle
+  AlertTriangle,
 } from 'lucide-react';
 import { NavigationSession, MatchCandidate } from '../types';
 import { MapPreview } from '../components/MapPreview';
@@ -33,7 +33,6 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const [origin, setOrigin] = useState('Стрий');
   const [destination, setDestination] = useState('Львів');
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const isSimulatedSpeed = true;
   const [gpsStale, setGpsStale] = useState(false);
   const [dismissedCandidates, setDismissedCandidates] = useState<string[]>([]);
   const [acceptedNotice, setAcceptedNotice] = useState<string | null>(null);
@@ -118,25 +117,9 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
           <MapPreview
             origin={session?.origin || origin}
             destination={session?.destination || destination}
-            intermediateStops={session?.waypointStops.map((w) => w.name).slice(1, -1)}
-            activeDetour={
-              session?.matchmakingOptIn && activeCandidate
-                ? {
-                    minutes: activeCandidate.detourMinutes,
-                    km: activeCandidate.detourKm,
-                    pickupName: activeCandidate.origin,
-                    dropoffName: activeCandidate.destination
-                  }
-                : undefined
-            }
+            routeGeometry={session?.routeGeometry}
             className="h-80 sm:h-96"
           />
-
-          {/* Foreground Beta status badge */}
-          <div className="absolute top-12 left-3 z-20 flex items-center gap-2 bg-[#081B35]/80 backdrop-blur-md px-3 py-1 rounded-lg border border-slate-700 text-[11px] text-slate-300">
-            <div className={`w-2 h-2 rounded-full ${session ? 'bg-emerald-400 animate-ping' : 'bg-slate-400'}`} />
-            <span>{isSimulatedSpeed ? 'GPS Симуляція М-06' : 'Web Geolocation Live'}</span>
-          </div>
         </div>
 
         {/* Navigation Control Panel */}

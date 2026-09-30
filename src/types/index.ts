@@ -89,6 +89,8 @@ export interface TransportOffer {
   durationMinutes: number;
   distanceKm: number;
   intermediateStops?: string[];
+  /** Road geometry returned by the routing backend, in [longitude, latitude] order. */
+  routeGeometry?: Array<[number, number]>;
 
   // Vehicle & Driver info
   driver: {
@@ -278,6 +280,7 @@ export interface NavigationSession {
   };
   remainingDistanceKm: number;
   remainingDurationMinutes: number;
+  routeGeometry?: Array<[number, number]>;
   waypointStops: {
     id: string;
     name: string;

@@ -1,6 +1,15 @@
 import React from 'react';
 import {
+
+
+
   Sparkles,
+
+
+
+
+
+
   Navigation
 } from 'lucide-react';
 
@@ -93,7 +102,9 @@ function getRouteTheme(origin: string, destination: string): RouteTheme {
 export const RouteCoverImage: React.FC<RouteCoverImageProps> = ({
   origin,
   destination,
-  className = 'w-full h-full'
+  category: _category,
+  className = 'w-full h-full',
+  departureTime: _departureTime
 }) => {
   const theme = getRouteTheme(origin, destination);
 

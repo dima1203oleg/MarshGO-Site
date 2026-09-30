@@ -54,7 +54,7 @@ class ThemeService {
     try {
       localStorage.setItem(STORAGE_KEY, theme);
     } catch {
-      // The selected theme remains active in memory when storage is blocked.
+      // Theme still changes in memory when storage is unavailable.
     }
 
     this.applyTheme();

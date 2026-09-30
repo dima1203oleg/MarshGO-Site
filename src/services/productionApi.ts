@@ -1,3 +1,6 @@
+import { routeResultSchema, type RouteRequest, type RouteResult } from '../../shared/navigation/contracts';
+import { NavigationProviderError } from '../../shared/navigation/errors';
+
 export type ApiUser = {
   id: string;
   display_name: string;
@@ -5,6 +8,16 @@ export type ApiUser = {
   email?: string | null;
   roles: string[];
   is_verified: boolean;
+};
+export type ApiUserDataExport = {
+  profile: Pick<ApiUser, 'id' | 'display_name' | 'phone_e164' | 'email' | 'roles' | 'is_verified'> & { created_at: string };
+  vehicles: Array<{ id: string; make: string; model: string; model_year: number; seat_count: number; verification_status: string; created_at: string }>;
+  bookings: Array<{ id: string; offer_id: string; seat_count: number; total_price_minor: number; currency: string; fee_class: string; platform_fee_minor: number; fee_rule_version: string; status: string; created_at: string }>;
+  demands: Array<{ id: string; origin_name: string; destination_name: string; earliest_departure: string; latest_departure: string; passenger_count: number; budget_minor: number | null; status: string; created_at: string }>;
+};
+export type ApiAccountDeletionRequest = {
+  id: string; status: 'cooling_off' | 'approved' | 'processing' | 'completed' | 'cancelled' | 'rejected';
+  requested_at: string; cooling_off_until: string | null; cancelled_at: string | null;
 };
 export type ApiBlockedUser = { user_id: string; display_name: string; created_at: string };
 export type ApiModerationCase = {
@@ -55,6 +68,14 @@ export type ApiBooking = {
   completion_confirmation_count: number;
   current_user_confirmed_completion: boolean;
 };
+export type ApiRendezvousLocation = { coordinates: [number, number]; accuracyMeters: number; capturedAt: string; freshness: 'LIVE' | 'STALE' } | null;
+export type ApiRendezvous = {
+  id: string; bookingId: string; journeyLegId: string | null; state: string;
+  pickup: { label: string; coordinates: [number, number] };
+  plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
+  locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
+  locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
+};
 export type ApiRescueAlternative = ApiOffer & {
   origin_distance_m: number;
   destination_distance_m: number;
@@ -101,6 +122,7 @@ export type ApiRealtimeEvent =
   | { type: 'navigation.match.driver-interested'; data: { candidate_id: string; demand_id: string; status: 'driver_interested' } }
   | { type: 'navigation.match.passenger-confirmed'; data: { candidate_id: string; demand_id: string; status: 'passenger_confirmed' } }
   | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } }
+  | { type: `rendezvous.${string}`; data: { rendezvous_id: string; state?: string; participant?: 'driver' | 'passenger'; coordinates?: [number, number]; accuracyMeters?: number; capturedAt?: string; near_pickup?: boolean } }
   | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'REPLANNING' } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
@@ -253,6 +275,9 @@ export const productionApi = {
   suggestPlaces(query: string) {
     return request<ApiPlace[]>(`/places/suggest?q=${encodeURIComponent(query)}`);
   },
+  reverseGeocode(latitude: number, longitude: number) {
+    return request<ApiPlace>(`/places/reverse?lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`);
+  },
   searchJourneys(input: {
     origin: { name: string; coordinates: [number, number] };
     destination: { name: string; coordinates: [number, number] };
@@ -266,12 +291,19 @@ export const productionApi = {
   startNavigation(input: { origin: [number, number]; destination: [number, number]; destinationName: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },
+  async calculateRoute(input: RouteRequest): Promise<RouteResult> {
+    const result = await request<unknown>('/routing/calculate', { method: 'POST', body: JSON.stringify(input) });
+    const parsed = routeResultSchema.safeParse(result);
+    if (!parsed.success) throw new NavigationProviderError('ROUTING_INVALID_RESPONSE', 'marshgo-api');
+    return parsed.data;
+  },
   activeNavigation() { return request<ApiNavigationSession | null>('/navigation/sessions/active'); },
   setNavigationMatching(id: string, enabled: boolean) {
     return request<{ id: string; enabled: boolean; default: false }>(`/navigation/sessions/${id}/matching`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
   },
   pauseNavigation(id: string) { return request<{ id: string; state: 'paused'; opt_in: boolean }>(`/navigation/sessions/${id}/pause`, { method: 'POST' }); },
   resumeNavigation(id: string) { return request<{ id: string; state: 'active'; opt_in: boolean }>(`/navigation/sessions/${id}/resume`, { method: 'POST' }); },
+  rerouteNavigation(id: string) { return request<ApiNavigationSession>(`/navigation/sessions/${id}/reroute`, { method: 'POST' }); },
   refreshNavigationMatches(id: string) { return request<ApiNavigationMatch[]>(`/navigation/sessions/${id}/matches/refresh`, { method: 'POST' }); },
   navigationMatches(id: string) { return request<ApiNavigationMatch[]>(`/navigation/sessions/${id}/matches`); },
   expressNavigationInterest(sessionId: string, candidateId: string) {
@@ -286,7 +318,6 @@ export const productionApi = {
     );
   },
   navigationSession(id: string) { return request<ApiNavigationSession>(`/navigation/sessions/${id}`); },
-  rerouteNavigation(id: string) { return request<ApiNavigationSession>(`/navigation/sessions/${id}/reroute`, { method: 'POST' }); },
   sendNavigationLocation(id: string, input: { coordinates: [number, number]; accuracyMeters: number; capturedAt: string }) {
     return request<{ accepted: boolean; onRoute: boolean; capturedAt: string }>(`/navigation/sessions/${id}/location`, {
       method: 'POST', body: JSON.stringify(input),
@@ -320,6 +351,22 @@ export const productionApi = {
     return request<{ id: string; status: string }>(`/demands/${demandId}/cancel`, { method: 'POST' });
   },
   bookings() { return request<ApiBooking[]>('/bookings'); },
+  bookingRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous`); },
+  activateRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous/activate`, { method: 'POST' }); },
+  sendRendezvousLocation(rendezvousId: string, location: { longitude: number; latitude: number; accuracyMeters: number; capturedAt: string }) {
+    return request<{ rendezvousId: string; storedEphemerally: true; expiresInSeconds: number; nearPickup: boolean; arrivalRequiresUserConfirmation: true }>(
+      `/rendezvous/${encodeURIComponent(rendezvousId)}/location`, { method: 'POST', body: JSON.stringify(location) },
+    );
+  },
+  rendezvousStatus(rendezvousId: string, action: 'approaching' | 'arrived' | 'delayed' | 'will_arrive' | 'cannot_make_it', minutes?: number) {
+    return request<{ id: string; state: string; locationSharingEnabled: boolean }>(
+      `/rendezvous/${encodeURIComponent(rendezvousId)}/status`, { method: 'POST', body: JSON.stringify({ action, ...(minutes ? { minutes } : {}) }) },
+    );
+  },
+  rendezvousBoarding(rendezvousId: string) {
+    return request<{ id: string; state: string }>(`/rendezvous/${encodeURIComponent(rendezvousId)}/boarding`, { method: 'POST' });
+  },
+  endRendezvous(rendezvousId: string) { return request<{ id: string; state: string }>(`/rendezvous/${encodeURIComponent(rendezvousId)}/end`, { method: 'POST' }); },
   notifications(cursor?: string | null) {
     const query = new URLSearchParams({ limit: '30' });
     if (cursor) query.set('cursor', cursor);
@@ -356,6 +403,10 @@ export const productionApi = {
     return request<ApiModerationDecision>(`/admin/moderation/${encodeURIComponent(caseId)}/decision`, { method: 'POST', body: JSON.stringify(input) });
   },
   me() { return request<ApiUser>('/users/me'); },
+  exportMyData() { return request<ApiUserDataExport>('/users/me/export'); },
+  accountDeletionRequest() { return request<ApiAccountDeletionRequest | null>('/users/me/deletion-request'); },
+  requestAccountDeletion() { return request<ApiAccountDeletionRequest>('/users/me/deletion-requests', { method: 'POST' }); },
+  cancelAccountDeletion() { return request<ApiAccountDeletionRequest>('/users/me/deletion-requests/cancel', { method: 'POST' }); },
   vehicles() { return request<ApiVehicle[]>('/vehicles'); },
   enableRole(role: 'passenger' | 'driver') {
     return request<{ id: string; roles: string[] }>('/users/me/roles', { method: 'POST', body: JSON.stringify({ role }) });
@@ -440,7 +491,7 @@ export const productionApi = {
         next.onmessage = (message) => {
           try {
             const event = JSON.parse(String(message.data)) as ApiRealtimeEvent | { type: string };
-            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type.startsWith('booking.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.')) onEvent(event as ApiRealtimeEvent);
+            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type.startsWith('booking.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.') || event.type.startsWith('rendezvous.')) onEvent(event as ApiRealtimeEvent);
           } catch { /* Ignore malformed realtime frames; persisted REST history remains authoritative. */ }
         };
         next.onerror = () => next.close();

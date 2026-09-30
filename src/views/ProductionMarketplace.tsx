@@ -1,30 +1,25 @@
-import { FormEvent, lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { FormEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowDownUp, ArrowLeft, ArrowRight, Ban, Bell, CalendarDays, CarFront, ChevronRight,
-  CircleUserRound, Clock3, Compass, Flag, Home, LogOut, MapPin, MessageCircle, Minus, Navigation,
+  CircleUserRound, Clock3, Compass, FileDown, Flag, Home, LogOut, MapPin, MessageCircle, Minus, Navigation,
   Plus, Search, ShieldCheck, Ticket, Users, X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import { ApiBlockedUser, ApiBooking, ApiDemand, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiNotification, ApiNotificationPage, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
+import { BrandMark } from '../components/BrandMark';
+import { ApiAccountDeletionRequest, ApiBlockedUser, ApiBooking, ApiDemand, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiNotification, ApiNotificationPage, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiRendezvous, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
+import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
+import { defaultKyivDateTime, formatKyivDateTimeInput, kyivDateTimeInputToDate, kyivDateTimeInputToIso } from '../domain/kyivTime';
+import { useProductionTabRouter } from '../routing/useProductionTabRouter';
+import type { ProductionTab } from '../routing/productionRoutes';
 import { JourneyResultsPanel } from './JourneyResultsPanel';
 const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((module) => ({ default: module.ProductionNavigation })));
 
-type Tab = 'home' | 'search' | 'trips' | 'chat' | 'profile' | 'demand' | 'requests' | 'my-demands' | 'offer-new' | 'admin' | 'navigation';
+type Tab = ProductionTab;
 const formatMoney = (minor: number, currency: string) => new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(minor / 100);
 const formatDate = (value: string, options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }) => new Intl.DateTimeFormat('uk-UA', { ...options, timeZone: 'Europe/Kyiv' }).format(new Date(value));
 const todayKyiv = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv' }).format(new Date());
-const localDateTime = (days: number, hour: number) => {
-  const value = new Date(); value.setDate(value.getDate() + days); value.setHours(hour, 0, 0, 0);
-  const pad = (part: number) => String(part).padStart(2, '0');
-  return `${value.getFullYear()}-${pad(value.getMonth()+1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
-};
-const toLocalDateTimeInput = (date: string) => {
-  const value = new Date(date);
-  const pad = (part: number) => String(part).padStart(2, '0');
-  return `${value.getFullYear()}-${pad(value.getMonth()+1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
-};
 const tabItems: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: 'home', label: 'Головна', icon: Home }, { id: 'search', label: 'Пошук', icon: Search },
   { id: 'trips', label: 'Поїздки', icon: Ticket }, { id: 'profile', label: 'Профіль', icon: CircleUserRound },
@@ -41,6 +36,8 @@ export function ProductionMarketplace() {
   const [devCode, setDevCode] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [authIntro, setAuthIntro] = useState(true);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [onboardingPermissionMessage, setOnboardingPermissionMessage] = useState('');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [searchOriginPlace, setSearchOriginPlace] = useState<ApiPlace | null>(null);
@@ -49,7 +46,7 @@ export function ProductionMarketplace() {
   const [routePlaceSuggestions, setRoutePlaceSuggestions] = useState<ApiPlace[]>([]);
   const [date, setDate] = useState(todayKyiv);
   const [seats, setSeats] = useState(1);
-  const [journeyDeparture, setJourneyDeparture] = useState(() => localDateTime(1, 8));
+  const [journeyDeparture, setJourneyDeparture] = useState(() => defaultKyivDateTime(1, 8));
   const [journeyStrategy, setJourneyStrategy] = useState<ApiJourneyStrategy>('BALANCED');
   const [journeyResult, setJourneyResult] = useState<ApiJourneySearchResult | null>(null);
   const [journeyBookingLink, setJourneyBookingLink] = useState<{ journeyId: string; journeyLegId: string } | null>(null);
@@ -60,6 +57,9 @@ export function ProductionMarketplace() {
   const [offers, setOffers] = useState<ApiOffer[]>([]);
   const [myOffers, setMyOffers] = useState<ApiOffer[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [rendezvousSessions, setRendezvousSessions] = useState<Record<string, ApiRendezvous>>({});
+  const rendezvousSessionsRef = useRef<Record<string, ApiRendezvous>>({});
+  const [rendezvousBusyId, setRendezvousBusy] = useState<string | null>(null);
   const [bookingRescues, setBookingRescues] = useState<Record<string, { loading: boolean; failed: boolean; result?: ApiRescueResult }>>({});
   const [blockedUsers, setBlockedUsers] = useState<ApiBlockedUser[]>([]);
   const [vehicles, setVehicles] = useState<ApiVehicle[]>([]);
@@ -89,12 +89,12 @@ export function ProductionMarketplace() {
   const [offerDestination, setOfferDestination] = useState<ApiPlace | null>(null);
   const [offerPlaceField, setOfferPlaceField] = useState<'origin' | 'destination' | null>(null);
   const [offerPlaceSuggestions, setOfferPlaceSuggestions] = useState<ApiPlace[]>([]);
-  const [offerDeparture, setOfferDeparture] = useState(() => localDateTime(1, 8));
+  const [offerDeparture, setOfferDeparture] = useState(() => defaultKyivDateTime(1, 8));
   const [offerPrice, setOfferPrice] = useState('150');
   const [offerSeats, setOfferSeats] = useState(1);
   const [offerVehicleId, setOfferVehicleId] = useState('');
-  const [demandEarliest, setDemandEarliest] = useState(() => localDateTime(1, 8));
-  const [demandLatest, setDemandLatest] = useState(() => localDateTime(1, 10));
+  const [demandEarliest, setDemandEarliest] = useState(() => defaultKyivDateTime(1, 8));
+  const [demandLatest, setDemandLatest] = useState(() => defaultKyivDateTime(1, 10));
   const [demandPassengers, setDemandPassengers] = useState(1);
   const [demandBudget, setDemandBudget] = useState('');
   const [demandBudgetType, setDemandBudgetType] = useState<'total_all' | 'per_seat'>('total_all');
@@ -107,7 +107,7 @@ export function ProductionMarketplace() {
   const [counterPrice, setCounterPrice] = useState('');
   const [counterDeparture, setCounterDeparture] = useState('');
   const [counterComment, setCounterComment] = useState('');
-  const [tab, setTab] = useState<Tab>('home');
+  const { tab, setTab, notFound, goHome } = useProductionTabRouter();
   const [showResults, setShowResults] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<ApiOffer | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<ApiBooking | null>(null);
@@ -117,6 +117,9 @@ export function ProductionMarketplace() {
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
+  const [deletionRequest, setDeletionRequest] = useState<ApiAccountDeletionRequest | null>(null);
+  const [deletionBusy, setDeletionBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [verificationTarget, setVerificationTarget] = useState<ApiVehicle | null>(null);
@@ -134,6 +137,7 @@ export function ProductionMarketplace() {
   const [vehicleForm, setVehicleForm] = useState({ make: '', model: '', modelYear: new Date().getFullYear(), seats: 4 });
 
   const refreshBookings = useCallback(async () => setBookings(await productionApi.bookings()), []);
+  useEffect(() => { rendezvousSessionsRef.current = rendezvousSessions; }, [rendezvousSessions]);
   const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
   const refreshNotifications = useCallback(async () => setNotificationPage(await productionApi.notifications()), []);
   const refreshBlockedUsers = useCallback(async () => setBlockedUsers(await productionApi.blockedUsers()), []);
@@ -170,7 +174,8 @@ export function ProductionMarketplace() {
     productionApi.restoreSession().then(async () => {
       const currentUser = await productionApi.me();
       setUser(currentUser);
-      await Promise.all([refreshBookings(), refreshJourneys(), refreshNotifications(), refreshVehicles(), refreshBlockedUsers(), ...(currentUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(currentUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
+      const [currentDeletionRequest] = await Promise.all([productionApi.accountDeletionRequest(), refreshBookings(), refreshJourneys(), refreshNotifications(), refreshVehicles(), refreshBlockedUsers(), ...(currentUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(currentUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
+      setDeletionRequest(currentDeletionRequest);
     }).catch(() => undefined).finally(() => setLoading(false));
   }, [refreshBlockedUsers, refreshBookings, refreshJourneys, refreshMyOffers, refreshPassengerNavigationMatches, refreshVehicles]);
 
@@ -186,6 +191,14 @@ export function ProductionMarketplace() {
       if (event.type.startsWith('booking.')) {
         void Promise.all([refreshBookings(), ...(user.roles.includes('driver') ? [refreshMyOffers()] : [])])
           .catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Стан бронювання не оновився.'));
+        return;
+      }
+      if (event.type.startsWith('rendezvous.')) {
+        if ('rendezvous_id' in event.data) {
+          const rendezvousId = event.data.rendezvous_id;
+          const session = Object.values(rendezvousSessionsRef.current).find((item) => item.id === rendezvousId);
+          if (session) void productionApi.bookingRendezvous(session.bookingId).then((next) => setRendezvousSessions((current) => ({ ...current, [session.bookingId]: next }))).catch(() => undefined);
+        }
         return;
       }
       if (event.type === 'navigation.match.driver-interested') {
@@ -294,8 +307,8 @@ export function ProductionMarketplace() {
   const searchJourney = async () => {
     if (!origin.trim() || !destination.trim()) { setStatusMessage('Вкажіть початок і кінець маршруту.'); return; }
     if (!searchOriginPlace || !searchDestinationPlace) { setStatusMessage('Для планування оберіть обидві точки з результатів геокодера.'); return; }
-    const departure = new Date(journeyDeparture);
-    if (!Number.isFinite(departure.getTime()) || departure.getTime() <= Date.now()) { setStatusMessage('Оберіть майбутній час відправлення.'); return; }
+    const departure = kyivDateTimeInputToDate(journeyDeparture);
+    if (!departure || departure.getTime() <= Date.now()) { setStatusMessage('Оберіть коректний майбутній час за київським часом.'); return; }
     setBusy(true); setStatusMessage('');
     try {
       const result = await productionApi.searchJourneys({
@@ -373,6 +386,70 @@ export function ProductionMarketplace() {
       setVisibleBookingTicket({ bookingId: booking.id, token: ticket.token });
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Квиток недоступний.'); }
     finally { setBusy(false); }
+  };
+
+  const loadRendezvous = async (booking: ApiBooking) => {
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try { const session = await productionApi.bookingRendezvous(booking.id); setRendezvousSessions((current) => ({ ...current, [booking.id]: session })); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Зустріч поки недоступна.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const activateRendezvous = async (booking: ApiBooking) => {
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try { const session = await productionApi.activateRendezvous(booking.id); setRendezvousSessions((current) => ({ ...current, [booking.id]: session })); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося активувати обмін місцем.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const sendRendezvousLocation = async (booking: ApiBooking) => {
+    const session = rendezvousSessions[booking.id];
+    if (!session || !navigator.geolocation) { setStatusMessage('Геолокація недоступна на цьому пристрої.'); return; }
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 }));
+      await productionApi.sendRendezvousLocation(session.id, { longitude: position.coords.longitude, latitude: position.coords.latitude, accuracyMeters: position.coords.accuracy, capturedAt: new Date(position.timestamp).toISOString() });
+      const next = await productionApi.bookingRendezvous(booking.id);
+      setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
+      setStatusMessage('Поточне місце надіслано учаснику бронювання. Воно автоматично зникне за 5 хвилин.');
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося отримати геолокацію. Перевірте дозвіл пристрою.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const rendezvousAction = async (booking: ApiBooking, action: 'approaching' | 'arrived' | 'delayed') => {
+    const session = rendezvousSessions[booking.id];
+    if (!session) return;
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try {
+      await productionApi.rendezvousStatus(session.id, action);
+      const next = await productionApi.bookingRendezvous(booking.id);
+      setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити статус зустрічі.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const rendezvousBoarding = async (booking: ApiBooking) => {
+    const session = rendezvousSessions[booking.id];
+    if (!session) return;
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try {
+      await productionApi.rendezvousBoarding(session.id);
+      const next = await productionApi.bookingRendezvous(booking.id);
+      setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Посадка ще не готова.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const endRendezvous = async (booking: ApiBooking) => {
+    const session = rendezvousSessions[booking.id];
+    if (!session) return;
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try {
+      await productionApi.endRendezvous(session.id);
+      const next = await productionApi.bookingRendezvous(booking.id);
+      setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завершити обмін місцем.'); }
+    finally { setRendezvousBusy(null); }
   };
 
   const confirmBoarding = async (booking: ApiBooking) => {
@@ -457,11 +534,11 @@ export function ProductionMarketplace() {
   const publishOffer = async (event: FormEvent) => {
     event.preventDefault();
     const vehicle = vehicles.find((item) => item.id === offerVehicleId && item.verification_status === 'verified');
-    const departure = new Date(offerDeparture);
+    const departure = kyivDateTimeInputToDate(offerDeparture);
     const priceMinor = Math.round(Number(offerPrice.replace(',', '.')) * 100);
     if (!offerOrigin || !offerDestination) { setStatusMessage('Оберіть звідки й куди зі справжніх результатів геокодера.'); return; }
     if (!vehicle) { setStatusMessage('Оберіть своє авто після проходження перевірки.'); return; }
-    if (!Number.isFinite(departure.getTime()) || departure <= new Date()) { setStatusMessage('Час відправлення має бути в майбутньому.'); return; }
+    if (!departure || departure <= new Date()) { setStatusMessage('Час відправлення має бути коректним київським часом у майбутньому.'); return; }
     if (!Number.isInteger(priceMinor) || priceMinor < 1) { setStatusMessage('Ціна за місце має бути більшою за 0.'); return; }
     if (!Number.isInteger(offerSeats) || offerSeats < 1 || offerSeats > vehicle.seat_count) { setStatusMessage('Кількість місць не може перевищувати місткість авто.'); return; }
     setBusy(true); setStatusMessage('');
@@ -488,8 +565,8 @@ export function ProductionMarketplace() {
   const publishDemand = async (event: FormEvent) => {
     event.preventDefault();
     if (!demandOrigin || !demandDestination) { setStatusMessage('Оберіть обидва місця зі справжніх результатів геокодера.'); return; }
-    const earliest = new Date(demandEarliest); const latest = new Date(demandLatest);
-    if (!Number.isFinite(earliest.getTime()) || !Number.isFinite(latest.getTime()) || latest < earliest) { setStatusMessage('Перевірте часовий інтервал.'); return; }
+    const earliest = kyivDateTimeInputToDate(demandEarliest); const latest = kyivDateTimeInputToDate(demandLatest);
+    if (!earliest || !latest || latest < earliest) { setStatusMessage('Перевірте часовий інтервал за київським часом.'); return; }
     const budget = demandBudget.trim() ? Math.round(Number(demandBudget.replace(',', '.')) * 100) : undefined;
     if (demandBudget.trim() && (!Number.isFinite(budget) || budget! < 1)) { setStatusMessage('Бюджет має бути додатною сумою.'); return; }
     setBusy(true); setStatusMessage('');
@@ -523,7 +600,7 @@ export function ProductionMarketplace() {
       await viewDemand(demand, false);
       setProposalNavigationCandidateId(candidateId);
       setProposalTarget(demand);
-      setProposalDeparture(toLocalDateTimeInput(demand.earliest_departure));
+      setProposalDeparture(formatKyivDateTimeInput(demand.earliest_departure));
       const proposedTotal = demand.budget_minor === null ? null : demand.budget_minor / 100 * (demand.budget_type === 'per_seat' ? demand.passenger_count : 1);
       setProposalPrice(proposedTotal === null ? '' : String(proposedTotal.toFixed(2)));
       const verified = vehicles.find((vehicle) => vehicle.verification_status === 'verified' && vehicle.is_active) ?? vehicles.find((vehicle) => vehicle.verification_status === 'verified');
@@ -543,10 +620,11 @@ export function ProductionMarketplace() {
     event.preventDefault();
     if (!proposalTarget) return;
     const amount = Math.round(Number(proposalPrice.replace(',', '.')) * 100);
-    if (!Number.isInteger(amount) || amount < 1 || !proposalDeparture || !proposalVehicleId) { setStatusMessage('Потрібні перевірений автомобіль, час і ціна більша за 0.'); return; }
+    const departureAt = kyivDateTimeInputToIso(proposalDeparture);
+    if (!Number.isInteger(amount) || amount < 1 || !departureAt || !proposalVehicleId) { setStatusMessage('Потрібні перевірений автомобіль, коректний київський час і ціна більша за 0.'); return; }
     setBusy(true);
     try {
-      await productionApi.createProposal(proposalTarget.id, { vehicleId: proposalVehicleId, priceMinor: amount, departureAt: new Date(proposalDeparture).toISOString(), comment: proposalComment, ...(proposalNavigationCandidateId ? { navigationCandidateId: proposalNavigationCandidateId } : {}) });
+      await productionApi.createProposal(proposalTarget.id, { vehicleId: proposalVehicleId, priceMinor: amount, departureAt, comment: proposalComment, ...(proposalNavigationCandidateId ? { navigationCandidateId: proposalNavigationCandidateId } : {}) });
       setProposalTarget(null); setProposalNavigationCandidateId(null); setStatusMessage('Цінову пропозицію надіслано пасажиру.'); await refreshOpenDemands();
       await viewDemand(proposalTarget, false);
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося надіслати пропозицію.'); }
@@ -557,10 +635,11 @@ export function ProductionMarketplace() {
     event.preventDefault();
     if (!counterTarget) return;
     const amount = Math.round(Number(counterPrice.replace(',', '.')) * 100);
-    if (!Number.isInteger(amount) || amount < 1 || !counterDeparture) { setStatusMessage('Вкажіть додатну ціну й час виїзду.'); return; }
+    const departureAt = kyivDateTimeInputToIso(counterDeparture);
+    if (!Number.isInteger(amount) || amount < 1 || !departureAt) { setStatusMessage('Вкажіть додатну ціну й коректний київський час виїзду.'); return; }
     setBusy(true);
     try {
-      await productionApi.counterProposal(counterTarget.id, { priceMinor: amount, departureAt: new Date(counterDeparture).toISOString(), comment: counterComment });
+      await productionApi.counterProposal(counterTarget.id, { priceMinor: amount, departureAt, comment: counterComment });
       setCounterTarget(null); setStatusMessage('Зустрічну пропозицію збережено.');
       if (selectedDemand) await viewDemand(selectedDemand, selectedDemandIsOwned);
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити пропозицію.'); }
@@ -739,8 +818,50 @@ export function ProductionMarketplace() {
   };
 
   const logout = async () => {
+    const activeNavigation = await productionApi.activeNavigation().catch(() => null);
+    if (activeNavigation) await productionApi.endNavigation(activeNavigation.id).catch(() => undefined);
     await productionApi.logout().catch(() => undefined);
+    new OfflineNavigationStore().clear();
     setUser(null); setBookings([]); setJourneys([]); setNotificationPage({ items: [], nextCursor: null, unreadCount: 0 }); setShowNotifications(false); setBlockedUsers([]); setVehicles([]); setOffers([]); setShowLogin(true); setOtpRequested(false);
+  };
+
+  const downloadPersonalData = async () => {
+    setExportingData(true);
+    setStatusMessage('');
+    try {
+      const data = await productionApi.exportMyData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `marshgo-data-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setStatusMessage('Ваші дані завантажено у форматі JSON.');
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? `Не вдалося експортувати дані: ${error.message}` : 'Не вдалося експортувати дані. Спробуйте ще раз.');
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const requestDeletion = async () => {
+    if (!window.confirm('Подати запит на видалення акаунта? Його можна скасувати протягом періоду очікування.')) return;
+    setDeletionBusy(true); setStatusMessage('');
+    try {
+      setDeletionRequest(await productionApi.requestAccountDeletion());
+      setStatusMessage('Запит на видалення зареєстровано. Він ще не видаляє дані; перевірте стан і дату в профілі.');
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося подати запит на видалення.'); }
+    finally { setDeletionBusy(false); }
+  };
+
+  const cancelDeletion = async () => {
+    setDeletionBusy(true); setStatusMessage('');
+    try {
+      setDeletionRequest(await productionApi.cancelAccountDeletion());
+      setStatusMessage('Запит на видалення скасовано. Акаунт і його дані залишаються активними.');
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося скасувати запит.'); }
+    finally { setDeletionBusy(false); }
   };
 
   const openNotifications = async () => {
@@ -776,32 +897,82 @@ export function ProductionMarketplace() {
     finally { setNotificationsLoading(false); }
   };
 
+  const continueToPhoneLogin = () => {
+    setOnboardingStep(0);
+    setShowLogin(true);
+  };
+  const requestOnboardingLocation = () => {
+    if (!navigator.geolocation) {
+      setOnboardingPermissionMessage('Цей браузер не надає доступу до геолокації. Її можна ввімкнути пізніше в налаштуваннях пристрою.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      () => setOnboardingPermissionMessage('Доступ увімкнено. Геолокація потрібна лише під час активної навігації або зустрічі.'),
+      () => setOnboardingPermissionMessage('Дозвіл не надано. Його можна ввімкнути пізніше перед навігацією.'),
+      { enableHighAccuracy: false, maximumAge: 30_000, timeout: 12_000 },
+    );
+  };
+
   if (loading) return <main className="grid min-h-[100svh] place-items-center bg-[#f5f8fd] text-sm text-slate-500">Завантажуємо захищену сесію…</main>;
   if (!user || showLogin) return (
-    <main className={`auth-screen relative flex min-h-[100svh] overflow-hidden bg-[#081b35] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe text-white ${authIntro ? 'items-stretch' : 'items-end sm:items-center sm:justify-center'}`}>
-      {authIntro && <img src="/images/welcome-road.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-[center_58%]" />}
-      <div className={`absolute inset-0 ${authIntro ? 'bg-[linear-gradient(180deg,rgba(4,17,37,.45)_0%,rgba(5,22,44,.08)_34%,rgba(5,15,29,.28)_57%,rgba(3,10,19,.9)_100%)]' : 'bg-[radial-gradient(ellipse_at_55%_35%,rgba(41,131,255,.65),transparent_48%),linear-gradient(180deg,#113d75_0%,#122f54_48%,#08121f_100%)]'}`} />
-      {!authIntro && <div className="absolute inset-x-0 bottom-0 h-[48%] bg-[linear-gradient(0deg,rgba(4,10,18,.88),transparent)]" />}
+    <main className={`auth-screen relative flex min-h-[100svh] overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe ${authIntro ? 'auth-intro-screen' : ''} ${onboardingStep > 0 ? 'bg-[#f4f8ff] text-[#14243b]' : 'bg-[#081b35] text-white'} ${authIntro ? 'items-stretch' : 'items-end sm:items-center sm:justify-center'}`}>
+      {authIntro && <img src="/images/welcome-kyiv-v1.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-[center_58%]" />}
+      <div className={`absolute inset-0 ${authIntro ? 'bg-[linear-gradient(180deg,rgba(4,17,37,.45)_0%,rgba(5,22,44,.08)_34%,rgba(5,15,29,.28)_57%,rgba(3,10,19,.9)_100%)]' : onboardingStep > 0 ? 'bg-[linear-gradient(180deg,#f4f8ff_0%,#ffffff_58%,#edf4ff_100%)]' : 'bg-[radial-gradient(ellipse_at_55%_35%,rgba(41,131,255,.65),transparent_48%),linear-gradient(180deg,#113d75_0%,#122f54_48%,#08121f_100%)]'}`} />
+      {!authIntro && onboardingStep === 0 && <div className="absolute inset-x-0 bottom-0 h-[48%] bg-[linear-gradient(0deg,rgba(4,10,18,.88),transparent)]" />}
       <section className={`relative z-10 mx-auto flex w-full max-w-md flex-col ${authIntro ? 'min-h-[calc(100svh-env(safe-area-inset-top))] items-center pb-1 text-center' : 'pb-2'}`}>
-        {!authIntro && <button onClick={() => { setAuthIntro(true); setShowLogin(false); setStatusMessage(''); }} className="mb-6 grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-white/10" aria-label="Назад"><ArrowLeft size={19}/></button>}
+        {!authIntro && onboardingStep === 0 && <button onClick={() => { setAuthIntro(true); setShowLogin(false); setStatusMessage(''); }} className="mb-6 grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-white/10" aria-label="Назад"><ArrowLeft size={19}/></button>}
         {authIntro ? <>
           <div className="mt-[max(3rem,10svh)] flex flex-col items-center drop-shadow-[0_2px_16px_rgba(4,12,28,.3)]">
-            <span className="relative mb-3 grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-white/55 bg-white/15 text-white shadow-[0_0_38px_rgba(56,189,248,.42)] backdrop-blur-sm"><MapPin size={42} strokeWidth={1.8}/><span className="absolute left-1/2 top-[35%] h-2 w-2 -translate-x-1/2 rounded-full bg-sky-300"/></span>
+            <BrandMark size="lg" className="mb-3 ring-1 ring-white/60 shadow-[0_0_38px_rgba(56,189,248,.42)]" />
             <strong className="text-[2rem] font-extrabold tracking-tight">MARSH<span className="text-sky-400">GO</span></strong>
-            <p className="mt-1 text-xs text-white/85">One Route. Every Way.</p>
-            <p className="mt-1 text-[10px] text-white/75">Один маршрут. Усі способи доїхати.</p>
+            <p className="mt-1 text-xs text-white/85">Один маршрут. Усі способи доїхати.</p>
+            <p className="mt-1 text-[10px] text-white/75">Попутки · міські поїздки · подорожі Україною</p>
           </div>
           <div className="mt-auto w-full pb-5 pt-8 text-left drop-shadow-[0_2px_12px_rgba(0,0,0,.55)]">
             <p className="text-[11px] font-bold uppercase tracking-[.27em] text-blue-100">Україна ближче</p>
             <h1 className="mt-2 text-[2.15rem] font-extrabold leading-[1.08] tracking-tight">Усі способи<br/>доїхати — в одному<br/>застосунку.</h1>
-            <p className="mt-3 max-w-sm text-sm leading-5 text-blue-50/90">Попутки, автобуси та міські маршрути — шукайте разом.</p>
+            <p className="mt-3 max-w-sm text-sm leading-5 text-blue-50/90">Знайдіть попутку, сплануйте маршрут і домовтеся про поїздку в одному місці.</p>
           </div>
           <div className="w-full">
-            <button onClick={() => setAuthIntro(false)} className="w-full rounded-2xl bg-blue-600 px-5 py-[1.05rem] text-sm font-bold shadow-lg shadow-blue-950/45">Почати</button>
-            <button onClick={() => setAuthIntro(false)} className="mt-3 w-full rounded-2xl border border-white/50 bg-slate-950/25 px-5 py-3.5 text-sm font-semibold backdrop-blur-sm">У мене вже є акаунт</button>
+            <button onClick={() => { setAuthIntro(false); setOnboardingStep(1); setShowLogin(false); }} className="w-full rounded-2xl bg-blue-600 px-5 py-[1.05rem] text-sm font-bold shadow-lg shadow-blue-950/45">Почати</button>
+            <button onClick={() => { setAuthIntro(false); setOnboardingStep(0); setShowLogin(true); }} className="mt-3 w-full rounded-2xl border border-white/50 bg-slate-950/25 px-5 py-3.5 text-sm font-semibold backdrop-blur-sm">У мене вже є акаунт</button>
           </div>
-        </> : <>
-        <div className="mb-8 flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-sky-300 to-blue-500 text-2xl font-black">M</div><div><strong className="text-2xl tracking-tight">MARSH<span className="text-sky-400">GO</span></strong><p className="text-xs text-blue-100/80">One Route. Every Way.</p></div></div>
+        </> : onboardingStep > 0 ? <section className="mx-auto flex min-h-[calc(100svh-env(safe-area-inset-top))] w-full max-w-md flex-col pb-2 pt-2 text-[#14243b]">
+          <header className="flex items-center justify-between">
+            <button onClick={() => onboardingStep === 1 ? setAuthIntro(true) : setOnboardingStep(onboardingStep - 1)} aria-label="Назад" className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={19}/></button>
+            <BrandMark size="sm"/>
+            <button onClick={continueToPhoneLogin} className="px-2 py-2 text-xs font-semibold text-slate-500">Пропустити</button>
+          </header>
+          <div className="mt-7 flex gap-1.5" aria-label={`Крок ${onboardingStep} з 3`}>{[1,2,3].map(step=><span key={step} className={`h-1.5 flex-1 rounded-full ${step<=onboardingStep?'bg-blue-600':'bg-slate-200'}`}/>)}</div>
+          {onboardingStep === 1 ? <>
+            <div className="mt-10 grid min-h-48 place-items-center rounded-[2rem] bg-gradient-to-br from-blue-50 via-white to-sky-100">
+              <div className="grid grid-cols-3 gap-3">{[{Icon:CarFront,label:'Попутки',tone:'text-blue-600 bg-blue-100'},{Icon:Ticket,label:'Автобуси',tone:'text-emerald-600 bg-emerald-100'},{Icon:Navigation,label:'Маршрути',tone:'text-amber-600 bg-amber-100'}].map(({Icon,label,tone})=><div key={label} className="flex w-20 flex-col items-center gap-2 rounded-2xl bg-white p-3 shadow-sm"><span className={`grid h-11 w-11 place-items-center rounded-xl ${tone}`}><Icon size={22}/></span><small className="text-[10px] font-bold text-slate-600">{label}</small></div>)}</div>
+            </div>
+            <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-blue-700">Подорожі простіше</p>
+            <h1 className="mt-2 text-[1.8rem] font-extrabold leading-tight tracking-tight text-[#081b35]">Усі поїздки —<br/>в одному додатку</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Шукайте реальні пропозиції MARSHGO Community і зберігайте маршрути в одному місці.</p>
+            <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Автобуси, таксі та громадський транспорт з’являться після підключення перевірених партнерів.</p>
+          </> : onboardingStep === 2 ? <>
+            <div className="mt-10 grid min-h-48 place-items-center rounded-[2rem] bg-gradient-to-br from-blue-50 via-white to-indigo-100"><div className="w-full max-w-xs space-y-2">{[{Icon:Clock3,title:'Найшвидше',caption:'Пріоритет — час'},{Icon:Ticket,title:'Найдешевше',caption:'Пріоритет — ціна'},{Icon:ShieldCheck,title:'Найнадійніше',caption:'Зручніші пересадки'}].map(({Icon,title,caption})=><div key={title} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 shadow-sm"><span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-50 text-blue-600"><Icon size={18}/></span><span><b className="block text-xs">{title}</b><small className="text-[10px] text-slate-500">{caption}</small></span><span className="ml-auto h-4 w-4 rounded-full border border-slate-300"/></div>)}</div></div>
+            <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-blue-700">Ваші пріоритети</p>
+            <h1 className="mt-2 text-[1.8rem] font-extrabold leading-tight tracking-tight text-[#081b35]">Обирайте, що<br/>важливо саме вам</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Серверний планувальник упорядкує доступні варіанти за часом, ціною чи надійністю.</p>
+            <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Зараз планувальник використовує реальні Community-пропозиції. Інші види транспорту ще не підключені.</p>
+          </> : <>
+            <div className="mt-10 grid min-h-48 place-items-center rounded-[2rem] bg-gradient-to-br from-blue-50 via-white to-sky-100"><span className="grid h-24 w-24 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/20"><MapPin size={44}/></span></div>
+            <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-blue-700">Керування дозволами</p>
+            <h1 className="mt-2 text-[1.8rem] font-extrabold leading-tight tracking-tight text-[#081b35]">Дозвольте MARSHGO<br/>бути корисним</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Геолокація використовується лише під час активної навігації або зустрічі з водієм. Її можна не вмикати зараз.</p>
+            {onboardingPermissionMessage&&<p role="status" className="mt-4 rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-900">{onboardingPermissionMessage}</p>}
+            <button onClick={requestOnboardingLocation} className="mt-5 w-full rounded-2xl border border-blue-100 bg-white py-3.5 text-sm font-bold text-blue-700">Дозволити геолокацію</button>
+          </>}
+          <div className="mt-auto pt-8">
+            {onboardingStep < 3 ? <button onClick={() => setOnboardingStep(onboardingStep + 1)} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20">Далі <ArrowRight size={17}/></button> : <button onClick={continueToPhoneLogin} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20">Продовжити <ArrowRight size={17}/></button>}
+            {onboardingStep === 3&&<button onClick={continueToPhoneLogin} className="mt-2 w-full py-3 text-sm font-semibold text-slate-500">Не зараз</button>}
+            <p className="mt-3 text-center text-[10px] text-slate-500">Крок {onboardingStep} з 3</p>
+          </div>
+        </section> : <>
+        <div className="mb-8 flex items-center gap-3"><BrandMark/><div><strong className="text-2xl tracking-tight">MARSH<span className="text-sky-400">GO</span></strong><p className="text-xs text-blue-100/80">One Route. Every Way.</p></div></div>
         {!otpRequested ? <>
           <h1 className="text-3xl font-extrabold">Вхід за номером телефону</h1><p className="mt-2 text-sm text-blue-100/80">Створіть профіль або увійдіть за номером.</p>
           <form onSubmit={requestOtp} className="mt-6 space-y-3">
@@ -825,41 +996,49 @@ export function ProductionMarketplace() {
     </main>
   );
 
+  if (notFound) return <main className="grid min-h-[70svh] place-items-center px-5 text-center"><div className="max-w-md rounded-3xl bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">404</p><h1 className="mt-2 text-2xl font-extrabold">Сторінку не знайдено</h1><p className="mt-2 text-sm text-slate-500">Перевірте адресу або поверніться до головної сторінки MARSHGO.</p><button onClick={goHome} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">На головну</button></div></main>;
+
   const status = statusMessage ? <div role="status" className="mx-auto mt-3 w-full max-w-xl rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{statusMessage}<button onClick={() => setStatusMessage('')} className="float-right"><X size={16}/></button></div> : null;
-  const header = <header className="mx-auto flex w-full max-w-xl items-center justify-between px-5 pb-3 pt-[max(.8rem,env(safe-area-inset-top))]">
-    <div className="flex items-center gap-2"><span className="grid h-9 w-9 place-items-center rounded-full bg-blue-50 text-blue-600"><MapPin size={22} strokeWidth={2.5}/></span><div><strong className="text-[18px] tracking-tight">MARSH<span className="text-blue-600">GO</span></strong><p className="-mt-1 text-[10px] text-slate-500">Усі поїздки в одному місці</p></div></div>
+  const header = <header className="app-header mx-auto flex w-full max-w-xl items-center justify-between px-5 pb-3 pt-[max(.8rem,env(safe-area-inset-top))]">
+    <div className="flex items-center gap-2.5"><BrandMark size="sm"/><div><strong className="text-[18px] tracking-tight text-[#081b35]">MARSH<span className="text-blue-600">GO</span></strong><p className="-mt-1 text-[10px] text-slate-500">Усі поїздки в одному місці</p></div></div>
+    <nav aria-label="Розділи MARSHGO" className="desktop-top-nav hidden items-center gap-1">
+      {([['home','Головна'],['search','Пошук поїздок'],['trips','Мої поїздки'],['profile','Профіль']] as const).map(([id,label])=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>{setTab(id);setSelectedOffer(null);setSelectedBooking(null);}} className="rounded-xl px-3 py-2 text-xs font-bold text-slate-600 hover:bg-blue-50 hover:text-blue-700 aria-[current=page]:bg-blue-50 aria-[current=page]:text-blue-700">{label}</button>)}
+    </nav>
     <button onClick={() => void openNotifications()} aria-label={`Сповіщення${notificationPage.unreadCount ? `, непрочитаних ${notificationPage.unreadCount}` : ''}`} className="relative grid h-10 w-10 place-items-center rounded-full bg-white text-slate-700 shadow-sm"><Bell size={19}/>{notificationPage.unreadCount>0&&<span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-600 px-1 text-[9px] font-bold text-white">{notificationPage.unreadCount>99?'99+':notificationPage.unreadCount}</span>}</button>
   </header>;
 
-  const searchForm = <form onSubmit={search} className="rounded-[1.7rem] border border-white bg-white p-3 shadow-[0_10px_28px_rgba(31,67,114,.08)]">
+  const searchForm = <form onSubmit={search} className="journey-search-card rounded-[1.7rem] border border-white bg-white p-3 shadow-[0_10px_28px_rgba(31,67,114,.08)]">
     <div className="relative">
-      <label className="flex items-center gap-3 rounded-t-2xl bg-[#f6f8fc] px-3 py-3"><MapPin size={19} className="text-blue-600"/><span className="flex-1"><small className="block text-[10px] text-slate-400">Звідки</small><input required value={origin} onChange={(event) => {setOrigin(event.target.value);setSearchOriginPlace(null);}} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто відправлення" /></span><button type="button" onClick={()=>void searchRoutePlace('origin')} disabled={placeSearchBusy} className="rounded-lg bg-white px-2.5 py-2 text-[10px] font-bold text-blue-700">{placeSearchBusy&&routePlaceField==='origin'?'…':'Знайти'}</button></label>
+      <label className="flex items-center gap-3 rounded-t-2xl bg-[#f6f8fc] px-3 py-3"><MapPin size={19} className="shrink-0 text-blue-600"/><span className="min-w-0 flex-1"><small className="block text-[10px] text-slate-400">Звідки</small><input required value={origin} onChange={(event) => {setOrigin(event.target.value);setSearchOriginPlace(null);}} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто відправлення" /></span><button type="button" aria-label="Знайти" onClick={()=>void searchRoutePlace('origin')} disabled={placeSearchBusy} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-blue-700">{placeSearchBusy&&routePlaceField==='origin'?'…':<Search size={16}/>}</button></label>
       {routePlaceField==='origin'&&routePlaceSuggestions.length>0&&<div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-white">{routePlaceSuggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseSearchPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs hover:bg-blue-50">{place.label}</button>)}</div>}
       <div className="ml-[21px] h-3 border-l-2 border-dotted border-slate-300" />
-      <label className="flex items-center gap-3 rounded-b-2xl bg-[#f6f8fc] px-3 py-3"><MapPin size={19} className="text-rose-500"/><span className="flex-1"><small className="block text-[10px] text-slate-400">Куди</small><input required value={destination} onChange={(event) => {setDestination(event.target.value);setSearchDestinationPlace(null);}} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто призначення" /></span><button type="button" onClick={()=>void searchRoutePlace('destination')} disabled={placeSearchBusy} className="rounded-lg bg-white px-2.5 py-2 text-[10px] font-bold text-blue-700">{placeSearchBusy&&routePlaceField==='destination'?'…':'Знайти'}</button><button type="button" onClick={() => { setOrigin(destination); setDestination(origin); setSearchOriginPlace(searchDestinationPlace); setSearchDestinationPlace(searchOriginPlace); }} className="grid h-9 w-9 place-items-center rounded-full bg-white text-blue-600 shadow-sm" aria-label="Поміняти місцями"><ArrowDownUp size={17}/></button></label>
+      <label className="flex items-center gap-3 rounded-b-2xl bg-[#f6f8fc] px-3 py-3"><MapPin size={19} className="shrink-0 text-rose-500"/><span className="min-w-0 flex-1"><small className="block text-[10px] text-slate-400">Куди</small><input required value={destination} onChange={(event) => {setDestination(event.target.value);setSearchDestinationPlace(null);}} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто призначення" /></span><button type="button" aria-label="Знайти" onClick={()=>void searchRoutePlace('destination')} disabled={placeSearchBusy} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-blue-700">{placeSearchBusy&&routePlaceField==='destination'?'…':<Search size={16}/>}</button><button type="button" onClick={() => { setOrigin(destination); setDestination(origin); setSearchOriginPlace(searchDestinationPlace); setSearchDestinationPlace(searchOriginPlace); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-blue-600 shadow-sm" aria-label="Поміняти місцями"><ArrowDownUp size={17}/></button></label>
       {routePlaceField==='destination'&&routePlaceSuggestions.length>0&&<div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-white">{routePlaceSuggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseSearchPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs hover:bg-blue-50">{place.label}</button>)}</div>}
     </div>
     <div className="mt-2 grid grid-cols-[1.2fr_.8fr] gap-2">
       <label className="relative flex items-center gap-2 rounded-xl bg-[#f6f8fc] px-3 py-2.5"><CalendarDays size={17} className="shrink-0 text-slate-500"/><span className="min-w-0"><small className="block text-[10px] text-slate-400">Дата</small><span className="block truncate text-xs font-semibold">{new Intl.DateTimeFormat('uk-UA',{day:'numeric',month:'long',year:'numeric',timeZone:'Europe/Kyiv'}).format(new Date(`${date}T12:00:00`))}</span></span><input aria-label="Дата поїздки" required lang="uk-UA" type="date" value={date} onChange={(event) => setDate(event.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" /></label>
-      <div className="flex items-center justify-between rounded-xl bg-[#f6f8fc] px-2.5"><Users size={17} className="text-slate-500"/><span className="text-xs font-semibold">{seats} пас.</span><button type="button" onClick={() => setSeats(Math.max(1,seats-1))} className="grid h-8 w-7 place-items-center text-slate-500" aria-label="Менше пасажирів"><Minus size={14}/></button><button type="button" onClick={() => setSeats(Math.min(8,seats+1))} className="grid h-8 w-7 place-items-center text-blue-600" aria-label="Більше пасажирів"><Plus size={16}/></button></div>
+      <div className="flex min-w-0 items-center gap-1 rounded-xl bg-[#f6f8fc] px-2"><Users size={16} className="shrink-0 text-slate-500"/><span className="shrink-0 whitespace-nowrap text-[11px] font-semibold">{seats} пас.</span><button type="button" onClick={() => setSeats(Math.max(1,seats-1))} className="grid h-8 w-6 shrink-0 place-items-center text-slate-500" aria-label="Менше пасажирів"><Minus size={14}/></button><button type="button" onClick={() => setSeats(Math.min(8,seats+1))} className="grid h-8 w-6 shrink-0 place-items-center text-blue-600" aria-label="Більше пасажирів"><Plus size={16}/></button></div>
     </div>
     <button disabled={busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 disabled:opacity-60"><Search size={17}/>{busy ? 'Шукаємо…' : 'Знайти маршрут'}<ArrowRight size={17}/></button>
-    <div className="mt-3 grid grid-cols-[1fr_1fr] gap-2">
-      <label className="rounded-xl bg-[#f6f8fc] px-3 py-2 text-[10px] font-semibold text-slate-500">Відправлення<input aria-label="Час відправлення для плану" type="datetime-local" value={journeyDeparture} onChange={event=>setJourneyDeparture(event.target.value)} className="mt-1 block w-full bg-transparent text-xs font-semibold text-slate-800 outline-none"/></label>
-      <label className="rounded-xl bg-[#f6f8fc] px-3 py-2 text-[10px] font-semibold text-slate-500">Пріоритет<select aria-label="Пріоритет маршруту" value={journeyStrategy} onChange={event=>setJourneyStrategy(event.target.value as ApiJourneyStrategy)} className="mt-1 block w-full bg-transparent text-xs font-semibold text-slate-800 outline-none"><option value="BALANCED">Оптимально</option><option value="FASTEST">Найшвидше</option><option value="CHEAPEST">Найдешевше</option><option value="PREMIUM">Premium</option><option value="RELIABLE">Найнадійніше</option></select></label>
-    </div>
+    <details className="mt-3 rounded-xl bg-[#f6f8fc] px-3 py-2.5">
+      <summary className="cursor-pointer list-none text-xs font-bold text-blue-700">Який маршрут обрати? <span className="float-right text-slate-400">+</span></summary>
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+        <label className="min-w-0 rounded-xl bg-white px-3 py-2 text-[10px] font-semibold text-slate-500">Відправлення<input aria-label="Час відправлення для плану" type="datetime-local" value={journeyDeparture} onChange={event=>setJourneyDeparture(event.target.value)} className="mt-1 block w-full min-w-0 bg-transparent text-xs font-semibold text-slate-800 outline-none"/></label>
+        <label className="min-w-0 rounded-xl bg-white px-3 py-2 text-[10px] font-semibold text-slate-500">Пріоритет<select aria-label="Пріоритет маршруту" value={journeyStrategy} onChange={event=>setJourneyStrategy(event.target.value as ApiJourneyStrategy)} className="mt-1 block w-full min-w-0 bg-transparent text-xs font-semibold text-slate-800 outline-none"><option value="BALANCED">Оптимально</option><option value="FASTEST">Найшвидше</option><option value="CHEAPEST">Найдешевше</option><option value="PREMIUM">Premium</option><option value="RELIABLE">Найнадійніше</option></select></label>
+      </div>
+      <p className="px-1 pt-1 text-[10px] leading-4 text-slate-500">Планувальник зараз використовує реальні пропозиції MARSHGO Community. Сторонні перевізники з’являться після підключення їхніх API.</p>
+    </details>
     <button type="button" disabled={busy} onClick={()=>void searchJourney()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 disabled:opacity-60"><Compass size={17}/>{busy?'Будуємо…':'Оптимізувати весь маршрут'}<ArrowRight size={17}/></button>
-    <p className="px-1 pt-1 text-[10px] leading-4 text-slate-500">Планувальник зараз використовує реальні пропозиції MARSHGO Community. Сторонні перевізники з’являться після підключення їхніх API.</p>
   </form>;
 
-  const transportTypes = <div className="grid grid-cols-4 gap-2">
+  const transportTypes = <div className="transport-mode-grid grid grid-cols-4 gap-2" aria-label="Доступні способи поїздки">
     {([
       { label: 'Попутка', Icon: CarFront, active: true }, { label: 'Автобус', Icon: Ticket, active: false },
       { label: 'Таксі', Icon: CarFront, active: false }, { label: 'Маршрутка', Icon: Users, active: false },
-    ] satisfies { label: string; Icon: LucideIcon; active: boolean }[]).map(({ label, Icon, active }) => <button key={label} onClick={() => !active && setStatusMessage(`${label} поки не підключено як перевірене джерело. Працює MARSHGO Community.`)} className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold ${active ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100' : 'bg-white text-slate-500 shadow-sm'}`}><span className={`grid h-8 w-8 place-items-center rounded-xl ${active ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-500'}`}><Icon size={16}/></span>{label}</button>)}
+    ] satisfies { label: string; Icon: LucideIcon; active: boolean }[]).map(({ label, Icon, active }) => <button key={label} type="button" aria-label={`${label}${active ? ', доступно' : ', скоро'}`} onClick={() => !active && setStatusMessage(`${label} поки не підключено як перевірене джерело. Зараз доступні пропозиції MARSHGO Community.`)} className={`relative flex flex-col items-center justify-center gap-1 rounded-2xl border px-1 py-2 text-[10px] font-semibold transition-colors ${active ? 'border-blue-100 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white text-slate-500 shadow-sm'}`}><span className={`grid h-8 w-8 place-items-center rounded-xl ${active ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-500'}`}><Icon size={16}/></span>{label}{!active&&<span className="text-[8px] font-medium text-slate-400">Скоро</span>}</button>)}
     </div>;
 
-  const offerCard = (offer: ApiOffer, index: number) => <button key={offer.id} onClick={() => { setJourneyBookingLink(null); setSelectedOffer(offer); }} className="w-full rounded-[1.35rem] border border-slate-100 bg-white p-4 text-left shadow-[0_4px_16px_rgba(30,64,100,.05)]">
+  const offerCard = (offer: ApiOffer, index: number) => <button key={offer.id} onClick={() => { setJourneyBookingLink(null); setSelectedOffer(offer); }} className="journey-offer-card w-full rounded-[1.35rem] border border-slate-100 bg-white p-4 text-left shadow-[0_4px_16px_rgba(30,64,100,.05)]">
     <div className="mb-3 flex items-center justify-between"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">Community · Попутка</span><span className="text-[10px] text-slate-400">{offer.available_seats} місць</span></div>
     {offer.vehicle_photo_url&&<img src={offer.vehicle_photo_url} alt={`Автомобіль водія ${offer.driver_name}`} loading="lazy" className="mb-3 aspect-[16/8] w-full rounded-xl object-cover"/>}
     <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2"><div><b className="text-lg">{formatDate(offer.departure_at,{hour:'2-digit',minute:'2-digit'})}</b><p className="text-xs font-semibold text-slate-700">{offer.origin_name}</p></div><span className="text-slate-300">→</span><div><b className="text-lg">{offer.arrival_at ? formatDate(offer.arrival_at,{hour:'2-digit',minute:'2-digit'}) : '—'}</b><p className="text-xs font-semibold text-slate-700">{offer.destination_name}</p></div><div className="text-right"><b className="text-lg">{formatMoney(offer.price_per_seat_minor,offer.currency)}</b><p className="text-[10px] text-slate-400">за одне місце</p></div></div>
@@ -867,34 +1046,37 @@ export function ProductionMarketplace() {
     {index === 0 && offer.duration_s ? <p className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-400"><Clock3 size={12}/>{Math.floor(offer.duration_s/3600)} год {Math.round((offer.duration_s%3600)/60)} хв · маршрут розраховано</p> : null}
   </button>;
 
-  const homeScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5">
-    <div className="mb-4"><p className="text-sm text-slate-500">Привіт, {user.display_name.split(' ')[0]}!</p><h1 className="text-xl font-extrabold tracking-tight">Куди їдемо сьогодні?</h1></div>
-    <div className="mt-4">{searchForm}</div>{transportTypes}
-    <button onClick={() => setTab('demand')} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold text-blue-700"><Compass size={16}/>Опублікувати свій запит на поїздку<ArrowRight size={15}/></button>
-    <div className="mt-6 flex items-end justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-600">Реальні пропозиції</p><h2 className="mt-1 text-lg font-extrabold">Маршрути поруч</h2></div><button onClick={() => setTab('search')} className="text-xs font-semibold text-blue-600">Усі результати</button></div>
-    {offers.length ? <div className="mt-3 space-y-3">{offers.slice(0,2).map(offerCard)}</div> : <div className="mt-3 rounded-2xl bg-white p-4 text-sm text-slate-500 shadow-sm">Шукайте маршрут, щоб побачити опубліковані водіями поїздки.</div>}
-    {user.roles.includes('driver')&&<button onClick={()=>setTab('navigation')} className="mt-5 flex w-full items-center gap-3 rounded-2xl bg-[#0c2850] p-4 text-left text-white"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10"><Navigation size={20}/></span><span className="flex-1"><b className="block text-sm">Почати навігацію</b><small className="text-xs text-blue-100/75">Реальний foreground GPS · підбір пасажирів ще не активний</small></span><ArrowRight size={17}/></button>}
+  const homeScreen = <div className="home-screen mx-auto w-full max-w-xl px-5 pb-8">
+    <section className="home-intro"><p className="home-greeting relative z-[1] text-xs font-semibold text-blue-700">Привіт, {user.display_name.split(' ')[0]}!</p><h1 className="home-title relative z-[1] mt-1 max-w-[17rem] text-[1.55rem] font-extrabold leading-tight tracking-tight text-[#081b35]">Подорожуйте Україною простіше</h1><p className="home-description relative z-[1] mt-2 max-w-[18rem] text-xs leading-5 text-slate-600">Попутки та зручне планування — в одному додатку.</p></section>
+    <div className="home-search-panel mt-4">{searchForm}</div><div className="home-transport-panel">{transportTypes}</div>
+    <button onClick={() => setTab('demand')} className="home-demand-cta mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold text-blue-700"><Compass size={16}/>Опублікувати свій запит на поїздку<ArrowRight size={15}/></button>
+    <div className="home-offer-heading mt-6 flex items-end justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-600">Реальні пропозиції</p><h2 className="mt-1 text-lg font-extrabold">Маршрути поруч</h2></div><button onClick={() => setTab('search')} className="text-xs font-semibold text-blue-600">Усі результати</button></div>
+    {offers.length ? <div className="home-offer-list mt-3 space-y-3">{offers.slice(0,2).map(offerCard)}</div> : <div className="home-offer-empty mt-3 rounded-2xl bg-white p-4 text-sm text-slate-500 shadow-sm">Ще немає завантажених пропозицій. Введіть маршрут і натисніть «Знайти маршрут», щоб отримати актуальні поїздки з сервера.</div>}
+    {user.roles.includes('driver')&&<button onClick={()=>setTab('navigation')} className="home-navigation-cta mt-5 flex w-full items-center gap-3 rounded-2xl bg-[#0c2850] p-4 text-left text-white"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10"><Navigation size={20}/></span><span className="flex-1"><b className="block text-sm">Почати навігацію</b><small className="text-xs text-blue-100/75">GPS-навігація працює на foreground. Пошук попутників під час навігації поки недоступний.</small></span><ArrowRight size={17}/></button>}
   </div>;
 
-  const resultsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={() => setShowResults(false)} className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="truncate text-lg font-extrabold">{origin} → {destination}</h1><p className="text-xs text-slate-500">{new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeZone:'Europe/Kyiv'}).format(new Date(`${date}T12:00:00`))} · {seats} пасажир(и)</p></div><button onClick={() => setStatusMessage('Збереження маршруту сповістить вас після підключення push-сповіщень.')} className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><Bell size={18}/></button></div>
+  const resultsScreen = <div className="journey-results mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-4 flex items-center gap-3"><button onClick={() => setShowResults(false)} aria-label="Повернутися до пошуку" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="truncate text-lg font-extrabold">{origin} → {destination}</h1><p className="text-xs text-slate-500">{new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeZone:'Europe/Kyiv'}).format(new Date(`${date}T12:00:00`))} · {seats} пасажир(и)</p></div><button aria-label="Сповіщення про маршрут" onClick={() => setStatusMessage('Збереження маршруту сповістить вас після підключення push-сповіщень.')} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><Bell size={18}/></button></div>
     <div className="mb-4 flex gap-2 overflow-x-auto pb-1">{['Усі','Попутки','Автобуси','Таксі'].map((item,index)=><button key={item} onClick={()=>index>1&&setStatusMessage(`${item} не підключено як реальне джерело.`)} className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold ${index===0||index===1?'bg-blue-600 text-white':'bg-white text-slate-500'}`}>{item}</button>)}</div>
     <div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Знайдені поїздки</h2><span className="text-xs text-slate-500">{offers.length} варіантів</span></div>
     {journeyResult ? <JourneyResultsPanel result={journeyResult} onOpenOffer={(offerId,journeyId,journeyLegId)=>void openJourneyOffer(offerId,journeyId,journeyLegId)}/> : offers.length ? <div className="space-y-3">{offers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає поїздок за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
   </div>;
 
-  const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Ваші бронювання</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div>
+  const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Ваші бронювання</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div>
     {journeys.length > 0 && <section className="mb-5" aria-label="Збережені маршрути"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Збережені маршрути</h2><button onClick={() => void refreshJourneys().catch(error => setStatusMessage(error instanceof Error ? error.message : 'Маршрути недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div><div className="space-y-2">{journeys.map(journey => { const statusLabel: Record<string, string> = { PLANNED: 'Заплановано', READY: 'Маршрут готовий', PARTIALLY_RESERVED: 'Частково заброньовано', REPLANNING: 'Потрібне перепланування', ACTIVE: 'У дорозі', COMPLETED: 'Завершено', CANCELLED: 'Скасовано', FAILED: 'Не вдалося побудувати' }; return <article key={journey.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${journey.state === 'READY' ? 'bg-emerald-50 text-emerald-700' : journey.state === 'REPLANNING' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>{statusLabel[journey.state] ?? journey.state}</span><span className="text-[10px] text-slate-400">{journey.strategy}</span></div><h3 className="mt-3 font-extrabold">{journey.origin_name} <span className="text-blue-600">→</span> {journey.destination_name}</h3><p className="mt-1 text-xs text-slate-500">{formatDate(journey.requested_departure_at)} · {journey.passenger_count} пасажир(и) · {journey.legs.length} відрізок</p><p className="mt-1 text-xs font-bold text-blue-700">{journey.confirmed_price_minor !== null ? `Підтверджено ${formatMoney(journey.confirmed_price_minor, 'UAH')}` : journey.total_price_minor !== null ? `Оцінка ${formatMoney(journey.total_price_minor, 'UAH')}` : 'Ціна оновиться після перепланування'}</p>{journey.legs.map(leg => <p key={leg.id} className="mt-1 text-[10px] text-slate-500">{leg.mode === 'COMMUNITY' ? 'Попутка MARSHGO Community' : leg.mode} · {leg.state === 'CONFIRMED' ? 'бронювання підтверджене' : leg.state === 'CANCELLED' ? 'скасовано' : 'пропозиція збережена'}</p>)}</article>; })}</div></section>}
     {user.roles.includes('driver')&&<section className="mb-5"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Мої оголошення</h2><button onClick={()=>void refreshMyOffers().catch(error=>setStatusMessage(error instanceof Error?error.message:'Оголошення недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div>{myOffers.length?<div className="space-y-2">{myOffers.map((offer)=><article key={offer.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><b>{offer.origin_name} → {offer.destination_name}</b><span className="text-[10px] text-slate-500">{offer.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(offer.departure_at)} · {offer.available_seats}/{offer.total_seats} місць</p><p className="mt-1 text-xs font-bold text-blue-700">{formatMoney(offer.price_per_seat_minor,offer.currency)} за місце{offer.duration_s?` · ${Math.floor(offer.duration_s/3600)} год ${Math.round(offer.duration_s%3600/60)} хв`:''}</p></article>)}</div>:<p className="rounded-2xl bg-white p-4 text-sm text-slate-500">Опублікованих поїздок ще немає.</p>}</section>}
     {bookings.length ? <div className="space-y-3">{bookings.map((booking)=>{
       const statusLabel: Record<string, string> = { confirmed: 'Підтверджено', boarding: 'Посадка', in_progress: 'У дорозі', completed: 'Завершено', cancelled: 'Скасовано' };
+      const rendezvous = rendezvousSessions[booking.id];
+      const rendezvousStatus: Record<string, string> = { SCHEDULED: 'Очікує часу зустрічі', ACTIVE: 'Обмін місцем активний', DRIVER_APPROACHING: 'Водій наближається', PASSENGER_APPROACHING: 'Пасажир прямує до точки', DRIVER_WAITING: 'Водій на місці', PASSENGER_WAITING: 'Пасажир на місці', BOTH_NEARBY: 'Обидва підтвердили прибуття', BOARDING: 'Посадка розпочалася', CANCELLED: 'Обмін місцем завершено', COMPLETED: 'Зустріч завершена', EXPIRED: 'Час зустрічі минув' };
       return <article key={booking.id} className="rounded-[1.4rem] bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${booking.status==='confirmed'?'bg-emerald-50 text-emerald-700':booking.status==='completed'?'bg-blue-50 text-blue-700':'bg-slate-100 text-slate-600'}`}>{statusLabel[booking.status] ?? booking.status}</span><span className="text-[10px] text-slate-400">{formatDate(booking.departure_at,{day:'numeric',month:'short'})}</span></div>
         <h2 className="mt-3 text-lg font-extrabold">{booking.origin_name} <span className="text-blue-600">→</span> {booking.destination_name}</h2><p className="mt-1 text-xs text-slate-500">{formatDate(booking.departure_at)} · {booking.seat_count} місця · {formatMoney(booking.total_price_minor,booking.currency)}</p>
+        {['confirmed','boarding','in_progress'].includes(booking.status)&&<section className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><div><b className="block text-xs">Зустріч із {booking.current_user_is_driver?booking.passenger_name:booking.driver_name}</b><small className="text-[10px] text-slate-500">Точка посадки · {rendezvous?.pickup.label??booking.origin_name}</small></div>{rendezvous&&<span className="rounded-full bg-white px-2 py-1 text-[9px] font-bold text-blue-700">{rendezvousStatus[rendezvous.state]??rendezvous.state}</span>}</div>{!rendezvous?<button disabled={rendezvousBusyId===booking.id} onClick={()=>void loadRendezvous(booking)} className="mt-2 w-full rounded-xl bg-white py-2.5 text-xs font-bold text-blue-700 disabled:opacity-50">{rendezvousBusyId===booking.id?'Завантажуємо…':'Відкрити зустріч'}</button>:<><p className="mt-2 text-[10px] text-slate-600">За планом · {formatDate(rendezvous.plannedPickupAt)}{rendezvous.driverArrivedAt&&' · водій на місці'}{rendezvous.passengerArrivedAt&&' · ви на місці'}</p>{rendezvous.locationSharingEnabled&&<p className="mt-1 text-[10px] text-slate-500">Останнє місце: {rendezvous.locations[booking.current_user_is_driver?'passenger':'driver']?.freshness==='LIVE'?'оновлено, доступне учаснику бронювання':rendezvous.locations[booking.current_user_is_driver?'passenger':'driver']?.freshness==='STALE'?'застаріло':'ще не надіслано'}. Точні координати не зберігаються.</p>}{!rendezvous.locationSharingEnabled&&['SCHEDULED','ACTIVATING'].includes(rendezvous.state)&&<button disabled={rendezvousBusyId===booking.id||Date.now()<Date.parse(rendezvous.activationAt)} onClick={()=>void activateRendezvous(booking)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">{Date.now()<Date.parse(rendezvous.activationAt)?`Обмін місцем доступний ${formatDate(rendezvous.activationAt,{hour:'2-digit',minute:'2-digit'})}`:'Увімкнути короткочасний обмін місцем'}</button>}{rendezvous.locationSharingEnabled&&<><div className="mt-2 grid grid-cols-2 gap-2"><button disabled={rendezvousBusyId===booking.id} onClick={()=>void sendRendezvousLocation(booking)} className="rounded-xl bg-white py-2.5 text-[10px] font-bold text-blue-700 disabled:opacity-50">Надіслати моє місце</button><button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousAction(booking,'arrived')} className="rounded-xl bg-emerald-600 py-2.5 text-[10px] font-bold text-white disabled:opacity-50">Я на місці</button></div><button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousAction(booking,'approaching')} className="mt-2 w-full rounded-xl bg-white py-2 text-[10px] font-semibold text-slate-700">Я пряму до точки посадки</button>{rendezvous.state==='BOTH_NEARBY'&&<button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousBoarding(booking)} className="mt-2 w-full rounded-xl bg-emerald-700 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити зустріч і посадку</button>}<button disabled={rendezvousBusyId===booking.id} onClick={()=>void endRendezvous(booking)} className="mt-2 w-full py-1 text-[10px] font-semibold text-slate-500">Завершити обмін місцем</button></>}</>}</section>}
         {booking.status==='confirmed'&&!booking.current_user_is_driver&&<div className="mt-3 rounded-xl bg-blue-50 p-3"><button disabled={busy} onClick={()=>void showBookingTicket(booking)} className="text-xs font-bold text-blue-700">{visibleBookingTicket?.bookingId===booking.id?'Оновити квиток':'Показати квиток для посадки'}</button>{visibleBookingTicket?.bookingId===booking.id&&<div className="mt-2 rounded-lg bg-white p-2"><p className="text-[10px] font-semibold text-slate-500">Передайте цей підписаний токен водієві для підтвердження посадки</p><code data-testid="booking-ticket-token" className="mt-1 block max-h-20 overflow-auto break-all text-[9px] text-slate-700">{visibleBookingTicket.token}</code></div>}</div>}
         {booking.status==='confirmed'&&booking.current_user_is_driver&&<div className="mt-3 rounded-xl bg-slate-50 p-3"><label className="block text-[10px] font-bold text-slate-600">Токен квитка пасажира<textarea value={boardingTicketInput[booking.id]??''} onChange={(event)=>setBoardingTicketInput((current)=>({...current,[booking.id]:event.target.value}))} className="mt-1.5 min-h-16 w-full rounded-lg border border-slate-200 bg-white p-2 text-[10px] font-normal" placeholder="Вставте підписаний токен квитка" /></label><button disabled={busy||!boardingTicketInput[booking.id]?.trim()} onClick={()=>void confirmBoarding(booking)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити посадку</button></div>}
         {booking.status==='boarding'&&booking.current_user_is_driver&&<button disabled={busy} onClick={()=>void startTrip(booking)} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-50">Почати поїздку</button>}
         {booking.status==='in_progress'&&<div className="mt-3 rounded-xl bg-emerald-50 p-3"><p className="text-xs font-semibold text-emerald-800">Завершення: {booking.completion_confirmation_count}/2 учасники</p>{!booking.current_user_confirmed_completion&&<button disabled={busy} onClick={()=>void confirmTripCompletion(booking)} className="mt-2 w-full rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити завершення</button>}{booking.current_user_confirmed_completion&&<p className="mt-1 text-[10px] text-emerald-700">Ваше підтвердження збережено на сервері.</p>}</div>}
-        {booking.status==='cancelled'&&!booking.current_user_is_driver&&<section className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><b className="text-xs text-slate-800">Інші поїздки MARSHGO поруч</b>{bookingRescues[booking.id]?.result&&<small className="text-[9px] text-slate-500">Перевірено {formatDate(bookingRescues[booking.id].result!.checked_at,{hour:'2-digit',minute:'2-digit'})}</small>}</div>{bookingRescues[booking.id]?.loading?<p className="mt-2 text-xs text-slate-500">Шукаємо опубліковані поїздки з вільними місцями…</p>:bookingRescues[booking.id]?.failed?<p className="mt-2 text-xs text-amber-800">Не вдалося перевірити актуальні поїздки. Спробуйте оновити список пізніше.</p>:bookingRescues[booking.id]?.result?.alternatives.length?<div className="mt-2 space-y-2">{bookingRescues[booking.id].result!.alternatives.map(alternative=><button key={alternative.id} onClick={()=>{setSeats(booking.seat_count);setSelectedOffer(alternative);}} className="w-full rounded-xl bg-white p-3 text-left shadow-sm"><span className="flex items-center justify-between gap-2"><b className="text-xs">{alternative.origin_name} → {alternative.destination_name}</b><b className="shrink-0 text-sm text-blue-700">{formatMoney(alternative.price_per_seat_minor*booking.seat_count,alternative.currency)}</b></span><span className="mt-1 flex justify-between text-[10px] text-slate-500"><span>{formatDate(alternative.departure_at,{hour:'2-digit',minute:'2-digit'})} · {alternative.available_seats} вільних</span><span>{(alternative.origin_distance_m/1000).toFixed(1)} км від посадки</span></span><span className="mt-1 block text-[9px] text-slate-400">{alternative.source} · наявність перевірена зараз</span></button>)}</div>:bookingRescues[booking.id]?.result?<p className="mt-2 text-xs text-slate-500">На цей час не знайдено опублікованих поїздок із потрібною кількістю місць у межах 20 км від точок маршруту.</p>:null}</section>}
+        {booking.status==='cancelled'&&!booking.current_user_is_driver&&<section className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><b className="text-xs text-slate-800">Інші поїздки MARSHGO поруч</b>{bookingRescues[booking.id]?.result&&<small className="text-[9px] text-slate-500">Перевірено {formatDate(bookingRescues[booking.id].result!.checked_at,{hour:'2-digit',minute:'2-digit'})}</small>}</div>{bookingRescues[booking.id]?.loading?<p className="mt-2 text-xs text-slate-500">Шукаємо опубліковані поїздки з вільними місцями…</p>:bookingRescues[booking.id]?.failed?<p className="mt-2 text-xs text-amber-800">Не вдалося перевірити актуальні поїздки. Спробуйте оновити список пізніше.</p>:bookingRescues[booking.id]?.result?.alternatives.length?<div className="mt-2 space-y-2">{bookingRescues[booking.id].result!.alternatives.map(alternative=><button key={alternative.id} data-testid="rescue-alternative" data-offer-id={alternative.id} onClick={()=>{setSeats(booking.seat_count);setSelectedOffer(alternative);}} className="w-full rounded-xl bg-white p-3 text-left shadow-sm"><span className="flex items-center justify-between gap-2"><b className="text-xs">{alternative.origin_name} → {alternative.destination_name}</b><b className="shrink-0 text-sm text-blue-700">{formatMoney(alternative.price_per_seat_minor*booking.seat_count,alternative.currency)}</b></span><span className="mt-1 flex justify-between text-[10px] text-slate-500"><span>{formatDate(alternative.departure_at,{hour:'2-digit',minute:'2-digit'})} · {alternative.available_seats} вільних</span><span>{(alternative.origin_distance_m/1000).toFixed(1)} км від посадки</span></span><span className="mt-1 block text-[9px] text-slate-400">{alternative.source} · наявність перевірена зараз</span></button>)}</div>:bookingRescues[booking.id]?.result?<p className="mt-2 text-xs text-slate-500">На цей час не знайдено опублікованих поїздок із потрібною кількістю місць у межах 20 км від точок маршруту.</p>:null}</section>}
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><span className="text-xs text-slate-500">{booking.current_user_is_driver ? `Пасажир · ${booking.passenger_name}` : `Водій · ${booking.driver_name}`}</span><div className="flex items-center gap-2">{booking.status==='confirmed'&&<button disabled={busy} onClick={()=>void cancelTrip(booking)} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50">Скасувати</button>}<button onClick={()=>void openChat(booking)} className="flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"><MessageCircle size={14}/>Написати</button></div></div>
       </article>;
     })}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Ticket className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Поки немає поїздок</p><p className="mt-1 text-sm text-slate-500">Знайдіть маршрут і забронюйте місце.</p><button onClick={()=>setTab('home')} className="mt-4 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">Знайти поїздку</button></div>}
@@ -921,8 +1103,10 @@ export function ProductionMarketplace() {
     </article>;
   };
 
-  const profileScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Обліковий запис</p><h1 className="mt-1 text-2xl font-extrabold">Профіль</h1></div>
+  const profileScreen = <div className="mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Обліковий запис</p><h1 className="mt-1 text-2xl font-extrabold">Профіль</h1></div>
     <div className="flex items-center gap-4 rounded-[1.4rem] bg-white p-5 shadow-sm"><span className="grid h-14 w-14 place-items-center rounded-full bg-blue-100 text-xl font-extrabold text-blue-700">{user.display_name.slice(0,1).toUpperCase()}</span><div className="min-w-0 flex-1"><b className="text-lg">{user.display_name}</b><p className="text-sm text-slate-500">{user.phone_e164}</p><p className="mt-1 flex items-center gap-1 text-xs text-emerald-700">{user.is_verified ? <><ShieldCheck size={14}/> Номер підтверджено</> : 'Профіль не верифіковано'}</p></div></div>
+    <section className="mt-4 rounded-[1.4rem] bg-white p-4 shadow-sm"><h2 className="font-extrabold">Конфіденційність і дані</h2><p className="mt-1 text-xs leading-5 text-slate-500">Завантажте копію даних профілю, автомобілів, бронювань і заявок, які зберігає MARSHGO.</p><button type="button" disabled={exportingData} onClick={()=>void downloadPersonalData()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-60"><FileDown size={17}/>{exportingData?'Готуємо файл…':'Завантажити мої дані (JSON)'}</button><p className="mt-2 text-[10px] leading-4 text-slate-400">Файл формується з вашого автентифікованого профілю. Чужі дані до нього не включаються.</p></section>
+    <section className="mt-4 rounded-[1.4rem] bg-white p-4 shadow-sm"><h2 className="font-extrabold">Видалення акаунта</h2>{deletionRequest?.status==='cooling_off'?<><p className="mt-1 text-xs leading-5 text-amber-800">Запит очікує скасування до {deletionRequest.cooling_off_until?formatDate(deletionRequest.cooling_off_until,{dateStyle:'medium',timeStyle:'short'}):'завершення періоду очікування'}. Дані ще не видалені; цей deployment не має автоматичного purge worker.</p><button type="button" disabled={deletionBusy} onClick={()=>void cancelDeletion()} className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 disabled:opacity-60">{deletionBusy?'Оновлюємо…':'Скасувати запит'}</button></>:deletionRequest?.status==='cancelled'?<><p className="mt-1 text-xs text-slate-500">Попередній запит скасовано. Дані залишаються в акаунті.</p><button type="button" disabled={deletionBusy} onClick={()=>void requestDeletion()} className="mt-3 w-full rounded-xl border border-rose-200 px-4 py-3 text-sm font-bold text-rose-700 disabled:opacity-60">Подати новий запит</button></>:deletionRequest?<p className="mt-1 text-xs leading-5 text-slate-500">Статус останнього запиту: {deletionRequest.status}. Зверніться до підтримки для уточнення подальшої обробки.</p>:<><p className="mt-1 text-xs leading-5 text-slate-500">Запит відкриває період очікування із можливістю скасування. Фактичне стирання потребує окремої обробки даних і не відбувається натисканням кнопки.</p><button type="button" disabled={deletionBusy} onClick={()=>void requestDeletion()} className="mt-3 w-full rounded-xl border border-rose-200 px-4 py-3 text-sm font-bold text-rose-700 disabled:opacity-60">{deletionBusy?'Надсилаємо…':'Подати запит на видалення'}</button></>}</section>
     <div className="mt-4 rounded-[1.4rem] bg-white p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><div><h2 className="font-extrabold">Мій автомобіль</h2><p className="text-xs text-slate-500">Авто, прив’язані до вашого акаунта</p></div><button onClick={()=>user.roles.includes('driver')?setShowVehicleForm(true):setStatusMessage('Спершу активуйте роль водія.')} className="grid h-9 w-9 place-items-center rounded-full bg-blue-50 text-blue-700" aria-label="Додати авто"><Plus size={19}/></button></div>
       {vehicles.length ? <div className="space-y-2">{vehicles.map(vehicleCard)}</div> : <p className="rounded-xl bg-[#f6f8fc] p-3 text-sm text-slate-500">Автомобілів ще не додано.</p>}
       <button onClick={()=>void enableDriver()} disabled={user.roles.includes('driver')||busy} className="mt-3 w-full rounded-xl border border-blue-100 py-3 text-sm font-bold text-blue-700 disabled:text-slate-400">{user.roles.includes('driver')?'Роль водія активна':'Увімкнути роль водія'}</button>
@@ -943,7 +1127,7 @@ export function ProductionMarketplace() {
     <div className="mb-4 flex items-center gap-3"><button onClick={()=>setTab('home')} className="grid h-10 w-10 place-items-center rounded-full bg-white"><ArrowLeft size={18}/></button><div><p className="text-xs text-slate-500">MARSHGO Community</p><h1 className="font-extrabold">Опублікувати поїздку</h1></div></div>
     <form onSubmit={publishOffer} className="space-y-3 rounded-[1.5rem] bg-white p-4 shadow-sm">
       {([['origin','Звідки',offerOriginText,setOfferOriginText,offerOrigin],['destination','Куди',offerDestinationText,setOfferDestinationText,offerDestination]] as const).map(([field,label,value,setValue,selected])=><div key={field} className="rounded-xl bg-[#f6f8fc] p-3"><label className="block text-[10px] font-semibold text-slate-400">{label}</label><div className="mt-1 flex items-center gap-2"><MapPin size={16} className={field==='origin'?'text-emerald-600':'text-rose-500'}/><input required value={value} onChange={event=>{setValue(event.target.value);if(field==='origin')setOfferOrigin(null);else setOfferDestination(null);}} className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" placeholder="Пошук адреси або міста"/><button type="button" onClick={()=>void searchOfferPlace(field)} disabled={placeSearchBusy} className="rounded-lg bg-white px-3 py-2 text-[11px] font-bold text-blue-700">{placeSearchBusy&&offerPlaceField===field?'...':'Знайти'}</button></div>{selected&&<p className="mt-1 text-[10px] text-emerald-700">Точку вибрано з геокодера</p>}{offerPlaceField===field&&offerPlaceSuggestions.length>0&&<div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-white">{offerPlaceSuggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseOfferPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs hover:bg-blue-50">{place.label}</button>)}</div>}</div>)}
-      <label className="block rounded-xl bg-[#f6f8fc] p-3 text-[10px] font-semibold text-slate-400">Час відправлення<input required type="datetime-local" min={toLocalDateTimeInput(new Date(Date.now()+60_000).toISOString())} value={offerDeparture} onChange={event=>setOfferDeparture(event.target.value)} className="mt-1 block w-full bg-transparent text-sm font-bold text-slate-800 outline-none"/></label>
+      <label className="block rounded-xl bg-[#f6f8fc] p-3 text-[10px] font-semibold text-slate-400">Час відправлення · Київ<input required type="datetime-local" min={formatKyivDateTimeInput(new Date(Date.now()+60_000))} value={offerDeparture} onChange={event=>setOfferDeparture(event.target.value)} className="mt-1 block w-full bg-transparent text-sm font-bold text-slate-800 outline-none"/></label>
       <label className="block rounded-xl bg-[#f6f8fc] p-3 text-[10px] font-semibold text-slate-400">Перевірений автомобіль<select required value={offerVehicleId} onChange={event=>{setOfferVehicleId(event.target.value);const selected=vehicles.find(vehicle=>vehicle.id===event.target.value);if(selected)setOfferSeats(Math.min(offerSeats,selected.seat_count));}} className="mt-1 block w-full bg-transparent text-sm font-bold text-slate-800"><option value="">Оберіть авто</option>{publishableVehicles.map(vehicle=><option key={vehicle.id} value={vehicle.id}>{vehicle.make} {vehicle.model} · {vehicle.seat_count} місць</option>)}</select></label>
       {publishableVehicles.length===0&&<div className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">Для публікації потрібне перевірене авто зі справжнім фото. Додайте авто й фото в профілі та дочекайтеся перевірки документів.<button type="button" onClick={()=>setTab('profile')} className="ml-1 font-bold underline">Відкрити профіль</button></div>}
       <div className="grid grid-cols-2 gap-2"><label className="rounded-xl bg-[#f6f8fc] p-3 text-[10px] font-semibold text-slate-400">Ціна за місце, грн<input required inputMode="decimal" value={offerPrice} onChange={event=>setOfferPrice(event.target.value)} className="mt-1 block w-full bg-transparent text-sm font-bold text-slate-800 outline-none"/></label><label className="rounded-xl bg-[#f6f8fc] p-3 text-[10px] font-semibold text-slate-400">Місця<select value={offerSeats} onChange={event=>setOfferSeats(Number(event.target.value))} className="mt-1 block w-full bg-transparent text-sm font-bold text-slate-800">{Array.from({length:Math.max(1,vehicles.find(vehicle=>vehicle.id===offerVehicleId)?.seat_count??1)},(_,index)=>index+1).map(count=><option key={count} value={count}>{count}</option>)}</select></label></div>
@@ -971,10 +1155,10 @@ export function ProductionMarketplace() {
     const isMyTurn = proposal.last_actor_role !== myRole && proposal.status === 'pending';
     const needsDriverAgreement = !selectedDemandIsOwned && proposal.last_actor_role === 'passenger' && proposal.status === 'pending';
     const passengerCanConfirm = selectedDemandIsOwned && proposal.last_actor_role === 'driver' && proposal.status === 'pending';
-    return <article key={proposal.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><b className="text-sm">{proposal.driver_name}</b><p className="text-xs text-slate-500">{proposal.make} {proposal.model} · {proposal.model_year}</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${proposal.status==='pending'?'bg-amber-50 text-amber-700':'bg-slate-100 text-slate-500'}`}>{proposal.status==='pending'?'Переговори':proposal.status}</span></div><div className="mt-3 flex items-center justify-between"><span className="text-xs text-slate-500">{formatDate(proposal.departure_at)}</span><b className="text-lg">{formatMoney(proposal.price_minor,proposal.currency)}</b></div>{proposal.last_comment&&<p className="mt-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">{proposal.last_comment}</p>}
+    return <article key={proposal.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><b className="text-sm">{proposal.driver_name}</b><p className="text-xs text-slate-500">{proposal.make} {proposal.model} · {proposal.model_year}</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${proposal.status==='pending'?'bg-amber-50 text-amber-700':'bg-slate-100 text-slate-500'}`}>{proposal.status==='pending'?'Переговори':proposal.status==='expired'?'Пропозиція більше не актуальна':proposal.status==='accepted'?'Бронювання створено':proposal.status==='rejected'?'Закрито':'Відкликано'}</span></div><div className="mt-3 flex items-center justify-between"><span className="text-xs text-slate-500">{formatDate(proposal.departure_at)}</span><b className="text-lg">{formatMoney(proposal.price_minor,proposal.currency)}</b></div>{proposal.last_comment&&<p className="mt-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">{proposal.last_comment}</p>}
       <button onClick={()=>void loadProposalHistory(proposal.id)} className="mt-3 text-[11px] font-bold text-blue-600">Історія переговорів</button>
       {proposalRevisions[proposal.id]&&<div className="mt-2 space-y-1 border-l-2 border-blue-100 pl-3">{proposalRevisions[proposal.id].map(revision=><p key={revision.revision_number} className="text-[10px] text-slate-500">{revision.actor_role==='driver'?'Водій':'Пасажир'} · {formatMoney(revision.price_minor,'UAH')} · {formatDate(revision.created_at,{hour:'2-digit',minute:'2-digit'})}{revision.comment?` · ${revision.comment}`:''}</p>)}</div>}
-      {proposal.status==='pending'&&<div className="mt-3 grid grid-cols-1 gap-2">{isMyTurn&&<button onClick={()=>{setCounterTarget(proposal);setCounterPrice(String((proposal.price_minor/100).toFixed(2)));setCounterDeparture(toLocalDateTimeInput(proposal.departure_at));setCounterComment('');}} className="rounded-xl border border-blue-200 py-2.5 text-xs font-bold text-blue-700">Змінити ціну або час</button>}{needsDriverAgreement&&<button disabled={busy} onClick={()=>void agreeProposal(proposal)} className="rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white">Погодити зустрічну ціну</button>}{passengerCanConfirm&&<button disabled={busy} onClick={()=>void confirmProposal(proposal)} className="rounded-xl bg-blue-600 py-3 text-xs font-bold text-white">Підтвердити домовленість і бронювання</button>}</div>}</article>;
+      {proposal.status==='pending'&&<div className="mt-3 grid grid-cols-1 gap-2">{isMyTurn&&<button onClick={()=>{setCounterTarget(proposal);setCounterPrice(String((proposal.price_minor/100).toFixed(2)));setCounterDeparture(formatKyivDateTimeInput(proposal.departure_at));setCounterComment('');}} className="rounded-xl border border-blue-200 py-2.5 text-xs font-bold text-blue-700">Змінити ціну або час</button>}{needsDriverAgreement&&<button disabled={busy} onClick={()=>void agreeProposal(proposal)} className="rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white">Погодити зустрічну ціну</button>}{passengerCanConfirm&&<button disabled={busy} onClick={()=>void confirmProposal(proposal)} className="rounded-xl bg-blue-600 py-3 text-xs font-bold text-white">Підтвердити домовленість і бронювання</button>}</div>}</article>;
   };
 
   const demandDetailScreen = (owned: boolean) => selectedDemand ? <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>setSelectedDemand(null)} className="grid h-10 w-10 place-items-center rounded-full bg-white"><ArrowLeft size={18}/></button><div><p className="text-xs text-slate-500">{owned?'Моя заявка':'Заявка пасажира'}</p><h1 className="font-extrabold">{selectedDemand.origin_name.split(',')[0]} → {selectedDemand.destination_name.split(',')[0]}</h1></div></div><div className="mb-3 rounded-2xl bg-white p-4 shadow-sm"><p className="text-sm font-bold">{formatDate(selectedDemand.earliest_departure)} – {formatDate(selectedDemand.latest_departure,{hour:'2-digit',minute:'2-digit'})}</p><p className="mt-1 text-xs text-slate-500">{selectedDemand.passenger_count} пасажири · {selectedDemand.budget_minor===null?'Бюджет не вказано':`${formatMoney(selectedDemand.budget_minor,'UAH')} ${selectedDemand.budget_type==='per_seat'?'за місце':'за всіх'}`}</p>{selectedDemand.notes&&<p className="mt-2 text-xs text-slate-600">{selectedDemand.notes}</p>}{owned&&selectedDemand.status==='open'&&<button onClick={()=>void cancelDemand(selectedDemand)} className="mt-3 text-xs font-bold text-rose-600">Скасувати заявку</button>}</div><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Пропозиції водіїв</h2><span className="text-xs text-slate-500">{proposals.length}</span></div>{proposals.length?<div className="space-y-3">{proposals.map(proposalCard)}</div>:<p className="rounded-2xl bg-white p-4 text-sm text-slate-500">Пропозицій поки немає.</p>}</div> : null;
@@ -1000,7 +1184,7 @@ export function ProductionMarketplace() {
           <button disabled={!vehicles.some((vehicle) => vehicle.verification_status === 'verified') || busy} onClick={() => {
             setProposalNavigationCandidateId(null);
             setProposalTarget(demand);
-            setProposalDeparture(toLocalDateTimeInput(demand.earliest_departure));
+            setProposalDeparture(formatKyivDateTimeInput(demand.earliest_departure));
             const proposedTotal = demand.budget_minor === null ? null : demand.budget_minor / 100 * (demand.budget_type === 'per_seat' ? demand.passenger_count : 1);
             setProposalPrice(proposedTotal === null ? '' : String(proposedTotal.toFixed(2)));
             const verified = vehicles.find((vehicle) => vehicle.verification_status === 'verified' && vehicle.is_active) ?? vehicles.find((vehicle) => vehicle.verification_status === 'verified');
@@ -1015,15 +1199,15 @@ export function ProductionMarketplace() {
 
   const createMenu = showCreateMenu ? <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/35 p-3 sm:items-center"><div className="w-full max-w-md rounded-[1.6rem] bg-white p-4 shadow-xl"><div className="mb-3 flex items-center justify-between"><h2 className="font-extrabold">Створити</h2><button onClick={()=>setShowCreateMenu(false)} aria-label="Закрити"><X size={20}/></button></div><button onClick={()=>{setShowCreateMenu(false);setSelectedDemand(null);setTab('demand');}} className="mb-2 flex w-full items-center gap-3 rounded-xl bg-blue-50 p-3 text-left"><Compass className="text-blue-600"/><span><b className="block text-sm">Шукаю поїздку</b><small className="text-slate-500">Опублікувати маршрут і бюджет</small></span></button><button onClick={()=>{setShowCreateMenu(false);if(!user.roles.includes('driver')){setStatusMessage('Спершу активуйте роль водія у профілі.');setTab('profile');return;}setTab('offer-new');void refreshVehicles().catch(e=>setStatusMessage(e instanceof Error?e.message:'Автомобілі недоступні.'));}} className="mb-2 flex w-full items-center gap-3 rounded-xl bg-emerald-50 p-3 text-left"><CarFront className="text-emerald-600"/><span><b className="block text-sm">Опублікувати поїздку</b><small className="text-slate-500">Власне авто, маршрут і ціна</small></span></button><button onClick={()=>{setShowCreateMenu(false);if(!user.roles.includes('driver')){setStatusMessage('Спершу активуйте роль водія у профілі.');setTab('profile');return;}setTab('navigation');}} className="mb-2 flex w-full items-center gap-3 rounded-xl bg-indigo-50 p-3 text-left"><Navigation className="text-indigo-600"/><span><b className="block text-sm">Прокласти маршрут</b><small className="text-slate-500">Без публікації поїздки · foreground GPS</small></span></button><button onClick={()=>{setShowCreateMenu(false);if(!user.roles.includes('driver')){setStatusMessage('Спершу активуйте роль водія у профілі.');setTab('profile');return;}setTab('requests');void refreshOpenDemands().catch(e=>setStatusMessage(e instanceof Error?e.message:'Заявки недоступні.'));}} className="flex w-full items-center gap-3 rounded-xl bg-slate-50 p-3 text-left"><Users className="text-blue-600"/><span><b className="block text-sm">Знайти пасажира</b><small className="text-slate-500">Переглянути заявки водієві</small></span></button></div></div> : null;
 
-  const screen = selectedOffer ? <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>{setSelectedOffer(null);setJourneyBookingLink(null);}} className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div><p className="text-xs text-slate-500">Деталі поїздки</p><h1 className="font-extrabold">{selectedOffer.origin_name} → {selectedOffer.destination_name}</h1></div></div><div className="rounded-[1.5rem] bg-white p-5 shadow-sm"><span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700">COMMUNITY · Попутка</span><div className="mt-5 grid grid-cols-2 gap-4"><div><small className="text-slate-400">Відправлення</small><p className="mt-1 text-xl font-extrabold">{formatDate(selectedOffer.departure_at,{hour:'2-digit',minute:'2-digit'})}</p><b>{selectedOffer.origin_name}</b></div><div className="text-right"><small className="text-slate-400">Прибуття</small><p className="mt-1 text-xl font-extrabold">{selectedOffer.arrival_at?formatDate(selectedOffer.arrival_at,{hour:'2-digit',minute:'2-digit'}):'—'}</p><b>{selectedOffer.destination_name}</b></div></div><div className="my-4 border-t border-slate-100"/><p className="flex items-center gap-3 text-sm"><span className="grid h-10 w-10 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">{selectedOffer.driver_name.slice(0,1)}</span><span><b>{selectedOffer.driver_name}</b><small className="block text-slate-500">{selectedOffer.review_count?`★ ${Number(selectedOffer.average_rating).toFixed(1)} · ${selectedOffer.review_count} відгуків`:'Новий водій'}</small></span></p><div className="mt-5 flex justify-between text-sm"><span className="text-slate-500">Вільні місця</span><b>{selectedOffer.available_seats}</b></div><div className="mt-3 flex justify-between text-sm"><span className="text-slate-500">Вартість · {seats} місце(ць)</span><b className="text-lg">{formatMoney(selectedOffer.price_per_seat_minor*seats,selectedOffer.currency)}</b></div><p className="mt-1 text-right text-[10px] text-slate-400">MARSHGO Community · комісія платформи 0%</p><button disabled={busy||selectedOffer.available_seats<seats} onClick={()=>void book(selectedOffer)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{busy?'Обробляємо…':'Забронювати місце'}<ArrowRight size={17}/></button></div></div> : tab==='navigation' ? <Suspense fallback={<main className="grid min-h-[100svh] place-items-center bg-[#f5f8fd] text-sm text-slate-500">Завантажуємо навігацію…</main>}><ProductionNavigation onBack={()=>setTab('home')} onOpenDemand={(demandId,candidateId)=>void openNavigationDemand(demandId,candidateId)}/></Suspense> : tab==='home' ? (showResults ? resultsScreen : homeScreen) : tab==='search' ? resultsScreen : tab==='trips' ? tripsScreen : tab==='chat' ? chatScreen : tab==='profile' ? profileScreen : tab==='admin' ? adminDashboard : tab==='demand' ? demandFormScreen : tab==='offer-new' ? offerFormScreen : tab==='requests' ? requestsScreen : myDemandsScreen;
+  const screen = selectedOffer ? <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>{setSelectedOffer(null);setJourneyBookingLink(null);}} className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div><p className="text-xs text-slate-500">Деталі поїздки</p><h1 className="font-extrabold">{selectedOffer.origin_name.split(',')[0]} → {selectedOffer.destination_name.split(',')[0]}</h1></div></div><div className="mb-3 overflow-hidden rounded-[1.4rem]">{selectedOffer.vehicle_photo_url ? <img src={selectedOffer.vehicle_photo_url} alt={`Авто водія ${selectedOffer.driver_name}`} className="aspect-[16/8] w-full object-cover"/> : <div className="grid aspect-[16/8] place-items-center bg-gradient-to-br from-blue-100 via-slate-100 to-sky-100 text-blue-700"><div className="flex flex-col items-center gap-2"><CarFront size={42}/><span className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-semibold text-slate-600">Фото авто не додано</span></div></div>}</div><div className="rounded-[1.5rem] bg-white p-5 shadow-sm"><span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700">COMMUNITY · Попутка</span><div className="mt-5 grid grid-cols-2 gap-4"><div><small className="text-slate-400">Відправлення</small><p className="mt-1 text-xl font-extrabold">{formatDate(selectedOffer.departure_at,{hour:'2-digit',minute:'2-digit'})}</p><b>{selectedOffer.origin_name.split(',')[0]}</b></div><div className="text-right"><small className="text-slate-400">Прибуття</small><p className="mt-1 text-xl font-extrabold">{selectedOffer.arrival_at?formatDate(selectedOffer.arrival_at,{hour:'2-digit',minute:'2-digit'}):'—'}</p><b>{selectedOffer.destination_name.split(',')[0]}</b></div></div><div className="my-4 border-t border-slate-100"/><p className="flex items-center gap-3 text-sm"><span className="grid h-10 w-10 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">{selectedOffer.driver_name.slice(0,1)}</span><span><b>{selectedOffer.driver_name}</b><small className="block text-slate-500">{selectedOffer.review_count?`★ ${Number(selectedOffer.average_rating).toFixed(1)} · ${selectedOffer.review_count} відгуків`:'Новий водій'}</small></span></p><div className="mt-5 flex justify-between text-sm"><span className="text-slate-500">Вільні місця</span><b>{selectedOffer.available_seats}</b></div><div className="mt-3 flex justify-between text-sm"><span className="text-slate-500">Вартість за {seats} {seats===1?'місце':'місця'}</span><b className="text-lg">{formatMoney(selectedOffer.price_per_seat_minor*seats,selectedOffer.currency)}</b></div><p className="mt-1 text-right text-[10px] text-slate-400">MARSHGO Community · комісія платформи 0%</p><button data-testid="offer-book-button" data-offer-id={selectedOffer.id} disabled={busy||selectedOffer.available_seats<seats} onClick={()=>void book(selectedOffer)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{busy?'Обробляємо…':'Забронювати місце'}<ArrowRight size={17}/></button></div></div> : tab==='navigation' ? <Suspense fallback={<main className="grid min-h-[100svh] place-items-center bg-[#f5f8fd] text-sm text-slate-500">Завантажуємо навігацію…</main>}><ProductionNavigation onBack={()=>setTab('home')} onOpenDemand={(demandId,candidateId)=>void openNavigationDemand(demandId,candidateId)}/></Suspense> : tab==='home' ? (showResults ? resultsScreen : homeScreen) : tab==='search' ? resultsScreen : tab==='trips' ? tripsScreen : tab==='chat' ? chatScreen : tab==='profile' ? profileScreen : tab==='admin' ? adminDashboard : tab==='demand' ? demandFormScreen : tab==='offer-new' ? offerFormScreen : tab==='requests' ? requestsScreen : myDemandsScreen;
 
   if (tab === 'navigation' && !selectedOffer) return screen;
 
-  return <main className="min-h-[100svh] bg-[#f5f8fd] pb-[calc(5.3rem+env(safe-area-inset-bottom))] text-[#17243a]">
+  return <main className="production-app min-h-[100svh] bg-[#f5f8fd] pb-[calc(5.3rem+env(safe-area-inset-bottom))] text-[#17243a]">
     {header}
     {status}
     <div className="pt-1">{screen}</div>
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[max(.35rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl"><div className="mx-auto flex max-w-xl items-center justify-around px-1">{tabItems.map((item,index)=>{const Icon=item.icon;const active=tab===item.id;return <span key={item.id} className="contents">{index===2&&<button onClick={()=>setShowCreateMenu(true)} aria-label="Створити" className="-mt-5 grid h-12 w-12 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30"><Plus size={23}/></button>}<button onClick={()=>{setTab(item.id);setSelectedOffer(null);setSelectedBooking(null);setJourneyBookingLink(null);}} className={`flex min-w-[56px] flex-col items-center gap-1 px-2 py-1 ${active?'text-blue-600':'text-slate-400'}`}><Icon size={20} strokeWidth={active?2.5:2}/><span className="text-[10px] font-semibold">{item.label}</span></button></span>})}</div></nav>
+    <nav aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto flex max-w-xl items-center justify-around px-1">{tabItems.map((item,index)=>{const Icon=item.icon;const active=tab===item.id;return <span key={item.id} className="contents">{index===2&&<button onClick={()=>setShowCreateMenu(true)} aria-label="Створити поїздку чи запит" className="app-create-button -mt-5 grid h-12 w-12 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30"><Plus size={23}/><span className="desktop-create-label">Створити</span></button>}<button aria-current={active?'page':undefined} onClick={()=>{setTab(item.id);setSelectedOffer(null);setSelectedBooking(null);setJourneyBookingLink(null);}} className={`flex min-w-[56px] flex-col items-center gap-1 px-2 py-1 ${active?'text-blue-600':'text-slate-400'}`}><Icon size={20} strokeWidth={active?2.5:2}/><span className="text-[10px] font-semibold">{item.label}</span></button></span>})}</div></nav>
     {createMenu}
     {showNotifications&&<div className="fixed inset-0 z-[55] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center" onMouseDown={event=>{if(event.target===event.currentTarget)setShowNotifications(false);}}><section aria-labelledby="notification-heading" className="max-h-[78svh] w-full max-w-md overflow-hidden rounded-[1.7rem] bg-white shadow-2xl"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 id="notification-heading" className="font-extrabold">Сповіщення</h2><p className="mt-0.5 text-xs text-slate-500">Збережені оновлення ваших поїздок</p></div><div className="flex items-center gap-3"><button disabled={!notificationPage.unreadCount} onClick={()=>void markAllNotificationsRead()} className="text-[11px] font-bold text-blue-700 disabled:text-slate-300">Прочитати все</button><button onClick={()=>setShowNotifications(false)} aria-label="Закрити сповіщення"><X size={20}/></button></div></div><div className="max-h-[68svh] overflow-y-auto p-3">{notificationsLoading&&notificationPage.items.length===0?<p className="p-6 text-center text-sm text-slate-500">Завантажуємо…</p>:notificationPage.items.length===0?<p className="p-6 text-center text-sm text-slate-500">Поки що сповіщень немає.</p>:<div className="space-y-2">{notificationPage.items.map(notification=><button key={notification.id} onClick={()=>void markNotificationRead(notification)} className={`flex w-full items-start gap-3 rounded-2xl p-3 text-left ${notification.read_at?'bg-slate-50':'bg-blue-50'}`}><span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${notification.read_at?'bg-slate-300':'bg-blue-600'}`}></span><span className="min-w-0 flex-1"><b className="block text-sm">{notification.title}</b><span className="mt-0.5 block text-xs leading-5 text-slate-600">{notification.body}</span><time className="mt-1 block text-[10px] text-slate-400">{formatDate(notification.created_at,{dateStyle:'medium',timeStyle:'short'})}</time></span></button>)}</div>}{notificationPage.nextCursor&&<button disabled={notificationsLoading} onClick={()=>void loadMoreNotifications()} className="mt-3 w-full rounded-xl bg-slate-100 py-3 text-xs font-bold text-slate-600 disabled:opacity-50">{notificationsLoading?'Завантажуємо…':'Завантажити раніші'}</button>}</div></section></div>}
     {proposalTarget&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-3 sm:items-center"><form onSubmit={sendProposal} className="w-full max-w-md rounded-[1.7rem] bg-white p-5 shadow-xl"><div className="mb-3 flex items-center justify-between"><div><p className="text-xs text-slate-500">Ваша ціна для пасажира</p>{proposalNavigationCandidateId&&<p className="mt-1 text-[10px] text-emerald-700">Пропозиція прив’язана до підтвердженого збігу навігації; це ще не бронювання.</p>}<h2 className="font-extrabold">{proposalTarget.origin_name.split(',')[0]} → {proposalTarget.destination_name.split(',')[0]}</h2></div><button type="button" onClick={()=>{setProposalTarget(null);setProposalNavigationCandidateId(null);}} aria-label="Закрити"><X size={20}/></button></div><label className="mb-3 block text-xs font-bold text-slate-600">Перевірене авто<select required value={proposalVehicleId} onChange={event=>setProposalVehicleId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm"><option value="">Оберіть авто</option>{vehicles.filter(v=>v.verification_status==='verified').map(v=><option key={v.id} value={v.id}>{v.make} {v.model} · {v.seat_count} місць</option>)}</select></label>{!vehicles.some(v=>v.verification_status==='verified')&&<p className="mb-3 text-xs leading-5 text-amber-700">Немає перевіреного авто. Спершу потрібно пройти перевірку перевізника.</p>}<div className="grid grid-cols-2 gap-3"><label className="text-xs font-bold text-slate-600">Ціна, грн<input required inputMode="decimal" value={proposalPrice} onChange={event=>setProposalPrice(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" placeholder="Загальна сума"/></label><label className="text-xs font-bold text-slate-600">Час виїзду<input required type="datetime-local" value={proposalDeparture} onChange={event=>setProposalDeparture(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-2 py-3 text-xs"/></label></div><label className="mt-3 block text-xs font-bold text-slate-600">Коментар<input value={proposalComment} onChange={event=>setProposalComment(event.target.value)} maxLength={1000} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" placeholder="Коротко про поїздку"/></label><button disabled={busy||!vehicles.some(v=>v.verification_status==='verified')} className="mt-4 w-full rounded-xl bg-blue-600 py-3.5 font-bold text-white disabled:opacity-50">Надіслати пропозицію</button></form></div>}

@@ -8,8 +8,8 @@ import {
   CheckCircle2,
   Sparkles,
   Info,
-  TrendingUp
-} from 'lucide-react';
+  TrendingUp,
+  } from 'lucide-react';
 
 interface DriverTrustBarProps {
   rating: number; // 0.0 to 5.0

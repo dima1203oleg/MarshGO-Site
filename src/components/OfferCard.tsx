@@ -2,10 +2,15 @@ import React from 'react';
 import {
   Car,
   Clock,
+
   ShieldCheck,
   Users,
   ChevronRight,
   Sparkles,
+
+
+
+
   Star,
   Bookmark,
   Ban
@@ -25,6 +30,7 @@ interface OfferCardProps {
 
 export const OfferCard: React.FC<OfferCardProps> = ({
   offer,
+  passengerCount: _passengerCount = 1,
   onSelect,
   isFavorite = false,
   onToggleFavorite

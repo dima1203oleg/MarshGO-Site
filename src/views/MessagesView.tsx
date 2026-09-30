@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import {
   ArrowLeft,
-  Send
-} from 'lucide-react';
+  Send,
+
+
+
+  } from 'lucide-react';
 import { ChatMessage } from '../types';
 
 interface MessagesViewProps {

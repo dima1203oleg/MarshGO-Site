@@ -28,8 +28,11 @@ import { themeService } from './services/theme';
 import { ProductionMarketplace } from './views/ProductionMarketplace';
 
 export function App() {
-  if (import.meta.env.PROD) return <ProductionMarketplace />;
-  return <DemoApp />;
+  // A demo can only be activated by a local developer build. Vite replaces
+  // DEV at build time, so the demo entry is unreachable and tree-shaken in
+  // production bundles even when VITE_DEMO_MODE is accidentally set.
+  if (import.meta.env.DEV && import.meta.env.VITE_DEMO_MODE === 'true') return <DemoApp />;
+  return <ProductionMarketplace />;
 }
 
 function DemoApp() {

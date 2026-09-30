@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
 import {
+
   Clock,
+
   Car,
   QrCode,
   Phone,
   Share2,
+
+
+
+
   Star
 } from 'lucide-react';
 import { Booking } from '../types';

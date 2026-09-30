@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import {
   ArrowLeft,
   Car,
+
   Trash2,
-  Plus
-} from 'lucide-react';
+
+  Plus,
+
+  } from 'lucide-react';
 import { Vehicle } from '../types';
 import { AddVehicleModal } from '../components/AddVehicleModal';
 

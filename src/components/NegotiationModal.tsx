@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Send, ShieldAlert, History } from 'lucide-react';
+import { X, Send, ShieldAlert,  History } from 'lucide-react';
 import { Proposal } from '../types';
 
 interface NegotiationModalProps {

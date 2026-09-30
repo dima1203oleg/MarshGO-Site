@@ -9,6 +9,9 @@ import {
   Zap,
   Bookmark,
   Car,
+
+
+
   ChevronRight
 } from 'lucide-react';
 
@@ -96,7 +99,6 @@ interface OnboardingTourProps {
 export const OnboardingTour: React.FC<OnboardingTourProps> = ({
   isOpen,
   onClose,
-  onNavigateHome,
   onNavigateDemandNew
 }) => {
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
@@ -161,9 +163,8 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
     try {
       localStorage.setItem('mg_onboarding_completed', 'true');
     } catch {
-      // Onboarding can still be dismissed when browser storage is unavailable.
+      // The tour remains dismissible when browser storage is unavailable.
     }
-    onNavigateHome?.();
     onClose();
   };
 
@@ -171,7 +172,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
     try {
       localStorage.setItem('mg_onboarding_completed', 'true');
     } catch {
-      // Completing the tour does not depend on persistent browser storage.
+      // Completion is in-memory for this visit when browser storage is unavailable.
     }
     onClose();
   };

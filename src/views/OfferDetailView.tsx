@@ -3,17 +3,17 @@ import {
   ArrowLeft,
   ShieldCheck,
   Clock,
+  MapPin,
   Luggage,
   Wind,
   Zap,
   CheckCircle2,
   Share2,
-  Navigation,
   Check,
-  Calculator
+  Calculator,
 } from 'lucide-react';
 import { TransportOffer, Booking } from '../types';
-import { LiveRouteMap } from '../components/LiveRouteMap';
+import { OfferRouteMap } from '../map/OfferRouteMap';
 import { FuelCostCalculatorModal } from '../components/FuelCostCalculatorModal';
 import { SafetyTripModal } from '../components/SafetyTripModal';
 
@@ -300,22 +300,18 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
             <span>Орієнтовний час у дорозі: {Math.round(offer.durationMinutes / 60)} год {offer.durationMinutes % 60} хв ({offer.distanceKm} км)</span>
           </div>
 
-          {/* Interactive Live Route Map with Real-time Driver GPS */}
+          {/* Route preview is rendered only from backend-provided road geometry. */}
           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <Navigation className="w-4 h-4 text-[#1769F4] animate-pulse" />
+                <MapPin className="w-4 h-4 text-[#1769F4]" />
                 <h4 className="text-xs font-extrabold text-[#14243B] dark:text-white uppercase tracking-wider">
-                  Жива карта автошляху та GPS водія наживо
+                  Огляд маршруту
                 </h4>
               </div>
-
-              <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                ● Live GPS Connected
-              </span>
             </div>
 
-            <LiveRouteMap offer={offer} />
+            <OfferRouteMap origin={offer.origin} destination={offer.destination} geometry={offer.routeGeometry} />
 
             {/* Waypoint details cards below the map */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">

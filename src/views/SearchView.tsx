@@ -821,21 +821,20 @@ export const SearchView: React.FC<SearchViewProps> = ({
           <div className={`lg:col-span-5 lg:sticky lg:top-40 ${showMobileMap ? 'block' : 'hidden lg:block'}`}>
             <div className="bg-white rounded-2xl border border-[#DFE7F1] p-3 shadow-sm space-y-3">
               <div className="flex items-center justify-between text-xs px-1">
-                <span className="font-bold text-[#14243B]">Дорожній коридор маршруту</span>
-                <span className="text-emerald-700 font-semibold text-[11px] bg-emerald-50 px-2 py-0.5 rounded">
-                  Активні авто на трасі
+                <span className="font-bold text-[#14243B]">Карта маршруту</span>
+                <span className="text-slate-600 font-semibold text-[11px] bg-slate-100 px-2 py-0.5 rounded">
+                  Огляд маршруту
                 </span>
               </div>
 
               <MapPreview
                 origin={searchParams.origin || 'Одеса'}
                 destination={searchParams.destination || 'Київ'}
-                intermediateStops={['Умань', 'Біла Церква']}
                 className="h-80 lg:h-[480px]"
               />
 
               <div className="text-[11px] text-[#62718A] px-1 leading-relaxed">
-                Показано фактичний маршрут траси М-05. Точки посадки та висадки узгоджуються безпосередньо з водієм.
+                Точки посадки та висадки узгоджуються безпосередньо з водієм. Карта з’явиться, коли результат міститиме геометрію маршруту.
               </div>
             </div>
           </div>

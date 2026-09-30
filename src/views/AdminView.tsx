@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import {
-  ArrowLeft
-} from 'lucide-react';
+  ArrowLeft,
+
+
+
+
+
+
+
+
+  } from 'lucide-react';
 import { User, Vehicle, TransportOffer, PassengerDemand } from '../types';
 
 interface AdminViewProps {
@@ -15,6 +23,7 @@ interface AdminViewProps {
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
+  user: _user,
   vehicle,
   offers,
   demands,
@@ -175,7 +184,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               Cost-Sharing Policy Engine & Юридичні обмеження
             </h3>
             <p className="text-[#62718A] leading-relaxed">
-              Відповідно до інструкції, MARSHGO не стверджує, що сума нижче певної кількості грн/км автоматично звільняє від ліцензії перевізника в Україні. 
+              Відповідно до інструкції, MARSHGO не стверджує, що сума нижче певної кількості грн/км автоматично звільняє від ліцензії перевізника в Україні.
               Система застосовує внутрішні risk guardrails та розділяє режим <strong>Community (0% комісії MARSHGO)</strong> і режим <strong>PRO / Ліцензовані перевізники</strong>.
             </p>
             <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 font-medium">

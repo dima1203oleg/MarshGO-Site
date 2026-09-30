@@ -14,6 +14,14 @@
 }
 
 html.dark {
+  --mg-blue: #53a1ff;
+  --mg-blue-pressed: #2784f5;
+  --mg-navy: #071426;
+  --mg-ink: #eff6ff;
+  --mg-muted: #a8b5c8;
+  --mg-canvas: #071426;
+  --mg-line: #20324a;
+  --mg-card-shadow: 0 8px 24px rgba(0, 0, 0, .22);
   --color-marshgo-navy: #051020;
   --color-marshgo-blue: #38BDF8;
   --color-marshgo-bg: #071324;
@@ -28,11 +36,376 @@ html.dark {
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif;
   background-color: var(--color-marshgo-bg);
   color: var(--color-marshgo-text);
   padding-bottom: env(safe-area-inset-bottom);
   transition: background-color 0.2s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+/* Shared mobile-first MARSHGO system: same CSS and React views in web and WKWebView. */
+:root {
+  --mg-blue: #0877f9;
+  --mg-blue-pressed: #075ed0;
+  --mg-navy: #071b3a;
+  --mg-ink: #0b1d3a;
+  --mg-muted: #64748b;
+  --mg-canvas: #f4f8fd;
+  --mg-line: #e5edf7;
+  --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
+}
+
+html, body, #root { min-height: 100%; }
+html { background: var(--mg-canvas); }
+body { overscroll-behavior-y: none; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid rgba(8, 119, 249, .4);
+  outline-offset: 2px;
+}
+
+.production-app {
+  min-height: 100svh;
+  background:
+    radial-gradient(ellipse at 50% -12%, rgba(172, 215, 255, .35), transparent 30rem),
+    var(--mg-canvas);
+  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+}
+html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgba(27, 91, 165, .2), transparent 30rem), var(--mg-canvas); color: var(--mg-ink); }
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding-top: max(.65rem, env(safe-area-inset-top));
+  background: rgba(244, 248, 253, .88);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+.home-screen { padding-top: .35rem; }
+.home-screen .home-intro {
+  position: relative;
+  overflow: hidden;
+  margin: 0 -.25rem 1rem;
+  padding: 1.1rem 1rem 1.15rem;
+  border: 1px solid rgba(255,255,255,.75);
+  border-radius: 1.65rem;
+  background: linear-gradient(125deg, #e7f2ff 0%, #f8fbff 48%, #e8f4ff 100%);
+  box-shadow: inset 0 1px rgba(255,255,255,.9);
+}
+.home-screen .home-intro::after {
+  content: "";
+  position: absolute;
+  right: -1.35rem;
+  top: -.8rem;
+  width: 8.6rem;
+  height: 8.6rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,.9), rgba(64,151,255,.12) 65%, transparent 68%);
+  pointer-events: none;
+}
+.journey-search-card {
+  border-color: rgba(255,255,255,.94) !important;
+  box-shadow: 0 14px 34px rgba(23, 68, 126, .09), 0 2px 6px rgba(23, 68, 126, .04) !important;
+}
+.journey-search-card label { min-height: 3.65rem; }
+.journey-search-card input { font-size: 16px; } /* Prevent WKWebView input zoom. */
+.journey-search-card button,
+.journey-offer-card,
+.journey-results button { touch-action: manipulation; }
+.transport-mode-grid button { min-height: 4.6rem; }
+.journey-offer-card {
+  border-color: var(--mg-line) !important;
+  border-radius: 1.35rem !important;
+  box-shadow: var(--mg-card-shadow) !important;
+}
+.journey-results { padding-top: .15rem; }
+.app-tabbar {
+  padding-bottom: max(.45rem, env(safe-area-inset-bottom)) !important;
+  background: rgba(255,255,255,.94) !important;
+  box-shadow: 0 -8px 28px rgba(20, 49, 87, .07);
+}
+.app-tabbar button { min-height: 2.9rem; }
+.app-tabbar button[aria-current="page"] { color: var(--mg-blue); }
+.auth-screen { isolation: isolate; min-height: 100svh; min-height: 100dvh; }
+.auth-screen button { min-height: 44px; }
+.auth-screen input { min-height: 48px; font-size: 16px; }
+.auth-screen h1 { text-wrap: balance; }
+.production-app :is(input, select, textarea) { accent-color: var(--mg-blue); }
+.production-app :is(article, [data-surface="card"]) { scroll-margin-bottom: 7rem; }
+.production-app article {
+  border: 1px solid var(--mg-line);
+  border-radius: 1.25rem;
+  background-color: #fff;
+  box-shadow: var(--mg-card-shadow);
+}
+.production-app :is(h1, h2, h3) { letter-spacing: -.025em; }
+.production-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-radius: .9rem;
+}
+.production-app :is(.journey-search-card button, .journey-offer-card, button.w-full) { min-height: 2.75rem; }
+.production-app .app-tabbar button { min-width: 3.5rem; }
+.production-app [role="status"] { line-height: 1.45; }
+
+@media (max-width: 360px) {
+  .production-app .app-tabbar button { min-width: 2.9rem; padding-inline: .35rem; }
+  .production-app .journey-search-card { padding: .65rem; }
+  .production-app .transport-mode-grid { gap: .35rem; }
+  .production-app .transport-mode-grid button { font-size: 9px; }
+}
+
+@media (min-width: 640px) {
+  .production-app { padding-bottom: 1.5rem; }
+  .app-header { position: relative; background: transparent; backdrop-filter: none; }
+  .app-tabbar { position: sticky !important; margin: 1rem auto; width: min(100% - 2rem, 36rem); border: 1px solid var(--mg-line) !important; border-radius: 1.25rem; }
+}
+
+/* Desktop is a wider presentation of the same production screens used by the
+   phone app; keep domain data and interactions shared across WebKit and web. */
+.desktop-create-label { display: none; }
+@media (min-width: 1024px) {
+  .auth-intro-screen {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    padding: 28px;
+  }
+  .auth-intro-screen > section {
+    display: grid;
+    grid-template-columns: minmax(0,1.15fr) minmax(310px,.85fr);
+    grid-template-rows: auto minmax(0,1fr) auto;
+    align-items: center;
+    column-gap: 56px;
+    width: min(100%, 1440px);
+    max-width: none;
+    min-height: min(860px, calc(100vh - 56px));
+    padding: 38px 54px;
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 32px;
+    background: linear-gradient(110deg,rgba(4,17,37,.56),rgba(4,17,37,.14));
+    box-shadow: 0 28px 100px rgba(1,12,26,.32);
+    backdrop-filter: blur(2px);
+  }
+  .auth-intro-screen > section > div:first-child {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: start;
+    margin-top: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    text-align: left;
+  }
+  .auth-intro-screen > section > div:first-child > :first-child { margin: 0; }
+  .auth-intro-screen > section > div:first-child > strong { font-size: 2.2rem; }
+  .auth-intro-screen > section > div:first-child > p { margin: 0 0 0 10px; padding-left: 16px; border-left: 1px solid rgba(255,255,255,.4); font-size: 13px; }
+  .auth-intro-screen > section > div:nth-of-type(2) {
+    grid-column: 1;
+    grid-row: 2 / 4;
+    align-self: center;
+    max-width: 730px;
+    margin: 0;
+    padding: 32px 0;
+  }
+  .auth-intro-screen > section > div:nth-of-type(2) h1 { max-width: none; font-size: clamp(52px,6.4vw,88px); line-height: .99; }
+  .auth-intro-screen > section > div:nth-of-type(2) p:last-child { max-width: 590px; font-size: 18px; line-height: 1.55; }
+  .auth-intro-screen > section > div:nth-of-type(3) { grid-column: 2; grid-row: 3; align-self: end; }
+  .auth-intro-screen > section > div:nth-of-type(3) button { min-height: 58px; }
+  .production-app {
+    display: grid;
+    grid-template-columns: 224px minmax(0, 1fr);
+    grid-template-rows: 76px minmax(0, 1fr);
+    column-gap: 24px;
+    max-width: 1680px;
+    min-height: 100vh;
+    margin-inline: auto;
+    padding: 0 28px 24px;
+  }
+  .production-app > .app-header {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    padding: 0;
+    border-bottom: 1px solid var(--mg-line);
+  }
+  .desktop-top-nav { display: flex; }
+  .production-app > .app-tabbar {
+    position: sticky !important;
+    inset: auto;
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    width: 224px;
+    height: calc(100vh - 100px);
+    margin: 24px 0 0;
+    padding: 12px !important;
+    border: 1px solid var(--mg-line) !important;
+    border-radius: 22px;
+    background: rgba(255,255,255,.88) !important;
+    box-shadow: var(--mg-card-shadow);
+  }
+  .app-tabbar-inner {
+    display: flex;
+    max-width: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 0;
+  }
+  .app-tabbar-inner > span { display: contents; }
+  .app-tabbar-inner button:not(.app-create-button) {
+    width: 100%;
+    min-height: 48px;
+    min-width: 0;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 13px;
+    border-radius: 13px;
+    font-size: 13px;
+  }
+  .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] { background: #eaf3ff; }
+  .app-tabbar-inner button:not(.app-create-button) > span { font-size: 13px; }
+  .app-tabbar-inner .app-create-button {
+    order: 3;
+    width: 100%;
+    height: 48px;
+    min-height: 48px;
+    margin: 12px 0 10px;
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 13px;
+    border-radius: 13px;
+  }
+  .desktop-create-label { display: inline; font-size: 13px; font-weight: 700; }
+  .production-app > .app-tabbar::after {
+    content: "Мобільність для людей · Україна";
+    display: block;
+    margin: 20px 6px 0;
+    color: #718198;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .production-app > .pt-1 {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    padding-top: 24px;
+  }
+  .production-app > .pt-1 > :not(.navigation-screen) {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+  }
+  .production-app > [role="status"] {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    z-index: 2;
+    width: min(100%, 1280px);
+    max-width: none;
+    margin: 8px auto 0;
+  }
+  .production-app > .pt-1:has(.home-screen) > .home-screen,
+  .production-app > .pt-1 > .journey-results,
+  .production-app > .pt-1 > .max-w-xl {
+    width: 100%;
+    max-width: 1280px;
+    padding-inline: 0;
+  }
+  .home-screen {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 18px;
+    align-content: start;
+  }
+  .home-screen > .home-intro {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 420px;
+    margin: 0;
+    padding: 42px 44px 220px;
+    border: 0;
+    border-radius: 28px;
+    color: white;
+    background: #092345 url('/images/welcome-kyiv-v1.jpg') center 53% / cover no-repeat;
+    box-shadow: 0 18px 44px rgba(10,36,70,.2);
+  }
+  .home-screen > .home-intro::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,rgba(4,17,37,.88),rgba(4,17,37,.42) 54%,rgba(4,17,37,.06)),linear-gradient(0deg,rgba(4,17,37,.55),transparent 58%);
+    pointer-events: none;
+  }
+  .home-screen > .home-intro::after { display: none; }
+  .home-screen .home-greeting { color: #d9ecff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
+  .home-screen .home-title { max-width: 650px; margin-top: 10px; color: white; font-size: clamp(38px,4.5vw,66px); line-height: 1.02; }
+  .home-screen .home-description { max-width: 540px; margin-top: 14px; color: #e2efff; font-size: 16px; line-height: 1.6; }
+  .home-screen > .home-search-panel {
+    z-index: 1;
+    grid-column: 1 / 9;
+    grid-row: 1;
+    align-self: end;
+    margin: 0 0 26px 26px;
+  }
+  .home-screen .journey-search-card { border-radius: 22px !important; padding: 16px; }
+  .home-screen > .home-transport-panel {
+    z-index: 1;
+    grid-column: 9 / -1;
+    grid-row: 1;
+    align-self: end;
+    margin: 0 24px 26px 0;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,.42);
+    border-radius: 20px;
+    background: rgba(7,27,53,.76);
+    backdrop-filter: blur(14px);
+  }
+  .home-screen .transport-mode-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .home-screen .transport-mode-grid button { min-height: 84px; border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.09); color: white; }
+  .home-screen .transport-mode-grid button span:last-child { color: #d6e6fa; }
+  .home-screen > .home-demand-cta { grid-column: 1 / -1; grid-row: 2; margin: 0; min-height: 54px; }
+  .home-screen > .home-offer-heading { grid-column: 1 / -1; grid-row: 3; margin-top: 4px; }
+  .home-screen > .home-offer-list,
+  .home-screen > .home-offer-empty { grid-column: 1 / -1; grid-row: 4; }
+  .home-screen > .home-offer-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .home-screen > .home-navigation-cta { grid-column: 1 / -1; grid-row: 5; margin-top: 0; }
+  .journey-results { display: grid; grid-template-columns: minmax(280px,.72fr) minmax(0,1.28fr); column-gap: 20px; align-items: start; }
+  .journey-results > :first-child,
+  .journey-results > :nth-child(2) { grid-column: 1 / -1; }
+  .journey-results > :nth-child(3) { grid-column: 1; }
+  .journey-results > :nth-child(n+4) { grid-column: 2; }
+  .app-header > div:first-child { min-width: 220px; }
+  .app-header > button:last-child { margin-left: auto; }
+}
+@media (min-width: 1024px) and (max-height: 760px) {
+  .production-app > .app-tabbar { height: calc(100vh - 94px); overflow-y: auto; }
+  .home-screen > .home-intro { min-height: 370px; padding-bottom: 200px; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .production-app > .pt-1 > .home-screen,
+  .production-app > .pt-1 > .journey-results,
+  .production-app > .pt-1 > .max-w-xl { max-width: 760px; }
+  .home-screen > .home-intro { padding: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  touch-action: manipulation;
 }
 
 html:has(.auth-screen),
