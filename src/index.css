@@ -1,0 +1,209 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --color-marshgo-navy: #081B35;
+  --color-marshgo-blue: #1769F4;
+  --color-marshgo-bg: #F5F8FD;
+  --color-marshgo-card: #FFFFFF;
+  --color-marshgo-text: #14243B;
+  --color-marshgo-muted: #62718A;
+  --color-marshgo-border: #DFE7F1;
+  --color-marshgo-green: #16845C;
+  --color-marshgo-amber: #AE6C00;
+  --color-marshgo-red: #BE3440;
+}
+
+html.dark {
+  --color-marshgo-navy: #051020;
+  --color-marshgo-blue: #38BDF8;
+  --color-marshgo-bg: #071324;
+  --color-marshgo-card: #0D1E36;
+  --color-marshgo-text: #F1F5F9;
+  --color-marshgo-muted: #94A3B8;
+  --color-marshgo-border: #1B2F4C;
+  --color-marshgo-green: #10B981;
+  --color-marshgo-amber: #F59E0B;
+  --color-marshgo-red: #EF4444;
+  color-scheme: dark;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-marshgo-bg);
+  color: var(--color-marshgo-text);
+  padding-bottom: env(safe-area-inset-bottom);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html:has(.auth-screen),
+body:has(.auth-screen) {
+  background-color: #081b35;
+}
+
+html.dark body {
+  background-color: #071324;
+  color: #F1F5F9;
+}
+
+.font-display {
+  font-family: 'Syne', 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Safe area padding utilities */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #1E3A5F;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #254774;
+}
+
+/* Dark Theme Comprehensive UI Overrides for Night Visibility */
+html.dark .bg-white {
+  background-color: #0D1E36 !important;
+}
+
+html.dark .bg-\[\#F5F8FD\] {
+  background-color: #122542 !important;
+}
+
+html.dark .border-\[\#DFE7F1\] {
+  border-color: #1D3455 !important;
+}
+
+html.dark .border-slate-200 {
+  border-color: #1D3455 !important;
+}
+
+html.dark .border-slate-100 {
+  border-color: #152742 !important;
+}
+
+html.dark .border-slate-300 {
+  border-color: #27456F !important;
+}
+
+html.dark .text-\[\#14243B\] {
+  color: #F8FAFC !important;
+}
+
+html.dark .text-\[\#62718A\] {
+  color: #94A3B8 !important;
+}
+
+html.dark .text-slate-700 {
+  color: #E2E8F0 !important;
+}
+
+html.dark .text-slate-600 {
+  color: #CBD5E1 !important;
+}
+
+html.dark .text-slate-800 {
+  color: #F8FAFC !important;
+}
+
+html.dark .text-slate-900 {
+  color: #FFFFFF !important;
+}
+
+html.dark .hover\:bg-slate-50:hover {
+  background-color: #132644 !important;
+}
+
+html.dark .hover\:bg-slate-100:hover {
+  background-color: #172D50 !important;
+}
+
+html.dark .hover\:bg-slate-200:hover {
+  background-color: #1D3760 !important;
+}
+
+html.dark .bg-slate-50 {
+  background-color: #0E2039 !important;
+}
+
+html.dark .bg-slate-100 {
+  background-color: #132644 !important;
+}
+
+html.dark .bg-slate-200 {
+  background-color: #1A3258 !important;
+}
+
+html.dark .bg-blue-50 {
+  background-color: #0C2346 !important;
+}
+
+html.dark .text-blue-900 {
+  color: #BAE6FD !important;
+}
+
+html.dark .border-blue-200 {
+  border-color: #1D437A !important;
+}
+
+html.dark .bg-emerald-50 {
+  background-color: #062820 !important;
+}
+
+html.dark .border-emerald-200 {
+  border-color: #0D4E3F !important;
+}
+
+html.dark .bg-rose-50 {
+  background-color: #2A0E18 !important;
+}
+
+html.dark .border-rose-200 {
+  border-color: #55192C !important;
+}
+
+html.dark .bg-amber-50 {
+  background-color: #281B08 !important;
+}
+
+html.dark .border-amber-200 {
+  border-color: #573A12 !important;
+}
+
+/* Ensure inputs remain easily readable and styled in dark mode */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  color: #F8FAFC !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748B !important;
+}
+
+/* Keep floating white badges or high-contrast chips legible */
+html.dark .bg-white\/90 {
+  background-color: rgba(13, 30, 54, 0.95) !important;
+}

@@ -1,0 +1,38 @@
+{
+  "id": "/",
+  "name": "MARSHGO — Транспортний маркетплейс",
+  "short_name": "MARSHGO",
+  "description": "Один пошук. Усі способи доїхати. Попутки, таксі, автобуси, маршрутки та розумна навігація.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#081B35",
+  "theme_color": "#081B35",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>MARSHGO — Один пошук. Усі способи доїхати</title>
+    <meta name="description" content="Один пошук. Усі способи доїхати. Попутки, таксі, автобуси, трансфери та розумна навігація з підбором попутників." />
+    <meta property="og:title" content="MARSHGO — Транспортний маркетплейс" />
+    <meta property="og:description" content="Один пошук. Усі способи доїхати. Попутка, таксі, автобуси, маршрутки, каршеринг та навігація." />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#081B35" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MARSHGO" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-[#F5F8FD] text-[#14243B] antialiased selection:bg-[#1769F4] selection:text-white">
+    <div id="root"><main style="min-height:100vh;display:grid;place-items:center;background:#f3f7fc;color:#14243b;font:600 16px system-ui,sans-serif">Відкриваємо MARSHGO…</main></div>
+    <script>
+      window.addEventListener('error', () => {
+        const root = document.getElementById('root');
+        if (root) root.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#f3f7fc;color:#14243b;font:600 16px system-ui,sans-serif;text-align:center">Не вдалося запустити MARSHGO. Перевірте з’єднання й перезапустіть застосунок.</main>';
+      });
+      window.addEventListener('unhandledrejection', () => {
+        const root = document.getElementById('root');
+        if (root) root.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#f3f7fc;color:#14243b;font:600 16px system-ui,sans-serif;text-align:center">Виникла помилка запуску. Спробуйте перезапустити MARSHGO.</main>';
+      });
+      window.setTimeout(() => {
+        if (window.__MARSHGO_BOOTED__) return;
+        const root = document.getElementById('root');
+        if (root) root.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#f3f7fc;color:#14243b;font:600 16px system-ui,sans-serif;text-align:center">MARSHGO завантажується надто довго. Перевірте з’єднання й перезапустіть застосунок.</main>';
+      }, 15000);
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

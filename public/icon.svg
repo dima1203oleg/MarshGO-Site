@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="marshgo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#081B35" />
+      <stop offset="100%" stop-color="#0E2A52" />
+    </linearGradient>
+    <linearGradient id="marshgo-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2D7FF9" />
+      <stop offset="100%" stop-color="#1769F4" />
+    </linearGradient>
+    <linearGradient id="marshgo-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#1769F4" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#marshgo-bg)"/>
+  <!-- Modern stylized M made of connecting transport routes -->
+  <g transform="translate(64, 76)">
+    <!-- Left loop -->
+    <path d="M 64 280 C 64 160 140 80 200 170 C 220 200 240 240 256 270 C 272 240 292 200 312 170 C 372 80 448 160 448 280" fill="none" stroke="url(#marshgo-blue)" stroke-width="52" stroke-linecap="round"/>
+    <!-- Central pulse road -->
+    <path d="M 120 280 C 120 200 168 150 204 200 L 256 270 L 308 200 C 344 150 392 200 392 280" fill="none" stroke="url(#marshgo-cyan)" stroke-width="32" stroke-linecap="round"/>
+    <!-- Waypoint dots -->
+    <circle cx="256" cy="110" r="28" fill="#38BDF8" />
+    <circle cx="256" cy="110" r="14" fill="#FFFFFF" />
+    <circle cx="120" cy="280" r="22" fill="#1769F4" stroke="#FFFFFF" stroke-width="6"/>
+    <circle cx="392" cy="280" r="22" fill="#16845C" stroke="#FFFFFF" stroke-width="6"/>
+  </g>
+</svg>
