@@ -42,6 +42,9 @@ export type ApiBooking = {
   seat_count: number;
   total_price_minor: number;
   currency: string;
+  fee_class: 'community';
+  platform_fee_minor: number;
+  fee_rule_version: string;
   status: string;
   origin_name: string;
   destination_name: string;
