@@ -7,7 +7,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import { ApiBlockedUser, ApiBooking, ApiDemand, ApiMessage, ApiModerationCase, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
+import { ApiBlockedUser, ApiBooking, ApiDemand, ApiMessage, ApiModerationCase, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
 const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((module) => ({ default: module.ProductionNavigation })));
 
 type Tab = 'home' | 'search' | 'trips' | 'chat' | 'profile' | 'demand' | 'requests' | 'my-demands' | 'offer-new' | 'admin' | 'navigation';
@@ -51,6 +51,7 @@ export function ProductionMarketplace() {
   const [offers, setOffers] = useState<ApiOffer[]>([]);
   const [myOffers, setMyOffers] = useState<ApiOffer[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [bookingRescues, setBookingRescues] = useState<Record<string, { loading: boolean; failed: boolean; result?: ApiRescueResult }>>({});
   const [blockedUsers, setBlockedUsers] = useState<ApiBlockedUser[]>([]);
   const [vehicles, setVehicles] = useState<ApiVehicle[]>([]);
   const [vehiclePhotos, setVehiclePhotos] = useState<Record<string, ApiVehiclePhoto[]>>({});
@@ -179,6 +180,21 @@ export function ProductionMarketplace() {
   }, [refreshBookings, refreshMyDemands, refreshMyOffers, refreshOpenDemands, selectedDemand?.id, user?.id, user?.roles.join(',')]);
 
   useEffect(() => {
+    if (!user) return;
+    const pending = bookings.filter(booking => booking.status === 'cancelled' && !booking.current_user_is_driver && !bookingRescues[booking.id]);
+    if (!pending.length) return;
+    setBookingRescues(current => ({
+      ...current,
+      ...Object.fromEntries(pending.map(booking => [booking.id, { loading: true, failed: false }])),
+    }));
+    for (const booking of pending) {
+      void productionApi.bookingRescue(booking.id)
+        .then(result => setBookingRescues(current => ({ ...current, [booking.id]: { loading: false, failed: false, result } })))
+        .catch(() => setBookingRescues(current => ({ ...current, [booking.id]: { loading: false, failed: true } })));
+    }
+  }, [bookingRescues, bookings, user?.id]);
+
+  useEffect(() => {
     if (!user || tab !== 'trips') return;
     // Keep the cross-device trip state fresh if a realtime connection is temporarily unavailable.
     const timer = window.setInterval(() => {
@@ -269,7 +285,12 @@ export function ProductionMarketplace() {
     try {
       await productionApi.book(offer.id, seats);
       setStatusMessage('Місця заброньовано. Підтвердження збережено на сервері.');
-      await Promise.all([refreshBookings(), loadOffers()]);
+      // Booking is already committed by the API. A background refresh of an
+      // incomplete search form must not turn that success into a UI error.
+      await refreshBookings();
+      if (origin.trim() && destination.trim() && searchOriginPlace && searchDestinationPlace) {
+        void loadOffers().catch(() => undefined);
+      }
       setSelectedOffer(null); setTab('trips');
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося створити бронювання.'); }
     finally { setBusy(false); }
@@ -281,7 +302,9 @@ export function ProductionMarketplace() {
     try {
       await productionApi.cancelBooking(booking.id);
       await refreshBookings();
-      setStatusMessage('Бронювання скасовано на сервері, місця повернено.');
+      setStatusMessage(booking.current_user_is_driver
+        ? 'Бронювання скасовано на сервері, місця повернено. Пасажиру надіслано оновлення.'
+        : 'Бронювання скасовано. Перевіряємо актуальні поїздки поруч із цим маршрутом.');
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося скасувати бронювання.'); }
     finally { setBusy(false); }
   };
@@ -767,6 +790,7 @@ export function ProductionMarketplace() {
         {booking.status==='confirmed'&&booking.current_user_is_driver&&<div className="mt-3 rounded-xl bg-slate-50 p-3"><label className="block text-[10px] font-bold text-slate-600">Токен квитка пасажира<textarea value={boardingTicketInput[booking.id]??''} onChange={(event)=>setBoardingTicketInput((current)=>({...current,[booking.id]:event.target.value}))} className="mt-1.5 min-h-16 w-full rounded-lg border border-slate-200 bg-white p-2 text-[10px] font-normal" placeholder="Вставте підписаний токен квитка" /></label><button disabled={busy||!boardingTicketInput[booking.id]?.trim()} onClick={()=>void confirmBoarding(booking)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити посадку</button></div>}
         {booking.status==='boarding'&&booking.current_user_is_driver&&<button disabled={busy} onClick={()=>void startTrip(booking)} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-50">Почати поїздку</button>}
         {booking.status==='in_progress'&&<div className="mt-3 rounded-xl bg-emerald-50 p-3"><p className="text-xs font-semibold text-emerald-800">Завершення: {booking.completion_confirmation_count}/2 учасники</p>{!booking.current_user_confirmed_completion&&<button disabled={busy} onClick={()=>void confirmTripCompletion(booking)} className="mt-2 w-full rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити завершення</button>}{booking.current_user_confirmed_completion&&<p className="mt-1 text-[10px] text-emerald-700">Ваше підтвердження збережено на сервері.</p>}</div>}
+        {booking.status==='cancelled'&&!booking.current_user_is_driver&&<section className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><b className="text-xs text-slate-800">Інші поїздки MARSHGO поруч</b>{bookingRescues[booking.id]?.result&&<small className="text-[9px] text-slate-500">Перевірено {formatDate(bookingRescues[booking.id].result!.checked_at,{hour:'2-digit',minute:'2-digit'})}</small>}</div>{bookingRescues[booking.id]?.loading?<p className="mt-2 text-xs text-slate-500">Шукаємо опубліковані поїздки з вільними місцями…</p>:bookingRescues[booking.id]?.failed?<p className="mt-2 text-xs text-amber-800">Не вдалося перевірити актуальні поїздки. Спробуйте оновити список пізніше.</p>:bookingRescues[booking.id]?.result?.alternatives.length?<div className="mt-2 space-y-2">{bookingRescues[booking.id].result!.alternatives.map(alternative=><button key={alternative.id} onClick={()=>{setSeats(booking.seat_count);setSelectedOffer(alternative);}} className="w-full rounded-xl bg-white p-3 text-left shadow-sm"><span className="flex items-center justify-between gap-2"><b className="text-xs">{alternative.origin_name} → {alternative.destination_name}</b><b className="shrink-0 text-sm text-blue-700">{formatMoney(alternative.price_per_seat_minor*booking.seat_count,alternative.currency)}</b></span><span className="mt-1 flex justify-between text-[10px] text-slate-500"><span>{formatDate(alternative.departure_at,{hour:'2-digit',minute:'2-digit'})} · {alternative.available_seats} вільних</span><span>{(alternative.origin_distance_m/1000).toFixed(1)} км від посадки</span></span><span className="mt-1 block text-[9px] text-slate-400">{alternative.source} · наявність перевірена зараз</span></button>)}</div>:bookingRescues[booking.id]?.result?<p className="mt-2 text-xs text-slate-500">На цей час не знайдено опублікованих поїздок із потрібною кількістю місць у межах 20 км від точок маршруту.</p>:null}</section>}
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><span className="text-xs text-slate-500">{booking.current_user_is_driver ? `Пасажир · ${booking.passenger_name}` : `Водій · ${booking.driver_name}`}</span><div className="flex items-center gap-2">{booking.status==='confirmed'&&<button disabled={busy} onClick={()=>void cancelTrip(booking)} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50">Скасувати</button>}<button onClick={()=>void openChat(booking)} className="flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"><MessageCircle size={14}/>Написати</button></div></div>
       </article>;
     })}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Ticket className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Поки немає поїздок</p><p className="mt-1 text-sm text-slate-500">Знайдіть маршрут і забронюйте місце.</p><button onClick={()=>setTab('home')} className="mt-4 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">Знайти поїздку</button></div>}

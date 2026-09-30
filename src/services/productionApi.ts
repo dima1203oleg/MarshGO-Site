@@ -52,6 +52,17 @@ export type ApiBooking = {
   completion_confirmation_count: number;
   current_user_confirmed_completion: boolean;
 };
+export type ApiRescueAlternative = ApiOffer & {
+  origin_distance_m: number;
+  destination_distance_m: number;
+  source: 'MARSHGO Community';
+};
+export type ApiRescueResult = {
+  booking_id: string;
+  checked_at: string;
+  radius_m: number;
+  alternatives: ApiRescueAlternative[];
+};
 
 export type ApiVehicle = {
   id: string;
@@ -235,6 +246,7 @@ export const productionApi = {
   cancelBooking(bookingId: string) {
     return request<{ id: string; status: string; replayed?: boolean }>(`/bookings/${bookingId}/cancel`, { method: 'POST' });
   },
+  bookingRescue(bookingId: string) { return request<ApiRescueResult>(`/bookings/${bookingId}/rescue`); },
   bookingTicket(bookingId: string) {
     return request<{ format: string; token: string; expiresAt: string }>(`/bookings/${bookingId}/ticket`);
   },
