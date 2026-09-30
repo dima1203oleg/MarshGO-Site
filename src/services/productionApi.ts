@@ -139,6 +139,18 @@ export type ApiJourneySearchResult = {
   unsupportedPreferences: string[];
   providerErrors: string[];
 };
+export type ApiStoredJourney = {
+  id: string;
+  origin_name: string;
+  destination_name: string;
+  requested_departure_at: string;
+  strategy: ApiJourneyStrategy;
+  state: string;
+  passenger_count: number;
+  total_price_minor: number;
+  confirmed_price_minor: number | null;
+  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string }>;
+};
 export type ApiNavigationSession = {
   id: string; state: 'active' | 'paused' | 'ended'; destination_name: string;
   route_distance_m: number; route_duration_s: number; route_version: number; opt_in: boolean;
@@ -245,6 +257,7 @@ export const productionApi = {
   }) {
     return request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(input) });
   },
+  journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   startNavigation(input: { origin: [number, number]; destination: [number, number]; destinationName: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },

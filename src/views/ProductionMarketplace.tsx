@@ -7,7 +7,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import { ApiBlockedUser, ApiBooking, ApiDemand, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
+import { ApiBlockedUser, ApiBooking, ApiDemand, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
 import { JourneyResultsPanel } from './JourneyResultsPanel';
 const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((module) => ({ default: module.ProductionNavigation })));
 
@@ -53,6 +53,7 @@ export function ProductionMarketplace() {
   const [journeyStrategy, setJourneyStrategy] = useState<ApiJourneyStrategy>('BALANCED');
   const [journeyResult, setJourneyResult] = useState<ApiJourneySearchResult | null>(null);
   const [journeyBookingLink, setJourneyBookingLink] = useState<{ journeyId: string; journeyLegId: string } | null>(null);
+  const [journeys, setJourneys] = useState<ApiStoredJourney[]>([]);
   const [offers, setOffers] = useState<ApiOffer[]>([]);
   const [myOffers, setMyOffers] = useState<ApiOffer[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
@@ -130,6 +131,7 @@ export function ProductionMarketplace() {
   const [vehicleForm, setVehicleForm] = useState({ make: '', model: '', modelYear: new Date().getFullYear(), seats: 4 });
 
   const refreshBookings = useCallback(async () => setBookings(await productionApi.bookings()), []);
+  const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
   const refreshBlockedUsers = useCallback(async () => setBlockedUsers(await productionApi.blockedUsers()), []);
   const refreshMyOffers = useCallback(async () => setMyOffers(await productionApi.myOffers()), []);
   const refreshVehicles = useCallback(async () => {
@@ -164,14 +166,15 @@ export function ProductionMarketplace() {
     productionApi.restoreSession().then(async () => {
       const currentUser = await productionApi.me();
       setUser(currentUser);
-      await Promise.all([refreshBookings(), refreshVehicles(), refreshBlockedUsers(), ...(currentUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(currentUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
+      await Promise.all([refreshBookings(), refreshJourneys(), refreshVehicles(), refreshBlockedUsers(), ...(currentUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(currentUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
     }).catch(() => undefined).finally(() => setLoading(false));
-  }, [refreshBlockedUsers, refreshBookings, refreshMyOffers, refreshPassengerNavigationMatches, refreshVehicles]);
+  }, [refreshBlockedUsers, refreshBookings, refreshJourneys, refreshMyOffers, refreshPassengerNavigationMatches, refreshVehicles]);
 
   useEffect(() => {
     if (!user) return;
     return productionApi.subscribeRealtime((event) => {
       if (event.type === 'journey.updated') {
+        void refreshJourneys().catch(() => setStatusMessage('Маршрут не оновився. Оновіть список поїздок.'));
         setStatusMessage(event.data.state === 'READY' ? 'Ваш маршрут готов, бронювання збережене.' : 'Стан маршруту змінився. Перевірте актуальні варіанти.');
         return;
       }
@@ -195,7 +198,7 @@ export function ProductionMarketplace() {
       if (selectedDemand) refreshes.push(productionApi.demandProposals(selectedDemand.id).then(setProposals));
       void Promise.all(refreshes).catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Цінова пропозиція змінилася. Оновіть список.'));
     }, () => undefined);
-  }, [refreshBookings, refreshMyDemands, refreshMyOffers, refreshOpenDemands, selectedDemand?.id, user?.id, user?.roles.join(',')]);
+  }, [refreshBookings, refreshJourneys, refreshMyDemands, refreshMyOffers, refreshOpenDemands, selectedDemand?.id, user?.id, user?.roles.join(',')]);
 
   useEffect(() => {
     if (!user) return;
@@ -267,7 +270,7 @@ export function ProductionMarketplace() {
       const currentUser = await productionApi.verifyOtp(phone, code);
       setUser(currentUser);
       const refreshedUser = await productionApi.me(); setUser(refreshedUser);
-      await Promise.all([refreshBookings(), refreshVehicles(), refreshBlockedUsers(), ...(refreshedUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(refreshedUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
+      await Promise.all([refreshBookings(), refreshJourneys(), refreshVehicles(), refreshBlockedUsers(), ...(refreshedUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(refreshedUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
       setShowLogin(false);
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Код не прийнято.'); }
     finally { setBusy(false); }
@@ -336,6 +339,7 @@ export function ProductionMarketplace() {
       // Booking is already committed by the API. A background refresh of an
       // incomplete search form must not turn that success into a UI error.
       await refreshBookings();
+      if (journeyBookingLink) await refreshJourneys();
       if (origin.trim() && destination.trim() && searchOriginPlace && searchDestinationPlace) {
         void loadOffers().catch(() => undefined);
       }
@@ -731,7 +735,7 @@ export function ProductionMarketplace() {
 
   const logout = async () => {
     await productionApi.logout().catch(() => undefined);
-    setUser(null); setBookings([]); setBlockedUsers([]); setVehicles([]); setOffers([]); setShowLogin(true); setOtpRequested(false);
+    setUser(null); setBookings([]); setJourneys([]); setBlockedUsers([]); setVehicles([]); setOffers([]); setShowLogin(true); setOtpRequested(false);
   };
 
   if (loading) return <main className="grid min-h-[100svh] place-items-center bg-[#f5f8fd] text-sm text-slate-500">Завантажуємо захищену сесію…</main>;
@@ -841,6 +845,7 @@ export function ProductionMarketplace() {
   </div>;
 
   const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Ваші бронювання</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div>
+    {journeys.length > 0 && <section className="mb-5" aria-label="Збережені маршрути"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Збережені маршрути</h2><button onClick={() => void refreshJourneys().catch(error => setStatusMessage(error instanceof Error ? error.message : 'Маршрути недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div><div className="space-y-2">{journeys.map(journey => { const statusLabel: Record<string, string> = { PLANNED: 'Заплановано', READY: 'Маршрут готовий', PARTIALLY_RESERVED: 'Частково заброньовано', REPLANNING: 'Потрібне перепланування', ACTIVE: 'У дорозі', COMPLETED: 'Завершено', CANCELLED: 'Скасовано', FAILED: 'Не вдалося побудувати' }; return <article key={journey.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${journey.state === 'READY' ? 'bg-emerald-50 text-emerald-700' : journey.state === 'REPLANNING' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>{statusLabel[journey.state] ?? journey.state}</span><span className="text-[10px] text-slate-400">{journey.strategy}</span></div><h3 className="mt-3 font-extrabold">{journey.origin_name} <span className="text-blue-600">→</span> {journey.destination_name}</h3><p className="mt-1 text-xs text-slate-500">{formatDate(journey.requested_departure_at)} · {journey.passenger_count} пасажир(и) · {journey.legs.length} відрізок</p><p className="mt-1 text-xs font-bold text-blue-700">{journey.confirmed_price_minor !== null ? `Підтверджено ${formatMoney(journey.confirmed_price_minor, 'UAH')}` : `Оцінка ${formatMoney(journey.total_price_minor, 'UAH')}`}</p>{journey.legs.map(leg => <p key={leg.id} className="mt-1 text-[10px] text-slate-500">{leg.mode === 'COMMUNITY' ? 'Попутка MARSHGO Community' : leg.mode} · {leg.state === 'CONFIRMED' ? 'бронювання підтверджене' : leg.state === 'CANCELLED' ? 'скасовано' : 'пропозиція збережена'}</p>)}</article>; })}</div></section>}
     {user.roles.includes('driver')&&<section className="mb-5"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Мої оголошення</h2><button onClick={()=>void refreshMyOffers().catch(error=>setStatusMessage(error instanceof Error?error.message:'Оголошення недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div>{myOffers.length?<div className="space-y-2">{myOffers.map((offer)=><article key={offer.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><b>{offer.origin_name} → {offer.destination_name}</b><span className="text-[10px] text-slate-500">{offer.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(offer.departure_at)} · {offer.available_seats}/{offer.total_seats} місць</p><p className="mt-1 text-xs font-bold text-blue-700">{formatMoney(offer.price_per_seat_minor,offer.currency)} за місце{offer.duration_s?` · ${Math.floor(offer.duration_s/3600)} год ${Math.round(offer.duration_s%3600/60)} хв`:''}</p></article>)}</div>:<p className="rounded-2xl bg-white p-4 text-sm text-slate-500">Опублікованих поїздок ще немає.</p>}</section>}
     {bookings.length ? <div className="space-y-3">{bookings.map((booking)=>{
       const statusLabel: Record<string, string> = { confirmed: 'Підтверджено', boarding: 'Посадка', in_progress: 'У дорозі', completed: 'Завершено', cancelled: 'Скасовано' };
