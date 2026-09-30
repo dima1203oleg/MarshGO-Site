@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Navigation, LocateFixed, ShieldCheck, Square, Volume
 import { ApiNavigationMatch, ApiNavigationSession, ApiPlace, productionApi } from '../services/productionApi';
 import { initialMapTileHealth, leafletTileKey, MapTileHealth, reduceMapTileHealth } from '../services/mapTileStatus';
 
-type Props = { onBack: () => void; onOpenDemand?: (demandId: string) => void };
+type Props = { onBack: () => void; onOpenDemand?: (demandId: string, candidateId: string) => void };
 const tileUrl = (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim();
 const tileAttribution = (import.meta.env.VITE_MAP_TILE_ATTRIBUTION as string | undefined)?.trim() || '';
 
@@ -234,7 +234,7 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
         {match.status === 'suggested' && session.state === 'active' && <button disabled={busy} onClick={() => void pauseForResponse()} className="mt-2 w-full rounded-lg bg-amber-100 py-2 text-[10px] font-bold text-amber-900">Зупиніться та призупиніть навігацію, щоб відповісти</button>}
         {match.status === 'suggested' && session.state === 'paused' && <button disabled={matchingBusy} onClick={() => void expressInterest(match.id)} className="mt-2 w-full rounded-lg bg-emerald-600 py-2 text-[10px] font-bold text-white">Підтвердити інтерес водія</button>}
         {match.status === 'driver_interested' && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-[10px] font-semibold text-amber-900">Ваш інтерес надіслано. Чекаємо підтвердження пасажира; бронювання ще немає.</p>}
-        {match.status === 'passenger_confirmed' && <><p className="mt-2 rounded-lg bg-emerald-50 p-2 text-[10px] font-semibold text-emerald-800">Пасажир підтвердив взаємний інтерес. Бронювання ще немає.</p>{session.state === 'paused' && <button disabled={!onOpenDemand} onClick={() => onOpenDemand?.(match.demand_id)} className="mt-2 w-full rounded-lg bg-blue-600 py-2 text-[10px] font-bold text-white disabled:opacity-50">Відкрити заявку та запропонувати ціну</button>}</>}
+        {match.status === 'passenger_confirmed' && <><p className="mt-2 rounded-lg bg-emerald-50 p-2 text-[10px] font-semibold text-emerald-800">Пасажир підтвердив взаємний інтерес. Бронювання ще немає.</p>{session.state === 'paused' && <button disabled={!onOpenDemand} onClick={() => onOpenDemand?.(match.demand_id, match.id)} className="mt-2 w-full rounded-lg bg-blue-600 py-2 text-[10px] font-bold text-white disabled:opacity-50">Відкрити заявку та запропонувати ціну</button>}</>}
       </article>)}
       {!matches.length && <p className="rounded-xl bg-white p-3 text-[10px] leading-4 text-slate-500">Поки не знайдено заявки, що проходять географічну, часову та маршрутну перевірку.</p>}
     </div>}

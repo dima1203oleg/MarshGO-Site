@@ -117,6 +117,7 @@ export type ApiDemand = {
 };
 export type ApiProposal = {
   id: string; demand_id: string; driver_id: string; driver_name: string; vehicle_id: string;
+  navigation_candidate_id?: string | null;
   make: string; model: string; model_year: number; price_minor: number; currency: string; departure_at: string;
   comment: string | null; status: string; expires_at: string; revision_number: number; last_actor_role: 'driver' | 'passenger' | null;
   last_comment: string | null;
@@ -229,7 +230,7 @@ export const productionApi = {
   openDemands() { return request<ApiDemand[]>('/demands'); },
   demandProposals(demandId: string) { return request<ApiProposal[]>(`/demands/${demandId}/proposals`); },
   proposalRevisions(proposalId: string) { return request<ApiProposalRevision[]>(`/proposals/${proposalId}/revisions`); },
-  createProposal(demandId: string, input: { vehicleId: string; priceMinor: number; departureAt: string; comment?: string }) {
+  createProposal(demandId: string, input: { vehicleId: string; priceMinor: number; departureAt: string; comment?: string; navigationCandidateId?: string }) {
     return request<ApiProposal>(`/demands/${demandId}/proposals`, { method: 'POST', body: JSON.stringify(input) });
   },
   counterProposal(proposalId: string, input: { priceMinor: number; departureAt: string; comment?: string }) {
