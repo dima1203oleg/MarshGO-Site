@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { ArrowLeft, MapPin, Navigation, LocateFixed, ShieldCheck, Square, Volume2 } from 'lucide-react';
 import { ApiNavigationMatch, ApiNavigationSession, ApiPlace, productionApi } from '../services/productionApi';
+import { initialMapTileStatus, MapTileStatus, reduceMapTileStatus } from '../services/mapTileStatus';
 
 type Props = { onBack: () => void; onOpenDemand?: (demandId: string) => void };
 const tileUrl = (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim();
@@ -21,6 +22,7 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
   const [visible, setVisible] = useState(document.visibilityState === 'visible');
   const [clock, setClock] = useState(Date.now());
   const [onRoute, setOnRoute] = useState<boolean | null>(null);
+  const [mapTileStatus, setMapTileStatus] = useState<MapTileStatus>(() => initialMapTileStatus(Boolean(tileUrl)));
   const mapElement = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const routeRef = useRef<L.Polyline | null>(null);
@@ -64,7 +66,12 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
     if (!session || !mapElement.current || mapRef.current) return;
     const map = L.map(mapElement.current, { zoomControl: false, attributionControl: Boolean(tileUrl) });
     mapRef.current = map;
-    if (tileUrl) L.tileLayer(tileUrl, { attribution: tileAttribution, maxZoom: 19, crossOrigin: true }).addTo(map);
+    if (tileUrl) {
+      const tiles = L.tileLayer(tileUrl, { attribution: tileAttribution, maxZoom: 19, crossOrigin: true });
+      tiles.on('tileload', () => setMapTileStatus((status) => reduceMapTileStatus(status, 'tileload')));
+      tiles.on('tileerror', () => setMapTileStatus((status) => reduceMapTileStatus(status, 'tileerror')));
+      tiles.addTo(map);
+    }
     routeRef.current = L.polyline(session.route.map(([lon, lat]) => [lat, lon]), {
       color: '#1769F4', weight: 7, opacity: 0.95, lineCap: 'round', lineJoin: 'round',
     }).addTo(map);
@@ -241,7 +248,12 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
     <div className="pointer-events-none absolute left-4 right-4 top-[max(.8rem,env(safe-area-inset-top))] z-[500] rounded-[1.3rem] bg-[#0b2345]/95 p-4 text-white shadow-xl backdrop-blur">
       <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/10"><Navigation size={21}/></span><div className="min-w-0 flex-1"><p className="truncate text-[11px] font-bold uppercase tracking-wide text-blue-200">До пункту призначення</p><h1 className="truncate text-lg font-extrabold">{session.destination_name}</h1><p className="mt-1 text-xs text-blue-100">{distance} · {duration} за дорожнім маршрутом на старті</p></div></div>
     </div>
-    {tileUrl ? null : <div className="pointer-events-none absolute left-4 right-4 top-[8.8rem] z-[500] rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">Підкладка карти не налаштована. Показано справжню геометрію маршруту без вулиць.</div>}
+    {mapTileStatus !== 'available' && <div role={mapTileStatus === 'failed' || mapTileStatus === 'degraded' ? 'alert' : 'status'} className="pointer-events-none absolute left-4 right-4 top-[8.8rem] z-[500] rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">
+      {mapTileStatus === 'unconfigured' && 'Підкладка карти не налаштована. Показано справжню геометрію маршруту без вулиць.'}
+      {mapTileStatus === 'loading' && 'Завантажуємо підкладку карти. Геометрія маршруту вже показана.'}
+      {mapTileStatus === 'degraded' && 'Не всі фрагменти карти завантажилися. Перевірте з’єднання; геометрія маршруту залишається видимою.'}
+      {mapTileStatus === 'failed' && 'Не вдалося завантажити підкладку карти. Перевірте з’єднання або постачальника карт; геометрія маршруту залишається видимою.'}
+    </div>}
     <div className="absolute right-4 top-1/2 z-[500] -translate-y-1/2 space-y-2"><button aria-label="Звук" onClick={() => setGpsMessage('Голосові інструкції поки не підключені.')} className="grid h-12 w-12 place-items-center rounded-full bg-white text-slate-700 shadow-lg"><Volume2 size={20}/></button><button aria-label="Центрувати маршрут" onClick={() => { const point = session.current_location; if (point) mapRef.current?.panTo([point[1], point[0]], { animate: true }); }} className="grid h-12 w-12 place-items-center rounded-full bg-white text-blue-700 shadow-lg"><LocateFixed size={20}/></button></div>
     <section className="absolute inset-x-0 bottom-0 z-[500] rounded-t-[1.8rem] bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_35px_rgba(14,37,70,.18)]">
       <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200"/><div className="flex items-center justify-between"><div><p className="text-lg font-extrabold">{session.state === 'paused' ? 'Навігацію призупинено' : fixAge === null ? 'Очікуємо GPS' : fixAge > 30 || !visible ? 'GPS застарів' : 'Навігація активна'}</p><p className="mt-1 text-xs text-slate-500">{session.current_location_accuracy_m ? `Точність ±${Math.round(session.current_location_accuracy_m)} м` : 'Очікуємо першу GPS-точку'}{fixAge !== null ? ` · ${fixAge} с тому` : ''}</p></div><span className={`rounded-full px-3 py-1.5 text-xs font-bold ${session.state === 'paused' || !visible || fixAge !== null && fixAge > 30 ? 'bg-amber-100 text-amber-800' : onRoute === false ? 'bg-rose-100 text-rose-700' : onRoute === true ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{session.state === 'paused' ? 'Безпечно зупинено' : !visible || fixAge !== null && fixAge > 30 ? 'GPS пауза' : onRoute === false ? 'Поза маршрутом' : onRoute === true ? 'На маршруті' : 'Перевірка GPS'}</span></div>
