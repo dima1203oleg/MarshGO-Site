@@ -98,6 +98,46 @@ export type ApiRealtimeEvent =
   | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
+export type ApiJourneyStrategy = 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM' | 'RELIABLE' | 'CUSTOM';
+export type ApiJourney = {
+  id: string;
+  offerId: string;
+  strategy: ApiJourneyStrategy;
+  state: string;
+  totalDurationSeconds: number;
+  totalPriceMinor: number;
+  confirmedPriceMinor: number | null;
+  estimatedPriceMinMinor: number | null;
+  estimatedPriceMaxMinor: number | null;
+  walkingMeters: number;
+  transfers: number;
+  reliabilityScore: number | null;
+  legs: Array<{
+    id: string;
+    mode: string;
+    offerId: string;
+    origin: { name: string; coordinates: [number, number] };
+    destination: { name: string; coordinates: [number, number] };
+    departureAt: string;
+    arrivalAt: string;
+    durationSeconds: number;
+    distanceMeters: number;
+    priceMinor: number;
+    priceStatus: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
+    availabilityStatus: string;
+    source: string;
+    lastUpdatedAt: string;
+    driver: { id: string; name: string; averageRating: number | null; reviewCount: number };
+    vehicle: { id: string; make: string; model: string };
+  }>;
+};
+export type ApiJourneySearchResult = {
+  journeys: ApiJourney[];
+  partial: boolean;
+  blockedProviders: string[];
+  unsupportedPreferences: string[];
+  providerErrors: string[];
+};
 export type ApiNavigationSession = {
   id: string; state: 'active' | 'paused' | 'ended'; destination_name: string;
   route_distance_m: number; route_duration_s: number; route_version: number; opt_in: boolean;
@@ -182,6 +222,7 @@ export const productionApi = {
     if (params.destinationCoordinates) { query.set('destinationLon', String(params.destinationCoordinates[0])); query.set('destinationLat', String(params.destinationCoordinates[1])); }
     return request<ApiOffer[]>(`/offers?${query.toString()}`);
   },
+  offer(id: string) { return request<ApiOffer>(`/offers/${encodeURIComponent(id)}`); },
   myOffers() { return request<ApiOffer[]>('/offers/mine'); },
   createOffer(input: {
     vehicleId: string; originName: string; destinationName: string; origin: [number, number]; destination: [number, number];
@@ -193,6 +234,15 @@ export const productionApi = {
   },
   suggestPlaces(query: string) {
     return request<ApiPlace[]>(`/places/suggest?q=${encodeURIComponent(query)}`);
+  },
+  searchJourneys(input: {
+    origin: { name: string; coordinates: [number, number] };
+    destination: { name: string; coordinates: [number, number] };
+    departureAt: string;
+    passengers: number;
+    strategy: ApiJourneyStrategy;
+  }) {
+    return request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(input) });
   },
   startNavigation(input: { origin: [number, number]; destination: [number, number]; destinationName: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });

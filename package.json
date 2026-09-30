@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src/App.tsx src/components/AppHeader.tsx src/services/storage.ts src/services/productionApi.ts src/views/HomeView.tsx src/views/SearchView.tsx src/views/ProductionMarketplace.tsx src/views/ProductionNavigation.tsx vite.config.ts eslint.config.js"
+    "lint": "eslint src/App.tsx src/components/AppHeader.tsx src/services/storage.ts src/services/productionApi.ts src/views/HomeView.tsx src/views/SearchView.tsx src/views/ProductionMarketplace.tsx src/views/ProductionNavigation.tsx src/views/JourneyResultsPanel.tsx vite.config.ts eslint.config.js"
   },
   "dependencies": {
     "@capacitor/core": "8.5.2",

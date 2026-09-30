@@ -7,7 +7,8 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import { ApiBlockedUser, ApiBooking, ApiDemand, ApiMessage, ApiModerationCase, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
+import { ApiBlockedUser, ApiBooking, ApiDemand, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
+import { JourneyResultsPanel } from './JourneyResultsPanel';
 const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((module) => ({ default: module.ProductionNavigation })));
 
 type Tab = 'home' | 'search' | 'trips' | 'chat' | 'profile' | 'demand' | 'requests' | 'my-demands' | 'offer-new' | 'admin' | 'navigation';
@@ -48,6 +49,9 @@ export function ProductionMarketplace() {
   const [routePlaceSuggestions, setRoutePlaceSuggestions] = useState<ApiPlace[]>([]);
   const [date, setDate] = useState(todayKyiv);
   const [seats, setSeats] = useState(1);
+  const [journeyDeparture, setJourneyDeparture] = useState(() => localDateTime(1, 8));
+  const [journeyStrategy, setJourneyStrategy] = useState<ApiJourneyStrategy>('BALANCED');
+  const [journeyResult, setJourneyResult] = useState<ApiJourneySearchResult | null>(null);
   const [offers, setOffers] = useState<ApiOffer[]>([]);
   const [myOffers, setMyOffers] = useState<ApiOffer[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
@@ -269,8 +273,32 @@ export function ProductionMarketplace() {
     if (!origin.trim() || !destination.trim()) { setStatusMessage('Вкажіть місто відправлення та призначення.'); return; }
     if (!searchOriginPlace || !searchDestinationPlace) { setStatusMessage('Оберіть обидві точки зі справжніх результатів геокодера.'); return; }
     setBusy(true); setStatusMessage('');
-    try { await loadOffers(); setShowResults(true); setTab('search'); }
+    try { setJourneyResult(null); await loadOffers(); setShowResults(true); setTab('search'); }
     catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук не вдався.'); }
+    finally { setBusy(false); }
+  };
+
+  const searchJourney = async () => {
+    if (!origin.trim() || !destination.trim()) { setStatusMessage('Вкажіть початок і кінець маршруту.'); return; }
+    if (!searchOriginPlace || !searchDestinationPlace) { setStatusMessage('Для планування оберіть обидві точки з результатів геокодера.'); return; }
+    const departure = new Date(journeyDeparture);
+    if (!Number.isFinite(departure.getTime()) || departure.getTime() <= Date.now()) { setStatusMessage('Оберіть майбутній час відправлення.'); return; }
+    setBusy(true); setStatusMessage('');
+    try {
+      const result = await productionApi.searchJourneys({
+        origin: { name: searchOriginPlace.label, coordinates: [searchOriginPlace.longitude, searchOriginPlace.latitude] },
+        destination: { name: searchDestinationPlace.label, coordinates: [searchDestinationPlace.longitude, searchDestinationPlace.latitude] },
+        departureAt: departure.toISOString(), passengers: seats, strategy: journeyStrategy,
+      });
+      setJourneyResult(result); setShowResults(true); setTab('search');
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося побудувати маршрут.'); }
+    finally { setBusy(false); }
+  };
+
+  const openJourneyOffer = async (offerId: string) => {
+    setBusy(true); setStatusMessage('');
+    try { setSelectedOffer(await productionApi.offer(offerId)); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пропозиція більше недоступна. Оновіть пошук.'); }
     finally { setBusy(false); }
   };
 
@@ -763,6 +791,12 @@ export function ProductionMarketplace() {
       <div className="flex items-center justify-between rounded-xl bg-[#f6f8fc] px-2.5"><Users size={17} className="text-slate-500"/><span className="text-xs font-semibold">{seats} пас.</span><button type="button" onClick={() => setSeats(Math.max(1,seats-1))} className="grid h-8 w-7 place-items-center text-slate-500" aria-label="Менше пасажирів"><Minus size={14}/></button><button type="button" onClick={() => setSeats(Math.min(8,seats+1))} className="grid h-8 w-7 place-items-center text-blue-600" aria-label="Більше пасажирів"><Plus size={16}/></button></div>
     </div>
     <button disabled={busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 disabled:opacity-60"><Search size={17}/>{busy ? 'Шукаємо…' : 'Знайти маршрут'}<ArrowRight size={17}/></button>
+    <div className="mt-3 grid grid-cols-[1fr_1fr] gap-2">
+      <label className="rounded-xl bg-[#f6f8fc] px-3 py-2 text-[10px] font-semibold text-slate-500">Відправлення<input aria-label="Час відправлення для плану" type="datetime-local" value={journeyDeparture} onChange={event=>setJourneyDeparture(event.target.value)} className="mt-1 block w-full bg-transparent text-xs font-semibold text-slate-800 outline-none"/></label>
+      <label className="rounded-xl bg-[#f6f8fc] px-3 py-2 text-[10px] font-semibold text-slate-500">Пріоритет<select aria-label="Пріоритет маршруту" value={journeyStrategy} onChange={event=>setJourneyStrategy(event.target.value as ApiJourneyStrategy)} className="mt-1 block w-full bg-transparent text-xs font-semibold text-slate-800 outline-none"><option value="BALANCED">Оптимально</option><option value="FASTEST">Найшвидше</option><option value="CHEAPEST">Найдешевше</option><option value="PREMIUM">Premium</option><option value="RELIABLE">Найнадійніше</option></select></label>
+    </div>
+    <button type="button" disabled={busy} onClick={()=>void searchJourney()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 disabled:opacity-60"><Compass size={17}/>{busy?'Будуємо…':'Оптимізувати весь маршрут'}<ArrowRight size={17}/></button>
+    <p className="px-1 pt-1 text-[10px] leading-4 text-slate-500">Планувальник зараз використовує реальні пропозиції MARSHGO Community. Сторонні перевізники з’являться після підключення їхніх API.</p>
   </form>;
 
   const transportTypes = <div className="grid grid-cols-4 gap-2">
@@ -792,7 +826,7 @@ export function ProductionMarketplace() {
   const resultsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={() => setShowResults(false)} className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="truncate text-lg font-extrabold">{origin} → {destination}</h1><p className="text-xs text-slate-500">{new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeZone:'Europe/Kyiv'}).format(new Date(`${date}T12:00:00`))} · {seats} пасажир(и)</p></div><button onClick={() => setStatusMessage('Збереження маршруту сповістить вас після підключення push-сповіщень.')} className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><Bell size={18}/></button></div>
     <div className="mb-4 flex gap-2 overflow-x-auto pb-1">{['Усі','Попутки','Автобуси','Таксі'].map((item,index)=><button key={item} onClick={()=>index>1&&setStatusMessage(`${item} не підключено як реальне джерело.`)} className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold ${index===0||index===1?'bg-blue-600 text-white':'bg-white text-slate-500'}`}>{item}</button>)}</div>
     <div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Знайдені поїздки</h2><span className="text-xs text-slate-500">{offers.length} варіантів</span></div>
-    {offers.length ? <div className="space-y-3">{offers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає поїздок за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
+    {journeyResult ? <JourneyResultsPanel result={journeyResult} onOpenOffer={(id)=>void openJourneyOffer(id)}/> : offers.length ? <div className="space-y-3">{offers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає поїздок за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
   </div>;
 
   const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Ваші бронювання</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div>
