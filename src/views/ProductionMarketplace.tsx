@@ -1,4 +1,4 @@
-import { FormEvent, lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { FormEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowDownUp, ArrowLeft, ArrowRight, Ban, Bell, CalendarDays, CarFront, ChevronRight,
   CircleUserRound, Clock3, Compass, Flag, Home, LogOut, MapPin, MessageCircle, Minus, Navigation,
@@ -7,7 +7,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import { ApiBlockedUser, ApiBooking, ApiDemand, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiNotification, ApiNotificationPage, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
+import { ApiBlockedUser, ApiBooking, ApiDemand, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiNotification, ApiNotificationPage, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiRendezvous, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
 import { JourneyResultsPanel } from './JourneyResultsPanel';
 const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((module) => ({ default: module.ProductionNavigation })));
 
@@ -60,6 +60,9 @@ export function ProductionMarketplace() {
   const [offers, setOffers] = useState<ApiOffer[]>([]);
   const [myOffers, setMyOffers] = useState<ApiOffer[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [rendezvousSessions, setRendezvousSessions] = useState<Record<string, ApiRendezvous>>({});
+  const rendezvousSessionsRef = useRef<Record<string, ApiRendezvous>>({});
+  const [rendezvousBusyId, setRendezvousBusy] = useState<string | null>(null);
   const [bookingRescues, setBookingRescues] = useState<Record<string, { loading: boolean; failed: boolean; result?: ApiRescueResult }>>({});
   const [blockedUsers, setBlockedUsers] = useState<ApiBlockedUser[]>([]);
   const [vehicles, setVehicles] = useState<ApiVehicle[]>([]);
@@ -134,6 +137,7 @@ export function ProductionMarketplace() {
   const [vehicleForm, setVehicleForm] = useState({ make: '', model: '', modelYear: new Date().getFullYear(), seats: 4 });
 
   const refreshBookings = useCallback(async () => setBookings(await productionApi.bookings()), []);
+  useEffect(() => { rendezvousSessionsRef.current = rendezvousSessions; }, [rendezvousSessions]);
   const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
   const refreshNotifications = useCallback(async () => setNotificationPage(await productionApi.notifications()), []);
   const refreshBlockedUsers = useCallback(async () => setBlockedUsers(await productionApi.blockedUsers()), []);
@@ -186,6 +190,14 @@ export function ProductionMarketplace() {
       if (event.type.startsWith('booking.')) {
         void Promise.all([refreshBookings(), ...(user.roles.includes('driver') ? [refreshMyOffers()] : [])])
           .catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Стан бронювання не оновився.'));
+        return;
+      }
+      if (event.type.startsWith('rendezvous.')) {
+        if ('rendezvous_id' in event.data) {
+          const rendezvousId = event.data.rendezvous_id;
+          const session = Object.values(rendezvousSessionsRef.current).find((item) => item.id === rendezvousId);
+          if (session) void productionApi.bookingRendezvous(session.bookingId).then((next) => setRendezvousSessions((current) => ({ ...current, [session.bookingId]: next }))).catch(() => undefined);
+        }
         return;
       }
       if (event.type === 'navigation.match.driver-interested') {
@@ -373,6 +385,70 @@ export function ProductionMarketplace() {
       setVisibleBookingTicket({ bookingId: booking.id, token: ticket.token });
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Квиток недоступний.'); }
     finally { setBusy(false); }
+  };
+
+  const loadRendezvous = async (booking: ApiBooking) => {
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try { const session = await productionApi.bookingRendezvous(booking.id); setRendezvousSessions((current) => ({ ...current, [booking.id]: session })); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Зустріч поки недоступна.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const activateRendezvous = async (booking: ApiBooking) => {
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try { const session = await productionApi.activateRendezvous(booking.id); setRendezvousSessions((current) => ({ ...current, [booking.id]: session })); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося активувати обмін місцем.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const sendRendezvousLocation = async (booking: ApiBooking) => {
+    const session = rendezvousSessions[booking.id];
+    if (!session || !navigator.geolocation) { setStatusMessage('Геолокація недоступна на цьому пристрої.'); return; }
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 }));
+      await productionApi.sendRendezvousLocation(session.id, { longitude: position.coords.longitude, latitude: position.coords.latitude, accuracyMeters: position.coords.accuracy, capturedAt: new Date(position.timestamp).toISOString() });
+      const next = await productionApi.bookingRendezvous(booking.id);
+      setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
+      setStatusMessage('Поточне місце надіслано учаснику бронювання. Воно автоматично зникне за 5 хвилин.');
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося отримати геолокацію. Перевірте дозвіл пристрою.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const rendezvousAction = async (booking: ApiBooking, action: 'approaching' | 'arrived' | 'delayed') => {
+    const session = rendezvousSessions[booking.id];
+    if (!session) return;
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try {
+      await productionApi.rendezvousStatus(session.id, action);
+      const next = await productionApi.bookingRendezvous(booking.id);
+      setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити статус зустрічі.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const rendezvousBoarding = async (booking: ApiBooking) => {
+    const session = rendezvousSessions[booking.id];
+    if (!session) return;
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try {
+      await productionApi.rendezvousBoarding(session.id);
+      const next = await productionApi.bookingRendezvous(booking.id);
+      setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Посадка ще не готова.'); }
+    finally { setRendezvousBusy(null); }
+  };
+
+  const endRendezvous = async (booking: ApiBooking) => {
+    const session = rendezvousSessions[booking.id];
+    if (!session) return;
+    setRendezvousBusy(booking.id); setStatusMessage('');
+    try {
+      await productionApi.endRendezvous(session.id);
+      const next = await productionApi.bookingRendezvous(booking.id);
+      setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завершити обмін місцем.'); }
+    finally { setRendezvousBusy(null); }
   };
 
   const confirmBoarding = async (booking: ApiBooking) => {
@@ -887,9 +963,12 @@ export function ProductionMarketplace() {
     {user.roles.includes('driver')&&<section className="mb-5"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Мої оголошення</h2><button onClick={()=>void refreshMyOffers().catch(error=>setStatusMessage(error instanceof Error?error.message:'Оголошення недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div>{myOffers.length?<div className="space-y-2">{myOffers.map((offer)=><article key={offer.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><b>{offer.origin_name} → {offer.destination_name}</b><span className="text-[10px] text-slate-500">{offer.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(offer.departure_at)} · {offer.available_seats}/{offer.total_seats} місць</p><p className="mt-1 text-xs font-bold text-blue-700">{formatMoney(offer.price_per_seat_minor,offer.currency)} за місце{offer.duration_s?` · ${Math.floor(offer.duration_s/3600)} год ${Math.round(offer.duration_s%3600/60)} хв`:''}</p></article>)}</div>:<p className="rounded-2xl bg-white p-4 text-sm text-slate-500">Опублікованих поїздок ще немає.</p>}</section>}
     {bookings.length ? <div className="space-y-3">{bookings.map((booking)=>{
       const statusLabel: Record<string, string> = { confirmed: 'Підтверджено', boarding: 'Посадка', in_progress: 'У дорозі', completed: 'Завершено', cancelled: 'Скасовано' };
+      const rendezvous = rendezvousSessions[booking.id];
+      const rendezvousStatus: Record<string, string> = { SCHEDULED: 'Очікує часу зустрічі', ACTIVE: 'Обмін місцем активний', DRIVER_APPROACHING: 'Водій наближається', PASSENGER_APPROACHING: 'Пасажир прямує до точки', DRIVER_WAITING: 'Водій на місці', PASSENGER_WAITING: 'Пасажир на місці', BOTH_NEARBY: 'Обидва підтвердили прибуття', BOARDING: 'Посадка розпочалася', CANCELLED: 'Обмін місцем завершено', COMPLETED: 'Зустріч завершена', EXPIRED: 'Час зустрічі минув' };
       return <article key={booking.id} className="rounded-[1.4rem] bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${booking.status==='confirmed'?'bg-emerald-50 text-emerald-700':booking.status==='completed'?'bg-blue-50 text-blue-700':'bg-slate-100 text-slate-600'}`}>{statusLabel[booking.status] ?? booking.status}</span><span className="text-[10px] text-slate-400">{formatDate(booking.departure_at,{day:'numeric',month:'short'})}</span></div>
         <h2 className="mt-3 text-lg font-extrabold">{booking.origin_name} <span className="text-blue-600">→</span> {booking.destination_name}</h2><p className="mt-1 text-xs text-slate-500">{formatDate(booking.departure_at)} · {booking.seat_count} місця · {formatMoney(booking.total_price_minor,booking.currency)}</p>
+        {['confirmed','boarding','in_progress'].includes(booking.status)&&<section className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><div><b className="block text-xs">Зустріч із {booking.current_user_is_driver?booking.passenger_name:booking.driver_name}</b><small className="text-[10px] text-slate-500">Точка посадки · {rendezvous?.pickup.label??booking.origin_name}</small></div>{rendezvous&&<span className="rounded-full bg-white px-2 py-1 text-[9px] font-bold text-blue-700">{rendezvousStatus[rendezvous.state]??rendezvous.state}</span>}</div>{!rendezvous?<button disabled={rendezvousBusyId===booking.id} onClick={()=>void loadRendezvous(booking)} className="mt-2 w-full rounded-xl bg-white py-2.5 text-xs font-bold text-blue-700 disabled:opacity-50">{rendezvousBusyId===booking.id?'Завантажуємо…':'Відкрити зустріч'}</button>:<><p className="mt-2 text-[10px] text-slate-600">За планом · {formatDate(rendezvous.plannedPickupAt)}{rendezvous.driverArrivedAt&&' · водій на місці'}{rendezvous.passengerArrivedAt&&' · ви на місці'}</p>{rendezvous.locationSharingEnabled&&<p className="mt-1 text-[10px] text-slate-500">Останнє місце: {rendezvous.locations[booking.current_user_is_driver?'passenger':'driver']?.freshness==='LIVE'?'оновлено, доступне учаснику бронювання':rendezvous.locations[booking.current_user_is_driver?'passenger':'driver']?.freshness==='STALE'?'застаріло':'ще не надіслано'}. Точні координати не зберігаються.</p>}{!rendezvous.locationSharingEnabled&&['SCHEDULED','ACTIVATING'].includes(rendezvous.state)&&<button disabled={rendezvousBusyId===booking.id||Date.now()<Date.parse(rendezvous.activationAt)} onClick={()=>void activateRendezvous(booking)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">{Date.now()<Date.parse(rendezvous.activationAt)?`Обмін місцем доступний ${formatDate(rendezvous.activationAt,{hour:'2-digit',minute:'2-digit'})}`:'Увімкнути короткочасний обмін місцем'}</button>}{rendezvous.locationSharingEnabled&&<><div className="mt-2 grid grid-cols-2 gap-2"><button disabled={rendezvousBusyId===booking.id} onClick={()=>void sendRendezvousLocation(booking)} className="rounded-xl bg-white py-2.5 text-[10px] font-bold text-blue-700 disabled:opacity-50">Надіслати моє місце</button><button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousAction(booking,'arrived')} className="rounded-xl bg-emerald-600 py-2.5 text-[10px] font-bold text-white disabled:opacity-50">Я на місці</button></div><button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousAction(booking,'approaching')} className="mt-2 w-full rounded-xl bg-white py-2 text-[10px] font-semibold text-slate-700">Я пряму до точки посадки</button>{rendezvous.state==='BOTH_NEARBY'&&<button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousBoarding(booking)} className="mt-2 w-full rounded-xl bg-emerald-700 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити зустріч і посадку</button>}<button disabled={rendezvousBusyId===booking.id} onClick={()=>void endRendezvous(booking)} className="mt-2 w-full py-1 text-[10px] font-semibold text-slate-500">Завершити обмін місцем</button></>}</>}</section>}
         {booking.status==='confirmed'&&!booking.current_user_is_driver&&<div className="mt-3 rounded-xl bg-blue-50 p-3"><button disabled={busy} onClick={()=>void showBookingTicket(booking)} className="text-xs font-bold text-blue-700">{visibleBookingTicket?.bookingId===booking.id?'Оновити квиток':'Показати квиток для посадки'}</button>{visibleBookingTicket?.bookingId===booking.id&&<div className="mt-2 rounded-lg bg-white p-2"><p className="text-[10px] font-semibold text-slate-500">Передайте цей підписаний токен водієві для підтвердження посадки</p><code data-testid="booking-ticket-token" className="mt-1 block max-h-20 overflow-auto break-all text-[9px] text-slate-700">{visibleBookingTicket.token}</code></div>}</div>}
         {booking.status==='confirmed'&&booking.current_user_is_driver&&<div className="mt-3 rounded-xl bg-slate-50 p-3"><label className="block text-[10px] font-bold text-slate-600">Токен квитка пасажира<textarea value={boardingTicketInput[booking.id]??''} onChange={(event)=>setBoardingTicketInput((current)=>({...current,[booking.id]:event.target.value}))} className="mt-1.5 min-h-16 w-full rounded-lg border border-slate-200 bg-white p-2 text-[10px] font-normal" placeholder="Вставте підписаний токен квитка" /></label><button disabled={busy||!boardingTicketInput[booking.id]?.trim()} onClick={()=>void confirmBoarding(booking)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити посадку</button></div>}
         {booking.status==='boarding'&&booking.current_user_is_driver&&<button disabled={busy} onClick={()=>void startTrip(booking)} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-50">Почати поїздку</button>}
