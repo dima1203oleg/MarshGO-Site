@@ -11,6 +11,9 @@ export default defineConfig(() => {
     // Capacitor serves bundled files from its own scheme; relative assets keep
     // the packaged entry point independent of an HTTP origin.
     base: process.env.CAPACITOR_BUILD === 'true' ? './' : '/',
+    // MapLibre's separately loaded renderer is ~1 MB raw but ~285 KB gzip;
+    // check:bundle enforces the actual transfer budget for every JS chunk.
+    build: { chunkSizeWarningLimit: 1100 },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
