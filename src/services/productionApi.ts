@@ -87,6 +87,11 @@ export type ApiVerificationQueueItem = ApiVerificationRecord & {
 };
 
 export type ApiMessage = { id: string; sender_id: string; sender_name: string; body: string; created_at: string };
+export type ApiNotification = {
+  id: string; event_type: string; title: string; body: string; payload: Record<string, unknown>;
+  created_at: string; read_at: string | null;
+};
+export type ApiNotificationPage = { items: ApiNotification[]; nextCursor: string | null; unreadCount: number };
 export type ApiRealtimeEvent =
   | { type: 'conversation.message.created'; data: ApiMessage & { conversation_id: string } }
   | { type: 'booking.confirmed' | 'booking.cancelled' | 'booking.changed'; data: { booking_id: string; offer_id?: string; status: string; seat_count?: number; available_seats?: number | null } }
@@ -314,6 +319,13 @@ export const productionApi = {
     return request<{ id: string; status: string }>(`/demands/${demandId}/cancel`, { method: 'POST' });
   },
   bookings() { return request<ApiBooking[]>('/bookings'); },
+  notifications(cursor?: string | null) {
+    const query = new URLSearchParams({ limit: '30' });
+    if (cursor) query.set('cursor', cursor);
+    return request<ApiNotificationPage>(`/notifications?${query.toString()}`);
+  },
+  markNotificationRead(id: string) { return request<{ id: string; read_at: string }>(`/notifications/${encodeURIComponent(id)}/read`, { method: 'POST' }); },
+  markAllNotificationsRead() { return request<{ updated: number }>('/notifications/read-all', { method: 'POST' }); },
   cancelBooking(bookingId: string) {
     return request<{ id: string; status: string; replayed?: boolean }>(`/bookings/${bookingId}/cancel`, { method: 'POST' });
   },
