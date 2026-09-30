@@ -89,7 +89,8 @@ export type ApiRealtimeEvent =
   | { type: 'booking.confirmed' | 'booking.cancelled' | 'booking.changed'; data: { booking_id: string; offer_id?: string; status: string; seat_count?: number; available_seats?: number | null } }
   | { type: 'proposal.created' | 'proposal.countered' | 'proposal.updated'; data: { proposal_id: string; demand_id: string; status?: string; revision_number: number; price_minor: number; departure_at: string } }
   | { type: 'proposal.accepted'; data: { proposal_id: string; demand_id: string; booking_id: string; status: string; price_minor: number; departure_at: string } }
-  | { type: 'proposal.closed'; data: { proposal_id: string; demand_id: string; status: string; reason: string } };
+  | { type: 'proposal.closed'; data: { proposal_id: string; demand_id: string; status: string; reason: string } }
+  | { type: 'navigation.match.driver-interested'; data: { candidate_id: string; demand_id: string; status: 'driver_interested' } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
 export type ApiNavigationSession = {
@@ -356,7 +357,7 @@ export const productionApi = {
         next.onmessage = (message) => {
           try {
             const event = JSON.parse(String(message.data)) as ApiRealtimeEvent | { type: string };
-            if (event.type === 'conversation.message.created' || event.type.startsWith('booking.') || event.type.startsWith('proposal.')) onEvent(event as ApiRealtimeEvent);
+            if (event.type === 'conversation.message.created' || event.type.startsWith('booking.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.')) onEvent(event as ApiRealtimeEvent);
           } catch { /* Ignore malformed realtime frames; persisted REST history remains authoritative. */ }
         };
         next.onerror = () => next.close();

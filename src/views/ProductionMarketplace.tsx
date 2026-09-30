@@ -170,6 +170,14 @@ export function ProductionMarketplace() {
           .catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Стан бронювання не оновився.'));
         return;
       }
+      if (event.type === 'navigation.match.driver-interested') {
+        if (user.roles.includes('passenger')) {
+          void refreshPassengerNavigationMatches()
+            .then(() => setStatusMessage('Водій зацікавився вашою заявкою на маршрут.'))
+            .catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити пропозиції водіїв.'));
+        }
+        return;
+      }
       if (!event.type.startsWith('proposal.')) return;
       const refreshes: Promise<unknown>[] = [];
       if (user.roles.includes('driver')) refreshes.push(refreshOpenDemands());
