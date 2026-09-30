@@ -41,10 +41,10 @@ function JourneyCard({ journey, onOpenOffer }: { journey: ApiJourney; onOpenOffe
   </article>;
 }
 
-export function JourneyResultsPanel({ result, onOpenOffer }: { result: ApiJourneySearchResult; onOpenOffer: (offerId: string) => void }) {
+export function JourneyResultsPanel({ result, onOpenOffer }: { result: ApiJourneySearchResult; onOpenOffer: (offerId: string, journeyId: string, journeyLegId: string) => void }) {
   return <section aria-label="План маршруту" className="mt-4">
     <div className="mb-3"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Journey Planner</p><h2 className="mt-1 text-xl font-extrabold">Варіанти маршруту</h2></div>
     {result.partial && <p className="mb-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Зараз доступні лише підтверджені пропозиції MARSHGO Community. Автобуси, таксі й громадський транспорт не підключені як реальні джерела.</p>}
-    {result.journeys.length ? <div className="space-y-3">{result.journeys.map(journey => <JourneyCard key={journey.id} journey={journey} onOpenOffer={onOpenOffer}/>)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><MapPin className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Актуальних маршрутів поки немає</p><p className="mt-1 text-sm text-slate-500">Спробуйте інший час або перевірте сповіщення пізніше.</p></div>}
+    {result.journeys.length ? <div className="space-y-3">{result.journeys.map(journey => <JourneyCard key={journey.id} journey={journey} onOpenOffer={offerId => onOpenOffer(offerId, journey.id, journey.legs[0]?.id ?? '')}/>)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><MapPin className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Актуальних маршрутів поки немає</p><p className="mt-1 text-sm text-slate-500">Спробуйте інший час або перевірте сповіщення пізніше.</p></div>}
   </section>;
 }

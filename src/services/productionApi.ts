@@ -95,7 +95,8 @@ export type ApiRealtimeEvent =
   | { type: 'proposal.closed'; data: { proposal_id: string; demand_id: string; status: string; reason: string } }
   | { type: 'navigation.match.driver-interested'; data: { candidate_id: string; demand_id: string; status: 'driver_interested' } }
   | { type: 'navigation.match.passenger-confirmed'; data: { candidate_id: string; demand_id: string; status: 'passenger_confirmed' } }
-  | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } };
+  | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } }
+  | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'REPLANNING' } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
 export type ApiJourneyStrategy = 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM' | 'RELIABLE' | 'CUSTOM';
@@ -413,7 +414,7 @@ export const productionApi = {
         next.onmessage = (message) => {
           try {
             const event = JSON.parse(String(message.data)) as ApiRealtimeEvent | { type: string };
-            if (event.type === 'conversation.message.created' || event.type.startsWith('booking.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.')) onEvent(event as ApiRealtimeEvent);
+            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type.startsWith('booking.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.')) onEvent(event as ApiRealtimeEvent);
           } catch { /* Ignore malformed realtime frames; persisted REST history remains authoritative. */ }
         };
         next.onerror = () => next.close();
@@ -431,11 +432,11 @@ export const productionApi = {
       onState(false);
     };
   },
-  book(offerId: string, seats: number) {
+  book(offerId: string, seats: number, journey?: { journeyId: string; journeyLegId: string }) {
     return request<ApiBooking>('/bookings', {
       method: 'POST',
       headers: { 'Idempotency-Key': crypto.randomUUID() },
-      body: JSON.stringify({ offerId, seats }),
+      body: JSON.stringify({ offerId, seats, ...(journey ?? {}) }),
     });
   },
 };
