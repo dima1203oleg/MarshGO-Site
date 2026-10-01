@@ -696,8 +696,9 @@ export function ProductionMarketplace() {
     setBusy(true);
     try {
       await productionApi.createProposal(proposalTarget.id, { vehicleId: proposalVehicleId, priceMinor: amount, departureAt, comment: proposalComment, ...(proposalNavigationCandidateId ? { navigationCandidateId: proposalNavigationCandidateId } : {}) });
-      setProposalTarget(null); setProposalNavigationCandidateId(null); setStatusMessage('Цінову пропозицію надіслано пасажиру.'); await refreshOpenDemands();
+      setProposalTarget(null); setProposalNavigationCandidateId(null); await refreshOpenDemands();
       await viewDemand(proposalTarget, false);
+      setStatusMessage('Цінову пропозицію надіслано пасажиру.');
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося надіслати пропозицію.'); }
     finally { setBusy(false); }
   };
