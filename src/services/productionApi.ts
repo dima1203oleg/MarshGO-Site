@@ -288,6 +288,7 @@ export const productionApi = {
     return request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(input) });
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
+  journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
   startNavigation(input: { origin: [number, number]; destination: [number, number]; destinationName: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },
@@ -333,6 +334,7 @@ export const productionApi = {
   },
   myDemands() { return request<ApiDemand[]>('/demands/mine'); },
   openDemands() { return request<ApiDemand[]>('/demands'); },
+  openDemand(id: string) { return request<ApiDemand>(`/demands/${encodeURIComponent(id)}`); },
   demandProposals(demandId: string) { return request<ApiProposal[]>(`/demands/${demandId}/proposals`); },
   proposalRevisions(proposalId: string) { return request<ApiProposalRevision[]>(`/proposals/${proposalId}/revisions`); },
   createProposal(demandId: string, input: { vehicleId: string; priceMinor: number; departureAt: string; comment?: string; navigationCandidateId?: string }) {
@@ -462,6 +464,7 @@ export const productionApi = {
     });
   },
   conversation(bookingId: string) { return request<ApiConversation>(`/bookings/${bookingId}/conversation`); },
+  conversationById(conversationId: string) { return request<ApiConversation>(`/conversations/${encodeURIComponent(conversationId)}`); },
   messages(conversationId: string) { return request<ApiMessage[]>(`/conversations/${conversationId}/messages`); },
   sendMessage(conversationId: string, body: string) {
     return request<ApiMessage>(`/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
