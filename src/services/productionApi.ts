@@ -79,6 +79,8 @@ export type ApiRendezvous = {
 export type ApiRescueAlternative = ApiOffer & {
   origin_distance_m: number;
   destination_distance_m: number;
+  rescue_match: 'ENDPOINTS' | 'ALONG_CANCELLED_ROUTE';
+  route_origin_distance_m: number | null;
   source: 'MARSHGO Community';
 };
 export type ApiRescueResult = {
