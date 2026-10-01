@@ -154,6 +154,13 @@ export function ProductionMarketplace() {
   const refreshOpenDemands = useCallback(async () => setOpenDemands(await productionApi.openDemands()), []);
   const refreshAdminQueue = useCallback(async () => setAdminQueue(await productionApi.adminVerificationQueue()), []);
   const refreshModerationCases = useCallback(async () => setModerationCases(await productionApi.moderationCases('all')), []);
+
+  useEffect(() => {
+    if (!user || loading || tab !== 'admin' || !user.roles.some((role) => role === 'admin' || role === 'moderator')) return;
+    void Promise.all([refreshAdminQueue(), refreshModerationCases()]).catch((error: unknown) => {
+      setStatusMessage(error instanceof Error ? error.message : 'Черга модерації недоступна.');
+    });
+  }, [loading, refreshAdminQueue, refreshModerationCases, tab, user?.id, user?.roles.join(',')]);
   const loadOffers = useCallback(async () => {
     const next = await productionApi.offers({
       origin: origin.trim(), destination: destination.trim(), date, seats,
@@ -1178,7 +1185,7 @@ export function ProductionMarketplace() {
     </div>
     <section className="mt-4 rounded-[1.4rem] bg-white p-4 shadow-sm"><div className="mb-3 flex items-center gap-2"><Ban size={17} className="text-rose-600"/><div><h2 className="font-extrabold">Заблоковані користувачі</h2><p className="text-xs text-slate-500">Керуйте приватним списком блокувань</p></div></div>{blockedUsers.length? <div className="space-y-2">{blockedUsers.map((blocked)=><div key={blocked.user_id} className="flex items-center gap-3 rounded-xl bg-[#f6f8fc] p-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-white text-sm font-bold text-slate-600">{blocked.display_name.slice(0,1).toUpperCase()}</span><span className="min-w-0 flex-1"><b className="block truncate text-sm">{blocked.display_name}</b><small className="text-slate-500">Заблоковано {formatDate(blocked.created_at,{day:'numeric',month:'short',year:'numeric'})}</small></span><button disabled={busy} onClick={()=>void unblockContact(blocked)} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-blue-700 disabled:opacity-50">Розблокувати</button></div>)}</div>:<p className="rounded-xl bg-[#f6f8fc] p-3 text-sm text-slate-500">Список порожній. Заблокувати контакт можна з його чату.</p>}</section>
     <div className="mt-4 overflow-hidden rounded-[1.4rem] bg-white shadow-sm">{[['Документи','Статус перевірки доступний у профілі'],['Налаштування','Особисті налаштування'],['Допомога','Центр підтримки']].map(([title,sub])=><button key={title} onClick={()=>setStatusMessage(`${title}: цей розділ ще не реалізовано.`)} className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-4 text-left last:border-0"><span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-50 text-slate-600"><ShieldCheck size={17}/></span><span className="flex-1"><b className="block text-sm">{title}</b><small className="text-slate-400">{sub}</small></span><ChevronRight size={17} className="text-slate-400"/></button>)}</div>
-    {user.roles.some((role)=>role==='admin'||role==='moderator')&&<button onClick={()=>{setTab('admin');void Promise.all([refreshAdminQueue(),refreshModerationCases()]).catch((error:unknown)=>setStatusMessage(error instanceof Error?error.message:'Черга модерації недоступна.'));}} className="mt-3 flex w-full items-center justify-between rounded-xl bg-white p-4 text-left shadow-sm"><span><b className="block text-sm">Модерація та скарги</b><small className="text-slate-500">Захищені черги перевірки документів і безпеки</small></span><ChevronRight size={17} className="text-slate-400"/></button>}
+    {user.roles.some((role)=>role==='admin'||role==='moderator')&&<button onClick={()=>setTab('admin')} className="mt-3 flex w-full items-center justify-between rounded-xl bg-white p-4 text-left shadow-sm"><span><b className="block text-sm">Модерація та скарги</b><small className="text-slate-500">Захищені черги перевірки документів і безпеки</small></span><ChevronRight size={17} className="text-slate-400"/></button>}
     <button onClick={()=>void logout()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-rose-600 shadow-sm"><LogOut size={16}/>Вийти</button>
   </div>;
 
