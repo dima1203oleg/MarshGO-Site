@@ -123,6 +123,7 @@ export function ProductionMarketplace() {
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<ApiBooking | null>(null);
   const [exportingData, setExportingData] = useState(false);
   const [deletionRequest, setDeletionRequest] = useState<ApiAccountDeletionRequest | null>(null);
   const [deletionBusy, setDeletionBusy] = useState(false);
@@ -453,6 +454,15 @@ export function ProductionMarketplace() {
     setRoutePlaceSuggestions([]); setRoutePlaceField(null);
   };
 
+  const refreshRescueCandidates = (cancelledBookings: ApiBooking[]) => {
+    for (const cancelled of cancelledBookings) {
+      setBookingRescues(current => ({ ...current, [cancelled.id]: { loading: true, failed: false } }));
+      void productionApi.bookingRescue(cancelled.id)
+        .then(result => setBookingRescues(current => ({ ...current, [cancelled.id]: { loading: false, failed: false, result } })))
+        .catch(() => setBookingRescues(current => ({ ...current, [cancelled.id]: { loading: false, failed: true } })));
+    }
+  };
+
   const book = async (offer: ApiOffer) => {
     setBusy(true); setStatusMessage('');
     try {
@@ -464,6 +474,10 @@ export function ProductionMarketplace() {
       // incomplete search form must not turn that success into a UI error.
       await refreshBookings();
       if (journeyBookingLink) await refreshJourneys();
+      // A replacement booking changes the inventory shown by Rescue cards.
+      // Re-query the server so a second replacement is never offered with a
+      // stale seat count until the passenger reloads the page.
+      refreshRescueCandidates(bookings.filter(item => item.status === 'cancelled' && !item.current_user_is_driver));
       if (origin.trim() && destination.trim() && searchOriginPlace && searchDestinationPlace) {
         void loadOffers().catch(() => undefined);
       }
@@ -472,12 +486,17 @@ export function ProductionMarketplace() {
     finally { setBusy(false); }
   };
 
-  const cancelTrip = async (booking: ApiBooking) => {
-    if (!window.confirm('Скасувати бронювання? Місця буде повернено поїздці.')) return;
+  const cancelTrip = (booking: ApiBooking) => {
+    setBookingToCancel(booking);
+  };
+
+  const confirmCancelTrip = async (booking: ApiBooking) => {
     setBusy(true); setStatusMessage('');
     try {
       await productionApi.cancelBooking(booking.id);
       await refreshBookings();
+      refreshRescueCandidates(bookings.filter(item => item.status === 'cancelled' && !item.current_user_is_driver));
+      setBookingToCancel(null);
       setStatusMessage(booking.current_user_is_driver
         ? 'Бронювання скасовано на сервері, місця повернено. Пасажиру надіслано оновлення.'
         : 'Бронювання скасовано. Перевіряємо актуальні поїздки поруч із цим маршрутом.');
@@ -1355,5 +1374,6 @@ export function ProductionMarketplace() {
     {showReportForm&&selectedBooking&&<div className="fixed inset-0 z-[55] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center"><form onSubmit={submitSafetyReport} className="w-full max-w-md rounded-[1.7rem] bg-white p-5 shadow-2xl"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wide text-amber-700">Безпека спільноти</p><h2 className="text-lg font-extrabold">Поскаржитися</h2></div><button type="button" onClick={()=>setShowReportForm(false)} aria-label="Закрити"><X size={20}/></button></div><p className="mb-3 text-xs text-slate-500">Скарга стосується учасника поїздки {selectedBooking.origin_name} → {selectedBooking.destination_name}. Не додавайте платіжні дані чи сторонні персональні відомості.</p><label className="mb-3 block text-xs font-bold text-slate-600">Категорія<select value={reportCategory} onChange={event=>setReportCategory(event.target.value as ApiModerationCase['category'])} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm"><option value="safety">Питання безпеки</option><option value="harassment">Домагання або образи</option><option value="fraud">Підозра на шахрайство</option><option value="service">Якість поїздки</option><option value="other">Інше</option></select></label><label className="block text-xs font-bold text-slate-600">Опишіть ситуацію<textarea required minLength={10} maxLength={2000} value={reportDetails} onChange={event=>setReportDetails(event.target.value)} className="mt-1.5 min-h-28 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" placeholder="Що сталося? (10–2000 символів)"/></label><div className="mt-3 flex justify-end text-[10px] text-slate-400">{reportDetails.length}/2000</div><button disabled={busy||reportDetails.trim().length<10} className="mt-3 w-full rounded-xl bg-amber-600 py-3.5 font-bold text-white disabled:opacity-50">{busy?'Надсилаємо…':'Надіслати приватну скаргу'}</button></form></div>}
     {verificationTarget&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-3 sm:items-center"><form onSubmit={submitVerification} className="w-full max-w-md rounded-[1.7rem] bg-white p-5 shadow-xl"><div className="mb-3 flex items-center justify-between"><div><p className="text-xs text-slate-500">Перевірка автомобіля</p><h2 className="font-extrabold">{verificationTarget.make} {verificationTarget.model}</h2></div><button type="button" onClick={()=>{setVerificationTarget(null);setRegistrationEvidence(null);setDriverLicenseEvidence(null);}} aria-label="Закрити"><X size={20}/></button></div><p className="mb-4 rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-900">Завантажте техпаспорт і посвідчення водія. Маршрути не показують ці документи; рішення ухвалює уповноважений модератор.</p><label className="mb-3 block text-xs font-bold text-slate-600">Свідоцтво про реєстрацію<input required type="file" accept="image/jpeg,image/png,application/pdf" onChange={event=>setRegistrationEvidence(event.target.files?.[0]??null)} className="mt-1.5 block w-full rounded-xl border border-slate-200 p-2 text-xs"/></label><label className="block text-xs font-bold text-slate-600">Посвідчення водія<input required type="file" accept="image/jpeg,image/png,application/pdf" onChange={event=>setDriverLicenseEvidence(event.target.files?.[0]??null)} className="mt-1.5 block w-full rounded-xl border border-slate-200 p-2 text-xs"/></label><p className="mt-2 text-[10px] text-slate-500">JPEG, PNG або PDF · до 8 МБ на файл</p><button disabled={busy} className="mt-4 w-full rounded-xl bg-blue-600 py-3.5 font-bold text-white disabled:opacity-50">{busy?'Завантажуємо…':'Передати на перевірку'}</button></form></div>}
     {reviewingRecord&&<div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center"><section className="w-full max-w-lg rounded-[1.7rem] bg-white p-4 shadow-2xl"><div className="mb-3 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-wide text-blue-600">Перегляд документа</p><h2 className="font-extrabold">{reviewingRecord.display_name} · {reviewingRecord.verification_type==='vehicle'?'Техпаспорт':reviewingRecord.verification_type==='driver_license'?'Посвідчення водія':'Документ'}</h2></div><button onClick={()=>{setReviewingRecord(null);setReviewEvidenceUrl('');}} aria-label="Закрити"><X size={20}/></button></div><iframe title="Документ водія для перевірки" src={reviewEvidenceUrl} className="h-[48svh] w-full rounded-xl border border-slate-200 bg-slate-50"/><label className="mt-3 block text-xs font-bold text-slate-600">Причина відмови — обов’язкова для відхилення<textarea value={reviewNote} onChange={event=>setReviewNote(event.target.value)} maxLength={1000} className="mt-1.5 min-h-16 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" placeholder="Коротко опишіть невідповідність"/></label><div className="mt-3 grid grid-cols-2 gap-2"><button disabled={busy} onClick={()=>void decideVerification('rejected')} className="rounded-xl border border-rose-200 py-3 text-xs font-bold text-rose-700 disabled:opacity-50">Відхилити</button><button disabled={busy} onClick={()=>void decideVerification('approved')} className="rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white disabled:opacity-50">Схвалити документ</button></div></section></div>}
+    {bookingToCancel&&<div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center"><section role="alertdialog" aria-modal="true" aria-labelledby="cancel-booking-title" aria-describedby="cancel-booking-description" className="w-full max-w-md rounded-[1.7rem] bg-white p-5 shadow-2xl"><h2 id="cancel-booking-title" className="text-lg font-extrabold">Скасувати бронювання?</h2><p id="cancel-booking-description" className="mt-2 text-sm leading-6 text-slate-600">Місця буде повернено поїздці. {bookingToCancel.current_user_is_driver?'Пасажира буде сповіщено.':'Після скасування можна буде перевірити інші поїздки за маршрутом.'}</p><div className="mt-5 grid grid-cols-2 gap-2"><button type="button" disabled={busy} autoFocus onClick={()=>setBookingToCancel(null)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 disabled:opacity-50">Залишити бронювання</button><button type="button" disabled={busy} onClick={()=>void confirmCancelTrip(bookingToCancel)} className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy?'Скасовуємо…':'Так, скасувати'}</button></div></section></div>}
   </main>;
 }
