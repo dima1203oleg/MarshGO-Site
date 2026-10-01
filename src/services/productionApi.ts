@@ -110,6 +110,7 @@ export type ApiVerificationQueueItem = ApiVerificationRecord & {
 };
 
 export type ApiMessage = { id: string; sender_id: string; sender_name: string; body: string; created_at: string };
+export type ApiConversationUnread = { conversation_id: string; booking_id: string | null; unread_count: number };
 export type ApiNotification = {
   id: string; event_type: string; title: string; body: string; payload: Record<string, unknown>;
   created_at: string; read_at: string | null;
@@ -468,6 +469,12 @@ export const productionApi = {
   conversation(bookingId: string) { return request<ApiConversation>(`/bookings/${bookingId}/conversation`); },
   conversationById(conversationId: string) { return request<ApiConversation>(`/conversations/${encodeURIComponent(conversationId)}`); },
   messages(conversationId: string) { return request<ApiMessage[]>(`/conversations/${conversationId}/messages`); },
+  conversationUnreadCounts() { return request<ApiConversationUnread[]>('/conversation-unread-counts'); },
+  markConversationRead(conversationId: string) {
+    return request<{ conversation_id: string; last_read_message_id: string | null; unread_count: number }>(
+      `/conversations/${encodeURIComponent(conversationId)}/read`, { method: 'POST' },
+    );
+  },
   sendMessage(conversationId: string, body: string) {
     return request<ApiMessage>(`/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
   },

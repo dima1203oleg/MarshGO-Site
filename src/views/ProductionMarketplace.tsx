@@ -115,6 +115,7 @@ export function ProductionMarketplace() {
   const [visibleBookingTicket, setVisibleBookingTicket] = useState<{ bookingId: string; token: string } | null>(null);
   const [boardingTicketInput, setBoardingTicketInput] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [unreadConversations, setUnreadConversations] = useState<Record<string, number>>({});
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -138,7 +139,14 @@ export function ProductionMarketplace() {
   const [vehicleForm, setVehicleForm] = useState({ make: '', model: '', modelYear: new Date().getFullYear(), seats: 4 });
   const routedEntityKey = useRef('');
 
-  const refreshBookings = useCallback(async () => setBookings(await productionApi.bookings()), []);
+  const refreshUnreadConversations = useCallback(async () => {
+    const unread = await productionApi.conversationUnreadCounts();
+    setUnreadConversations(Object.fromEntries(unread.filter((item) => item.booking_id).map((item) => [item.booking_id!, item.unread_count])));
+  }, []);
+  const refreshBookings = useCallback(async () => {
+    setBookings(await productionApi.bookings());
+    await refreshUnreadConversations().catch(() => undefined);
+  }, [refreshUnreadConversations]);
   useEffect(() => { rendezvousSessionsRef.current = rendezvousSessions; }, [rendezvousSessions]);
   const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
   const refreshNotifications = useCallback(async () => setNotificationPage(await productionApi.notifications()), []);
@@ -235,8 +243,11 @@ export function ProductionMarketplace() {
           const booking = currentBookings.find((item) => item.id === conversation.booking_id);
           if (!booking) throw new Error('Розмова недоступна для цього облікового запису.');
           const history = await productionApi.messages(conversation.id);
+          const readState = await productionApi.markConversationRead(conversation.id).catch(() => null);
           if (!active) return;
-          setBookings(currentBookings); setSelectedBooking(booking); setMessages(history); activateTab('chat');
+          setBookings(currentBookings); setSelectedBooking(booking); setMessages(history);
+          if (readState) setUnreadConversations((current) => ({ ...current, [booking.id]: readState.unread_count }));
+          activateTab('chat');
         }
       } catch (error) {
         if (!active) return;
@@ -252,6 +263,10 @@ export function ProductionMarketplace() {
     if (!user) return;
     return productionApi.subscribeRealtime((event) => {
       void refreshNotifications().catch(() => undefined);
+      if (event.type === 'conversation.message.created') {
+        if (event.data.sender_id !== user.id) void refreshUnreadConversations().catch(() => undefined);
+        return;
+      }
       if (event.type === 'journey.updated') {
         void refreshJourneys().catch(() => setStatusMessage('Маршрут не оновився. Оновіть список поїздок.'));
         setStatusMessage(event.data.state === 'READY' ? 'Ваш маршрут готов, бронювання збережене.' : 'Стан маршруту змінився. Перевірте актуальні варіанти.');
@@ -285,7 +300,7 @@ export function ProductionMarketplace() {
       if (selectedDemand) refreshes.push(productionApi.demandProposals(selectedDemand.id).then(setProposals));
       void Promise.all(refreshes).catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Цінова пропозиція змінилася. Оновіть список.'));
     }, () => undefined);
-  }, [refreshBookings, refreshJourneys, refreshMyDemands, refreshMyOffers, refreshNotifications, refreshOpenDemands, selectedDemand?.id, user?.id, user?.roles.join(',')]);
+  }, [refreshBookings, refreshJourneys, refreshMyDemands, refreshMyOffers, refreshNotifications, refreshOpenDemands, refreshUnreadConversations, selectedDemand?.id, user?.id, user?.roles.join(',')]);
 
   useEffect(() => {
     if (!user) return;
@@ -324,22 +339,34 @@ export function ProductionMarketplace() {
         if (event.data.conversation_id !== conversation.id) return;
         setMessages((current) => current.some((message) => message.id === event.data.id)
           ? current : [...current, event.data]);
+        if (document.visibilityState === 'visible') {
+          void productionApi.markConversationRead(conversation.id)
+            .then((readState) => {
+              const bookingId = selectedBooking.id;
+              setUnreadConversations((current) => ({ ...current, [bookingId]: readState.unread_count }));
+            })
+            .catch(() => undefined);
+        }
       }, (connected) => {
         setRealtimeConnected(connected);
-        if (connected) void productionApi.messages(conversation.id).then((history) => {
+        if (connected) void productionApi.messages(conversation.id).then(async (history) => {
           if (disposed) return;
           setMessages((current) => {
             const merged = new Map(history.map((message) => [message.id, message]));
             for (const message of current) merged.set(message.id, message);
             return [...merged.values()].sort((left, right) => left.created_at.localeCompare(right.created_at));
           });
+          if (document.visibilityState === 'visible') {
+            await productionApi.markConversationRead(conversation.id);
+            await refreshUnreadConversations().catch(() => undefined);
+          }
         }).catch(() => undefined);
       });
     }).catch((error: unknown) => {
       if (!disposed) setStatusMessage(error instanceof Error ? error.message : 'Чат недоступний.');
     });
     return () => { disposed = true; unsubscribe(); setRealtimeConnected(false); };
-  }, [selectedBooking?.id, tab]);
+  }, [refreshUnreadConversations, selectedBooking?.id, tab]);
 
   const requestOtp = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setStatusMessage('');
@@ -560,7 +587,10 @@ export function ProductionMarketplace() {
     setSelectedBooking(booking); setBusy(true); setStatusMessage('');
     try {
       const conversation = await productionApi.conversation(booking.id);
-      setMessages(await productionApi.messages(conversation.id)); setRoutePath(pathForProductionEntity('conversation', conversation.id));
+      setMessages(await productionApi.messages(conversation.id));
+      const readState = await productionApi.markConversationRead(conversation.id).catch(() => null);
+      if (readState) setUnreadConversations((current) => ({ ...current, [booking.id]: readState.unread_count }));
+      setRoutePath(pathForProductionEntity('conversation', conversation.id));
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Чат недоступний.'); }
     finally { setBusy(false); }
   };
@@ -1150,13 +1180,13 @@ export function ProductionMarketplace() {
         {booking.status==='boarding'&&booking.current_user_is_driver&&<button disabled={busy} onClick={()=>void startTrip(booking)} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-50">Почати поїздку</button>}
         {booking.status==='in_progress'&&<div className="mt-3 rounded-xl bg-emerald-50 p-3"><p className="text-xs font-semibold text-emerald-800">Завершення: {booking.completion_confirmation_count}/2 учасники</p>{!booking.current_user_confirmed_completion&&<button disabled={busy} onClick={()=>void confirmTripCompletion(booking)} className="mt-2 w-full rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити завершення</button>}{booking.current_user_confirmed_completion&&<p className="mt-1 text-[10px] text-emerald-700">Ваше підтвердження збережено на сервері.</p>}</div>}
         {booking.status==='cancelled'&&!booking.current_user_is_driver&&<section className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><b className="text-xs text-slate-800">Інші поїздки MARSHGO поруч</b>{bookingRescues[booking.id]?.result&&<small className="text-[9px] text-slate-500">Перевірено {formatDate(bookingRescues[booking.id].result!.checked_at,{hour:'2-digit',minute:'2-digit'})}</small>}</div>{bookingRescues[booking.id]?.loading?<p className="mt-2 text-xs text-slate-500">Шукаємо опубліковані поїздки з вільними місцями…</p>:bookingRescues[booking.id]?.failed?<p className="mt-2 text-xs text-amber-800">Не вдалося перевірити актуальні поїздки. Спробуйте оновити список пізніше.</p>:bookingRescues[booking.id]?.result?.alternatives.length?<div className="mt-2 space-y-2">{bookingRescues[booking.id].result!.alternatives.map(alternative=><button key={alternative.id} data-testid="rescue-alternative" data-offer-id={alternative.id} onClick={()=>{setSeats(booking.seat_count);setSelectedOffer(alternative);}} className="w-full rounded-xl bg-white p-3 text-left shadow-sm"><span className="flex items-center justify-between gap-2"><b className="text-xs">{alternative.origin_name} → {alternative.destination_name}</b><b className="shrink-0 text-sm text-blue-700">{formatMoney(alternative.price_per_seat_minor*booking.seat_count,alternative.currency)}</b></span><span className="mt-1 flex justify-between text-[10px] text-slate-500"><span>{formatDate(alternative.departure_at,{hour:'2-digit',minute:'2-digit'})} · {alternative.available_seats} вільних</span><span>{alternative.rescue_match==='ALONG_CANCELLED_ROUTE'?`${((alternative.route_origin_distance_m??0)/1000).toFixed(1)} км від маршруту`:`${(alternative.origin_distance_m/1000).toFixed(1)} км від посадки`}</span></span><span className="mt-1 block text-[9px] text-slate-500">{alternative.rescue_match==='ALONG_CANCELLED_ROUTE'?'Початок уздовж вашого маршруту':'Поруч із початковою точкою'}</span><span className="mt-1 block text-[9px] text-slate-400">{alternative.source} · наявність перевірена зараз</span></button>)}</div>:bookingRescues[booking.id]?.result?<p className="mt-2 text-xs text-slate-500">На цей час не знайдено опублікованих поїздок із потрібною кількістю місць у межах 20 км від точок маршруту.</p>:null}</section>}
-        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><span className="text-xs text-slate-500">{booking.current_user_is_driver ? `Пасажир · ${booking.passenger_name}` : `Водій · ${booking.driver_name}`}</span><div className="flex items-center gap-2">{booking.status==='confirmed'&&<button disabled={busy} onClick={()=>void cancelTrip(booking)} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50">Скасувати</button>}<button onClick={()=>void openChat(booking)} className="flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"><MessageCircle size={14}/>Написати</button></div></div>
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><span className="text-xs text-slate-500">{booking.current_user_is_driver ? `Пасажир · ${booking.passenger_name}` : `Водій · ${booking.driver_name}`}</span><div className="flex items-center gap-2">{booking.status==='confirmed'&&<button disabled={busy} onClick={()=>void cancelTrip(booking)} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50">Скасувати</button>}{(()=>{const unreadCount=unreadConversations[booking.id]??0;return <button aria-label={unreadCount>0?`Написати · ${unreadCount} непрочитаних`:'Написати'} onClick={()=>void openChat(booking)} className="relative flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"><MessageCircle size={14}/>Написати{unreadCount>0&&<span aria-hidden="true" className="grid h-4 min-w-4 place-items-center rounded-full bg-blue-600 px-1 text-[9px] text-white">{unreadCount}</span>}</button>;})()}</div></div>
       </article>;
     })}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Ticket className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Поки немає поїздок</p><p className="mt-1 text-sm text-slate-500">Знайдіть маршрут і забронюйте місце.</p><button onClick={()=>setTab('home')} className="mt-4 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">Знайти поїздку</button></div>}
   </div>;
 
   const chatScreen = <div className="mx-auto flex min-h-[65svh] w-full max-w-xl flex-col px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>{setSelectedBooking(null);setTab('trips');}} className="grid h-10 w-10 place-items-center rounded-full bg-white"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="truncate font-extrabold">{selectedBooking ? (selectedBooking.current_user_is_driver ? selectedBooking.passenger_name : selectedBooking.driver_name) : 'Чати'}</h1><p className="truncate text-xs text-slate-500">{selectedBooking ? `${selectedBooking.origin_name} → ${selectedBooking.destination_name}` : 'Повідомлення за бронюваннями'}</p></div>{selectedBooking&&<><button disabled={busy} onClick={()=>{setReportCategory('safety');setReportDetails('');setShowReportForm(true);}} aria-label="Поскаржитися на співрозмовника" title="Поскаржитися" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-50 text-amber-700 disabled:opacity-50"><Flag size={18}/></button><button disabled={busy} onClick={()=>void blockBookingContact()} aria-label="Заблокувати співрозмовника" title="Заблокувати співрозмовника" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rose-50 text-rose-600 disabled:opacity-50"><Ban size={18}/></button></>}</div>
-    {!selectedBooking ? <div className="space-y-3">{bookings.length ? bookings.map(booking=><button key={booking.id} onClick={()=>void openChat(booking)} className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-600"><MessageCircle size={18}/></span><span className="min-w-0 flex-1"><b className="block text-sm">{booking.origin_name} → {booking.destination_name}</b><small className="text-slate-500">{booking.driver_name} · {formatDate(booking.departure_at,{day:'numeric',month:'short'})}</small></span><ChevronRight size={17} className="text-slate-400"/></button>) : <p className="rounded-2xl bg-white p-5 text-sm text-slate-500">Чат з’явиться після підтвердження бронювання.</p>}</div> : <>
+    {!selectedBooking ? <div className="space-y-3">{bookings.length ? bookings.map(booking=><button key={booking.id} onClick={()=>void openChat(booking)} className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-600"><MessageCircle size={18}/></span><span className="min-w-0 flex-1"><b className="block text-sm">{booking.origin_name} → {booking.destination_name}</b><small className="text-slate-500">{booking.driver_name} · {formatDate(booking.departure_at,{day:'numeric',month:'short'})}</small></span>{(unreadConversations[booking.id]??0)>0&&<span aria-label={`${unreadConversations[booking.id]} непрочитаних повідомлень`} className="grid h-6 min-w-6 place-items-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white">{unreadConversations[booking.id]}</span>}<ChevronRight size={17} className="text-slate-400"/></button>) : <p className="rounded-2xl bg-white p-5 text-sm text-slate-500">Чат з’явиться після підтвердження бронювання.</p>}</div> : <>
       <div className="mb-3 rounded-xl bg-white px-3 py-2 text-center text-[11px] text-slate-500">Бронювання · {selectedBooking.origin_name} → {selectedBooking.destination_name}<span className={`ml-2 font-semibold ${realtimeConnected?'text-emerald-600':'text-slate-400'}`}>{realtimeConnected?'· онлайн':'· офлайн, історія збережена'}</span></div>
       <div className="flex-1 space-y-3 overflow-y-auto rounded-2xl bg-white/60 p-3">{messages.length ? messages.map((item)=><div key={item.id} className={`max-w-[84%] rounded-2xl px-3 py-2.5 text-sm ${item.sender_id===user.id?'ml-auto rounded-br-md bg-blue-600 text-white':'rounded-bl-md bg-white shadow-sm'}`}><p>{item.body}</p><small className={`mt-1 block text-[10px] ${item.sender_id===user.id?'text-blue-100':'text-slate-400'}`}>{formatDate(item.created_at,{hour:'2-digit',minute:'2-digit'})}</small></div>) : <div className="py-10 text-center text-sm text-slate-500">Почніть розмову з водієм або пасажиром.</div>}</div>
       <form onSubmit={sendMessage} className="mt-3 flex gap-2 rounded-full bg-white p-2 shadow-sm"><input value={messageDraft} onChange={event=>setMessageDraft(event.target.value)} className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none" placeholder="Напишіть повідомлення…" maxLength={4000}/><button disabled={busy||!messageDraft.trim()} className="grid h-10 w-10 place-items-center rounded-full bg-blue-600 text-white disabled:opacity-50"><ArrowRight size={18}/></button></form>
