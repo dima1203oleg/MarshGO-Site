@@ -13,6 +13,12 @@ import { routeResultSchema } from '../../shared/navigation/contracts';
 import { navigationError } from '../../shared/navigation/errors';
 import { OffRouteGuard } from '../navigation/OffRouteGuard';
 
+function navigationErrorMessage(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) return fallback;
+  if (error.message === 'Required role is missing') return 'Щоб користуватися навігацією, активуйте роль водія у профілі.';
+  return error.message;
+}
+
 function canonicalRoute(session: ApiNavigationSession) {
   const points = session.route;
   return routeResultSchema.parse({
@@ -128,7 +134,7 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
         navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: cached.sessionId, route: cached.route, paused: cached.session.state === 'paused' });
         navigationStore.dispatch({ type: 'CONNECTIVITY_LOST' });
         setGpsMessage('Офлайн-режим: показуємо кешований маршрут. Підбір попутників, оновлення маршруту й актуальна ETA недоступні.');
-      } else setGpsMessage(error instanceof Error ? error.message : 'Не вдалося відновити навігаційну сесію.');
+      } else setGpsMessage(navigationErrorMessage(error, 'Не вдалося відновити навігаційну сесію.'));
     }).finally(() => setRestoring(false));
   }, [navigationStore]);
 
