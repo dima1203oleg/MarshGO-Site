@@ -499,6 +499,7 @@ export function ProductionMarketplace() {
     try {
       await productionApi.cancelBooking(booking.id);
       await refreshBookings();
+      await refreshJourneys().catch(() => undefined);
       refreshRescueCandidates([
         ...bookings.filter(item => item.status === 'cancelled' && !item.current_user_is_driver && item.id !== booking.id),
         { ...booking, status: 'cancelled' },
