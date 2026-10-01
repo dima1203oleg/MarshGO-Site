@@ -1074,7 +1074,7 @@ export function ProductionMarketplace() {
             <p className="mt-3 text-center text-[10px] text-slate-500">Крок {onboardingStep} з 3</p>
           </div>
         </section> : <>
-        <div className="mb-8 flex items-center gap-3"><BrandMark/><div><strong className="text-2xl tracking-tight">MARSH<span className="text-sky-400">GO</span></strong><p className="text-xs text-blue-100/80">One Route. Every Way.</p></div></div>
+        <div className="mb-8 flex items-center gap-3"><BrandMark/><div><strong className="text-2xl tracking-tight">MARSH<span className="text-sky-400">GO</span></strong><p className="text-xs text-blue-100/80">Один маршрут. Усі способи доїхати.</p></div></div>
         {!otpRequested ? <>
           <h1 className="text-3xl font-extrabold">Вхід за номером телефону</h1><p className="mt-2 text-sm text-blue-100/80">Створіть профіль або увійдіть за номером.</p>
           <form onSubmit={requestOtp} className="mt-6 space-y-3">
