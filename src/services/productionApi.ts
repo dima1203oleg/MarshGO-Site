@@ -100,7 +100,7 @@ export type ApiVehicle = {
 export type ApiVehiclePhoto = { id: string; url: string; is_primary: boolean; created_at: string };
 export type ApiVerificationRecord = {
   id: string; verification_type: 'vehicle' | 'driver_license' | 'identity' | 'commercial'; vehicle_id: string | null;
-  status: 'pending' | 'approved' | 'rejected'; created_at: string; reviewed_at: string | null;
+  status: 'pending' | 'approved' | 'rejected'; created_at: string; reviewed_at: string | null; review_note: string | null;
 };
 export type ApiVerificationQueueItem = ApiVerificationRecord & {
   user_id: string; display_name: string; make: string | null; model: string | null;
