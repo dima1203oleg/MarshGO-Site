@@ -20,6 +20,9 @@ const pathByTab: Record<ProductionTab, string> = {
 };
 
 const tabByPath = new Map(Object.entries(pathByTab).map(([tab, path]) => [path, tab as ProductionTab]));
+// Keep the public deep link used by navigation notifications working while
+// `/navigate` remains the canonical in-app tab URL.
+tabByPath.set('/navigation', 'navigation');
 
 function normalizedPath(pathname: string): string {
   if (pathname === '/') return '/';
