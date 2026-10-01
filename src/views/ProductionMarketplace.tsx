@@ -197,7 +197,11 @@ export function ProductionMarketplace() {
       setUser(currentUser);
       const [currentDeletionRequest] = await Promise.all([productionApi.accountDeletionRequest(), refreshBookings(), refreshJourneys(), refreshNotifications(), refreshVehicles(), refreshBlockedUsers(), ...(currentUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(currentUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
       setDeletionRequest(currentDeletionRequest);
-    }).catch(() => undefined).finally(() => setLoading(false));
+    }).catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setStatusMessage('Сервер не відповідає. Перевірте з’єднання та спробуйте увійти ще раз.');
+      }
+    }).finally(() => setLoading(false));
   }, [refreshBlockedUsers, refreshBookings, refreshJourneys, refreshMyOffers, refreshPassengerNavigationMatches, refreshVehicles]);
 
   useEffect(() => {

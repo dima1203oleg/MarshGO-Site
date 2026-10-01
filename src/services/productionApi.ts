@@ -247,9 +247,18 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
 
 export const productionApi = {
   async restoreSession() {
-    const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' });
-    accessToken = session.accessToken;
-    return session.user;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
+    try {
+      const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      accessToken = session.accessToken;
+      return session.user;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   },
   async requestOtp(phone: string, displayName: string) {
     return request<{ expiresInSeconds: number; delivery: string; developmentCode?: string }>('/auth/otp/request', {
