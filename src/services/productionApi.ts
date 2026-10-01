@@ -223,7 +223,7 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   if (accessToken) headers.set('authorization', `Bearer ${accessToken}`);
   const response = await fetch(`${apiBase}/api/v1${path}`, { ...init, headers, credentials: 'include' });
-  const body = await response.json().catch(() => null) as { data?: T; error?: { message?: string } } | null;
+  const body = await response.json().catch(() => null) as { data?: T; error?: { code?: string; message?: string } } | null;
   if (response.status === 401 && retryAuth && accessToken && !path.startsWith('/auth/')) {
     try {
       const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false);
@@ -233,7 +233,12 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
       accessToken = null;
     }
   }
-  if (!response.ok) throw new Error(body?.error?.message || `Request failed (${response.status})`);
+  if (!response.ok) {
+    if (response.status === 429 || body?.error?.code === 'rate_limit_exceeded') {
+      throw new Error('Забагато запитів за короткий час. Зачекайте кілька хвилин і спробуйте ще раз.');
+    }
+    throw new Error(body?.error?.message || `Request failed (${response.status})`);
+  }
   if (response.status === 204) return undefined as T;
   return (body as ApiEnvelope<T>).data;
 }
