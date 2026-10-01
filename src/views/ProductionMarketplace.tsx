@@ -13,6 +13,7 @@ import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
 import { defaultKyivDateTime, formatKyivDateTimeInput, kyivDateTimeInputToDate, kyivDateTimeInputToIso } from '../domain/kyivTime';
 import { useProductionTabRouter } from '../routing/useProductionTabRouter';
 import { pathForProductionEntity, type ProductionTab } from '../routing/productionRoutes';
+import { buildSearchRoute, parseSearchRoute } from '../routing/searchRouteState';
 import { JourneyResultsPanel } from './JourneyResultsPanel';
 const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((module) => ({ default: module.ProductionNavigation })));
 
@@ -107,8 +108,9 @@ export function ProductionMarketplace() {
   const [counterPrice, setCounterPrice] = useState('');
   const [counterDeparture, setCounterDeparture] = useState('');
   const [counterComment, setCounterComment] = useState('');
-  const { tab, setTab, activateTab, route, setRoutePath, notFound, goHome } = useProductionTabRouter();
+  const { tab, setTab, activateTab, route, locationKey, setRoutePath, notFound, goHome } = useProductionTabRouter();
   const [showResults, setShowResults] = useState(false);
+  const [restoredSearchMode, setRestoredSearchMode] = useState<'offers' | 'planner' | null>(null);
   const [selectedOffer, setSelectedOffer] = useState<ApiOffer | null>(null);
   const [selectedJourney, setSelectedJourney] = useState<ApiStoredJourney | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<ApiBooking | null>(null);
@@ -143,6 +145,7 @@ export function ProductionMarketplace() {
   const [reviewNote, setReviewNote] = useState('');
   const [vehicleForm, setVehicleForm] = useState({ make: '', model: '', modelYear: new Date().getFullYear(), seats: 4 });
   const routedEntityKey = useRef('');
+  const hydratedSearchLocation = useRef<string | null>(null);
 
   const refreshUnreadConversations = useCallback(async () => {
     const unread = await productionApi.conversationUnreadCounts();
@@ -185,6 +188,50 @@ export function ProductionMarketplace() {
     setOffers(next);
     return next;
   }, [date, destination, origin, seats, searchDestinationPlace, searchOriginPlace]);
+
+  useEffect(() => {
+    if (route?.kind === 'tab' && route.tab === 'home' && tab === 'home') {
+      setShowResults(false);
+      return;
+    }
+    if (!user || loading || tab !== 'search' || route?.kind !== 'tab'
+      || hydratedSearchLocation.current === locationKey) return;
+    hydratedSearchLocation.current = locationKey;
+    const parsed = parseSearchRoute(window.location.search);
+    if (!parsed) {
+      if (route.tab === 'home') setShowResults(false);
+      return;
+    }
+    setOrigin(parsed.origin.label);
+    setDestination(parsed.destination.label);
+    setSearchOriginPlace(parsed.origin);
+    setSearchDestinationPlace(parsed.destination);
+    setDate(parsed.date);
+    setSeats(parsed.passengers);
+    setJourneyDeparture(parsed.departure);
+    setJourneyStrategy(parsed.strategy);
+    setJourneyResult(null);
+    setRestoredSearchMode(parsed.mode);
+    setShowResults(true);
+
+    let active = true;
+    void productionApi.offers({
+      origin: parsed.origin.label,
+      destination: parsed.destination.label,
+      date: parsed.date,
+      seats: parsed.passengers,
+      originCoordinates: [parsed.origin.longitude, parsed.origin.latitude],
+      destinationCoordinates: [parsed.destination.longitude, parsed.destination.latitude],
+    }).then((nextOffers) => {
+      if (active) setOffers(nextOffers);
+    }).catch((error: unknown) => {
+      if (active) setStatusMessage(error instanceof Error ? error.message : 'Не вдалося відновити результати пошуку.');
+    });
+    if (parsed.mode === 'planner') {
+      setStatusMessage('Параметри планування відновлено. Натисніть «Оптимізувати весь маршрут», щоб оновити варіанти.');
+    }
+    return () => { active = false; };
+  }, [loading, locationKey, route?.kind, route?.tab, tab, user?.id]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -404,7 +451,18 @@ export function ProductionMarketplace() {
     if (!origin.trim() || !destination.trim()) { setStatusMessage('Вкажіть місто відправлення та призначення.'); return; }
     if (!searchOriginPlace || !searchDestinationPlace) { setStatusMessage('Оберіть обидві точки зі справжніх результатів геокодера.'); return; }
     setBusy(true); setStatusMessage('');
-    try { setJourneyResult(null); await loadOffers(); setShowResults(true); setTab('search'); }
+    try {
+      setJourneyResult(null);
+      await loadOffers();
+      setShowResults(true);
+      setRestoredSearchMode('offers');
+      const searchPath = buildSearchRoute({
+        origin: searchOriginPlace, destination: searchDestinationPlace, date, passengers: seats,
+        departure: journeyDeparture, strategy: journeyStrategy, mode: 'offers',
+      });
+      hydratedSearchLocation.current = searchPath;
+      setRoutePath(searchPath);
+    }
     catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук не вдався.'); }
     finally { setBusy(false); }
   };
@@ -421,7 +479,13 @@ export function ProductionMarketplace() {
         destination: { name: searchDestinationPlace.label, coordinates: [searchDestinationPlace.longitude, searchDestinationPlace.latitude] },
         departureAt: departure.toISOString(), passengers: seats, strategy: journeyStrategy,
       });
-      setJourneyResult(result); setShowResults(true); setTab('search');
+      setJourneyResult(result); setShowResults(true); setRestoredSearchMode('planner');
+      const searchPath = buildSearchRoute({
+        origin: searchOriginPlace, destination: searchDestinationPlace, date, passengers: seats,
+        departure: journeyDeparture, strategy: journeyStrategy, mode: 'planner',
+      });
+      hydratedSearchLocation.current = searchPath;
+      setRoutePath(searchPath);
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося побудувати маршрут.'); }
     finally { setBusy(false); }
   };
@@ -1213,7 +1277,7 @@ export function ProductionMarketplace() {
   const resultsScreen = <div className="journey-results mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-4 flex items-center gap-3"><button onClick={() => { setShowResults(false); setTab('home'); }} aria-label="Повернутися до пошуку" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="truncate text-lg font-extrabold">{origin} → {destination}</h1><p className="text-xs text-slate-500">{new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeZone:'Europe/Kyiv'}).format(new Date(`${date}T12:00:00`))} · {seats} пасажир(и)</p></div><button aria-label="Сповіщення про маршрут" onClick={() => setStatusMessage('Збереження маршруту сповістить вас після підключення push-сповіщень.')} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><Bell size={18}/></button></div>
     <div className="mb-4 flex gap-2 overflow-x-auto pb-1">{['Усі','Попутки','Автобуси','Таксі'].map((item,index)=><button key={item} onClick={()=>index>1&&setStatusMessage(`${item} не підключено як реальне джерело.`)} className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold ${index===0||index===1?'bg-blue-600 text-white':'bg-white text-slate-500'}`}>{item}</button>)}</div>
     <div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Знайдені поїздки</h2><span className="text-xs text-slate-500">{offers.length} варіантів</span></div>
-    {journeyResult ? <JourneyResultsPanel result={journeyResult} onOpenOffer={(offerId,journeyId,journeyLegId)=>void openJourneyOffer(offerId,journeyId,journeyLegId)}/> : offers.length ? <div className="space-y-3">{offers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає поїздок за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
+    {journeyResult ? <JourneyResultsPanel result={journeyResult} onOpenOffer={(offerId,journeyId,journeyLegId)=>void openJourneyOffer(offerId,journeyId,journeyLegId)}/> : restoredSearchMode === 'planner' ? <div className="rounded-2xl bg-white p-6 text-center"><Compass className="mx-auto text-blue-600"/><p className="mt-2 font-bold">Параметри маршруту відновлено</p><p className="mt-1 text-sm text-slate-500">Оновіть план, щоб перевірити актуальні пропозиції.</p><button onClick={()=>void searchJourney()} className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Оптимізувати весь маршрут</button></div> : offers.length ? <div className="space-y-3">{offers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає поїздок за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
   </div>;
 
   const visibleBookings = route?.kind === 'booking' && route.entityId ? bookings.filter((booking) => booking.id === route.entityId) : bookings;
