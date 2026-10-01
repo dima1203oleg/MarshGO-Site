@@ -220,7 +220,7 @@ export function ProductionMarketplace() {
         if (route.kind === 'offer') {
           const offer = await productionApi.offer(entityId);
           if (!active) return;
-          setJourneyBookingLink(null); setSelectedJourney(null); setSelectedOffer(offer); activateTab('search');
+          setSelectedJourney(null); setSelectedOffer(offer); activateTab('search');
         } else if (route.kind === 'booking') {
           const currentBookings = await productionApi.bookings();
           const booking = currentBookings.find((item) => item.id === entityId);
