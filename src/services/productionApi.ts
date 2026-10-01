@@ -489,7 +489,7 @@ export const productionApi = {
   conversationById(conversationId: string) { return request<ApiConversation>(`/conversations/${encodeURIComponent(conversationId)}`); },
   messages(conversationId: string) { return request<ApiMessage[]>(`/conversations/${conversationId}/messages`); },
   async messagePage(conversationId: string, before?: string) {
-    const params = new URLSearchParams({ limit: '51' });
+    const params = new URLSearchParams({ limit: '50' });
     if (before) params.set('before', before);
     const rows = await request<ApiMessage[]>(`/conversations/${conversationId}/messages?${params}`);
     const hasMore = rows.length > 50;
