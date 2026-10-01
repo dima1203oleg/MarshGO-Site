@@ -67,7 +67,9 @@ export type ApiBooking = {
   current_user_is_driver: boolean;
   completion_confirmation_count: number;
   current_user_confirmed_completion: boolean;
+  current_user_has_review: boolean;
 };
+export type ApiReview = { id: string; booking_id: string; author_id: string; target_id: string; rating: number; comment: string | null; created_at: string };
 export type ApiRendezvousLocation = { coordinates: [number, number]; accuracyMeters: number; capturedAt: string; freshness: 'LIVE' | 'STALE' } | null;
 export type ApiRendezvous = {
   id: string; bookingId: string; journeyLegId: string | null; state: string;
@@ -399,6 +401,9 @@ export const productionApi = {
   },
   confirmTripCompletion(bookingId: string) {
     return request<{ id: string; status: string; confirmations: number; requiredConfirmations: number; replayed?: boolean }>(`/bookings/${bookingId}/complete`, { method: 'POST' });
+  },
+  createBookingReview(bookingId: string, input: { rating: number; comment?: string }) {
+    return request<ApiReview>(`/bookings/${bookingId}/reviews`, { method: 'POST', body: JSON.stringify(input) });
   },
   blockedUsers() { return request<ApiBlockedUser[]>('/users/me/blocks'); },
   blockBookingOther(bookingId: string) { return request<void>(`/bookings/${bookingId}/block-other`, { method: 'POST' }); },
