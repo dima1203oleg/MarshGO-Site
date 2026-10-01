@@ -121,6 +121,9 @@ export function ProductionMarketplace() {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [olderMessagesAvailable, setOlderMessagesAvailable] = useState(false);
+  const [olderMessageCursor, setOlderMessageCursor] = useState<string | null>(null);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [unreadConversations, setUnreadConversations] = useState<Record<string, number>>({});
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
@@ -298,10 +301,11 @@ export function ProductionMarketplace() {
           const currentBookings = await productionApi.bookings();
           const booking = currentBookings.find((item) => item.id === conversation.booking_id);
           if (!booking) throw new Error('Розмова недоступна для цього облікового запису.');
-          const history = await productionApi.messages(conversation.id);
+          const history = await productionApi.messagePage(conversation.id);
           const readState = await productionApi.markConversationRead(conversation.id).catch(() => null);
           if (!active) return;
-          setBookings(currentBookings); setSelectedBooking(booking); setMessages(history);
+          setBookings(currentBookings); setSelectedBooking(booking); setMessages(history.messages);
+          setOlderMessagesAvailable(history.hasMore); setOlderMessageCursor(history.nextCursor);
           if (readState) setUnreadConversations((current) => ({ ...current, [booking.id]: readState.unread_count }));
           activateTab('chat');
         }
@@ -405,13 +409,15 @@ export function ProductionMarketplace() {
         }
       }, (connected) => {
         setRealtimeConnected(connected);
-        if (connected) void productionApi.messages(conversation.id).then(async (history) => {
+        if (connected) void productionApi.messagePage(conversation.id).then(async (history) => {
           if (disposed) return;
           setMessages((current) => {
-            const merged = new Map(history.map((message) => [message.id, message]));
+            const merged = new Map(history.messages.map((message) => [message.id, message]));
             for (const message of current) merged.set(message.id, message);
             return [...merged.values()].sort((left, right) => left.created_at.localeCompare(right.created_at));
           });
+          setOlderMessagesAvailable((current) => current || history.hasMore);
+          setOlderMessageCursor((current) => current ?? history.nextCursor);
           if (document.visibilityState === 'visible') {
             await productionApi.markConversationRead(conversation.id);
             await refreshUnreadConversations().catch(() => undefined);
@@ -701,15 +707,33 @@ export function ProductionMarketplace() {
   };
 
   const openChat = async (booking: ApiBooking) => {
-    setSelectedBooking(booking); setBusy(true); setStatusMessage('');
+    setSelectedBooking(booking); setMessages([]); setOlderMessagesAvailable(false); setOlderMessageCursor(null); setBusy(true); setStatusMessage('');
     try {
       const conversation = await productionApi.conversation(booking.id);
-      setMessages(await productionApi.messages(conversation.id));
+      const history = await productionApi.messagePage(conversation.id);
+      setMessages(history.messages); setOlderMessagesAvailable(history.hasMore); setOlderMessageCursor(history.nextCursor);
       const readState = await productionApi.markConversationRead(conversation.id).catch(() => null);
       if (readState) setUnreadConversations((current) => ({ ...current, [booking.id]: readState.unread_count }));
       setRoutePath(pathForProductionEntity('conversation', conversation.id));
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Чат недоступний.'); }
     finally { setBusy(false); }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!selectedBooking || !olderMessagesAvailable || !olderMessageCursor || loadingOlderMessages) return;
+    setLoadingOlderMessages(true); setStatusMessage('');
+    try {
+      const conversation = await productionApi.conversation(selectedBooking.id);
+      const page = await productionApi.messagePage(conversation.id, olderMessageCursor);
+      setMessages((current) => {
+        const merged = new Map(current.map((message) => [message.id, message]));
+        for (const message of page.messages) merged.set(message.id, message);
+        return [...merged.values()].sort((left, right) => left.created_at.localeCompare(right.created_at));
+      });
+      setOlderMessagesAvailable(page.hasMore); setOlderMessageCursor(page.nextCursor);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити попередні повідомлення.');
+    } finally { setLoadingOlderMessages(false); }
   };
 
   const sendMessage = async (event: FormEvent) => {
@@ -1306,6 +1330,7 @@ export function ProductionMarketplace() {
   const chatScreen = <div className="mx-auto flex min-h-[65svh] w-full max-w-xl flex-col px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>{setSelectedBooking(null);setTab('trips');}} aria-label="Повернутися до поїздок" className="grid h-10 w-10 place-items-center rounded-full bg-white"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="truncate font-extrabold">{selectedBooking ? (selectedBooking.current_user_is_driver ? selectedBooking.passenger_name : selectedBooking.driver_name) : 'Чати'}</h1><p className="truncate text-xs text-slate-500">{selectedBooking ? `${selectedBooking.origin_name} → ${selectedBooking.destination_name}` : 'Повідомлення за бронюваннями'}</p></div>{selectedBooking&&<><button disabled={busy} onClick={()=>{setReportCategory('safety');setReportDetails('');setShowReportForm(true);}} aria-label="Поскаржитися на співрозмовника" title="Поскаржитися" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-50 text-amber-700 disabled:opacity-50"><Flag size={18}/></button><button disabled={busy} onClick={()=>void blockBookingContact()} aria-label="Заблокувати співрозмовника" title="Заблокувати співрозмовника" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rose-50 text-rose-600 disabled:opacity-50"><Ban size={18}/></button></>}</div>
     {!selectedBooking ? <div className="space-y-3">{bookings.length ? bookings.map(booking=><button key={booking.id} onClick={()=>void openChat(booking)} className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-600"><MessageCircle size={18}/></span><span className="min-w-0 flex-1"><b className="block text-sm">{booking.origin_name} → {booking.destination_name}</b><small className="text-slate-500">{booking.driver_name} · {formatDate(booking.departure_at,{day:'numeric',month:'short'})}</small></span>{(unreadConversations[booking.id]??0)>0&&<span aria-label={`${unreadConversations[booking.id]} непрочитаних повідомлень`} className="grid h-6 min-w-6 place-items-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white">{unreadConversations[booking.id]}</span>}<ChevronRight size={17} className="text-slate-400"/></button>) : <p className="rounded-2xl bg-white p-5 text-sm text-slate-500">Чат з’явиться після підтвердження бронювання.</p>}</div> : <>
       <div className="mb-3 rounded-xl bg-white px-3 py-2 text-center text-[11px] text-slate-500">Бронювання · {selectedBooking.origin_name} → {selectedBooking.destination_name}<span className={`ml-2 font-semibold ${realtimeConnected?'text-emerald-600':'text-slate-400'}`}>{realtimeConnected?'· онлайн':'· офлайн, історія збережена'}</span></div>
+      {olderMessagesAvailable&&<button type="button" onClick={()=>void loadOlderMessages()} disabled={loadingOlderMessages} className="mb-2 self-center rounded-full bg-white px-4 py-2 text-xs font-semibold text-blue-700 shadow-sm disabled:opacity-50">{loadingOlderMessages?'Завантажуємо…':'Завантажити попередні повідомлення'}</button>}
       <div className="flex-1 space-y-3 overflow-y-auto rounded-2xl bg-white/60 p-3">{messages.length ? messages.map((item)=><div key={item.id} className={`max-w-[84%] rounded-2xl px-3 py-2.5 text-sm ${item.sender_id===user.id?'ml-auto rounded-br-md bg-blue-600 text-white':'rounded-bl-md bg-white shadow-sm'}`}><p>{item.body}</p><small className={`mt-1 block text-[10px] ${item.sender_id===user.id?'text-blue-100':'text-slate-400'}`}>{formatDate(item.created_at,{hour:'2-digit',minute:'2-digit'})}</small></div>) : <div className="py-10 text-center text-sm text-slate-500">Почніть розмову з водієм або пасажиром.</div>}</div>
       <form onSubmit={sendMessage} className="mt-3 flex gap-2 rounded-full bg-white p-2 shadow-sm"><input value={messageDraft} onChange={event=>setMessageDraft(event.target.value)} className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none" placeholder="Напишіть повідомлення…" maxLength={4000}/><button disabled={busy||!messageDraft.trim()} className="grid h-10 w-10 place-items-center rounded-full bg-blue-600 text-white disabled:opacity-50"><ArrowRight size={18}/></button></form>
     </>}

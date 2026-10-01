@@ -488,6 +488,14 @@ export const productionApi = {
   conversation(bookingId: string) { return request<ApiConversation>(`/bookings/${bookingId}/conversation`); },
   conversationById(conversationId: string) { return request<ApiConversation>(`/conversations/${encodeURIComponent(conversationId)}`); },
   messages(conversationId: string) { return request<ApiMessage[]>(`/conversations/${conversationId}/messages`); },
+  async messagePage(conversationId: string, before?: string) {
+    const params = new URLSearchParams({ limit: '51' });
+    if (before) params.set('before', before);
+    const rows = await request<ApiMessage[]>(`/conversations/${conversationId}/messages?${params}`);
+    const hasMore = rows.length > 50;
+    const messages = rows.slice(0, 50);
+    return { messages, hasMore, nextCursor: hasMore ? messages[0]?.id ?? null : null };
+  },
   conversationUnreadCounts() { return request<ApiConversationUnread[]>('/conversation-unread-counts'); },
   markConversationRead(conversationId: string) {
     return request<{ conversation_id: string; last_read_message_id: string | null; unread_count: number }>(
