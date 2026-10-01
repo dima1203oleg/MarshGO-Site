@@ -16,6 +16,16 @@ import { OffRouteGuard } from '../navigation/OffRouteGuard';
 function navigationErrorMessage(error: unknown, fallback: string) {
   if (!(error instanceof Error)) return fallback;
   if (error.message === 'Required role is missing') return 'Щоб користуватися навігацією, активуйте роль водія у профілі.';
+  const locationMessages: Record<string, string> = {
+    GPS_PERMISSION_DENIED: 'Дозвольте MARSHGO доступ до геолокації в налаштуваннях браузера або пристрою, потім спробуйте ще раз.',
+    GPS_UNAVAILABLE: 'Не вдалося отримати точне місце. Перевірте дозвіл і сигнал GPS, потім спробуйте ще раз.',
+    GPS_INVALID_FIX: 'Пристрій надав некоректну GPS-точку. Перевірте точність геолокації та спробуйте ще раз.',
+    GPS_LOW_ACCURACY: 'Поточне місце визначено неточно. Увімкніть точну геолокацію та спробуйте ще раз.',
+    GPS_STALE: 'GPS-точка застаріла. Зачекайте на свіже місце розташування та повторіть спробу.',
+  };
+  const locationMessage = locationMessages[error.message];
+  if (locationMessage) return locationMessage;
+  if (/^[A-Z][A-Z0-9_]+$/.test(error.message)) return fallback;
   return error.message;
 }
 
@@ -247,7 +257,7 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
       const created = await productionApi.startNavigation({ origin: [fix.longitude, fix.latitude], destination: [destination.longitude, destination.latitude], destinationName: destination.label });
       navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: created.id, route: canonicalRoute(created), paused: false });
       setSession(created); setMatchingEnabled(false); setMatches([]); setOnRoute(null); lastSentRef.current = null; setGpsMessage('');
-    } catch (error) { setGpsMessage(error instanceof Error && error.message === 'GPS_PERMISSION_DENIED' ? 'Надайте дозвіл на геолокацію в налаштуваннях iPhone.' : error instanceof Error ? error.message : 'Не вдалося побудувати дорожній маршрут.'); }
+    } catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося розпочати навігацію. Перевірте геолокацію та спробуйте ще раз.')); }
     finally { setBusy(false); }
   };
 
