@@ -487,14 +487,19 @@ export const productionApi = {
   },
   conversation(bookingId: string) { return request<ApiConversation>(`/bookings/${bookingId}/conversation`); },
   conversationById(conversationId: string) { return request<ApiConversation>(`/conversations/${encodeURIComponent(conversationId)}`); },
-  messages(conversationId: string) { return request<ApiMessage[]>(`/conversations/${conversationId}/messages`); },
+  async messages(conversationId: string) {
+    const page = await request<{ messages: ApiMessage[]; pagination: { hasMore: boolean; nextCursor: string | null } }>(
+      `/conversations/${conversationId}/messages`,
+    );
+    return page.messages;
+  },
   async messagePage(conversationId: string, before?: string) {
     const params = new URLSearchParams({ limit: '50' });
     if (before) params.set('before', before);
-    const rows = await request<ApiMessage[]>(`/conversations/${conversationId}/messages?${params}`);
-    const hasMore = rows.length > 50;
-    const messages = rows.slice(0, 50);
-    return { messages, hasMore, nextCursor: hasMore ? messages[0]?.id ?? null : null };
+    const page = await request<{ messages: ApiMessage[]; pagination: { hasMore: boolean; nextCursor: string | null } }>(
+      `/conversations/${conversationId}/messages?${params}`,
+    );
+    return { messages: page.messages, hasMore: page.pagination.hasMore, nextCursor: page.pagination.nextCursor };
   },
   conversationUnreadCounts() { return request<ApiConversationUnread[]>('/conversation-unread-counts'); },
   markConversationRead(conversationId: string) {
