@@ -495,7 +495,10 @@ export function ProductionMarketplace() {
     try {
       await productionApi.cancelBooking(booking.id);
       await refreshBookings();
-      refreshRescueCandidates(bookings.filter(item => item.status === 'cancelled' && !item.current_user_is_driver));
+      refreshRescueCandidates([
+        ...bookings.filter(item => item.status === 'cancelled' && !item.current_user_is_driver && item.id !== booking.id),
+        { ...booking, status: 'cancelled' },
+      ].filter(item => !item.current_user_is_driver));
       setBookingToCancel(null);
       setStatusMessage(booking.current_user_is_driver
         ? 'Бронювання скасовано на сервері, місця повернено. Пасажиру надіслано оновлення.'
