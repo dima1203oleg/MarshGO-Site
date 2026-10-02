@@ -579,3 +579,77 @@ html.dark textarea::placeholder {
 html.dark .bg-white\/90 {
   background-color: rgba(13, 30, 54, 0.95) !important;
 }
+
+/* Keep the production workspace cohesive when the device uses dark mode. */
+html.dark .production-app {
+  --mg-line: #203650;
+  --mg-card-shadow: 0 10px 28px rgba(0, 0, 0, .24);
+}
+
+html.dark .production-app article,
+html.dark .production-app .app-tabbar {
+  background-color: var(--color-marshgo-card) !important;
+  color: var(--color-marshgo-text);
+}
+
+html.dark .app-header {
+  background: rgba(7, 19, 36, .9);
+  border-color: var(--mg-line);
+}
+
+html.dark .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
+  background: #142d4d;
+}
+
+html.dark .home-screen .journey-search-card {
+  border-color: #294361 !important;
+  background: #0d1e36 !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .26) !important;
+}
+
+html.dark .home-screen .journey-search-card label {
+  background-color: #132844;
+}
+
+html.dark .home-screen .journey-search-card button:not([type="submit"]) {
+  background-color: #1b3555;
+  color: #dceaff;
+}
+
+@media (max-width: 1023px) {
+html.dark .home-screen .home-intro {
+  border-color: #203650;
+  background: linear-gradient(135deg, #102644, #0d1e36 58%, #112a49);
+}
+}
+
+html.dark .home-screen .home-title { color: #f1f7ff; }
+html.dark .home-screen .home-description { color: #bdcce0; }
+
+html.dark .app-tabbar { border-color: var(--mg-line) !important; }
+
+.production-app button:disabled {
+  cursor: not-allowed;
+}
+
+.production-app :is(button, a) {
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .production-app .app-tabbar-inner button:not(.app-create-button):hover {
+    background: rgba(31, 99, 233, .08);
+    color: var(--mg-blue);
+  }
+  .production-app article:hover {
+    border-color: #cbd9ec;
+  }
+  html.dark .production-app article:hover { border-color: #345577; }
+}
+
+@media (max-width: 639px) {
+  .app-header { border-bottom: 1px solid rgba(229, 237, 247, .72); }
+  html.dark .app-header { border-color: rgba(32, 54, 80, .9); }
+  .home-screen .home-intro { border-radius: 1.4rem; }
+  .journey-offer-card { scroll-margin-top: 5rem; }
+}
