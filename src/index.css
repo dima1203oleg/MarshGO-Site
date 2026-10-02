@@ -653,3 +653,53 @@ html.dark .app-tabbar { border-color: var(--mg-line) !important; }
   .home-screen .home-intro { border-radius: 1.4rem; }
   .journey-offer-card { scroll-margin-top: 5rem; }
 }
+
+/* Final readability and touch refinements for current mobile browsers. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { min-width: 320px; }
+.production-app { overflow-x: clip; }
+.app-tabbar {
+  padding-right: max(.25rem, env(safe-area-inset-right)) !important;
+  padding-left: max(.25rem, env(safe-area-inset-left)) !important;
+  border-top: 1px solid var(--mg-line) !important;
+}
+.app-tabbar-inner button:not(.app-create-button) {
+  min-height: 48px;
+  border-radius: 14px;
+}
+.app-tabbar-inner button:not(.app-create-button):not([aria-current="page"]) {
+  color: #52637b;
+}
+.app-tabbar-inner button:not(.app-create-button) span {
+  font-size: 11px;
+  line-height: 1.2;
+}
+.app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
+  background: rgba(8, 119, 249, .09);
+  color: #075ed0;
+}
+html.dark .app-tabbar-inner button:not(.app-create-button):not([aria-current="page"]) {
+  color: #b4c2d5;
+}
+html.dark .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
+  background: #142d4d;
+  color: #79b8ff;
+}
+.production-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: 46px;
+  color: var(--mg-ink);
+}
+.production-app textarea { min-height: 5.5rem; }
+.production-app article { scroll-margin-top: 5rem; }
+.production-app :is(button, a) { -webkit-touch-callout: none; }
+
+@media (max-width: 374px) {
+  .app-tabbar-inner button:not(.app-create-button) { min-width: 0; padding-inline: .3rem; }
+  .app-tabbar-inner button:not(.app-create-button) span { font-size: 10px; }
+  .home-screen .home-title { font-size: clamp(1.75rem, 8vw, 2.05rem); }
+}
+
+@media (min-width: 1024px) {
+  .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] { background: #eaf3ff; }
+  html.dark .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] { background: #142d4d; }
+}
