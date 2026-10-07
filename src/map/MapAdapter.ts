@@ -1,3 +1,4 @@
+import type { MapLayer, MapMode } from './mapMode';
 import type { Coordinate } from '../../shared/navigation/contracts';
 export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 'failed';
 export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK' | 'MARSHGO_NAVIGATION_LIGHT' | 'MARSHGO_NAVIGATION_DARK';
@@ -10,6 +11,8 @@ export interface MapAdapter {
   recenter(point?: Coordinate): void;
   setCameraMode(mode: CameraMode): void;
   setTheme(theme: MapTheme): void;
+  setMode(mode: MapMode): void;
+  setLayer(layer: MapLayer): void;
   retry(): void;
   destroy(): void;
   getStatus(): MapStatus;

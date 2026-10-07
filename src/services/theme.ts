@@ -43,10 +43,7 @@ class ThemeService {
   public isDark(): boolean {
     if (this.currentTheme === 'dark') return true;
     if (this.currentTheme === 'light') return false;
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return false;
+    return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   }
 
   public setTheme(theme: ThemeMode): void {

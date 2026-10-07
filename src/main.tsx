@@ -1,6 +1,7 @@
 import {createRoot} from 'react-dom/client';
 import { ProductionMarketplace } from './views/ProductionMarketplace';
 import './index.css';
+import './services/theme';
 
 const rootElement = document.getElementById('root')!;
 rootElement.replaceChildren();
