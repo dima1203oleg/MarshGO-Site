@@ -13,6 +13,22 @@ import { routeResultSchema } from '../../shared/navigation/contracts';
 import { navigationError } from '../../shared/navigation/errors';
 import { OffRouteGuard } from '../navigation/OffRouteGuard';
 
+function navigationErrorMessage(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) return fallback;
+  if (error.message === 'Required role is missing') return 'Щоб користуватися навігацією, активуйте роль водія у профілі.';
+  const locationMessages: Record<string, string> = {
+    GPS_PERMISSION_DENIED: 'Дозвольте MARSHGO доступ до геолокації в налаштуваннях браузера або пристрою, потім спробуйте ще раз.',
+    GPS_UNAVAILABLE: 'Не вдалося отримати точне місце. Перевірте дозвіл і сигнал GPS, потім спробуйте ще раз.',
+    GPS_INVALID_FIX: 'Пристрій надав некоректну GPS-точку. Перевірте точність геолокації та спробуйте ще раз.',
+    GPS_LOW_ACCURACY: 'Поточне місце визначено неточно. Увімкніть точну геолокацію та спробуйте ще раз.',
+    GPS_STALE: 'GPS-точка застаріла. Зачекайте на свіже місце розташування та повторіть спробу.',
+  };
+  const locationMessage = locationMessages[error.message];
+  if (locationMessage) return locationMessage;
+  if (/^[A-Z][A-Z0-9_]+$/.test(error.message)) return fallback;
+  return error.message;
+}
+
 function canonicalRoute(session: ApiNavigationSession) {
   const points = session.route;
   return routeResultSchema.parse({
@@ -128,7 +144,7 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
         navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: cached.sessionId, route: cached.route, paused: cached.session.state === 'paused' });
         navigationStore.dispatch({ type: 'CONNECTIVITY_LOST' });
         setGpsMessage('Офлайн-режим: показуємо кешований маршрут. Підбір попутників, оновлення маршруту й актуальна ETA недоступні.');
-      } else setGpsMessage(error instanceof Error ? error.message : 'Не вдалося відновити навігаційну сесію.');
+      } else setGpsMessage(navigationErrorMessage(error, 'Не вдалося відновити навігаційну сесію.'));
     }).finally(() => setRestoring(false));
   }, [navigationStore]);
 
@@ -241,7 +257,7 @@ export function ProductionNavigation({ onBack, onOpenDemand }: Props) {
       const created = await productionApi.startNavigation({ origin: [fix.longitude, fix.latitude], destination: [destination.longitude, destination.latitude], destinationName: destination.label });
       navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: created.id, route: canonicalRoute(created), paused: false });
       setSession(created); setMatchingEnabled(false); setMatches([]); setOnRoute(null); lastSentRef.current = null; setGpsMessage('');
-    } catch (error) { setGpsMessage(error instanceof Error && error.message === 'GPS_PERMISSION_DENIED' ? 'Надайте дозвіл на геолокацію в налаштуваннях iPhone.' : error instanceof Error ? error.message : 'Не вдалося побудувати дорожній маршрут.'); }
+    } catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося розпочати навігацію. Перевірте геолокацію та спробуйте ще раз.')); }
     finally { setBusy(false); }
   };
 

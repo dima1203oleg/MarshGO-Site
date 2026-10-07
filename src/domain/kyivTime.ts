@@ -59,7 +59,10 @@ export function kyivDateTimeInputToIso(input: string): string | null {
 export function formatKyivDateTimeInput(instant: string | Date): string {
   const date = instant instanceof Date ? instant : new Date(instant);
   if (!Number.isFinite(date.getTime())) return '';
-  const { year, month, day, hour, minute } = partsAt(date.getTime());
+  // datetime-local has minute precision. Round upward so formatting a lower
+  // bound (for example a demand's earliest departure) never moves it earlier.
+  const minutePrecisionInstant = Math.ceil(date.getTime() / 60_000) * 60_000;
+  const { year, month, day, hour, minute } = partsAt(minutePrecisionInstant);
   const pad = (part: number) => String(part).padStart(2, '0');
   return `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}`;
 }

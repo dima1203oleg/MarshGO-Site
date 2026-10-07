@@ -67,7 +67,9 @@ export type ApiBooking = {
   current_user_is_driver: boolean;
   completion_confirmation_count: number;
   current_user_confirmed_completion: boolean;
+  current_user_has_review: boolean;
 };
+export type ApiReview = { id: string; booking_id: string; author_id: string; target_id: string; rating: number; comment: string | null; created_at: string };
 export type ApiRendezvousLocation = { coordinates: [number, number]; accuracyMeters: number; capturedAt: string; freshness: 'LIVE' | 'STALE' } | null;
 export type ApiRendezvous = {
   id: string; bookingId: string; journeyLegId: string | null; state: string;
@@ -79,6 +81,8 @@ export type ApiRendezvous = {
 export type ApiRescueAlternative = ApiOffer & {
   origin_distance_m: number;
   destination_distance_m: number;
+  rescue_match: 'ENDPOINTS' | 'ALONG_CANCELLED_ROUTE';
+  route_origin_distance_m: number | null;
   source: 'MARSHGO Community';
 };
 export type ApiRescueResult = {
@@ -100,7 +104,7 @@ export type ApiVehicle = {
 export type ApiVehiclePhoto = { id: string; url: string; is_primary: boolean; created_at: string };
 export type ApiVerificationRecord = {
   id: string; verification_type: 'vehicle' | 'driver_license' | 'identity' | 'commercial'; vehicle_id: string | null;
-  status: 'pending' | 'approved' | 'rejected'; created_at: string; reviewed_at: string | null;
+  status: 'pending' | 'approved' | 'rejected'; created_at: string; reviewed_at: string | null; review_note: string | null;
 };
 export type ApiVerificationQueueItem = ApiVerificationRecord & {
   user_id: string; display_name: string; make: string | null; model: string | null;
@@ -108,6 +112,7 @@ export type ApiVerificationQueueItem = ApiVerificationRecord & {
 };
 
 export type ApiMessage = { id: string; sender_id: string; sender_name: string; body: string; created_at: string };
+export type ApiConversationUnread = { conversation_id: string; booking_id: string | null; unread_count: number };
 export type ApiNotification = {
   id: string; event_type: string; title: string; body: string; payload: Record<string, unknown>;
   created_at: string; read_at: string | null;
@@ -220,7 +225,7 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   if (accessToken) headers.set('authorization', `Bearer ${accessToken}`);
   const response = await fetch(`${apiBase}/api/v1${path}`, { ...init, headers, credentials: 'include' });
-  const body = await response.json().catch(() => null) as { data?: T; error?: { message?: string } } | null;
+  const body = await response.json().catch(() => null) as { data?: T; error?: { code?: string; message?: string } } | null;
   if (response.status === 401 && retryAuth && accessToken && !path.startsWith('/auth/')) {
     try {
       const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false);
@@ -230,16 +235,30 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
       accessToken = null;
     }
   }
-  if (!response.ok) throw new Error(body?.error?.message || `Request failed (${response.status})`);
+  if (!response.ok) {
+    if (response.status === 429 || body?.error?.code === 'rate_limit_exceeded') {
+      throw new Error('Забагато запитів за короткий час. Зачекайте кілька хвилин і спробуйте ще раз.');
+    }
+    throw new Error(body?.error?.message || `Request failed (${response.status})`);
+  }
   if (response.status === 204) return undefined as T;
   return (body as ApiEnvelope<T>).data;
 }
 
 export const productionApi = {
   async restoreSession() {
-    const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' });
-    accessToken = session.accessToken;
-    return session.user;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
+    try {
+      const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      accessToken = session.accessToken;
+      return session.user;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   },
   async requestOtp(phone: string, displayName: string) {
     return request<{ expiresInSeconds: number; delivery: string; developmentCode?: string }>('/auth/otp/request', {
@@ -392,6 +411,9 @@ export const productionApi = {
   confirmTripCompletion(bookingId: string) {
     return request<{ id: string; status: string; confirmations: number; requiredConfirmations: number; replayed?: boolean }>(`/bookings/${bookingId}/complete`, { method: 'POST' });
   },
+  createBookingReview(bookingId: string, input: { rating: number; comment?: string }) {
+    return request<ApiReview>(`/bookings/${bookingId}/reviews`, { method: 'POST', body: JSON.stringify(input) });
+  },
   blockedUsers() { return request<ApiBlockedUser[]>('/users/me/blocks'); },
   blockBookingOther(bookingId: string) { return request<void>(`/bookings/${bookingId}/block-other`, { method: 'POST' }); },
   unblockUser(userId: string) { return request<void>(`/users/${encodeURIComponent(userId)}/block`, { method: 'DELETE' }); },
@@ -465,7 +487,26 @@ export const productionApi = {
   },
   conversation(bookingId: string) { return request<ApiConversation>(`/bookings/${bookingId}/conversation`); },
   conversationById(conversationId: string) { return request<ApiConversation>(`/conversations/${encodeURIComponent(conversationId)}`); },
-  messages(conversationId: string) { return request<ApiMessage[]>(`/conversations/${conversationId}/messages`); },
+  async messages(conversationId: string) {
+    const page = await request<{ messages: ApiMessage[]; pagination: { hasMore: boolean; nextCursor: string | null } }>(
+      `/conversations/${conversationId}/messages`,
+    );
+    return page.messages;
+  },
+  async messagePage(conversationId: string, before?: string) {
+    const params = new URLSearchParams({ limit: '50' });
+    if (before) params.set('before', before);
+    const page = await request<{ messages: ApiMessage[]; pagination: { hasMore: boolean; nextCursor: string | null } }>(
+      `/conversations/${conversationId}/messages?${params}`,
+    );
+    return { messages: page.messages, hasMore: page.pagination.hasMore, nextCursor: page.pagination.nextCursor };
+  },
+  conversationUnreadCounts() { return request<ApiConversationUnread[]>('/conversation-unread-counts'); },
+  markConversationRead(conversationId: string) {
+    return request<{ conversation_id: string; last_read_message_id: string | null; unread_count: number }>(
+      `/conversations/${encodeURIComponent(conversationId)}/read`, { method: 'POST' },
+    );
+  },
   sendMessage(conversationId: string, body: string) {
     return request<ApiMessage>(`/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
   },

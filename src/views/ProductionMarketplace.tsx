@@ -13,6 +13,7 @@ import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
 import { defaultKyivDateTime, formatKyivDateTimeInput, kyivDateTimeInputToDate, kyivDateTimeInputToIso } from '../domain/kyivTime';
 import { useProductionTabRouter } from '../routing/useProductionTabRouter';
 import { pathForProductionEntity, type ProductionTab } from '../routing/productionRoutes';
+import { buildSearchRoute, parseSearchRoute } from '../routing/searchRouteState';
 import { JourneyResultsPanel } from './JourneyResultsPanel';
 const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((module) => ({ default: module.ProductionNavigation })));
 
@@ -107,17 +108,27 @@ export function ProductionMarketplace() {
   const [counterPrice, setCounterPrice] = useState('');
   const [counterDeparture, setCounterDeparture] = useState('');
   const [counterComment, setCounterComment] = useState('');
-  const { tab, setTab, activateTab, route, setRoutePath, notFound, goHome } = useProductionTabRouter();
+  const { tab, setTab, activateTab, route, locationKey, setRoutePath, notFound, goHome } = useProductionTabRouter();
   const [showResults, setShowResults] = useState(false);
+  const [restoredSearchMode, setRestoredSearchMode] = useState<'offers' | 'planner' | null>(null);
   const [selectedOffer, setSelectedOffer] = useState<ApiOffer | null>(null);
   const [selectedJourney, setSelectedJourney] = useState<ApiStoredJourney | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<ApiBooking | null>(null);
   const [visibleBookingTicket, setVisibleBookingTicket] = useState<{ bookingId: string; token: string } | null>(null);
   const [boardingTicketInput, setBoardingTicketInput] = useState<Record<string, string>>({});
+  const [reviewBookingId, setReviewBookingId] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [olderMessagesAvailable, setOlderMessagesAvailable] = useState(false);
+  const [olderMessageCursor, setOlderMessageCursor] = useState<string | null>(null);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [unreadConversations, setUnreadConversations] = useState<Record<string, number>>({});
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [messageDraft, setMessageDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<ApiBooking | null>(null);
   const [exportingData, setExportingData] = useState(false);
   const [deletionRequest, setDeletionRequest] = useState<ApiAccountDeletionRequest | null>(null);
   const [deletionBusy, setDeletionBusy] = useState(false);
@@ -137,8 +148,16 @@ export function ProductionMarketplace() {
   const [reviewNote, setReviewNote] = useState('');
   const [vehicleForm, setVehicleForm] = useState({ make: '', model: '', modelYear: new Date().getFullYear(), seats: 4 });
   const routedEntityKey = useRef('');
+  const hydratedSearchLocation = useRef<string | null>(null);
 
-  const refreshBookings = useCallback(async () => setBookings(await productionApi.bookings()), []);
+  const refreshUnreadConversations = useCallback(async () => {
+    const unread = await productionApi.conversationUnreadCounts();
+    setUnreadConversations(Object.fromEntries(unread.filter((item) => item.booking_id).map((item) => [item.booking_id!, item.unread_count])));
+  }, []);
+  const refreshBookings = useCallback(async () => {
+    setBookings(await productionApi.bookings());
+    await refreshUnreadConversations().catch(() => undefined);
+  }, [refreshUnreadConversations]);
   useEffect(() => { rendezvousSessionsRef.current = rendezvousSessions; }, [rendezvousSessions]);
   const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
   const refreshNotifications = useCallback(async () => setNotificationPage(await productionApi.notifications()), []);
@@ -154,6 +173,13 @@ export function ProductionMarketplace() {
   const refreshOpenDemands = useCallback(async () => setOpenDemands(await productionApi.openDemands()), []);
   const refreshAdminQueue = useCallback(async () => setAdminQueue(await productionApi.adminVerificationQueue()), []);
   const refreshModerationCases = useCallback(async () => setModerationCases(await productionApi.moderationCases('all')), []);
+
+  useEffect(() => {
+    if (!user || loading || tab !== 'admin' || !user.roles.some((role) => role === 'admin' || role === 'moderator')) return;
+    void Promise.all([refreshAdminQueue(), refreshModerationCases()]).catch((error: unknown) => {
+      setStatusMessage(error instanceof Error ? error.message : 'Черга модерації недоступна.');
+    });
+  }, [loading, refreshAdminQueue, refreshModerationCases, tab, user?.id, user?.roles.join(',')]);
   const loadOffers = useCallback(async () => {
     const next = await productionApi.offers({
       origin: origin.trim(), destination: destination.trim(), date, seats,
@@ -167,6 +193,50 @@ export function ProductionMarketplace() {
   }, [date, destination, origin, seats, searchDestinationPlace, searchOriginPlace]);
 
   useEffect(() => {
+    if (route?.kind === 'tab' && route.tab === 'home' && tab === 'home') {
+      setShowResults(false);
+      return;
+    }
+    if (!user || loading || tab !== 'search' || route?.kind !== 'tab'
+      || hydratedSearchLocation.current === locationKey) return;
+    hydratedSearchLocation.current = locationKey;
+    const parsed = parseSearchRoute(window.location.search);
+    if (!parsed) {
+      if (route.tab === 'home') setShowResults(false);
+      return;
+    }
+    setOrigin(parsed.origin.label);
+    setDestination(parsed.destination.label);
+    setSearchOriginPlace(parsed.origin);
+    setSearchDestinationPlace(parsed.destination);
+    setDate(parsed.date);
+    setSeats(parsed.passengers);
+    setJourneyDeparture(parsed.departure);
+    setJourneyStrategy(parsed.strategy);
+    setJourneyResult(null);
+    setRestoredSearchMode(parsed.mode);
+    setShowResults(true);
+
+    let active = true;
+    void productionApi.offers({
+      origin: parsed.origin.label,
+      destination: parsed.destination.label,
+      date: parsed.date,
+      seats: parsed.passengers,
+      originCoordinates: [parsed.origin.longitude, parsed.origin.latitude],
+      destinationCoordinates: [parsed.destination.longitude, parsed.destination.latitude],
+    }).then((nextOffers) => {
+      if (active) setOffers(nextOffers);
+    }).catch((error: unknown) => {
+      if (active) setStatusMessage(error instanceof Error ? error.message : 'Не вдалося відновити результати пошуку.');
+    });
+    if (parsed.mode === 'planner') {
+      setStatusMessage('Параметри планування відновлено. Натисніть «Оптимізувати весь маршрут», щоб оновити варіанти.');
+    }
+    return () => { active = false; };
+  }, [loading, locationKey, route?.kind, route?.tab, tab, user?.id]);
+
+  useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     void StatusBar.setOverlaysWebView({ overlay: true }).catch(() => undefined);
     void StatusBar.setStyle({ style: user ? Style.Light : Style.Dark }).catch(() => undefined);
@@ -178,7 +248,11 @@ export function ProductionMarketplace() {
       setUser(currentUser);
       const [currentDeletionRequest] = await Promise.all([productionApi.accountDeletionRequest(), refreshBookings(), refreshJourneys(), refreshNotifications(), refreshVehicles(), refreshBlockedUsers(), ...(currentUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(currentUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
       setDeletionRequest(currentDeletionRequest);
-    }).catch(() => undefined).finally(() => setLoading(false));
+    }).catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setStatusMessage('Сервер не відповідає. Перевірте з’єднання та спробуйте увійти ще раз.');
+      }
+    }).finally(() => setLoading(false));
   }, [refreshBlockedUsers, refreshBookings, refreshJourneys, refreshMyOffers, refreshPassengerNavigationMatches, refreshVehicles]);
 
   useEffect(() => {
@@ -227,9 +301,13 @@ export function ProductionMarketplace() {
           const currentBookings = await productionApi.bookings();
           const booking = currentBookings.find((item) => item.id === conversation.booking_id);
           if (!booking) throw new Error('Розмова недоступна для цього облікового запису.');
-          const history = await productionApi.messages(conversation.id);
+          const history = await productionApi.messagePage(conversation.id);
+          const readState = await productionApi.markConversationRead(conversation.id).catch(() => null);
           if (!active) return;
-          setBookings(currentBookings); setSelectedBooking(booking); setMessages(history); activateTab('chat');
+          setBookings(currentBookings); setSelectedBooking(booking); setMessages(history.messages);
+          setOlderMessagesAvailable(history.hasMore); setOlderMessageCursor(history.nextCursor);
+          if (readState) setUnreadConversations((current) => ({ ...current, [booking.id]: readState.unread_count }));
+          activateTab('chat');
         }
       } catch (error) {
         if (!active) return;
@@ -245,6 +323,10 @@ export function ProductionMarketplace() {
     if (!user) return;
     return productionApi.subscribeRealtime((event) => {
       void refreshNotifications().catch(() => undefined);
+      if (event.type === 'conversation.message.created') {
+        if (event.data.sender_id !== user.id) void refreshUnreadConversations().catch(() => undefined);
+        return;
+      }
       if (event.type === 'journey.updated') {
         void refreshJourneys().catch(() => setStatusMessage('Маршрут не оновився. Оновіть список поїздок.'));
         setStatusMessage(event.data.state === 'READY' ? 'Ваш маршрут готов, бронювання збережене.' : 'Стан маршруту змінився. Перевірте актуальні варіанти.');
@@ -278,7 +360,7 @@ export function ProductionMarketplace() {
       if (selectedDemand) refreshes.push(productionApi.demandProposals(selectedDemand.id).then(setProposals));
       void Promise.all(refreshes).catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Цінова пропозиція змінилася. Оновіть список.'));
     }, () => undefined);
-  }, [refreshBookings, refreshJourneys, refreshMyDemands, refreshMyOffers, refreshNotifications, refreshOpenDemands, selectedDemand?.id, user?.id, user?.roles.join(',')]);
+  }, [refreshBookings, refreshJourneys, refreshMyDemands, refreshMyOffers, refreshNotifications, refreshOpenDemands, refreshUnreadConversations, selectedDemand?.id, user?.id, user?.roles.join(',')]);
 
   useEffect(() => {
     if (!user) return;
@@ -317,22 +399,36 @@ export function ProductionMarketplace() {
         if (event.data.conversation_id !== conversation.id) return;
         setMessages((current) => current.some((message) => message.id === event.data.id)
           ? current : [...current, event.data]);
+        if (document.visibilityState === 'visible') {
+          void productionApi.markConversationRead(conversation.id)
+            .then((readState) => {
+              const bookingId = selectedBooking.id;
+              setUnreadConversations((current) => ({ ...current, [bookingId]: readState.unread_count }));
+            })
+            .catch(() => undefined);
+        }
       }, (connected) => {
         setRealtimeConnected(connected);
-        if (connected) void productionApi.messages(conversation.id).then((history) => {
+        if (connected) void productionApi.messagePage(conversation.id).then(async (history) => {
           if (disposed) return;
           setMessages((current) => {
-            const merged = new Map(history.map((message) => [message.id, message]));
+            const merged = new Map(history.messages.map((message) => [message.id, message]));
             for (const message of current) merged.set(message.id, message);
             return [...merged.values()].sort((left, right) => left.created_at.localeCompare(right.created_at));
           });
+          setOlderMessagesAvailable((current) => current || history.hasMore);
+          setOlderMessageCursor((current) => current ?? history.nextCursor);
+          if (document.visibilityState === 'visible') {
+            await productionApi.markConversationRead(conversation.id);
+            await refreshUnreadConversations().catch(() => undefined);
+          }
         }).catch(() => undefined);
       });
     }).catch((error: unknown) => {
       if (!disposed) setStatusMessage(error instanceof Error ? error.message : 'Чат недоступний.');
     });
     return () => { disposed = true; unsubscribe(); setRealtimeConnected(false); };
-  }, [selectedBooking?.id, tab]);
+  }, [refreshUnreadConversations, selectedBooking?.id, tab]);
 
   const requestOtp = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setStatusMessage('');
@@ -361,7 +457,18 @@ export function ProductionMarketplace() {
     if (!origin.trim() || !destination.trim()) { setStatusMessage('Вкажіть місто відправлення та призначення.'); return; }
     if (!searchOriginPlace || !searchDestinationPlace) { setStatusMessage('Оберіть обидві точки зі справжніх результатів геокодера.'); return; }
     setBusy(true); setStatusMessage('');
-    try { setJourneyResult(null); await loadOffers(); setShowResults(true); setTab('search'); }
+    try {
+      setJourneyResult(null);
+      await loadOffers();
+      setShowResults(true);
+      setRestoredSearchMode('offers');
+      const searchPath = buildSearchRoute({
+        origin: searchOriginPlace, destination: searchDestinationPlace, date, passengers: seats,
+        departure: journeyDeparture, strategy: journeyStrategy, mode: 'offers',
+      });
+      hydratedSearchLocation.current = searchPath;
+      setRoutePath(searchPath);
+    }
     catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук не вдався.'); }
     finally { setBusy(false); }
   };
@@ -378,7 +485,13 @@ export function ProductionMarketplace() {
         destination: { name: searchDestinationPlace.label, coordinates: [searchDestinationPlace.longitude, searchDestinationPlace.latitude] },
         departureAt: departure.toISOString(), passengers: seats, strategy: journeyStrategy,
       });
-      setJourneyResult(result); setShowResults(true); setTab('search');
+      setJourneyResult(result); setShowResults(true); setRestoredSearchMode('planner');
+      const searchPath = buildSearchRoute({
+        origin: searchOriginPlace, destination: searchDestinationPlace, date, passengers: seats,
+        departure: journeyDeparture, strategy: journeyStrategy, mode: 'planner',
+      });
+      hydratedSearchLocation.current = searchPath;
+      setRoutePath(searchPath);
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося побудувати маршрут.'); }
     finally { setBusy(false); }
   };
@@ -411,6 +524,19 @@ export function ProductionMarketplace() {
     setRoutePlaceSuggestions([]); setRoutePlaceField(null);
   };
 
+  const refreshRescueCandidates = (cancelledBookings: ApiBooking[]) => {
+    for (const cancelled of cancelledBookings) {
+      setBookingRescues(current => ({ ...current, [cancelled.id]: { loading: true, failed: false } }));
+      void productionApi.bookingRescue(cancelled.id)
+        .then(result => setBookingRescues(current => ({ ...current, [cancelled.id]: { loading: false, failed: false, result } })))
+        .catch(() => setBookingRescues(current => ({ ...current, [cancelled.id]: { loading: false, failed: true } })));
+    }
+  };
+
+  const rescueJourneyForBooking = (booking: ApiBooking) => journeys.find(journey =>
+    journey.state === 'REPLANNING' && journey.legs.some(leg => leg.bookingId === booking.id && leg.state === 'CANCELLED'),
+  );
+
   const book = async (offer: ApiOffer) => {
     setBusy(true); setStatusMessage('');
     try {
@@ -422,6 +548,10 @@ export function ProductionMarketplace() {
       // incomplete search form must not turn that success into a UI error.
       await refreshBookings();
       if (journeyBookingLink) await refreshJourneys();
+      // A replacement booking changes the inventory shown by Rescue cards.
+      // Re-query the server so a second replacement is never offered with a
+      // stale seat count until the passenger reloads the page.
+      refreshRescueCandidates(bookings.filter(item => item.status === 'cancelled' && !item.current_user_is_driver));
       if (origin.trim() && destination.trim() && searchOriginPlace && searchDestinationPlace) {
         void loadOffers().catch(() => undefined);
       }
@@ -430,12 +560,21 @@ export function ProductionMarketplace() {
     finally { setBusy(false); }
   };
 
-  const cancelTrip = async (booking: ApiBooking) => {
-    if (!window.confirm('Скасувати бронювання? Місця буде повернено поїздці.')) return;
+  const cancelTrip = (booking: ApiBooking) => {
+    setBookingToCancel(booking);
+  };
+
+  const confirmCancelTrip = async (booking: ApiBooking) => {
     setBusy(true); setStatusMessage('');
     try {
       await productionApi.cancelBooking(booking.id);
       await refreshBookings();
+      await refreshJourneys().catch(() => undefined);
+      refreshRescueCandidates([
+        ...bookings.filter(item => item.status === 'cancelled' && !item.current_user_is_driver && item.id !== booking.id),
+        { ...booking, status: 'cancelled' },
+      ].filter(item => !item.current_user_is_driver));
+      setBookingToCancel(null);
       setStatusMessage(booking.current_user_is_driver
         ? 'Бронювання скасовано на сервері, місця повернено. Пасажиру надіслано оновлення.'
         : 'Бронювання скасовано. Перевіряємо актуальні поїздки поруч із цим маршрутом.');
@@ -549,13 +688,52 @@ export function ProductionMarketplace() {
     finally { setBusy(false); }
   };
 
+  const submitBookingReview = async (booking: ApiBooking) => {
+    setReviewSubmitting(true);
+    try {
+      await productionApi.createBookingReview(booking.id, { rating: reviewRating, comment: reviewComment.trim() || undefined });
+      setBookings((current) => current.map((item) => item.id === booking.id ? { ...item, current_user_has_review: true } : item));
+      setReviewBookingId(null);
+      setReviewComment('');
+      setStatusMessage('Дякуємо! Ваш відгук збережено.');
+      await refreshBookings().catch(() => {
+        setStatusMessage('Відгук збережено на сервері. Не вдалося оновити список зараз; стан оновиться після повторного завантаження.');
+      });
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : 'Не вдалося зберегти відгук. Перевірте з’єднання та спробуйте ще раз.');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
   const openChat = async (booking: ApiBooking) => {
-    setSelectedBooking(booking); setBusy(true); setStatusMessage('');
+    setSelectedBooking(booking); setMessages([]); setOlderMessagesAvailable(false); setOlderMessageCursor(null); setBusy(true); setStatusMessage('');
     try {
       const conversation = await productionApi.conversation(booking.id);
-      setMessages(await productionApi.messages(conversation.id)); setRoutePath(pathForProductionEntity('conversation', conversation.id));
+      const history = await productionApi.messagePage(conversation.id);
+      setMessages(history.messages); setOlderMessagesAvailable(history.hasMore); setOlderMessageCursor(history.nextCursor);
+      const readState = await productionApi.markConversationRead(conversation.id).catch(() => null);
+      if (readState) setUnreadConversations((current) => ({ ...current, [booking.id]: readState.unread_count }));
+      setRoutePath(pathForProductionEntity('conversation', conversation.id));
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Чат недоступний.'); }
     finally { setBusy(false); }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!selectedBooking || !olderMessagesAvailable || !olderMessageCursor || loadingOlderMessages) return;
+    setLoadingOlderMessages(true); setStatusMessage('');
+    try {
+      const conversation = await productionApi.conversation(selectedBooking.id);
+      const page = await productionApi.messagePage(conversation.id, olderMessageCursor);
+      setMessages((current) => {
+        const merged = new Map(current.map((message) => [message.id, message]));
+        for (const message of page.messages) merged.set(message.id, message);
+        return [...merged.values()].sort((left, right) => left.created_at.localeCompare(right.created_at));
+      });
+      setOlderMessagesAvailable(page.hasMore); setOlderMessageCursor(page.nextCursor);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити попередні повідомлення.');
+    } finally { setLoadingOlderMessages(false); }
   };
 
   const sendMessage = async (event: FormEvent) => {
@@ -689,8 +867,9 @@ export function ProductionMarketplace() {
     setBusy(true);
     try {
       await productionApi.createProposal(proposalTarget.id, { vehicleId: proposalVehicleId, priceMinor: amount, departureAt, comment: proposalComment, ...(proposalNavigationCandidateId ? { navigationCandidateId: proposalNavigationCandidateId } : {}) });
-      setProposalTarget(null); setProposalNavigationCandidateId(null); setStatusMessage('Цінову пропозицію надіслано пасажиру.'); await refreshOpenDemands();
+      setProposalTarget(null); setProposalNavigationCandidateId(null); await refreshOpenDemands();
       await viewDemand(proposalTarget, false);
+      setStatusMessage('Цінову пропозицію надіслано пасажиру.');
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося надіслати пропозицію.'); }
     finally { setBusy(false); }
   };
@@ -1036,7 +1215,7 @@ export function ProductionMarketplace() {
             <p className="mt-3 text-center text-[10px] text-slate-500">Крок {onboardingStep} з 3</p>
           </div>
         </section> : <>
-        <div className="mb-8 flex items-center gap-3"><BrandMark/><div><strong className="text-2xl tracking-tight">MARSH<span className="text-sky-400">GO</span></strong><p className="text-xs text-blue-100/80">One Route. Every Way.</p></div></div>
+        <div className="mb-8 flex items-center gap-3"><BrandMark/><div><strong className="text-2xl tracking-tight">MARSH<span className="text-sky-400">GO</span></strong><p className="text-xs text-blue-100/80">Один маршрут. Усі способи доїхати.</p></div></div>
         {!otpRequested ? <>
           <h1 className="text-3xl font-extrabold">Вхід за номером телефону</h1><p className="mt-2 text-sm text-blue-100/80">Створіть профіль або увійдіть за номером.</p>
           <form onSubmit={requestOtp} className="mt-6 space-y-3">
@@ -1066,7 +1245,7 @@ export function ProductionMarketplace() {
   const header = <header className="app-header mx-auto flex w-full max-w-xl items-center justify-between px-5 pb-3 pt-[max(.8rem,env(safe-area-inset-top))]">
     <div className="flex items-center gap-2.5"><BrandMark size="sm"/><div><strong className="text-[18px] tracking-tight text-[#081b35]">MARSH<span className="text-blue-600">GO</span></strong><p className="-mt-1 text-[10px] text-slate-500">Усі поїздки в одному місці</p></div></div>
     <nav aria-label="Розділи MARSHGO" className="desktop-top-nav hidden items-center gap-1">
-      {([['home','Головна'],['search','Пошук поїздок'],['trips','Мої поїздки'],['profile','Профіль']] as const).map(([id,label])=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>{setTab(id);setSelectedOffer(null);setSelectedBooking(null);}} className="rounded-xl px-3 py-2 text-xs font-bold text-slate-600 hover:bg-blue-50 hover:text-blue-700 aria-[current=page]:bg-blue-50 aria-[current=page]:text-blue-700">{label}</button>)}
+      {([['home','Головна'],['search','Пошук поїздок'],['trips','Мої поїздки'],['profile','Профіль']] as const).map(([id,label])=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>{setTab(id);if(id==='home')setShowResults(false);setSelectedOffer(null);setSelectedBooking(null);}} className="rounded-xl px-3 py-2 text-xs font-bold text-slate-600 hover:bg-blue-50 hover:text-blue-700 aria-[current=page]:bg-blue-50 aria-[current=page]:text-blue-700">{label}</button>)}
     </nav>
     <button onClick={() => void openNotifications()} aria-label={`Сповіщення${notificationPage.unreadCount ? `, непрочитаних ${notificationPage.unreadCount}` : ''}`} className="relative grid h-10 w-10 place-items-center rounded-full bg-white text-slate-700 shadow-sm"><Bell size={19}/>{notificationPage.unreadCount>0&&<span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-600 px-1 text-[9px] font-bold text-white">{notificationPage.unreadCount>99?'99+':notificationPage.unreadCount}</span>}</button>
   </header>;
@@ -1116,18 +1295,18 @@ export function ProductionMarketplace() {
     <button onClick={() => setTab('demand')} className="home-demand-cta mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-bold text-blue-700"><Compass size={16}/>Опублікувати свій запит на поїздку<ArrowRight size={15}/></button>
     <div className="home-offer-heading mt-6 flex items-end justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-600">Реальні пропозиції</p><h2 className="mt-1 text-lg font-extrabold">Маршрути поруч</h2></div><button onClick={() => setTab('search')} className="text-xs font-semibold text-blue-600">Усі результати</button></div>
     {offers.length ? <div className="home-offer-list mt-3 space-y-3">{offers.slice(0,2).map(offerCard)}</div> : <div className="home-offer-empty mt-3 rounded-2xl bg-white p-4 text-sm text-slate-500 shadow-sm">Ще немає завантажених пропозицій. Введіть маршрут і натисніть «Знайти маршрут», щоб отримати актуальні поїздки з сервера.</div>}
-    {user.roles.includes('driver')&&<button onClick={()=>setTab('navigation')} className="home-navigation-cta mt-5 flex w-full items-center gap-3 rounded-2xl bg-[#0c2850] p-4 text-left text-white"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10"><Navigation size={20}/></span><span className="flex-1"><b className="block text-sm">Почати навігацію</b><small className="text-xs text-blue-100/75">GPS-навігація працює на foreground. Пошук попутників під час навігації поки недоступний.</small></span><ArrowRight size={17}/></button>}
+    {user.roles.includes('driver')&&<button onClick={()=>setTab('navigation')} className="home-navigation-cta mt-5 flex w-full items-center gap-3 rounded-2xl bg-[#0c2850] p-4 text-left text-white"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10"><Navigation size={20}/></span><span className="flex-1"><b className="block text-sm">Почати навігацію</b><small className="text-xs text-blue-100/75">GPS у foreground. Пошук попутників доступний після згоди та перевірки авто.</small></span><ArrowRight size={17}/></button>}
   </div>;
 
-  const resultsScreen = <div className="journey-results mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-4 flex items-center gap-3"><button onClick={() => setShowResults(false)} aria-label="Повернутися до пошуку" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="truncate text-lg font-extrabold">{origin} → {destination}</h1><p className="text-xs text-slate-500">{new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeZone:'Europe/Kyiv'}).format(new Date(`${date}T12:00:00`))} · {seats} пасажир(и)</p></div><button aria-label="Сповіщення про маршрут" onClick={() => setStatusMessage('Збереження маршруту сповістить вас після підключення push-сповіщень.')} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><Bell size={18}/></button></div>
+  const resultsScreen = <div className="journey-results mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-4 flex items-center gap-3"><button onClick={() => { setShowResults(false); setTab('home'); }} aria-label="Повернутися до пошуку" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="break-words text-base font-extrabold leading-snug">{origin} → {destination}</h1><p className="text-xs text-slate-500">{new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeZone:'Europe/Kyiv'}).format(new Date(`${date}T12:00:00`))} · {seats} пасажир(и)</p></div><button aria-label="Сповіщення про маршрут" onClick={() => setStatusMessage('Збереження маршруту сповістить вас після підключення push-сповіщень.')} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><Bell size={18}/></button></div>
     <div className="mb-4 flex gap-2 overflow-x-auto pb-1">{['Усі','Попутки','Автобуси','Таксі'].map((item,index)=><button key={item} onClick={()=>index>1&&setStatusMessage(`${item} не підключено як реальне джерело.`)} className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold ${index===0||index===1?'bg-blue-600 text-white':'bg-white text-slate-500'}`}>{item}</button>)}</div>
     <div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Знайдені поїздки</h2><span className="text-xs text-slate-500">{offers.length} варіантів</span></div>
-    {journeyResult ? <JourneyResultsPanel result={journeyResult} onOpenOffer={(offerId,journeyId,journeyLegId)=>void openJourneyOffer(offerId,journeyId,journeyLegId)}/> : offers.length ? <div className="space-y-3">{offers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає поїздок за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
+    {journeyResult ? <JourneyResultsPanel result={journeyResult} onOpenOffer={(offerId,journeyId,journeyLegId)=>void openJourneyOffer(offerId,journeyId,journeyLegId)}/> : restoredSearchMode === 'planner' ? <div className="rounded-2xl bg-white p-6 text-center"><Compass className="mx-auto text-blue-600"/><p className="mt-2 font-bold">Параметри маршруту відновлено</p><p className="mt-1 text-sm text-slate-500">Оновіть план, щоб перевірити актуальні пропозиції.</p><button onClick={()=>void searchJourney()} className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Оптимізувати весь маршрут</button></div> : offers.length ? <div className="space-y-3">{offers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає поїздок за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
   </div>;
 
   const visibleBookings = route?.kind === 'booking' && route.entityId ? bookings.filter((booking) => booking.id === route.entityId) : bookings;
   const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Ваші бронювання</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div>
-    {journeys.length > 0 && <section className="mb-5" aria-label="Збережені маршрути"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Збережені маршрути</h2><button onClick={() => void refreshJourneys().catch(error => setStatusMessage(error instanceof Error ? error.message : 'Маршрути недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div><div className="space-y-2">{journeys.map(journey => { const statusLabel: Record<string, string> = { PLANNED: 'Заплановано', READY: 'Маршрут готовий', PARTIALLY_RESERVED: 'Частково заброньовано', REPLANNING: 'Потрібне перепланування', ACTIVE: 'У дорозі', COMPLETED: 'Завершено', CANCELLED: 'Скасовано', FAILED: 'Не вдалося побудувати' }; return <article key={journey.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${journey.state === 'READY' ? 'bg-emerald-50 text-emerald-700' : journey.state === 'REPLANNING' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>{statusLabel[journey.state] ?? journey.state}</span><span className="text-[10px] text-slate-400">{journey.strategy}</span></div><button onClick={() => setRoutePath(pathForProductionEntity('journey', journey.id))} className="mt-3 text-left font-extrabold">{journey.origin_name} <span className="text-blue-600">→</span> {journey.destination_name}</button><p className="mt-1 text-xs text-slate-500">{formatDate(journey.requested_departure_at)} · {journey.passenger_count} пасажир(и) · {journey.legs.length} відрізок</p><p className="mt-1 text-xs font-bold text-blue-700">{journey.confirmed_price_minor !== null ? `Підтверджено ${formatMoney(journey.confirmed_price_minor, 'UAH')}` : journey.total_price_minor !== null ? `Оцінка ${formatMoney(journey.total_price_minor, 'UAH')}` : 'Ціна оновиться після перепланування'}</p>{journey.legs.map(leg => <p key={leg.id} className="mt-1 text-[10px] text-slate-500">{leg.mode === 'COMMUNITY' ? 'Попутка MARSHGO Community' : leg.mode} · {leg.state === 'CONFIRMED' ? 'бронювання підтверджене' : leg.state === 'CANCELLED' ? 'скасовано' : 'пропозиція збережена'}</p>)}</article>; })}</div></section>}
+    {journeys.length > 0 && <section className="mb-5" aria-label="Збережені маршрути"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Збережені маршрути</h2><button onClick={() => void refreshJourneys().catch(error => setStatusMessage(error instanceof Error ? error.message : 'Маршрути недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div><div className="space-y-2">{journeys.map(journey => { const statusLabel: Record<string, string> = { PLANNED: 'Заплановано', READY: 'Маршрут готовий', PARTIALLY_RESERVED: 'Частково заброньовано', REPLANNING: 'Потрібне перепланування', ACTIVE: 'У дорозі', COMPLETED: 'Завершено', CANCELLED: 'Скасовано', FAILED: 'Не вдалося побудувати' }; return <article key={journey.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${journey.state === 'READY' ? 'bg-emerald-50 text-emerald-700' : journey.state === 'REPLANNING' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700'}`}>{statusLabel[journey.state] ?? journey.state}</span><span className="text-[10px] text-slate-400">{journey.strategy}</span></div><button onClick={() => setRoutePath(pathForProductionEntity('journey', journey.id))} className="mt-3 text-left font-extrabold">{journey.origin_name} <span className="text-blue-600">→</span> {journey.destination_name}</button><p className="mt-1 text-xs text-slate-500">{formatDate(journey.requested_departure_at)} · {journey.passenger_count} пасажир(и) · {journey.legs.length} відрізок</p><p className="mt-1 text-xs font-bold text-blue-700">{journey.confirmed_price_minor !== null ? `Підтверджено ${formatMoney(journey.confirmed_price_minor, 'UAH')}` : journey.total_price_minor !== null ? `Оцінка ${formatMoney(journey.total_price_minor, 'UAH')}` : 'Ціна оновиться після перепланування'}</p>{journey.legs.map(leg => <p key={leg.id} className="mt-1 text-[10px] text-slate-500">{leg.mode === 'COMMUNITY' ? 'Попутка MARSHGO Community' : leg.mode} · {leg.state === 'CONFIRMED' ? 'бронювання підтверджене' : leg.state === 'CANCELLED' ? 'скасовано' : leg.state === 'REPLACED' ? 'замінено через Rescue' : 'пропозиція збережена'}</p>)}</article>; })}</div></section>}
     {user.roles.includes('driver')&&<section className="mb-5"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Мої оголошення</h2><button onClick={()=>void refreshMyOffers().catch(error=>setStatusMessage(error instanceof Error?error.message:'Оголошення недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div>{myOffers.length?<div className="space-y-2">{myOffers.map((offer)=><article key={offer.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><b>{offer.origin_name} → {offer.destination_name}</b><span className="text-[10px] text-slate-500">{offer.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(offer.departure_at)} · {offer.available_seats}/{offer.total_seats} місць</p><p className="mt-1 text-xs font-bold text-blue-700">{formatMoney(offer.price_per_seat_minor,offer.currency)} за місце{offer.duration_s?` · ${Math.floor(offer.duration_s/3600)} год ${Math.round(offer.duration_s%3600/60)} хв`:''}</p></article>)}</div>:<p className="rounded-2xl bg-white p-4 text-sm text-slate-500">Опублікованих поїздок ще немає.</p>}</section>}
     {visibleBookings.length ? <div className="space-y-3">{visibleBookings.map((booking)=>{
       const statusLabel: Record<string, string> = { confirmed: 'Підтверджено', boarding: 'Посадка', in_progress: 'У дорозі', completed: 'Завершено', cancelled: 'Скасовано' };
@@ -1141,15 +1320,17 @@ export function ProductionMarketplace() {
         {booking.status==='confirmed'&&booking.current_user_is_driver&&<div className="mt-3 rounded-xl bg-slate-50 p-3"><label className="block text-[10px] font-bold text-slate-600">Токен квитка пасажира<textarea value={boardingTicketInput[booking.id]??''} onChange={(event)=>setBoardingTicketInput((current)=>({...current,[booking.id]:event.target.value}))} className="mt-1.5 min-h-16 w-full rounded-lg border border-slate-200 bg-white p-2 text-[10px] font-normal" placeholder="Вставте підписаний токен квитка" /></label><button disabled={busy||!boardingTicketInput[booking.id]?.trim()} onClick={()=>void confirmBoarding(booking)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити посадку</button></div>}
         {booking.status==='boarding'&&booking.current_user_is_driver&&<button disabled={busy} onClick={()=>void startTrip(booking)} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-50">Почати поїздку</button>}
         {booking.status==='in_progress'&&<div className="mt-3 rounded-xl bg-emerald-50 p-3"><p className="text-xs font-semibold text-emerald-800">Завершення: {booking.completion_confirmation_count}/2 учасники</p>{!booking.current_user_confirmed_completion&&<button disabled={busy} onClick={()=>void confirmTripCompletion(booking)} className="mt-2 w-full rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити завершення</button>}{booking.current_user_confirmed_completion&&<p className="mt-1 text-[10px] text-emerald-700">Ваше підтвердження збережено на сервері.</p>}</div>}
-        {booking.status==='cancelled'&&!booking.current_user_is_driver&&<section className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><b className="text-xs text-slate-800">Інші поїздки MARSHGO поруч</b>{bookingRescues[booking.id]?.result&&<small className="text-[9px] text-slate-500">Перевірено {formatDate(bookingRescues[booking.id].result!.checked_at,{hour:'2-digit',minute:'2-digit'})}</small>}</div>{bookingRescues[booking.id]?.loading?<p className="mt-2 text-xs text-slate-500">Шукаємо опубліковані поїздки з вільними місцями…</p>:bookingRescues[booking.id]?.failed?<p className="mt-2 text-xs text-amber-800">Не вдалося перевірити актуальні поїздки. Спробуйте оновити список пізніше.</p>:bookingRescues[booking.id]?.result?.alternatives.length?<div className="mt-2 space-y-2">{bookingRescues[booking.id].result!.alternatives.map(alternative=><button key={alternative.id} data-testid="rescue-alternative" data-offer-id={alternative.id} onClick={()=>{setSeats(booking.seat_count);setSelectedOffer(alternative);}} className="w-full rounded-xl bg-white p-3 text-left shadow-sm"><span className="flex items-center justify-between gap-2"><b className="text-xs">{alternative.origin_name} → {alternative.destination_name}</b><b className="shrink-0 text-sm text-blue-700">{formatMoney(alternative.price_per_seat_minor*booking.seat_count,alternative.currency)}</b></span><span className="mt-1 flex justify-between text-[10px] text-slate-500"><span>{formatDate(alternative.departure_at,{hour:'2-digit',minute:'2-digit'})} · {alternative.available_seats} вільних</span><span>{(alternative.origin_distance_m/1000).toFixed(1)} км від посадки</span></span><span className="mt-1 block text-[9px] text-slate-400">{alternative.source} · наявність перевірена зараз</span></button>)}</div>:bookingRescues[booking.id]?.result?<p className="mt-2 text-xs text-slate-500">На цей час не знайдено опублікованих поїздок із потрібною кількістю місць у межах 20 км від точок маршруту.</p>:null}</section>}
-        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><span className="text-xs text-slate-500">{booking.current_user_is_driver ? `Пасажир · ${booking.passenger_name}` : `Водій · ${booking.driver_name}`}</span><div className="flex items-center gap-2">{booking.status==='confirmed'&&<button disabled={busy} onClick={()=>void cancelTrip(booking)} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50">Скасувати</button>}<button onClick={()=>void openChat(booking)} className="flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"><MessageCircle size={14}/>Написати</button></div></div>
+        {booking.status==='completed'&&(booking.current_user_has_review?<p className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800" role="status">Дякуємо! Ваш відгук збережено.</p>:reviewBookingId===booking.id?<form data-testid="booking-review-form" onSubmit={(event)=>{event.preventDefault();void submitBookingReview(booking);}} className="mt-3 rounded-xl border border-amber-100 bg-amber-50/70 p-3"><label className="block text-xs font-bold text-slate-700">Оцініть {booking.current_user_is_driver?booking.passenger_name:booking.driver_name}</label><div className="mt-2 flex gap-1" aria-label="Оцінка поїздки">{[1,2,3,4,5].map(value=><button key={value} type="button" aria-pressed={reviewRating===value} aria-label={`${value} з 5`} onClick={()=>setReviewRating(value)} className={`grid h-10 w-10 place-items-center rounded-lg text-xl ${reviewRating>=value?'text-amber-500':'text-slate-300'}`}>★</button>)}</div><label className="mt-2 block text-[10px] font-semibold text-slate-600">Коментар (необов’язково)<textarea value={reviewComment} onChange={(event)=>setReviewComment(event.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 text-xs font-normal" placeholder="Поділіться враженням про поїздку" /></label><div className="mt-2 flex gap-2"><button type="submit" disabled={reviewSubmitting} className="flex-1 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">{reviewSubmitting?'Зберігаємо…':'Надіслати відгук'}</button><button type="button" disabled={reviewSubmitting} onClick={()=>setReviewBookingId(null)} className="rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-slate-600">Скасувати</button></div></form>:<button data-testid="booking-review-open" onClick={()=>{setReviewRating(5);setReviewComment('');setReviewBookingId(booking.id);}} className="mt-3 w-full rounded-xl bg-amber-50 py-2.5 text-xs font-bold text-amber-800">Оцінити поїздку</button>)}
+        {booking.status==='cancelled'&&!booking.current_user_is_driver&&<section className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><b className="text-xs text-slate-800">Інші поїздки MARSHGO поруч</b>{bookingRescues[booking.id]?.result&&<small className="text-[9px] text-slate-500">Перевірено {formatDate(bookingRescues[booking.id].result!.checked_at,{hour:'2-digit',minute:'2-digit'})}</small>}</div>{bookingRescues[booking.id]?.loading?<p className="mt-2 text-xs text-slate-500">Шукаємо опубліковані поїздки з вільними місцями…</p>:bookingRescues[booking.id]?.failed?<p className="mt-2 text-xs text-amber-800">Не вдалося перевірити актуальні поїздки. Спробуйте оновити список пізніше.</p>:bookingRescues[booking.id]?.result?.alternatives.length?<div className="mt-2 space-y-2">{bookingRescues[booking.id].result!.alternatives.map(alternative=><button key={alternative.id} data-testid="rescue-alternative" data-offer-id={alternative.id} onClick={()=>{const journey=rescueJourneyForBooking(booking);setJourneyBookingLink(journey?{journeyId:journey.id,journeyLegId:journey.legs.find(leg=>leg.bookingId===booking.id&&leg.state==='CANCELLED')!.id}:null);setSeats(booking.seat_count);setSelectedOffer(alternative);}} className="w-full rounded-xl bg-white p-3 text-left shadow-sm"><span className="flex items-center justify-between gap-2"><b className="text-xs">{alternative.origin_name} → {alternative.destination_name}</b><b className="shrink-0 text-sm text-blue-700">{formatMoney(alternative.price_per_seat_minor*booking.seat_count,alternative.currency)}</b></span><span className="mt-1 flex justify-between text-[10px] text-slate-500"><span>{formatDate(alternative.departure_at,{hour:'2-digit',minute:'2-digit'})} · {alternative.available_seats} вільних</span><span>{alternative.rescue_match==='ALONG_CANCELLED_ROUTE'?`${((alternative.route_origin_distance_m??0)/1000).toFixed(1)} км від маршруту`:`${(alternative.origin_distance_m/1000).toFixed(1)} км від посадки`}</span></span><span className="mt-1 block text-[9px] text-slate-500">{alternative.rescue_match==='ALONG_CANCELLED_ROUTE'?'Початок уздовж вашого маршруту':'Поруч із початковою точкою'}</span><span className="mt-1 block text-[9px] text-slate-400">{alternative.source} · наявність перевірена зараз</span></button>)}</div>:bookingRescues[booking.id]?.result?<p className="mt-2 text-xs text-slate-500">На цей час не знайдено опублікованих поїздок із потрібною кількістю місць у межах 20 км від точок маршруту.</p>:null}</section>}
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><span className="text-xs text-slate-500">{booking.current_user_is_driver ? `Пасажир · ${booking.passenger_name}` : `Водій · ${booking.driver_name}`}</span><div className="flex items-center gap-2">{booking.status==='confirmed'&&<button disabled={busy} onClick={()=>void cancelTrip(booking)} className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50">Скасувати</button>}{(()=>{const unreadCount=unreadConversations[booking.id]??0;return <button aria-label={unreadCount>0?`Написати · ${unreadCount} непрочитаних`:'Написати'} onClick={()=>void openChat(booking)} className="relative flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700"><MessageCircle size={14}/>Написати{unreadCount>0&&<span aria-hidden="true" className="grid h-4 min-w-4 place-items-center rounded-full bg-blue-600 px-1 text-[9px] text-white">{unreadCount}</span>}</button>;})()}</div></div>
       </article>;
     })}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Ticket className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Поки немає поїздок</p><p className="mt-1 text-sm text-slate-500">Знайдіть маршрут і забронюйте місце.</p><button onClick={()=>setTab('home')} className="mt-4 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">Знайти поїздку</button></div>}
   </div>;
 
-  const chatScreen = <div className="mx-auto flex min-h-[65svh] w-full max-w-xl flex-col px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>{setSelectedBooking(null);setTab('trips');}} className="grid h-10 w-10 place-items-center rounded-full bg-white"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="truncate font-extrabold">{selectedBooking ? (selectedBooking.current_user_is_driver ? selectedBooking.passenger_name : selectedBooking.driver_name) : 'Чати'}</h1><p className="truncate text-xs text-slate-500">{selectedBooking ? `${selectedBooking.origin_name} → ${selectedBooking.destination_name}` : 'Повідомлення за бронюваннями'}</p></div>{selectedBooking&&<><button disabled={busy} onClick={()=>{setReportCategory('safety');setReportDetails('');setShowReportForm(true);}} aria-label="Поскаржитися на співрозмовника" title="Поскаржитися" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-50 text-amber-700 disabled:opacity-50"><Flag size={18}/></button><button disabled={busy} onClick={()=>void blockBookingContact()} aria-label="Заблокувати співрозмовника" title="Заблокувати співрозмовника" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rose-50 text-rose-600 disabled:opacity-50"><Ban size={18}/></button></>}</div>
-    {!selectedBooking ? <div className="space-y-3">{bookings.length ? bookings.map(booking=><button key={booking.id} onClick={()=>void openChat(booking)} className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-600"><MessageCircle size={18}/></span><span className="min-w-0 flex-1"><b className="block text-sm">{booking.origin_name} → {booking.destination_name}</b><small className="text-slate-500">{booking.driver_name} · {formatDate(booking.departure_at,{day:'numeric',month:'short'})}</small></span><ChevronRight size={17} className="text-slate-400"/></button>) : <p className="rounded-2xl bg-white p-5 text-sm text-slate-500">Чат з’явиться після підтвердження бронювання.</p>}</div> : <>
+  const chatScreen = <div className="mx-auto flex min-h-[65svh] w-full max-w-xl flex-col px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>{setSelectedBooking(null);setTab('trips');}} aria-label="Повернутися до поїздок" className="grid h-10 w-10 place-items-center rounded-full bg-white"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="truncate font-extrabold">{selectedBooking ? (selectedBooking.current_user_is_driver ? selectedBooking.passenger_name : selectedBooking.driver_name) : 'Чати'}</h1><p className="truncate text-xs text-slate-500">{selectedBooking ? `${selectedBooking.origin_name} → ${selectedBooking.destination_name}` : 'Повідомлення за бронюваннями'}</p></div>{selectedBooking&&<><button disabled={busy} onClick={()=>{setReportCategory('safety');setReportDetails('');setShowReportForm(true);}} aria-label="Поскаржитися на співрозмовника" title="Поскаржитися" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-50 text-amber-700 disabled:opacity-50"><Flag size={18}/></button><button disabled={busy} onClick={()=>void blockBookingContact()} aria-label="Заблокувати співрозмовника" title="Заблокувати співрозмовника" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rose-50 text-rose-600 disabled:opacity-50"><Ban size={18}/></button></>}</div>
+    {!selectedBooking ? <div className="space-y-3">{bookings.length ? bookings.map(booking=><button key={booking.id} onClick={()=>void openChat(booking)} className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-600"><MessageCircle size={18}/></span><span className="min-w-0 flex-1"><b className="block text-sm">{booking.origin_name} → {booking.destination_name}</b><small className="text-slate-500">{booking.driver_name} · {formatDate(booking.departure_at,{day:'numeric',month:'short'})}</small></span>{(unreadConversations[booking.id]??0)>0&&<span aria-label={`${unreadConversations[booking.id]} непрочитаних повідомлень`} className="grid h-6 min-w-6 place-items-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white">{unreadConversations[booking.id]}</span>}<ChevronRight size={17} className="text-slate-400"/></button>) : <p className="rounded-2xl bg-white p-5 text-sm text-slate-500">Чат з’явиться після підтвердження бронювання.</p>}</div> : <>
       <div className="mb-3 rounded-xl bg-white px-3 py-2 text-center text-[11px] text-slate-500">Бронювання · {selectedBooking.origin_name} → {selectedBooking.destination_name}<span className={`ml-2 font-semibold ${realtimeConnected?'text-emerald-600':'text-slate-400'}`}>{realtimeConnected?'· онлайн':'· офлайн, історія збережена'}</span></div>
+      {olderMessagesAvailable&&<button type="button" onClick={()=>void loadOlderMessages()} disabled={loadingOlderMessages} className="mb-2 self-center rounded-full bg-white px-4 py-2 text-xs font-semibold text-blue-700 shadow-sm disabled:opacity-50">{loadingOlderMessages?'Завантажуємо…':'Завантажити попередні повідомлення'}</button>}
       <div className="flex-1 space-y-3 overflow-y-auto rounded-2xl bg-white/60 p-3">{messages.length ? messages.map((item)=><div key={item.id} className={`max-w-[84%] rounded-2xl px-3 py-2.5 text-sm ${item.sender_id===user.id?'ml-auto rounded-br-md bg-blue-600 text-white':'rounded-bl-md bg-white shadow-sm'}`}><p>{item.body}</p><small className={`mt-1 block text-[10px] ${item.sender_id===user.id?'text-blue-100':'text-slate-400'}`}>{formatDate(item.created_at,{hour:'2-digit',minute:'2-digit'})}</small></div>) : <div className="py-10 text-center text-sm text-slate-500">Почніть розмову з водієм або пасажиром.</div>}</div>
       <form onSubmit={sendMessage} className="mt-3 flex gap-2 rounded-full bg-white p-2 shadow-sm"><input value={messageDraft} onChange={event=>setMessageDraft(event.target.value)} className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none" placeholder="Напишіть повідомлення…" maxLength={4000}/><button disabled={busy||!messageDraft.trim()} className="grid h-10 w-10 place-items-center rounded-full bg-blue-600 text-white disabled:opacity-50"><ArrowRight size={18}/></button></form>
     </>}
@@ -1159,11 +1340,15 @@ export function ProductionMarketplace() {
     const records = verificationRecords.filter((record) => record.vehicle_id === vehicle.id);
     const reviewPending = records.some((record) => record.status === 'pending');
     const reviewRejected = records.some((record) => record.status === 'rejected');
+    const latestRejected = records
+      .filter((record) => record.status === 'rejected')
+      .sort((a, b) => Date.parse(b.reviewed_at ?? b.created_at) - Date.parse(a.reviewed_at ?? a.created_at))[0];
     const photos = vehiclePhotos[vehicle.id] ?? [];
     return <article key={vehicle.id} className="rounded-xl bg-[#f6f8fc] p-3">
       <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-blue-600"><CarFront size={19}/></span><div className="min-w-0 flex-1"><b className="block text-sm">{vehicle.make} {vehicle.model}</b><small className="text-slate-500">{vehicle.model_year} · {vehicle.seat_count} місць · {vehicle.verification_status==='verified'?'Перевірено':vehicle.verification_status==='rejected'?'Відхилено':'Потрібна перевірка'}</small></div>{vehicle.is_active?<span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Активне</span>:<button onClick={async()=>{setBusy(true);try{await productionApi.activateVehicle(vehicle.id);await refreshVehicles();}catch(error){setStatusMessage(error instanceof Error?error.message:'Не вдалося активувати авто.');}finally{setBusy(false);}}} className="text-xs font-bold text-blue-600">Обрати</button>}</div>
       {photos.length>0?<div className="mt-3 grid grid-cols-3 gap-2">{photos.map((photo)=><div key={photo.id} className="relative overflow-hidden rounded-lg bg-white"><img src={photo.url} alt={`${vehicle.make} ${vehicle.model}`} className="aspect-[4/3] w-full object-cover"/><div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-slate-950/60 px-2 py-1 text-[9px] text-white"><button onClick={()=>void setPrimaryVehiclePhoto(vehicle.id,photo.id)} className="font-bold">{photo.is_primary?'Головне':'Зробити головним'}</button><button onClick={()=>void deleteVehiclePhoto(vehicle.id,photo.id)} aria-label="Видалити фото">×</button></div></div>)}</div>:<p className="mt-2 text-[10px] text-slate-500">Фото потрібне для публікації поїздки.</p>}
       {user.roles.includes('driver')&&<label className="mt-2 flex w-full cursor-pointer items-center justify-center rounded-lg bg-white py-2 text-xs font-bold text-blue-700">{busy?'Зачекайте…':'Додати фото авто'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={event=>{const file=event.target.files?.[0];if(file)void uploadVehiclePhoto(vehicle.id,file);event.currentTarget.value='';}} className="sr-only"/></label>}
+      {vehicle.verification_status==='rejected'&&latestRejected&&<p role="status" className="mt-2 rounded-lg border border-rose-100 bg-rose-50 p-2.5 text-xs leading-5 text-rose-800"><b>Потрібно виправити документи.</b> Причина: {latestRejected.review_note||'Модератор попросив подати документи повторно.'} Після виправлення їх можна надіслати ще раз.</p>}
       {vehicle.verification_status!=='verified'&&<button disabled={reviewPending} onClick={()=>{setRegistrationEvidence(null);setDriverLicenseEvidence(null);setVerificationTarget(vehicle);}} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-white py-2 text-xs font-bold text-blue-700 disabled:text-slate-400"><ShieldCheck size={14}/>{reviewPending?'Документи на перевірці':reviewRejected?'Надіслати повторно':'Подати документи'}</button>}
     </article>;
   };
@@ -1178,14 +1363,16 @@ export function ProductionMarketplace() {
     </div>
     <section className="mt-4 rounded-[1.4rem] bg-white p-4 shadow-sm"><div className="mb-3 flex items-center gap-2"><Ban size={17} className="text-rose-600"/><div><h2 className="font-extrabold">Заблоковані користувачі</h2><p className="text-xs text-slate-500">Керуйте приватним списком блокувань</p></div></div>{blockedUsers.length? <div className="space-y-2">{blockedUsers.map((blocked)=><div key={blocked.user_id} className="flex items-center gap-3 rounded-xl bg-[#f6f8fc] p-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-white text-sm font-bold text-slate-600">{blocked.display_name.slice(0,1).toUpperCase()}</span><span className="min-w-0 flex-1"><b className="block truncate text-sm">{blocked.display_name}</b><small className="text-slate-500">Заблоковано {formatDate(blocked.created_at,{day:'numeric',month:'short',year:'numeric'})}</small></span><button disabled={busy} onClick={()=>void unblockContact(blocked)} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-blue-700 disabled:opacity-50">Розблокувати</button></div>)}</div>:<p className="rounded-xl bg-[#f6f8fc] p-3 text-sm text-slate-500">Список порожній. Заблокувати контакт можна з його чату.</p>}</section>
     <div className="mt-4 overflow-hidden rounded-[1.4rem] bg-white shadow-sm">{[['Документи','Статус перевірки доступний у профілі'],['Налаштування','Особисті налаштування'],['Допомога','Центр підтримки']].map(([title,sub])=><button key={title} onClick={()=>setStatusMessage(`${title}: цей розділ ще не реалізовано.`)} className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-4 text-left last:border-0"><span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-50 text-slate-600"><ShieldCheck size={17}/></span><span className="flex-1"><b className="block text-sm">{title}</b><small className="text-slate-400">{sub}</small></span><ChevronRight size={17} className="text-slate-400"/></button>)}</div>
-    {user.roles.some((role)=>role==='admin'||role==='moderator')&&<button onClick={()=>{setTab('admin');void Promise.all([refreshAdminQueue(),refreshModerationCases()]).catch((error:unknown)=>setStatusMessage(error instanceof Error?error.message:'Черга модерації недоступна.'));}} className="mt-3 flex w-full items-center justify-between rounded-xl bg-white p-4 text-left shadow-sm"><span><b className="block text-sm">Модерація та скарги</b><small className="text-slate-500">Захищені черги перевірки документів і безпеки</small></span><ChevronRight size={17} className="text-slate-400"/></button>}
+    {user.roles.some((role)=>role==='admin'||role==='moderator')&&<button onClick={()=>setTab('admin')} className="mt-3 flex w-full items-center justify-between rounded-xl bg-white p-4 text-left shadow-sm"><span><b className="block text-sm">Модерація та скарги</b><small className="text-slate-500">Захищені черги перевірки документів і безпеки</small></span><ChevronRight size={17} className="text-slate-400"/></button>}
     <button onClick={()=>void logout()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-rose-600 shadow-sm"><LogOut size={16}/>Вийти</button>
   </div>;
 
   const adminScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Тільки персонал</p><h1 className="text-2xl font-extrabold">Перевірка документів</h1></div><button onClick={()=>void refreshAdminQueue().catch((error:unknown)=>setStatusMessage(error instanceof Error?error.message:'Черга недоступна.'))} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button></div><p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">Документи містять чутливі дані. Відкриття й рішення журналюються; схвалення одного документа ще не верифікує авто.</p>{adminQueue.length?<div className="space-y-3">{adminQueue.map(record=><article key={record.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-blue-600">{record.verification_type==='vehicle'?'Реєстраційний документ':record.verification_type==='driver_license'?'Посвідчення водія':record.verification_type}</p><h2 className="mt-1 font-extrabold">{record.display_name}</h2><p className="mt-1 text-xs text-slate-500">{record.make&&record.model?`${record.make} ${record.model} · ${record.model_year} · ${record.seat_count} місць`:'Документ профілю'}</p><p className="mt-1 text-[10px] text-slate-400">Подано {formatDate(record.created_at)}</p></div><span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">Очікує</span></div><button disabled={busy} onClick={()=>void openVerificationEvidence(record)} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-50">Відкрити та перевірити документ</button></article>)}</div>:<div className="rounded-2xl bg-white p-6 text-center"><ShieldCheck className="mx-auto text-emerald-600"/><p className="mt-2 font-bold">Черга порожня</p><p className="mt-1 text-xs text-slate-500">Нові подання з’являться після завантаження водієм документів.</p></div>}</div>;
 
   const moderationScreen = <section className="mb-5 rounded-[1.4rem] bg-[#eef4ff] p-4"><div className="mb-3 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-700">Безпека спільноти</p><h2 className="text-lg font-extrabold">Скарги користувачів</h2></div><button onClick={()=>void refreshModerationCases().catch(error=>setStatusMessage(error instanceof Error?error.message:'Черга скарг недоступна.'))} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button></div>{moderationCases.length? <div className="space-y-3">{moderationCases.map(report=><article key={report.id} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-rose-600">{({safety:'Безпека',harassment:'Домагання',fraud:'Шахрайство',service:'Якість сервісу',other:'Інше'} as const)[report.category]}</p><h3 className="mt-1 text-sm font-extrabold">{report.reporter_name} · {report.reported_user_name}</h3><p className="mt-1 text-xs text-slate-500">{report.origin_name&&report.destination_name?`${report.origin_name} → ${report.destination_name}`:'Бронювання недоступне'} · {formatDate(report.created_at)}</p><p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{report.details}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${report.status==='open'?'bg-amber-50 text-amber-700':report.status==='in_review'?'bg-blue-50 text-blue-700':'bg-slate-100 text-slate-600'}`}>{report.status==='open'?'Нова':report.status==='in_review'?'У роботі':report.status==='resolved'?'Вирішена':'Відхилена'}</span></div>{report.status==='open'&&<button disabled={busy} onClick={()=>void reviewModerationCase(report,'in_review')} className="mt-3 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Взяти у роботу</button>}{report.status==='in_review'&&<><label className="mt-3 block text-xs font-semibold text-slate-600">Рішення й коротке обґрунтування<textarea value={moderationNotes[report.id]??''} onChange={event=>setModerationNotes(current=>({...current,[report.id]:event.target.value}))} maxLength={1000} className="mt-1.5 min-h-16 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" placeholder="Опишіть перевірку та вжиті заходи"/></label><div className="mt-2 grid grid-cols-2 gap-2"><button disabled={busy} onClick={()=>void reviewModerationCase(report,'resolved','no_action')} className="rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити, без блокування</button><button disabled={busy} onClick={()=>void reviewModerationCase(report,'dismissed','no_action')} className="rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-700 disabled:opacity-50">Відхилити скаргу</button>{user.roles.includes('admin')&&<button disabled={busy} onClick={()=>void reviewModerationCase(report,'resolved','suspend_account')} className="col-span-2 rounded-xl bg-rose-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Призупинити акаунт і відкликати сесії</button>}</div></>}</article>)}</div>:<div className="rounded-xl bg-white p-4 text-sm text-slate-500">Скарг у черзі немає.</div>}</section>;
-  const adminDashboard = <div className="mx-auto w-full max-w-xl px-5 pb-5">{moderationScreen}{adminScreen}</div>;
+  const adminDashboard = user?.roles.some((role) => role === 'admin' || role === 'moderator')
+    ? <div className="mx-auto w-full max-w-xl px-5 pb-5">{moderationScreen}{adminScreen}</div>
+    : <main className="grid min-h-[70svh] place-items-center px-5 text-center"><div className="max-w-md rounded-3xl bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-amber-700">403</p><h1 className="mt-2 text-2xl font-extrabold">Доступ заборонено</h1><p className="mt-2 text-sm text-slate-500">Цей розділ доступний лише модераторам і адміністраторам.</p><button onClick={goHome} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">На головну</button></div></main>;
 
   const publishableVehicles = vehicles.filter((vehicle) => vehicle.verification_status === 'verified' && (vehiclePhotos[vehicle.id]?.length ?? 0) > 0);
   const offerFormScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5">
@@ -1236,6 +1423,7 @@ export function ProductionMarketplace() {
         <div><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">Для водія</p><h1 className="text-2xl font-extrabold">Заявки пасажирів</h1></div>
         <button onClick={() => { void refreshOpenDemands().catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Заявки недоступні.')); }} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button>
       </div>
+      {statusMessage && <p role="status" className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs leading-5 text-emerald-800">{statusMessage}</p>}
       <p className="mb-3 rounded-xl bg-amber-50 p-3 text-[11px] leading-4 text-amber-800">Список показує відкриті заявки. Автоматичне географічне ранжування за маршрутом ще не підключено.</p>
       {openDemands.length ? <div className="space-y-3">
         {openDemands.map((demand) => <article key={demand.id} data-testid={`open-demand-${demand.id}`} className="rounded-2xl bg-white p-4 shadow-sm">
@@ -1274,7 +1462,7 @@ export function ProductionMarketplace() {
     {header}
     {status}
     <div className="pt-1">{screen}</div>
-    <nav aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto flex max-w-xl items-center justify-around px-1">{tabItems.map((item,index)=>{const Icon=item.icon;const active=tab===item.id;return <span key={item.id} className="contents">{index===2&&<button onClick={()=>setShowCreateMenu(true)} aria-label="Створити поїздку чи запит" className="app-create-button -mt-5 grid h-12 w-12 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30"><Plus size={23}/><span className="desktop-create-label">Створити</span></button>}<button aria-current={active?'page':undefined} onClick={()=>{setTab(item.id);setSelectedOffer(null);setSelectedBooking(null);setJourneyBookingLink(null);}} className={`flex min-w-[56px] flex-col items-center gap-1 px-2 py-1 ${active?'text-blue-600':'text-slate-400'}`}><Icon size={20} strokeWidth={active?2.5:2}/><span className="text-[10px] font-semibold">{item.label}</span></button></span>})}</div></nav>
+    <nav aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto flex max-w-xl items-center justify-around px-1">{tabItems.map((item,index)=>{const Icon=item.icon;const active=tab===item.id;return <span key={item.id} className="contents">{index===2&&<button onClick={()=>setShowCreateMenu(true)} aria-label="Створити поїздку чи запит" className="app-create-button -mt-5 grid h-12 w-12 place-items-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30"><Plus size={23}/><span className="desktop-create-label">Створити</span></button>}<button aria-current={active?'page':undefined} onClick={()=>{setTab(item.id);if(item.id==='home')setShowResults(false);setSelectedOffer(null);setSelectedBooking(null);setJourneyBookingLink(null);}} className={`flex min-w-[56px] flex-col items-center gap-1 px-2 py-1 ${active?'text-blue-600':'text-slate-400'}`}><Icon size={20} strokeWidth={active?2.5:2}/><span className="text-[10px] font-semibold">{item.label}</span></button></span>})}</div></nav>
     {createMenu}
     {showNotifications&&<div className="fixed inset-0 z-[55] flex items-end justify-center bg-slate-950/40 p-3 sm:items-center" onMouseDown={event=>{if(event.target===event.currentTarget)setShowNotifications(false);}}><section aria-labelledby="notification-heading" className="max-h-[78svh] w-full max-w-md overflow-hidden rounded-[1.7rem] bg-white shadow-2xl"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 id="notification-heading" className="font-extrabold">Сповіщення</h2><p className="mt-0.5 text-xs text-slate-500">Збережені оновлення ваших поїздок</p></div><div className="flex items-center gap-3"><button disabled={!notificationPage.unreadCount} onClick={()=>void markAllNotificationsRead()} className="text-[11px] font-bold text-blue-700 disabled:text-slate-300">Прочитати все</button><button onClick={()=>setShowNotifications(false)} aria-label="Закрити сповіщення"><X size={20}/></button></div></div><div className="max-h-[68svh] overflow-y-auto p-3">{notificationsLoading&&notificationPage.items.length===0?<p className="p-6 text-center text-sm text-slate-500">Завантажуємо…</p>:notificationPage.items.length===0?<p className="p-6 text-center text-sm text-slate-500">Поки що сповіщень немає.</p>:<div className="space-y-2">{notificationPage.items.map(notification=><button key={notification.id} onClick={()=>void markNotificationRead(notification)} className={`flex w-full items-start gap-3 rounded-2xl p-3 text-left ${notification.read_at?'bg-slate-50':'bg-blue-50'}`}><span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${notification.read_at?'bg-slate-300':'bg-blue-600'}`}></span><span className="min-w-0 flex-1"><b className="block text-sm">{notification.title}</b><span className="mt-0.5 block text-xs leading-5 text-slate-600">{notification.body}</span><time className="mt-1 block text-[10px] text-slate-400">{formatDate(notification.created_at,{dateStyle:'medium',timeStyle:'short'})}</time></span></button>)}</div>}{notificationPage.nextCursor&&<button disabled={notificationsLoading} onClick={()=>void loadMoreNotifications()} className="mt-3 w-full rounded-xl bg-slate-100 py-3 text-xs font-bold text-slate-600 disabled:opacity-50">{notificationsLoading?'Завантажуємо…':'Завантажити раніші'}</button>}</div></section></div>}
     {proposalTarget&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-3 sm:items-center"><form onSubmit={sendProposal} className="w-full max-w-md rounded-[1.7rem] bg-white p-5 shadow-xl"><div className="mb-3 flex items-center justify-between"><div><p className="text-xs text-slate-500">Ваша ціна для пасажира</p>{proposalNavigationCandidateId&&<p className="mt-1 text-[10px] text-emerald-700">Пропозиція прив’язана до підтвердженого збігу навігації; це ще не бронювання.</p>}<h2 className="font-extrabold">{proposalTarget.origin_name.split(',')[0]} → {proposalTarget.destination_name.split(',')[0]}</h2></div><button type="button" onClick={()=>{setProposalTarget(null);setProposalNavigationCandidateId(null);}} aria-label="Закрити"><X size={20}/></button></div><label className="mb-3 block text-xs font-bold text-slate-600">Перевірене авто<select required value={proposalVehicleId} onChange={event=>setProposalVehicleId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm"><option value="">Оберіть авто</option>{vehicles.filter(v=>v.verification_status==='verified').map(v=><option key={v.id} value={v.id}>{v.make} {v.model} · {v.seat_count} місць</option>)}</select></label>{!vehicles.some(v=>v.verification_status==='verified')&&<p className="mb-3 text-xs leading-5 text-amber-700">Немає перевіреного авто. Спершу потрібно пройти перевірку перевізника.</p>}<div className="grid grid-cols-2 gap-3"><label className="text-xs font-bold text-slate-600">Ціна, грн<input required inputMode="decimal" value={proposalPrice} onChange={event=>setProposalPrice(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" placeholder="Загальна сума"/></label><label className="text-xs font-bold text-slate-600">Час виїзду<input required type="datetime-local" value={proposalDeparture} onChange={event=>setProposalDeparture(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-2 py-3 text-xs"/></label></div><label className="mt-3 block text-xs font-bold text-slate-600">Коментар<input value={proposalComment} onChange={event=>setProposalComment(event.target.value)} maxLength={1000} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm" placeholder="Коротко про поїздку"/></label><button disabled={busy||!vehicles.some(v=>v.verification_status==='verified')} className="mt-4 w-full rounded-xl bg-blue-600 py-3.5 font-bold text-white disabled:opacity-50">Надіслати пропозицію</button></form></div>}
@@ -1283,5 +1471,6 @@ export function ProductionMarketplace() {
     {showReportForm&&selectedBooking&&<div className="fixed inset-0 z-[55] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center"><form onSubmit={submitSafetyReport} className="w-full max-w-md rounded-[1.7rem] bg-white p-5 shadow-2xl"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wide text-amber-700">Безпека спільноти</p><h2 className="text-lg font-extrabold">Поскаржитися</h2></div><button type="button" onClick={()=>setShowReportForm(false)} aria-label="Закрити"><X size={20}/></button></div><p className="mb-3 text-xs text-slate-500">Скарга стосується учасника поїздки {selectedBooking.origin_name} → {selectedBooking.destination_name}. Не додавайте платіжні дані чи сторонні персональні відомості.</p><label className="mb-3 block text-xs font-bold text-slate-600">Категорія<select value={reportCategory} onChange={event=>setReportCategory(event.target.value as ApiModerationCase['category'])} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm"><option value="safety">Питання безпеки</option><option value="harassment">Домагання або образи</option><option value="fraud">Підозра на шахрайство</option><option value="service">Якість поїздки</option><option value="other">Інше</option></select></label><label className="block text-xs font-bold text-slate-600">Опишіть ситуацію<textarea required minLength={10} maxLength={2000} value={reportDetails} onChange={event=>setReportDetails(event.target.value)} className="mt-1.5 min-h-28 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" placeholder="Що сталося? (10–2000 символів)"/></label><div className="mt-3 flex justify-end text-[10px] text-slate-400">{reportDetails.length}/2000</div><button disabled={busy||reportDetails.trim().length<10} className="mt-3 w-full rounded-xl bg-amber-600 py-3.5 font-bold text-white disabled:opacity-50">{busy?'Надсилаємо…':'Надіслати приватну скаргу'}</button></form></div>}
     {verificationTarget&&<div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 p-3 sm:items-center"><form onSubmit={submitVerification} className="w-full max-w-md rounded-[1.7rem] bg-white p-5 shadow-xl"><div className="mb-3 flex items-center justify-between"><div><p className="text-xs text-slate-500">Перевірка автомобіля</p><h2 className="font-extrabold">{verificationTarget.make} {verificationTarget.model}</h2></div><button type="button" onClick={()=>{setVerificationTarget(null);setRegistrationEvidence(null);setDriverLicenseEvidence(null);}} aria-label="Закрити"><X size={20}/></button></div><p className="mb-4 rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-900">Завантажте техпаспорт і посвідчення водія. Маршрути не показують ці документи; рішення ухвалює уповноважений модератор.</p><label className="mb-3 block text-xs font-bold text-slate-600">Свідоцтво про реєстрацію<input required type="file" accept="image/jpeg,image/png,application/pdf" onChange={event=>setRegistrationEvidence(event.target.files?.[0]??null)} className="mt-1.5 block w-full rounded-xl border border-slate-200 p-2 text-xs"/></label><label className="block text-xs font-bold text-slate-600">Посвідчення водія<input required type="file" accept="image/jpeg,image/png,application/pdf" onChange={event=>setDriverLicenseEvidence(event.target.files?.[0]??null)} className="mt-1.5 block w-full rounded-xl border border-slate-200 p-2 text-xs"/></label><p className="mt-2 text-[10px] text-slate-500">JPEG, PNG або PDF · до 8 МБ на файл</p><button disabled={busy} className="mt-4 w-full rounded-xl bg-blue-600 py-3.5 font-bold text-white disabled:opacity-50">{busy?'Завантажуємо…':'Передати на перевірку'}</button></form></div>}
     {reviewingRecord&&<div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center"><section className="w-full max-w-lg rounded-[1.7rem] bg-white p-4 shadow-2xl"><div className="mb-3 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-wide text-blue-600">Перегляд документа</p><h2 className="font-extrabold">{reviewingRecord.display_name} · {reviewingRecord.verification_type==='vehicle'?'Техпаспорт':reviewingRecord.verification_type==='driver_license'?'Посвідчення водія':'Документ'}</h2></div><button onClick={()=>{setReviewingRecord(null);setReviewEvidenceUrl('');}} aria-label="Закрити"><X size={20}/></button></div><iframe title="Документ водія для перевірки" src={reviewEvidenceUrl} className="h-[48svh] w-full rounded-xl border border-slate-200 bg-slate-50"/><label className="mt-3 block text-xs font-bold text-slate-600">Причина відмови — обов’язкова для відхилення<textarea value={reviewNote} onChange={event=>setReviewNote(event.target.value)} maxLength={1000} className="mt-1.5 min-h-16 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" placeholder="Коротко опишіть невідповідність"/></label><div className="mt-3 grid grid-cols-2 gap-2"><button disabled={busy} onClick={()=>void decideVerification('rejected')} className="rounded-xl border border-rose-200 py-3 text-xs font-bold text-rose-700 disabled:opacity-50">Відхилити</button><button disabled={busy} onClick={()=>void decideVerification('approved')} className="rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white disabled:opacity-50">Схвалити документ</button></div></section></div>}
+    {bookingToCancel&&<div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center"><section role="alertdialog" aria-modal="true" aria-labelledby="cancel-booking-title" aria-describedby="cancel-booking-description" className="w-full max-w-md rounded-[1.7rem] bg-white p-5 shadow-2xl"><h2 id="cancel-booking-title" className="text-lg font-extrabold">Скасувати бронювання?</h2><p id="cancel-booking-description" className="mt-2 text-sm leading-6 text-slate-600">Місця буде повернено поїздці. {bookingToCancel.current_user_is_driver?'Пасажира буде сповіщено.':'Після скасування можна буде перевірити інші поїздки за маршрутом.'}</p><div className="mt-5 grid grid-cols-2 gap-2"><button type="button" disabled={busy} autoFocus onClick={()=>setBookingToCancel(null)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 disabled:opacity-50">Залишити бронювання</button><button type="button" disabled={busy} onClick={()=>void confirmCancelTrip(bookingToCancel)} className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{busy?'Скасовуємо…':'Так, скасувати'}</button></div></section></div>}
   </main>;
 }
