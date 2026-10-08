@@ -24,27 +24,20 @@ export function styleUrlForMode(mode: MapMode, configured: string | undefined): 
   return configured?.startsWith(OPENFREEMAP) ? `${OPENFREEMAP}${mapModes[mode].styleName}` : null;
 }
 
-/** Four map layers: schematic map, 3D navigation, satellite hybrid and a rail/tram/metro overlay. */
-export type MapLayer = 'standard' | 'navigation' | 'hybrid' | 'transit';
+/** Exactly three map modes. Transit, bikes, scooters, ... are information layers on top of 2D (see transportLayers.ts), never separate maps. */
+export type MapLayer = 'standard' | 'navigation' | 'hybrid';
 export const mapLayers: Record<MapLayer, { label: string; pitch: number }> = {
-  standard: { label: 'Карта', pitch: 0 },
-  navigation: { label: 'Навігація', pitch: 60 },
+  standard: { label: '2D', pitch: 0 },
+  navigation: { label: '3D', pitch: 60 },
   hybrid: { label: 'Супутник', pitch: 0 },
-  transit: { label: 'Транзит', pitch: 0 },
 };
 export const satelliteTiles = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 export const satelliteAttribution = 'Imagery © Esri, Maxar, Earthstar Geographics';
-/** Rail/tram/metro raster tiles from a source you are licensed to use (self-hosted OpenRailwayMap, a transit provider, ...). Unset = layer unavailable. */
-const viteEnv = (import.meta as { env?: Record<string, string | undefined> }).env ?? {};
-const transitTemplate = viteEnv.VITE_TRANSIT_TILE_URL?.trim();
-export const transitTiles: string[] = transitTemplate ? [transitTemplate] : [];
-export const transitAttribution = viteEnv.VITE_TRANSIT_TILE_ATTRIBUTION?.trim() || 'Transit data © OpenStreetMap contributors';
-export const transitConfigured = transitTiles.length > 0;
 
 const LAYER_KEY = 'mg_map_layer';
 const layerListeners = new Set<(layer: MapLayer) => void>();
 export function getMapLayer(): MapLayer {
-  try { const saved = localStorage.getItem(LAYER_KEY); if (saved === 'standard' || saved === 'navigation' || saved === 'hybrid' || saved === 'transit') return saved; } catch { /* storage unavailable */ }
+  try { const saved = localStorage.getItem(LAYER_KEY); if (saved === 'standard' || saved === 'navigation' || saved === 'hybrid') return saved; } catch { /* storage unavailable */ }
   return 'standard';
 }
 export function setMapLayer(layer: MapLayer) {

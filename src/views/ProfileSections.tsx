@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, CheckCircle2, ChevronDown, Clock3, XCircle } from 'lucide-react';
 import { MapLayerSwitch } from '../components/MapLayerSwitch';
-import { MapModeSwitch } from '../components/MapModeSwitch';
 import { ThemeToggle } from '../components/ThemeToggle';
 import type { ApiVehicle, ApiVerificationRecord } from '../services/productionApi';
 
@@ -52,7 +51,7 @@ export function ProfileSections({ section, onBack, vehicles, records, onLogoutAl
 
     {section === 'settings' && <div className="space-y-3">
       <div className="rounded-2xl bg-white p-4 shadow-sm"><b className="text-sm text-[#0E1F35]">Тема оформлення</b><p className="mb-3 mt-0.5 text-xs text-slate-500">Світла, темна або як у системі.</p><ThemeToggle variant="segmented" /></div>
-      <div className="rounded-2xl bg-white p-4 shadow-sm"><b className="text-sm text-[#0E1F35]">Режим карти</b><p className="mb-3 mt-0.5 text-xs text-slate-500">Вигляд карти й маршруту: Google — класичний, Apple — 3D-нахил і м’які кольори, Waze — контрастний фіолетовий маршрут.</p><MapModeSwitch /><p className="mb-2 mt-4 text-sm font-bold text-[#0E1F35]">Шар карти</p><MapLayerSwitch /><p className="mt-2 text-[11px] text-slate-400">Супутник — знімки Esri. Транзит показує лінії, лише коли підключено джерело даних громадського транспорту.</p></div>
+      <div className="rounded-2xl bg-white p-4 shadow-sm"><b className="text-sm text-[#0E1F35]">Режим карти</b><p className="mb-3 mt-0.5 text-xs text-slate-500">2D — планування й шари транспорту, 3D — чиста навігація, Супутник — знімки Esri. Під час навігації автоматично вмикається 3D.</p><MapLayerSwitch /></div>
       <div className="rounded-2xl bg-white p-4 shadow-sm"><b className="text-sm text-[#0E1F35]">Безпека входу</b><p className="mb-3 mt-0.5 text-xs text-slate-500">Завершити сесії на всіх пристроях, зокрема на цьому. Знадобиться новий вхід за номером.</p>
         <button disabled={busy} onClick={async () => { setBusy(true); setNote(''); try { await onLogoutAll(); } catch { setNote('Не вдалося завершити сесії. Спробуйте ще раз.'); setBusy(false); } }} className="w-full rounded-xl border border-rose-200 py-3 text-sm font-bold text-rose-700 disabled:opacity-50">{busy ? 'Завершуємо…' : 'Вийти на всіх пристроях'}</button>
         {note && <p role="status" className="mt-2 text-xs text-rose-700">{note}</p>}</div>

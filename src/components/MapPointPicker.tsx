@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, LocateFixed, X } from 'lucide-react';
+import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { resolveMapAssets } from '../map/mapConfig';
 import { productionApi, type ApiPlace } from '../services/productionApi';
 
@@ -42,6 +43,7 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
     void Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl.css'), resolveMapAssets('MARSHGO_NAVIGATION_LIGHT')]).then(([maplibre, , assets]) => {
       if (cancelled || !container.current) return;
       const center: [number, number] = initial ? [initial.longitude, initial.latitude] : UKRAINE_CENTER;
+      maplibre.setWorkerUrl(mapLibreWorkerUrl);
       map = new maplibre.Map({ container: container.current, style: assets.style, center, zoom: initial ? 14 : 5.5, attributionControl: { compact: true } });
       mapRef.current = map;
       map.addControl(new maplibre.NavigationControl({ showCompass: false }), 'bottom-right');

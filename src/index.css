@@ -226,7 +226,8 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
     min-height: calc(100vh - 40px);
     margin: 20px auto;
     padding: 0 32px 32px;
-    background: rgba(255, 255, 255, 0.4);
+    /* A light, nearly opaque shell over the dark backdrop keeps text contrast high (the old 40% glass turned content mid-blue). */
+    background: linear-gradient(180deg, rgba(246,249,254,.97), rgba(236,243,252,.96));
     -webkit-backdrop-filter: blur(40px) saturate(150%);
     backdrop-filter: blur(40px) saturate(150%);
     border: 1px solid rgba(255, 255, 255, 0.4);
@@ -365,9 +366,9 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   .home-screen > .home-intro {
     grid-column: 1 / -1;
     grid-row: 1;
-    min-height: 700px;
+    min-height: 330px;
     margin: 0;
-    padding: 44px 44px 0;
+    padding: 40px 44px 150px;
     border: 0;
     border-radius: 28px;
     color: white;
@@ -383,40 +384,22 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   }
   .home-screen > .home-intro::after { display: none; }
   .home-screen .home-greeting { color: #d9ecff !important; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
-  .home-screen .home-title { position: relative; max-width: 650px; margin-top: 10px; color: white !important; font-size: clamp(34px,3.7vw,56px); line-height: 1.04; }
+  .home-screen .home-title { position: relative; max-width: 650px; margin-top: 10px; color: white !important; font-size: clamp(34px,3.4vw,52px); line-height: 1.04; }
   .home-screen .home-description { max-width: 540px; margin-top: 14px; color: #e2efff !important; font-size: 16px; line-height: 1.6; }
-  .home-screen > .home-search-panel {
-    z-index: 1;
-    grid-column: 1 / 9;
-    grid-row: 1;
-    align-self: end;
-    margin: 0 0 26px 26px;
-  }
+  /* The search card overlaps the photo so it is visible without scrolling; transport choices follow below on a light surface. */
+  .home-screen > .home-search-panel { z-index: 1; grid-column: 1 / -1; grid-row: 2; margin: -128px 28px 0; }
   .journey-search-card {
     border-radius: 28px !important;
     padding: 24px !important;
-    background: rgba(255,255,255,0.85) !important;
+    background: rgba(255,255,255,0.94) !important;
     -webkit-backdrop-filter: blur(20px) !important;
     backdrop-filter: blur(20px) !important;
-    box-shadow: 0 16px 40px rgba(0,0,0,0.06) !important;
+    box-shadow: 0 20px 48px rgba(9,35,69,0.14) !important;
     border: 1px solid rgba(255,255,255,1) !important;
   }
-  .home-screen > .home-transport-panel {
-    z-index: 1;
-    grid-column: 9 / -1;
-    grid-row: 1;
-    align-self: end;
-    margin: 0 24px 26px 0;
-    padding: 14px;
-    border: 1px solid rgba(255,255,255,.42);
-    border-radius: 20px;
-    background: rgba(7,27,53,.76);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-  }
-  .home-screen .transport-mode-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .home-screen .transport-mode-grid button { min-height: 84px; border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.09); color: white; }
-  .home-screen .transport-mode-grid button span:last-child { color: #d6e6fa; }
+  .home-screen > .home-map-cta { grid-column: 1 / -1; grid-row: 3; width: auto; margin: 0 28px; }
+  .home-screen > .home-transport-panel { grid-column: 1 / -1; grid-row: 4; margin: 0 28px; padding: 20px; border-radius: 24px; background: white; box-shadow: 0 10px 30px rgba(9,35,69,.06); }
+  .home-screen .transport-mode-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
   .home-screen > .home-demand-cta { grid-column: 1 / -1; grid-row: 2; margin: 0; min-height: 54px; }
   .home-screen > .home-offer-heading { grid-column: 1 / -1; grid-row: 3; margin-top: 4px; }
   .home-screen > .home-offer-list,
@@ -456,7 +439,7 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
 }
 @media (min-width: 1024px) and (max-height: 760px) {
   .production-app > .app-tabbar { height: calc(100vh - 94px); overflow-y: auto; }
-  .home-screen > .home-intro { min-height: 370px; padding-bottom: 200px; }
+  .home-screen > .home-intro { min-height: 300px; padding-bottom: 140px; }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
   .production-app > .pt-1 > .home-screen,
@@ -679,3 +662,26 @@ html.dark .home-screen .home-intro::after { background: rgba(23,137,244,.18) !im
 html.dark .home-screen .home-title { color: #eaf2fd !important; }
 html.dark .home-screen .home-greeting { color: #6db4ff !important; }
 html.dark [data-marshgo-map-layer="hybrid"] .maplibregl-canvas { filter: none; }
+
+/* ---- Home screen never scrolls: HomeHero measures the free height on the device; the illustration flexes into it. ---- */
+.home-hero--compact .home-hero-title { font-size: 1.4rem; }
+.home-hero--compact .home-hero-sub { margin-top: .35rem; font-size: 13px; line-height: 1.3rem; }
+.home-hero--compact > button { margin-top: .45rem !important; padding-top: .78rem; padding-bottom: .78rem; }
+/* Desktop: the home hero becomes one calm card — copy and actions on the left, illustration on the right. */
+@media (min-width: 1024px) {
+  .production-app > .pt-1 > .home-hero { width: 100%; max-width: 1120px; padding-inline: 48px; }
+  .home-hero { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 56px; align-items: center; align-content: center;
+    margin-top: 28px; padding: 52px 56px !important; border-radius: 32px; background: rgba(255,255,255,.97); box-shadow: 0 24px 60px rgba(9,35,69,.16); }
+  .home-hero > section { grid-column: 1; text-align: left; }
+  .home-hero-title { font-size: clamp(2.2rem, 3vw, 3rem) !important; }
+  .home-hero-sub { margin-left: 0 !important; font-size: 17px !important; line-height: 1.7 !important; }
+  .home-hero-art { grid-column: 2; grid-row: 1 / span 4; height: 340px !important; }
+  .home-hero > button { grid-column: 1; max-width: 440px; margin-top: 14px !important; }
+}
+
+/* Driver puck on the navigation map (Apple-Maps-like arrow with a soft accuracy halo). */
+.marshgo-puck { position: relative; width: 40px; height: 40px; }
+.marshgo-puck__arrow { position: relative; width: 40px; height: 40px; filter: drop-shadow(0 3px 6px rgba(9, 35, 69, .35)); }
+.marshgo-puck__halo { position: absolute; inset: -14px; border-radius: 9999px; background: rgba(23, 137, 244, .18); animation: marshgo-puck-pulse 2.4s ease-out infinite; }
+@keyframes marshgo-puck-pulse { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.25); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .marshgo-puck__halo { animation: none; } }
