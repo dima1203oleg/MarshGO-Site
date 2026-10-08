@@ -139,6 +139,11 @@ export type ApiMobilityAvailability = { modes: ApiRentalAvailability[]; transit:
 export type ApiRentalAvailability = { mode: 'bike' | 'scooter' | 'moped' | 'carsharing'; available: boolean; cities: string[] };
 export type ApiProvider = { id: string; name: string; available: boolean; cities: string[]; sources: string[]; services: string[] };
 export type ApiTransportProviders = { transportType: string; providers: ApiProvider[] };
+export type ApiTransportCity = {
+  id: string; name: string; timezone: string; bbox: [number, number, number, number] | null; modes: string[];
+  routeCount: number; stopCount: number; realtimeAvailable: boolean; sourceUrl: string | null; licenses: string[];
+  providers: Array<{ name: string; sourceType: string; license: string | null; sourceRef: string | null }>;
+};
 export type ApiNearbyAsset = { id: string; type: string; location: [number, number]; distanceM: number; providerName: string; batteryPercent?: number; rangeMeters?: number };
 export type ApiNearbyStation = { id: string; name: string; location: [number, number]; distanceM: number; providerName: string; availableAssets?: number; capacity?: number; returnAllowed?: boolean };
 export type ApiNearby = { mode: string; radiusM: number; providers: number; failedProviders: number; assets: ApiNearbyAsset[]; stations: ApiNearbyStation[]; totalAssets: number };
@@ -378,6 +383,7 @@ export const productionApi = {
   pauseNavigation(id: string) { return request<{ id: string; state: 'paused'; opt_in: boolean }>(`/navigation/sessions/${id}/pause`, { method: 'POST' }); },
   resumeNavigation(id: string) { return request<{ id: string; state: 'active'; opt_in: boolean }>(`/navigation/sessions/${id}/resume`, { method: 'POST' }); },
   transportLayerAvailability() { return request<Array<{ id: string; available: boolean }>>('/transport/layers'); },
+  transportCities(signal?: AbortSignal) { return request<ApiTransportCity[]>('/transport/cities', { signal }); },
   transportRoutes(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/routes?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
   transportStops(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/stops?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
   transportVehicles(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/vehicles?bbox=${bbox}&types=${types.join(',')}`, { signal }); },

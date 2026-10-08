@@ -96,6 +96,8 @@ export class TransportLayerController {
 
   private teardown() {
     this.map.off('moveend', this.onMove);
+    this.map.off('click', 'mg-t-routes', this.onRouteClick);
+    for (const layer of ['mg-t-vehicles', 'mg-t-stops', 'mg-t-micro-points']) this.map.off('click', layer, this.onClick);
     document.removeEventListener('visibilitychange', this.onVisibility);
     if (this.moveTimer) clearTimeout(this.moveTimer);
     if (this.pollTimer) clearInterval(this.pollTimer);
@@ -128,6 +130,7 @@ export class TransportLayerController {
     if (glyphs && !map.getLayer('mg-t-micro-count')) map.addLayer({ id: 'mg-t-micro-count', type: 'symbol', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#fff' } });
     if (!map.getLayer('mg-t-micro-points')) map.addLayer({ id: 'mg-t-micro-points', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': 6, 'circle-color': ['match', ['get', 'kind'], 'scooter', '#F59E0B', 'station', '#1789F4', '#16A34A'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
     for (const layer of ['mg-t-vehicles', 'mg-t-stops', 'mg-t-micro-points']) { map.off('click', layer, this.onClick); map.on('click', layer, this.onClick); }
+    map.off('click', 'mg-t-routes', this.onRouteClick); map.on('click', 'mg-t-routes', this.onRouteClick);
   }
 
   private readonly onClick = (event: MapMouseEvent & { features?: Array<{ properties: Record<string, unknown>; geometry: { type: string; coordinates?: unknown } }> }) => {
@@ -136,13 +139,36 @@ export class TransportLayerController {
     const title = document.createElement('div');
     const detail = document.createElement('div'); detail.style.cssText = 'font-weight:500;color:#64748B;margin-top:2px';
     const names: Record<string, string> = { bus: 'Автобус', marshrutka: 'Маршрутка', trolleybus: 'Тролейбус', tram: 'Трамвай', metro: 'Метро', scooter: 'Електросамокат', bike: 'Велосипед', station: 'Пункт прокату' };
-    if (properties.route !== undefined) { title.textContent = `${names[String(properties.transport)] ?? 'Транспорт'}${properties.route ? ` №${properties.route}` : ''}`; detail.textContent = 'Позиція оновлюється в реальному часі'; }
+    if (properties.route !== undefined) {
+      title.textContent = `${names[String(properties.transport)] ?? 'Транспорт'}${properties.route ? ` №${properties.route}` : ''}`;
+      const timestamp = typeof properties.updatedAt === 'string' ? Date.parse(properties.updatedAt) : NaN;
+      const age = Number.isFinite(timestamp) ? Math.max(0, Math.round((Date.now() - timestamp) / 1000)) : null;
+      const speed = typeof properties.speed === 'number' ? `${Math.round(properties.speed * 3.6)} км/год` : '';
+      detail.textContent = [age === null ? '' : `оновлено ${age} с тому`, speed].filter(Boolean).join(' · ');
+    }
     else if (properties.kind) { title.textContent = String(properties.name ?? names[String(properties.kind)] ?? 'Мікромобільність'); detail.textContent = [properties.provider, properties.available !== null && properties.available !== undefined ? `доступно: ${properties.available}` : ''].filter(Boolean).join(' · '); }
-    else { title.textContent = String(properties.name ?? 'Зупинка'); detail.textContent = String(properties.transports ?? '').split(',').map((type) => names[type] ?? type).join(', '); }
+    else {
+      title.textContent = String(properties.name ?? 'Зупинка');
+      const routes = properties.routes ? `Маршрути: ${String(properties.routes)}` : '';
+      const types = String(properties.transports ?? '').split(',').map((type) => names[type] ?? type).join(', ');
+      detail.textContent = [routes, types].filter(Boolean).join(' · ');
+    }
     node.append(title, detail);
     this.popup?.remove();
     const coordinates = feature.geometry.coordinates as [number, number];
     this.popup = new maplibregl.Popup({ closeButton: true, offset: 12 }).setLngLat(coordinates).setDOMContent(node).addTo(this.map);
+  };
+
+  private readonly onRouteClick = (event: MapMouseEvent & { features?: Array<{ properties: Record<string, unknown> }> }) => {
+    const properties = event.features?.[0]?.properties;
+    if (!properties) return;
+    const node = document.createElement('div'); node.style.cssText = 'font:600 12px system-ui;color:#0E1F35;max-width:240px';
+    const title = document.createElement('div'); title.textContent = `Маршрут ${String(properties.name ?? '')}`;
+    const detail = document.createElement('div'); detail.style.cssText = 'font-weight:500;color:#64748B;margin-top:3px';
+    detail.textContent = [properties.direction, properties.provider, properties.stopCount ? `${properties.stopCount} зупинок` : ''].filter(Boolean).join(' · ');
+    node.append(title, detail);
+    this.popup?.remove();
+    this.popup = new maplibregl.Popup({ closeButton: true, offset: 12 }).setLngLat(event.lngLat).setDOMContent(node).addTo(this.map);
   };
 
   private bounds() { const b = this.map.getBounds(); return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }; }
