@@ -2,7 +2,7 @@ import type { ApiTransportProviders } from '../services/productionApi';
 import { transportModes, type TransportGroup } from './transportCatalog';
 
 /** The 19 transport tiles of "Види транспорту". All stay visible; selection (blue) is independent of provider availability. */
-export type TransportTypeId = 'carpool' | 'taxi' | 'carsharing' | 'car_rental' | 'transfer' | 'bus' | 'marshrutka' | 'trolleybus' | 'tram' | 'metro'
+export type TransportTypeId = 'carpool' | 'taxi' | 'carsharing' | 'car_rental' | 'transfer' | 'bus' | 'marshrutka' | 'trolleybus' | 'tram' | 'metro' | 'city_train' | 'funicular'
   | 'train' | 'suburban_train' | 'intercity_bus' | 'bike' | 'scooter' | 'moped' | 'plane' | 'ferry' | 'walk';
 export interface TransportTypeInfo { id: TransportTypeId; label: string; group: TransportGroup }
 export const transportTypes: TransportTypeInfo[] = transportModes.map((mode) => ({ id: mode.id as TransportTypeId, label: mode.label, group: mode.group }));
@@ -64,9 +64,9 @@ export function effectiveProviders(selection: TransportSelection, type: Transpor
 export function toJourneyPreferences(selection: TransportSelection, groups: ApiTransportProviders[] | null): Record<string, boolean | string[]> {
   const active = activeTypesForSearch(selection);
   const has = (...types: TransportTypeId[]) => types.some((type) => active.includes(type) && (type === 'carpool' || effectiveProviders(selection, type, groups).length > 0));
-  const publicTransport = has('bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'train', 'suburban_train', 'intercity_bus', 'ferry');
+  const publicTransport = has('bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'city_train', 'funicular', 'train', 'suburban_train', 'intercity_bus', 'ferry');
   const allowedTransportTypes = active.filter((type) => type === 'carpool' || effectiveProviders(selection, type, groups).length > 0);
-  const transitTypes: TransportTypeId[] = ['bus','marshrutka','trolleybus','tram','metro','train','suburban_train','intercity_bus','ferry'];
+  const transitTypes: TransportTypeId[] = ['bus','marshrutka','trolleybus','tram','metro','city_train','funicular','train','suburban_train','intercity_bus','ferry'];
   const allowedTransitProviders = [...new Set(active.filter((type) => transitTypes.includes(type))
     .flatMap((type) => effectiveProviders(selection, type, groups).map((id) => id.split(':').slice(1).join(':'))))];
   return {

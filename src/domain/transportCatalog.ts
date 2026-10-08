@@ -13,6 +13,8 @@ export const transportModes: TransportMode[] = [
   { id: 'trolleybus', label: 'Тролейбус', group: 'Міський транспорт' },
   { id: 'tram', label: 'Трамвай', group: 'Міський транспорт' },
   { id: 'metro', label: 'Метро', group: 'Міський транспорт' },
+  { id: 'city_train', label: 'Міська електричка', group: 'Міський транспорт' },
+  { id: 'funicular', label: 'Фунікулер', group: 'Міський транспорт' },
   { id: 'train', label: 'Поїзд', group: 'Міжміський транспорт' },
   { id: 'suburban_train', label: 'Електричка', group: 'Міжміський транспорт' },
   { id: 'intercity_bus', label: 'Міжміський автобус', group: 'Міжміський транспорт' },

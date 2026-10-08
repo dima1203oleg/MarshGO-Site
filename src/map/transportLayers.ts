@@ -6,13 +6,15 @@ import { productionApi, type GeoJsonCollection } from '../services/productionApi
  * 2D information layers. They are MapLibre sources/layers (no DOM markers), loaded per viewport and only for the layers the user switched on.
  * Static geometry is cached on the server for hours; vehicle positions are polled every 15 s only while a line layer is visible.
  */
-export type TransportLayerId = 'PUBLIC_TRANSPORT' | 'METRO' | 'BUS' | 'TRAM' | 'TROLLEYBUS' | 'STOPS' | 'BICYCLE' | 'SCOOTER' | 'RENTAL_POINTS';
+export type TransportLayerId = 'PUBLIC_TRANSPORT' | 'METRO' | 'BUS' | 'TRAM' | 'TROLLEYBUS' | 'CITY_TRAIN' | 'FUNICULAR' | 'STOPS' | 'BICYCLE' | 'SCOOTER' | 'RENTAL_POINTS';
 export const transportLayerList: Array<{ id: TransportLayerId; label: string; group: 'Транспорт' | 'Мікромобільність' }> = [
   { id: 'PUBLIC_TRANSPORT', label: 'Громадський транспорт', group: 'Транспорт' },
   { id: 'METRO', label: 'Метро', group: 'Транспорт' },
   { id: 'TRAM', label: 'Трамваї', group: 'Транспорт' },
   { id: 'TROLLEYBUS', label: 'Тролейбуси', group: 'Транспорт' },
   { id: 'BUS', label: 'Автобуси', group: 'Транспорт' },
+  { id: 'CITY_TRAIN', label: 'Міська електричка', group: 'Транспорт' },
+  { id: 'FUNICULAR', label: 'Фунікулер', group: 'Транспорт' },
   { id: 'STOPS', label: 'Зупинки', group: 'Транспорт' },
   { id: 'BICYCLE', label: 'Велосипеди', group: 'Мікромобільність' },
   { id: 'SCOOTER', label: 'Електросамокати', group: 'Мікромобільність' },
@@ -33,16 +35,18 @@ export function subscribeTransportLayers(listener: (layers: ReadonlySet<Transpor
 // ---- what each selection asks the server for ----
 export function lineTypesFor(layers: ReadonlySet<TransportLayerId>): string[] {
   const types = new Set<string>();
-  if (layers.has('PUBLIC_TRANSPORT')) ['bus', 'marshrutka', 'trolleybus', 'tram'].forEach((type) => types.add(type));
+  if (layers.has('PUBLIC_TRANSPORT')) ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'city_train', 'funicular'].forEach((type) => types.add(type));
   if (layers.has('BUS')) { types.add('bus'); types.add('marshrutka'); }
   if (layers.has('TRAM')) types.add('tram');
   if (layers.has('TROLLEYBUS')) types.add('trolleybus');
   if (layers.has('METRO')) types.add('metro');
+  if (layers.has('CITY_TRAIN')) types.add('city_train');
+  if (layers.has('FUNICULAR')) types.add('funicular');
   return [...types];
 }
 export function stopTypesFor(layers: ReadonlySet<TransportLayerId>): string[] {
   const lines = lineTypesFor(layers);
-  return lines.length ? lines : ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro'];
+  return lines.length ? lines : ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'city_train', 'funicular'];
 }
 export function microTypesFor(layers: ReadonlySet<TransportLayerId>): string[] {
   return [layers.has('BICYCLE') ? 'bike' : '', layers.has('SCOOTER') ? 'scooter' : '', layers.has('RENTAL_POINTS') ? 'stations' : ''].filter(Boolean);
@@ -59,10 +63,10 @@ export function viewportBbox(bounds: { west: number; south: number; east: number
   return [west, south, east, north].map((value) => value.toFixed(5)).join(',');
 }
 
-const colors: Record<string, string> = { bus: '#1789F4', marshrutka: '#6366F1', trolleybus: '#16A34A', tram: '#E11D48', metro: '#7C3AED', other: '#64748B' };
+const colors: Record<string, string> = { bus: '#1789F4', marshrutka: '#6366F1', trolleybus: '#16A34A', tram: '#E11D48', metro: '#7C3AED', city_train: '#0F766E', funicular: '#B45309', other: '#64748B' };
 const empty: GeoJsonCollection = { type: 'FeatureCollection', features: [] };
 const SOURCES = { routes: 'mg-t-routes', stops: 'mg-t-stops', vehicles: 'mg-t-vehicles', micro: 'mg-t-micro' } as const;
-const lineColor = ['match', ['get', 'transport'], 'bus', colors.bus, 'marshrutka', colors.marshrutka, 'trolleybus', colors.trolleybus, 'tram', colors.tram, 'metro', colors.metro, colors.other] as never;
+const lineColor = ['match', ['get', 'transport'], 'bus', colors.bus, 'marshrutka', colors.marshrutka, 'trolleybus', colors.trolleybus, 'tram', colors.tram, 'metro', colors.metro, 'city_train', colors.city_train, 'funicular', colors.funicular, colors.other] as never;
 
 export class TransportLayerController {
   private enabled: ReadonlySet<TransportLayerId> = new Set();
@@ -138,7 +142,7 @@ export class TransportLayerController {
     const properties = feature.properties; const node = document.createElement('div'); node.style.cssText = 'font:600 12px system-ui;color:#0E1F35;max-width:220px';
     const title = document.createElement('div');
     const detail = document.createElement('div'); detail.style.cssText = 'font-weight:500;color:#64748B;margin-top:2px';
-    const names: Record<string, string> = { bus: 'Автобус', marshrutka: 'Маршрутка', trolleybus: 'Тролейбус', tram: 'Трамвай', metro: 'Метро', scooter: 'Електросамокат', bike: 'Велосипед', station: 'Пункт прокату' };
+    const names: Record<string, string> = { bus: 'Автобус', marshrutka: 'Маршрутка', trolleybus: 'Тролейбус', tram: 'Трамвай', metro: 'Метро', city_train: 'Міська електричка', funicular: 'Фунікулер', scooter: 'Електросамокат', bike: 'Велосипед', station: 'Пункт прокату' };
     if (properties.route !== undefined) {
       title.textContent = `${names[String(properties.transport)] ?? 'Транспорт'}${properties.route ? ` №${properties.route}` : ''}`;
       const timestamp = typeof properties.updatedAt === 'string' ? Date.parse(properties.updatedAt) : NaN;

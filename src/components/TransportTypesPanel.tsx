@@ -5,7 +5,7 @@ import { transportGroups } from '../domain/transportCatalog';
 import type { ApiTransportProviders } from '../services/productionApi';
 
 const tileIcons: Record<TransportTypeId, LucideIcon> = {
-  carpool: CarFront, taxi: CarTaxiFront, carsharing: KeyRound, car_rental: CarFront, transfer: Repeat, bus: Bus, marshrutka: Users, trolleybus: Bus, tram: TramFront, metro: TrainFront,
+  carpool: CarFront, taxi: CarTaxiFront, carsharing: KeyRound, car_rental: CarFront, transfer: Repeat, bus: Bus, marshrutka: Users, trolleybus: Bus, tram: TramFront, metro: TrainFront, city_train: TrainFrontTunnel, funicular: TrainFront,
   train: TrainFront, suburban_train: TrainFrontTunnel, intercity_bus: Ticket, bike: Bike, scooter: Zap, moped: Bike, plane: Plane, ferry: Ship, walk: Footprints,
 };
 
@@ -18,7 +18,7 @@ function Tile({ label, Icon, selected, disabled, onClick }: { label: string; Ico
 }
 
 /**
- * "Види транспорту → Провайдери". All 19 types stay visible as grouped square tiles (blue = selected, neutral = not selected).
+ * "Види транспорту → Провайдери". All transport types stay visible as grouped square tiles (blue = selected, neutral = not selected).
  * Providers appear below only for selected types, each type with its own group, and only those connected and covering the search area.
  */
 export function TransportTypesPanel({ selection, groups, onChange }: { selection: TransportSelection; groups: ApiTransportProviders[] | null; onChange: (selection: TransportSelection) => void }) {

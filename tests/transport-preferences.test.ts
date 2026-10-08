@@ -11,8 +11,8 @@ const groups = [
 ];
 
 describe('transport types and providers', () => {
-  it('exposes all 19 tiles in five groups', () => {
-    assert.equal(transportTypes.length, 19);
+  it('exposes all 21 tiles in five groups', () => {
+    assert.equal(transportTypes.length, 21);
     assert.equal(new Set(transportTypes.map((type) => type.group)).size, 5);
   });
 
