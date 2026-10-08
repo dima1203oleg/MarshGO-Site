@@ -167,11 +167,15 @@ export type ApiPlace = { label: string; latitude: number; longitude: number; pro
 export type ApiJourneyStrategy = 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM' | 'RELIABLE' | 'CUSTOM';
 export type ApiJourney = {
   id: string;
-  offerId: string;
+  offerId: string | null;
+  source?: string;
+  providerName?: string;
+  routeName?: string;
+  headsign?: string;
   strategy: ApiJourneyStrategy;
   state: string;
   totalDurationSeconds: number;
-  totalPriceMinor: number;
+  totalPriceMinor: number | null;
   confirmedPriceMinor: number | null;
   estimatedPriceMinMinor: number | null;
   estimatedPriceMaxMinor: number | null;
@@ -181,20 +185,23 @@ export type ApiJourney = {
   legs: Array<{
     id: string;
     mode: string;
-    offerId: string;
+    offerId: string | null;
     origin: { name: string; coordinates: [number, number] };
     destination: { name: string; coordinates: [number, number] };
     departureAt: string;
     arrivalAt: string;
     durationSeconds: number;
-    distanceMeters: number;
-    priceMinor: number;
+    distanceMeters: number | null;
+    priceMinor: number | null;
     priceStatus: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
     availabilityStatus: string;
     source: string;
     lastUpdatedAt: string;
-    driver: { id: string; name: string; averageRating: number | null; reviewCount: number };
-    vehicle: { id: string; make: string; model: string };
+    providerName?: string;
+    routeName?: string;
+    headsign?: string;
+    driver: { id: string; name: string; averageRating: number | null; reviewCount: number } | null;
+    vehicle: { id: string; make: string; model: string } | null;
   }>;
 };
 export type ApiJourneySearchResult = {
@@ -349,7 +356,7 @@ export const productionApi = {
     departureAt: string;
     passengers: number;
     strategy: ApiJourneyStrategy;
-    preferences?: Record<string, boolean>;
+    preferences?: Record<string, boolean | string[]>;
   }) {
     return request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(input) });
   },
