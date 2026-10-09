@@ -587,18 +587,23 @@ export const productionApi = {
   conversation(bookingId: string) { return request<ApiConversation>(`/bookings/${bookingId}/conversation`); },
   conversationById(conversationId: string) { return request<ApiConversation>(`/conversations/${encodeURIComponent(conversationId)}`); },
   async messages(conversationId: string) {
-    const page = await request<{ messages: ApiMessage[]; pagination: { hasMore: boolean; nextCursor: string | null } }>(
+    const page = await request<ApiMessage[] | { messages: ApiMessage[] }>(
       `/conversations/${conversationId}/messages`,
     );
-    return page.messages;
+    return Array.isArray(page) ? page : page.messages;
   },
   async messagePage(conversationId: string, before?: string) {
     const params = new URLSearchParams({ limit: '50' });
     if (before) params.set('before', before);
-    const page = await request<{ messages: ApiMessage[]; pagination: { hasMore: boolean; nextCursor: string | null } }>(
+    const page = await request<ApiMessage[] | { messages: ApiMessage[]; pagination?: { hasMore: boolean; nextCursor: string | null } }>(
       `/conversations/${conversationId}/messages?${params}`,
     );
-    return { messages: page.messages, hasMore: page.pagination.hasMore, nextCursor: page.pagination.nextCursor };
+    if (Array.isArray(page)) return { messages: page, hasMore: false, nextCursor: null };
+    return {
+      messages: page.messages,
+      hasMore: page.pagination?.hasMore ?? false,
+      nextCursor: page.pagination?.nextCursor ?? null,
+    };
   },
   conversationUnreadCounts() { return request<ApiConversationUnread[]>('/conversation-unread-counts'); },
   markConversationRead(conversationId: string) {
