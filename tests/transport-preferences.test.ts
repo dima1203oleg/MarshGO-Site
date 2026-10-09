@@ -67,4 +67,13 @@ describe('transport types and providers', () => {
     assert.equal(busOnly.allowBus && busOnly.allowPublicTransport, true);
     assert.equal(busOnly.allowRail || busOnly.allowMinibus || busOnly.allowCommunity, false);
   });
+
+  it('preserves selected route types while provider availability is still loading or unavailable', () => {
+    const selectedBus = { ...defaultSelection, active: ['bus' as const] };
+    const preferences = toJourneyPreferences(selectedBus, null);
+    assert.equal(preferences.allowBus, true);
+    assert.equal(preferences.allowPublicTransport, true);
+    assert.deepEqual(preferences.allowedTransportTypes, ['bus']);
+    assert.deepEqual(preferences.allowedTransitProviders, []);
+  });
 });

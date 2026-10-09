@@ -63,9 +63,13 @@ export function effectiveProviders(selection: TransportSelection, type: Transpor
 /** Maps the selection onto the existing Journey Engine flags. Walking inside a combined route is always allowed, so no flag exists for it. */
 export function toJourneyPreferences(selection: TransportSelection, groups: ApiTransportProviders[] | null): Record<string, boolean | string[]> {
   const active = activeTypesForSearch(selection);
-  const has = (...types: TransportTypeId[]) => types.some((type) => active.includes(type) && (type === 'carpool' || effectiveProviders(selection, type, groups).length > 0));
+  // Provider lookup may fail temporarily. Let the API search every selected
+  // mode in that case; the server will use its live provider registry and
+  // report unavailable categories instead of silently stripping preferences.
+  const has = (...types: TransportTypeId[]) => types.some((type) => active.includes(type)
+    && (type === 'carpool' || groups === null || effectiveProviders(selection, type, groups).length > 0));
   const publicTransport = has('bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'city_train', 'funicular', 'train', 'suburban_train', 'intercity_bus', 'ferry');
-  const allowedTransportTypes = active.filter((type) => type === 'carpool' || effectiveProviders(selection, type, groups).length > 0);
+  const allowedTransportTypes = active.filter((type) => type === 'carpool' || groups === null || effectiveProviders(selection, type, groups).length > 0);
   const transitTypes: TransportTypeId[] = ['bus','marshrutka','trolleybus','tram','metro','city_train','funicular','train','suburban_train','intercity_bus','ferry'];
   const allowedTransitProviders = [...new Set(active.filter((type) => transitTypes.includes(type))
     .flatMap((type) => effectiveProviders(selection, type, groups).map((id) => id.split(':').slice(1).join(':'))))];
