@@ -6,7 +6,7 @@ import { productionApi, type ApiNearby, type ApiTransportProviders } from '../se
 const rentalType = { bike: 'bike', scooter: 'scooter', moped: 'moped', carsharing: 'carsharing' } as const;
 type RentalType = keyof typeof rentalType;
 const isRental = (type: TransportTypeId): type is RentalType => type in rentalType;
-const transitTypes: TransportTypeId[] = ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'train', 'suburban_train', 'intercity_bus'];
+const transitTypes: TransportTypeId[] = ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'city_train', 'funicular', 'train', 'suburban_train', 'intercity_bus', 'ferry'];
 
 /** Results for the selected non-carpool types, per provider. Only real data is shown: availability near the start point, or what is connected. */
 export function OtherModesPanel({ selection, groups, origin }: { selection: TransportSelection; groups: ApiTransportProviders[] | null; origin: { latitude: number; longitude: number } | null }) {
@@ -33,7 +33,7 @@ export function OtherModesPanel({ selection, groups, origin }: { selection: Tran
         {providers.length === 0 ? <p className="mt-1 text-xs text-slate-500">{choiceFor(selection, type).all ? 'Провайдери недоступні у цьому районі.' : 'Вибрані провайдери недоступні у цьому районі.'}</p>
           : <ul className="mt-1 divide-y divide-slate-100">{providers.map((provider) => { const mine = data?.assets.filter((asset) => asset.providerName === provider.name) ?? [];
             return <li key={provider.id} className="flex items-center justify-between gap-2 py-2 text-xs"><span className="font-bold text-[#0E1F35]">{provider.name}</span>
-              <span className="text-right text-slate-500">{transitTypes.includes(type) ? `розклад підключено${provider.services.length ? ` (${provider.services.join(', ')})` : ''}; маршрути по розкладу в розробці`
+              <span className="text-right text-slate-500">{transitTypes.includes(type) ? `розклад для пошуку підключено${provider.services.length ? ` (${provider.services.join(', ')})` : ''}; тариф може бути відсутній`
                 : isRental(type) ? (!origin ? 'оберіть «Звідки» для наявності' : !data ? 'шукаємо…' : mine.length > 0 ? `${data.assets.filter((asset) => asset.providerName === provider.name).length}+ вільних, найближчий ${formatDistance(mine[0].distanceM)}` : 'поблизу немає вільних')
                 : 'підключено'}</span></li>; })}</ul>}
       </div>; })}</div>

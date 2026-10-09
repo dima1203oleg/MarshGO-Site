@@ -1,26 +1,14 @@
 import type { GeoJSONSource, Map as MapLibreMap, MapMouseEvent } from 'maplibre-gl';
 import * as maplibregl from 'maplibre-gl';
 import { productionApi, type GeoJsonCollection } from '../services/productionApi';
+import { microTypesFor, type TransportLayerId } from './transportLayerConfig';
+export { microTypesFor, transportLayerList } from './transportLayerConfig';
+export type { TransportLayerId } from './transportLayerConfig';
 
 /**
  * 2D information layers. They are MapLibre sources/layers (no DOM markers), loaded per viewport and only for the layers the user switched on.
  * Static geometry is cached on the server for hours; vehicle positions are polled every 15 s only while a line layer is visible.
  */
-export type TransportLayerId = 'PUBLIC_TRANSPORT' | 'METRO' | 'BUS' | 'TRAM' | 'TROLLEYBUS' | 'CITY_TRAIN' | 'FUNICULAR' | 'STOPS' | 'BICYCLE' | 'SCOOTER' | 'RENTAL_POINTS';
-export const transportLayerList: Array<{ id: TransportLayerId; label: string; group: 'Транспорт' | 'Мікромобільність' }> = [
-  { id: 'PUBLIC_TRANSPORT', label: 'Громадський транспорт', group: 'Транспорт' },
-  { id: 'METRO', label: 'Метро', group: 'Транспорт' },
-  { id: 'TRAM', label: 'Трамваї', group: 'Транспорт' },
-  { id: 'TROLLEYBUS', label: 'Тролейбуси', group: 'Транспорт' },
-  { id: 'BUS', label: 'Автобуси', group: 'Транспорт' },
-  { id: 'CITY_TRAIN', label: 'Міська електричка', group: 'Транспорт' },
-  { id: 'FUNICULAR', label: 'Фунікулер', group: 'Транспорт' },
-  { id: 'STOPS', label: 'Зупинки', group: 'Транспорт' },
-  { id: 'BICYCLE', label: 'Велосипеди', group: 'Мікромобільність' },
-  { id: 'SCOOTER', label: 'Електросамокати', group: 'Мікромобільність' },
-  { id: 'RENTAL_POINTS', label: 'Пункти прокату', group: 'Мікромобільність' },
-];
-
 // ---- selection store (all layers are off by default) ----
 const selected = new Set<TransportLayerId>();
 const listeners = new Set<(layers: ReadonlySet<TransportLayerId>) => void>();
@@ -48,10 +36,6 @@ export function stopTypesFor(layers: ReadonlySet<TransportLayerId>): string[] {
   const lines = lineTypesFor(layers);
   return lines.length ? lines : ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'city_train', 'funicular'];
 }
-export function microTypesFor(layers: ReadonlySet<TransportLayerId>): string[] {
-  return [layers.has('BICYCLE') ? 'bike' : '', layers.has('SCOOTER') ? 'scooter' : '', layers.has('RENTAL_POINTS') ? 'stations' : ''].filter(Boolean);
-}
-
 // ---- level of detail: below these zooms a layer is not requested at all ----
 export const minZoom = { routes: 10, vehicles: 11, stops: 13, micro: 12 } as const;
 const maxSpan = { routes: 2, vehicles: 2, stops: 0.5, micro: 0.6 } as const;
@@ -132,7 +116,7 @@ export class TransportLayerController {
     if (glyphs && !map.getLayer('mg-t-vehicle-label')) map.addLayer({ id: 'mg-t-vehicle-label', type: 'symbol', source: SOURCES.vehicles, minzoom: 14, layout: { 'text-field': ['get', 'route'], 'text-size': 10, 'text-offset': [0, -1.4], 'text-font': ['Noto Sans Bold'], 'text-allow-overlap': false }, paint: { 'text-color': '#0E1F35', 'text-halo-color': '#fff', 'text-halo-width': 2 } });
     if (!map.getLayer('mg-t-micro-clusters')) map.addLayer({ id: 'mg-t-micro-clusters', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['has', 'point_count'], paint: { 'circle-color': '#0EA5E9', 'circle-opacity': 0.85, 'circle-radius': ['step', ['get', 'point_count'], 14, 25, 18, 100, 24], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
     if (glyphs && !map.getLayer('mg-t-micro-count')) map.addLayer({ id: 'mg-t-micro-count', type: 'symbol', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#fff' } });
-    if (!map.getLayer('mg-t-micro-points')) map.addLayer({ id: 'mg-t-micro-points', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': 6, 'circle-color': ['match', ['get', 'kind'], 'scooter', '#F59E0B', 'station', '#1789F4', '#16A34A'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+    if (!map.getLayer('mg-t-micro-points')) map.addLayer({ id: 'mg-t-micro-points', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': 6, 'circle-color': ['match', ['get', 'kind'], 'scooter', '#F59E0B', 'carsharing', '#1789F4', 'station', '#64748B', '#16A34A'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
     for (const layer of ['mg-t-vehicles', 'mg-t-stops', 'mg-t-micro-points']) { map.off('click', layer, this.onClick); map.on('click', layer, this.onClick); }
     map.off('click', 'mg-t-routes', this.onRouteClick); map.on('click', 'mg-t-routes', this.onRouteClick);
   }
@@ -142,7 +126,7 @@ export class TransportLayerController {
     const properties = feature.properties; const node = document.createElement('div'); node.style.cssText = 'font:600 12px system-ui;color:#0E1F35;max-width:220px';
     const title = document.createElement('div');
     const detail = document.createElement('div'); detail.style.cssText = 'font-weight:500;color:#64748B;margin-top:2px';
-    const names: Record<string, string> = { bus: 'Автобус', marshrutka: 'Маршрутка', trolleybus: 'Тролейбус', tram: 'Трамвай', metro: 'Метро', city_train: 'Міська електричка', funicular: 'Фунікулер', scooter: 'Електросамокат', bike: 'Велосипед', station: 'Пункт прокату' };
+    const names: Record<string, string> = { bus: 'Автобус', marshrutka: 'Маршрутка', trolleybus: 'Тролейбус', tram: 'Трамвай', metro: 'Метро', city_train: 'Міська електричка', funicular: 'Фунікулер', scooter: 'Електросамокат', bike: 'Велосипед', carsharing: 'Каршерінг', station: 'Пункт прокату' };
     if (properties.route !== undefined) {
       title.textContent = `${names[String(properties.transport)] ?? 'Транспорт'}${properties.route ? ` №${properties.route}` : ''}`;
       const timestamp = typeof properties.updatedAt === 'string' ? Date.parse(properties.updatedAt) : NaN;
@@ -210,7 +194,7 @@ export class TransportLayerController {
     } else this.clear('stops');
     if (micro.length) {
       if (zoom >= minZoom.micro) tasks.push(this.load('micro', (signal) => productionApi.transportMicromobility(viewportBbox(bounds, maxSpan.micro), micro, signal)));
-      else { this.clear('micro'); hints.push('велосипеди й самокати'); }
+      else { this.clear('micro'); hints.push('велосипеди, самокати й каршерінг'); }
     } else this.clear('micro');
     if (hints.length) this.onHint(`Наблизьте карту, щоб побачити: ${hints.join(', ')}.`);
     await Promise.all(tasks);

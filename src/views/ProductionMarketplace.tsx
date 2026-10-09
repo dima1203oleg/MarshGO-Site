@@ -226,9 +226,14 @@ export function ProductionMarketplace() {
   const changeTransportSelection = (selection: TransportSelection) => { setTransportSelection(selection); saveSelection(selection); };
   // Providers depend on where the search starts: reload when the origin point changes.
   useEffect(() => {
-    if (!user) return;
+    if (!user) { setProviderGroups(null); return; }
+    let current = true;
+    setProviderGroups(null);
     const point = searchOriginPlace ? { latitude: searchOriginPlace.latitude, longitude: searchOriginPlace.longitude } : undefined;
-    productionApi.providersByTransport(point).then(setProviderGroups).catch(() => setProviderGroups(null));
+    productionApi.providersByTransport(point)
+      .then((groups) => { if (current) setProviderGroups(groups); })
+      .catch(() => { if (current) setProviderGroups(null); });
+    return () => { current = false; };
   }, [user, searchOriginPlace]);
 
   useEffect(() => {
