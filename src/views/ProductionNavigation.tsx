@@ -521,12 +521,14 @@ export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, 
     </div>
     </>}
     </>}
-    {mapStatus !== 'available' && <div role={mapStatus === 'failed' || mapStatus === 'degraded' ? 'alert' : 'status'} className="pointer-events-auto absolute left-4 right-4 top-[8.8rem] z-[500] rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">
-      {mapStatus === 'unconfigured' && 'Стиль і підкладка MARSHGO не налаштовані. Геометрія реального маршруту залишається доступною.'}
-      {mapStatus === 'loading' && 'Завантажуємо карту MARSHGO. Геометрія маршруту вже показана.'}
-      {mapStatus === 'degraded' && 'Карта завантажилася частково. Геометрія маршруту залишається видимою.'}
-      {mapStatus === 'failed' && 'Не вдалося завантажити стиль карти. Перевірте мережу або manifest провайдера.'}
-      {(mapStatus === 'degraded' || mapStatus === 'failed') && <button type="button" className="ml-2 underline" onClick={() => mapRef.current?.retry()}>Повторити завантаження карти</button>}
+    {mapStatus !== 'available' && <div role={mapStatus === 'failed' || mapStatus === 'degraded' ? 'alert' : 'status'} className="pointer-events-none absolute left-4 right-4 top-[8.8rem] z-[500] flex items-start gap-2 rounded-xl bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">
+      <span className="min-w-0 flex-1">
+        {mapStatus === 'unconfigured' && 'Стиль і підкладка MARSHGO не налаштовані. Геометрія реального маршруту залишається доступною.'}
+        {mapStatus === 'loading' && 'Завантажуємо карту MARSHGO. Геометрія маршруту вже показана.'}
+        {mapStatus === 'degraded' && 'Карта завантажилася частково. Геометрія маршруту залишається видимою.'}
+        {mapStatus === 'failed' && 'Не вдалося завантажити стиль карти. Перевірте мережу або manifest провайдера.'}
+      </span>
+      {(mapStatus === 'degraded' || mapStatus === 'failed') && <button type="button" className="pointer-events-auto shrink-0 rounded-lg px-1 py-0.5 underline underline-offset-2" onClick={() => mapRef.current?.retry()}>Повторити завантаження карти</button>}
     </div>}
     <div className="absolute right-4 top-1/2 z-[500] -translate-y-1/2 space-y-2"><MapLayersControl/><button aria-label={voiceOn ? 'Вимкнути голос' : 'Увімкнути голос'} aria-pressed={voiceOn} onClick={toggleVoice} className={`grid h-12 w-12 place-items-center rounded-full shadow-lg ${voiceOn ? 'bg-white text-[#1789F4]' : 'bg-white text-slate-400'}`}>{voiceOn ? <Volume2 size={20}/> : <VolumeX size={20}/>}</button>{!sheetOpen && <button aria-label="Завершити навігацію" onClick={() => void end()} disabled={busy} className="grid h-12 w-12 place-items-center rounded-full bg-rose-600 text-white shadow-lg disabled:opacity-50"><Square size={16} fill="currentColor"/></button>}<button aria-label="Показати моє місце" aria-pressed={following} onClick={() => { const point = navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number] : liveFix ?? session.current_location ?? undefined; mapRef.current?.recenter(point ?? undefined); }} className={`grid h-12 w-12 place-items-center rounded-full shadow-lg ${following ? 'bg-[#1789F4] text-white' : 'bg-white text-[#1789F4]'}`}><Navigation size={20} fill={following ? 'currentColor' : 'none'}/></button></div>
     <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: sheetHeight + 14 } : undefined} className={`absolute left-4 z-[500] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border-4 border-white bg-white/95 text-center shadow-lg transition-[bottom] duration-300 ${sheetOpen ? (sheetHeight ? '' : 'bottom-[16rem]') : 'bottom-[max(2.2rem,calc(env(safe-area-inset-bottom)+1.6rem))]'}`}>

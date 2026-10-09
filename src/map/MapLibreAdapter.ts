@@ -43,12 +43,28 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.on('load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.hasBasemap ? 'available' : 'unconfigured'); });
     this.map.on('style.load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; if (this.hasBasemap && !this.map.getSource('marshgo-basemap') && this.status !== 'failed') this.publish('available'); });
     this.map.on('error', (event) => {
-      const mapError = event as typeof event & { sourceId?: string };
+      const mapError = event as typeof event & {
+        sourceId?: string;
+        error?: typeof event.error & { sourceId?: string; status?: number; statusCode?: number; url?: string };
+      };
       container.dataset.marshgoMapError = event.error?.message ?? 'MapLibre resource error';
-      if (mapError.sourceId === 'marshgo-basemap') { this.seenTileError = true; this.publish('degraded'); }
+      const failedBasemapResource = mapError.sourceId === 'marshgo-basemap'
+        || mapError.error?.sourceId === 'marshgo-basemap'
+        || (this.hasBasemap && (
+          this.status === 'available'
+          || (mapError.error?.status ?? mapError.error?.statusCode ?? 0) >= 400
+          || /(?:tile|raster|\.png\b)/i.test(`${mapError.error?.url ?? ''} ${event.error?.message ?? ''}`)
+        ));
+      if (failedBasemapResource) {
+        this.seenTileError = true;
+        this.publish(this.status === 'available' || this.status === 'degraded' ? 'degraded' : 'failed');
+      }
       else if (this.status === 'loading') this.publish('failed');
     });
-    this.map.on('sourcedata', (event) => { if (event.sourceId === 'marshgo-basemap' && event.isSourceLoaded && !this.seenTileError) this.publish('available'); });
+    this.map.on('sourcedata', (event) => {
+      if (event.sourceId !== 'marshgo-basemap' || !event.isSourceLoaded) return;
+      this.publish(this.seenTileError ? 'degraded' : 'available');
+    });
     // Only the user's own gestures leave follow mode; our camera animations (zoom, bearing) must not.
     const userGesture = (event: { originalEvent?: unknown }) => { if (event.originalEvent && this.cameraMode !== 'FREE') this.setCameraModeInternal('FREE'); };
     this.map.on('dragstart', userGesture);
@@ -192,7 +208,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.setPaintProperty('marshgo-vehicle', 'circle-stroke-color', colors.routeCasing);
     if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);
   }
-  retry() { this.seenTileError = false; this.publish(this.hasBasemap ? 'loading' : 'unconfigured'); if (this.hasBasemap) this.map.setStyle(this.map.getStyle()); else this.map.triggerRepaint(); }
+  retry() { this.seenTileError = false; this.publish(this.hasBasemap ? 'loading' : 'unconfigured'); if (this.hasBasemap) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
   destroy() { this.marker?.remove(); this.transport?.destroy(); this.map.remove(); }
   getStatus() { return this.status; }
 }
