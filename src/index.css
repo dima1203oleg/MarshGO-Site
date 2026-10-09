@@ -85,6 +85,8 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 .home-screen { padding-top: .35rem; }
+.search-screen-actions { min-width: 0; }
+.search-mode-action { min-width: 0; }
 .home-screen .home-intro {
   position: relative;
   overflow: hidden;
@@ -154,6 +156,37 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   .production-app .journey-search-card { padding: .65rem; }
   .production-app .transport-mode-grid { gap: .35rem; }
   .production-app .transport-mode-grid button { font-size: 9px; }
+}
+
+@media (max-width: 639px) {
+  .search-screen {
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+    padding: .25rem 1rem .5rem;
+  }
+  .search-screen .home-intro { flex: none; margin: 0; padding: .65rem .85rem; border-radius: 1.2rem; }
+  .search-screen .home-title { margin-top: 0 !important; font-size: 1.2rem; }
+  .search-screen .home-description { margin-top: .1rem !important; font-size: 10px; line-height: 1.3; }
+  .search-screen > .home-search-panel { flex: none; margin-top: 0 !important; }
+  .search-screen .journey-search-card { padding: .7rem !important; }
+  .search-screen .journey-search-card > .relative > label { padding-block: .55rem; }
+  .search-screen .journey-search-card .search-trip-details { gap: .4rem; margin-top: .5rem; }
+  .search-screen .journey-search-card .search-priority { margin-top: .7rem; }
+  .search-screen .journey-search-card .search-priority > p { margin-bottom: .35rem; }
+  .search-screen .journey-search-card .search-priority button { min-height: 2.35rem; padding-block: .55rem; }
+  .search-screen .journey-search-card .search-submit { min-height: 2.8rem; margin-top: .65rem; padding-block: .7rem; }
+  .search-screen-actions { display: grid; flex: none; grid-template-columns: minmax(0, 1fr) 76px; gap: .5rem; }
+  .search-mode-action,
+  .search-screen-actions > button:last-child { min-height: 3.25rem; }
+}
+
+@media (max-width: 639px) and (max-height: 720px) {
+  .search-screen .home-intro { padding-block: .5rem; }
+  .search-screen .home-description { display: none; }
+  .search-screen .journey-search-card > .relative > label { padding-block: .45rem; }
+  .search-screen .journey-search-card .search-priority { margin-top: .5rem; }
+  .search-screen .journey-search-card .search-submit { margin-top: .5rem; }
 }
 
 @media (min-width: 640px) {
