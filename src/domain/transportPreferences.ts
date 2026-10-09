@@ -86,7 +86,7 @@ export function effectiveProviders(selection: TransportSelection, type: Transpor
 }
 
 /** Maps the selection onto the existing Journey Engine flags. Walking inside a combined route is always allowed, so no flag exists for it. */
-export function toJourneyPreferences(selection: TransportSelection, groups: ApiTransportProviders[] | null): Record<string, boolean | string[]> {
+export function toJourneyPreferences(selection: TransportSelection, groups: ApiTransportProviders[] | null): Record<string, boolean | string[] | Record<string, string[]>> {
   const active = activeTypesForSearch(selection);
   // Provider lookup may fail temporarily. Let the API search every selected
   // mode in that case; the server will use its live provider registry and
@@ -97,6 +97,11 @@ export function toJourneyPreferences(selection: TransportSelection, groups: ApiT
   const transitTypeSet = new Set<TransportTypeId>(transitTypes);
   const publicTransport = has(...transitTypes);
   const allowedTransportTypes = active.filter((type) => type === 'carpool' || groups === null || effectiveProviders(selection, type, groups).length > 0);
+  const allowedTransitProvidersByType: Record<string, string[]> = {};
+  if (groups !== null) for (const type of active.filter((candidate) => transitTypeSet.has(candidate))) {
+    const selected = effectiveProviders(selection, type, groups).map((id) => id.slice(type.length + 1));
+    if (selected.length > 0) allowedTransitProvidersByType[type] = selected;
+  }
   const allowedTransitProviders = [...new Set(active.filter((type) => transitTypeSet.has(type))
     .flatMap((type) => effectiveProviders(selection, type, groups).map((id) => id.split(':').slice(1).join(':'))))];
   return {
@@ -104,5 +109,6 @@ export function toJourneyPreferences(selection: TransportSelection, groups: ApiT
     allowBus: has('bus', 'intercity_bus'), allowMinibus: has('marshrutka'), allowRail: has('train', 'suburban_train'), allowPublicTransport: publicTransport,
     allowedTransportTypes,
     allowedTransitProviders,
+    allowedTransitProvidersByType,
   };
 }

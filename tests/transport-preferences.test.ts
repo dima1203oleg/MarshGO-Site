@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { transportTypes, supportedJourneySearchTypes, activeTypesForSearch, choiceFor, defaultSelection, effectiveProviders, isAllActive, selectAll, toggleProvider, toggleType, toJourneyPreferences } from '../src/domain/transportPreferences';
+import { transportTypes, supportedJourneySearchTypes, activeTypesForSearch, choiceFor, defaultSelection, effectiveProviders, isAllActive, selectAll, toggleProvider, toggleType, toJourneyPreferences, type TransportSelection } from '../src/domain/transportPreferences';
 
 const groups = [
   { transportType: 'carpool', providers: [{ id: 'carpool:MARSHGO', name: 'MARSHGO Community', available: true, cities: [], sources: [], services: [] }] },
@@ -8,6 +8,7 @@ const groups = [
   { transportType: 'scooter', providers: [{ id: 'scooter:Bolt', name: 'Bolt', available: true, cities: [], sources: [], services: [] }] },
   { transportType: 'bike', providers: [] },
   { transportType: 'bus', providers: [{ id: 'bus:Львівавтодор', name: 'Львівавтодор', available: true, cities: ['Львів'], sources: ['gtfs'], services: ['bus', 'tram'] }] },
+  { transportType: 'trolleybus', providers: [{ id: 'trolleybus:Львівавтодор', name: 'Львівавтодор', available: true, cities: ['Львів'], sources: ['gtfs'], services: ['trolleybus'] }, { id: 'trolleybus:Test trolley', name: 'Test trolley', available: true, cities: ['Львів'], sources: ['gtfs'], services: ['trolleybus'] }] },
   { transportType: 'train', providers: [{ id: 'train:Укрзалізниця', name: 'Укрзалізниця', available: true, cities: ['Україна'], sources: ['gtfs'], services: ['train'] }, { id: 'train:Test rail', name: 'Test rail', available: true, cities: ['Україна'], sources: ['gtfs'], services: ['train'] }] },
   { transportType: 'tram', providers: [{ id: 'tram:Realtime only', name: 'Realtime only', available: true, cities: ['Львів'], sources: ['gtfs_rt'], services: ['tram'] }] },
 ];
@@ -49,6 +50,16 @@ describe('transport types and providers', () => {
     assert.deepEqual(effectiveProviders(selection, 'bike', groups), []);
   });
 
+  it('sends provider choices separately for each transport type', () => {
+    let selection: TransportSelection = { ...defaultSelection, active: ['bus', 'trolleybus'] };
+    selection = toggleProvider(selection, 'bus', 'bus:Львівавтодор');
+    selection = toggleProvider(selection, 'trolleybus', 'trolleybus:Test trolley');
+    const preferences = toJourneyPreferences(selection, groups);
+    assert.deepEqual(preferences.allowedTransitProvidersByType, {
+      bus: ['Львівавтодор'], trolleybus: ['Test trolley'],
+    });
+  });
+
   it('"Усі провайдери" uses every connected provider and returns when the last specific one is cleared', () => {
     assert.deepEqual(effectiveProviders(defaultSelection, 'train', groups).sort(), ['train:Test rail', 'train:Укрзалізниця']);
     const one = toggleProvider(defaultSelection, 'train', 'train:Test rail');
@@ -87,6 +98,7 @@ describe('transport types and providers', () => {
     assert.equal(preferences.allowPublicTransport, true);
     assert.deepEqual(preferences.allowedTransportTypes, ['bus']);
     assert.deepEqual(preferences.allowedTransitProviders, []);
+    assert.deepEqual(preferences.allowedTransitProvidersByType, {});
   });
 
   it('does not treat realtime-only vehicle positions as a routable GTFS schedule', () => {

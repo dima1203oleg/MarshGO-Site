@@ -361,7 +361,7 @@ export const productionApi = {
     departureAt: string;
     passengers: number;
     strategy: ApiJourneyStrategy;
-    preferences?: Record<string, boolean | string[]>;
+    preferences?: Record<string, boolean | string[] | Record<string, string[]>>;
   }) {
     return request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(input) });
   },
