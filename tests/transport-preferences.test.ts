@@ -18,7 +18,7 @@ describe('transport types and providers', () => {
     assert.deepEqual(transportTypes.map((type) => type.id), ['bus','marshrutka','trolleybus','tram','metro','carpool','taxi','train','bike','scooter','carsharing','transfer']);
     assert.equal(new Set(transportTypes.map((type) => type.id)).size, 12);
     assert.equal(supportedJourneySearchTypes.length, 7);
-    assert.deepEqual(journeyTypesForCategory.train, ['train','suburban_train','city_train','funicular']);
+    assert.deepEqual(journeyTypesForCategory.train, ['train','suburban_train','city_train']);
     assert.equal(transportTypes.some((type) => (type.id as string) === 'walk'), false);
   });
 

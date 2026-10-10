@@ -27,7 +27,7 @@ export const journeyTypesForCategory: Readonly<Record<TransportTypeId, readonly 
   metro: ['metro'],
   carpool: ['carpool'],
   taxi: ['taxi'],
-  train: ['train', 'suburban_train', 'city_train', 'funicular'],
+  train: ['train', 'suburban_train', 'city_train'],
   bike: ['bike'],
   scooter: ['scooter'],
   carsharing: ['carsharing'],
@@ -35,7 +35,7 @@ export const journeyTypesForCategory: Readonly<Record<TransportTypeId, readonly 
 };
 
 const legacyCategory = new Map<string, TransportTypeId>([
-  ['intercity_bus', 'bus'], ['suburban_train', 'train'], ['city_train', 'train'], ['funicular', 'train'],
+  ['intercity_bus', 'bus'], ['suburban_train', 'train'], ['city_train', 'train'],
   ...transportModes.map(({ id }) => [id, id] as const),
 ]);
 
