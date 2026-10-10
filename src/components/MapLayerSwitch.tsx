@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Box, Layers, Map as MapIcon } from 'lucide-react';
 import { getMapLayer, mapLayers, setMapLayer, subscribeMapLayer, type MapLayer } from '../map/mapMode';
 
-const icons = { standard: MapIcon, navigation: Box, hybrid: Layers } as const;
+const icons = { simple: MapIcon, threeD: Box, satellite: Layers } as const;
 
 /** The three map modes: 2D, 3D navigation, satellite. */
 export function MapLayerSwitch({ className = '' }: { className?: string }) {

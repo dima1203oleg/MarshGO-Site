@@ -1,7 +1,7 @@
-import type { MapLayer, MapMode } from './mapMode';
+import type { MapLayer } from './mapMode';
 import type { Coordinate } from '../../shared/navigation/contracts';
 export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 'failed';
-export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK' | 'MARSHGO_NAVIGATION_LIGHT' | 'MARSHGO_NAVIGATION_DARK';
+export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK' | 'MARSHGO_3D_LIGHT' | 'MARSHGO_3D_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
 export interface MapAdapter {
   setRoute(points: Coordinate[]): void;
@@ -12,7 +12,6 @@ export interface MapAdapter {
   recenter(point?: Coordinate): void;
   setCameraMode(mode: CameraMode): void;
   setTheme(theme: MapTheme): void;
-  setMode(mode: MapMode): void;
   setLayer(layer: MapLayer): void;
   setTransportLayers(layers: ReadonlySet<import('./transportLayers').TransportLayerId>): void;
   focus(point: Coordinate, zoom?: number): void;

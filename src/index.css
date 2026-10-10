@@ -252,9 +252,9 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   }
   .production-app {
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 80px minmax(0, 1fr);
-    column-gap: 32px;
+    column-gap: 0;
     max-width: 1600px;
     min-height: calc(100vh - 40px);
     margin: 20px auto;
@@ -279,95 +279,71 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
     padding: 0;
     border-bottom: 1px solid rgba(0,0,0,0.05);
   }
-  .desktop-top-nav { display: flex; gap: 8px; }
-  .desktop-top-nav button { padding: 8px 16px; border-radius: 16px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-  .desktop-top-nav button:hover { background: rgba(255,255,255,0.8); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-
   .production-app > .app-tabbar {
-    position: sticky !important;
-    inset: auto;
-    grid-column: 1;
-    grid-row: 2;
-    align-self: start;
-    width: 260px;
-    height: calc(100vh - 160px);
-    margin: 24px 0 0;
-    padding: 24px 16px !important;
-    border: 1px solid rgba(255, 255, 255, 0.6) !important;
-    border-radius: 28px;
-    background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.7)) !important;
-    -webkit-backdrop-filter: blur(20px);
-    backdrop-filter: blur(20px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+    position: fixed !important;
+    inset: auto 0 0;
+    z-index: 40;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 8px 0 max(.45rem, env(safe-area-inset-bottom)) !important;
+    border: 0 !important;
+    border-top: 1px solid rgba(255,255,255,.7) !important;
+    border-radius: 24px 24px 0 0;
+    background: rgba(255,255,255,.96) !important;
+    -webkit-backdrop-filter: blur(22px);
+    backdrop-filter: blur(22px);
+    box-shadow: 0 -8px 28px rgba(20,49,87,.1);
   }
   .app-tabbar-inner {
-    display: flex;
-    max-width: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: center;
+    max-width: 760px;
+    margin-inline: auto;
+    gap: 0;
+    padding: 0 12px;
   }
-  .app-tabbar-inner > span { display: contents; }
   .app-tabbar-inner button:not(.app-create-button) {
     width: 100%;
-    min-height: 52px;
+    min-height: 48px;
     min-width: 0;
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 12px;
-    padding: 0 16px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 2px;
     border-radius: 16px;
-    font-size: 14px;
-    transition: all 0.3s ease;
+    font-size: 11px;
   }
-  .app-tabbar-inner button:not(.app-create-button):hover {
-    background: rgba(37, 99, 235, 0.05);
-    transform: translateX(4px);
-  }
+  .app-tabbar-inner button:not(.app-create-button):hover { background: rgba(37, 99, 235, 0.05); }
   .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
-    background: linear-gradient(135deg, #2563eb, #3b82f6);
-    color: white !important;
-    box-shadow: 0 8px 20px rgba(37,99,235,0.25);
+    color: var(--mg-blue) !important;
+    background: transparent;
+    box-shadow: none;
   }
-  .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg {
-    color: white;
-  }
-  .app-tabbar-inner button:not(.app-create-button) > span { font-size: 14px; }
-  .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] > span { font-weight: 700; color: white; }
-
+  .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg { color: var(--mg-blue); }
+  .app-tabbar-inner button:not(.app-create-button) > span { font-size: 11px; }
+  .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] > span { font-weight: 700; color: var(--mg-blue); }
   .app-tabbar-inner .app-create-button {
-    order: 3;
-    width: 100%;
+    order: initial;
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: center;
+    width: 56px;
     height: 56px;
     min-height: 56px;
-    margin: 16px 0 12px;
-    display: flex;
-    justify-content: flex-start;
-    gap: 12px;
-    padding: 0 16px;
-    border-radius: 18px;
-    background: linear-gradient(135deg, #0f172a, #1e293b);
-    transition: all 0.3s ease;
+    margin: -20px 0 0;
+    padding: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #1678ff, #0753d7);
   }
-  .app-tabbar-inner .app-create-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(15,23,42,0.3);
-  }
-  .desktop-create-label { display: inline; font-size: 14px; font-weight: 700; }
-  .production-app > .app-tabbar::after {
-    content: "Мобільність для людей · Україна";
-    display: block;
-    margin: 20px 6px 0;
-    color: #718198;
-    font-size: 11px;
-    line-height: 1.5;
-  }
+  .desktop-create-label { display: none; }
   .production-app > .pt-1 {
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 2;
     min-width: 0;
     padding-top: 24px;
+    padding-bottom: 100px;
   }
   .production-app > .pt-1 > :not(.navigation-screen) {
     width: 100%;
@@ -375,7 +351,7 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
     margin-inline: auto;
   }
   .production-app > [role="status"] {
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 2;
     align-self: start;
     z-index: 2;
@@ -445,7 +421,7 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   .journey-results > :nth-child(3) { grid-column: 1; position: sticky; top: 24px; }
   .journey-results > :nth-child(n+4) { grid-column: 2; }
   .app-header > div:first-child { min-width: 240px; }
-  .app-header > button:last-child { margin-left: auto; }
+  .app-header > div:last-child { margin-left: auto; }
 
   /* Make lists and articles grid-based on desktop */
   .production-app .space-y-3 {
@@ -471,7 +447,6 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   }
 }
 @media (min-width: 1024px) and (max-height: 760px) {
-  .production-app > .app-tabbar { height: calc(100vh - 94px); overflow-y: auto; }
   .home-screen > .home-intro { min-height: 300px; padding-bottom: 140px; }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
@@ -687,14 +662,12 @@ html.dark ::placeholder { color: #7f93ad !important; }
 html.dark :is(.shadow-sm, .shadow-md) { box-shadow: 0 6px 18px rgba(0,0,0,.35) !important; }
 html.dark .app-tabbar, html.dark .app-header { background-color: rgba(11,22,38,.92) !important; }
 html.dark .journey-search-card { background: rgba(18,35,58,.88) !important; border-color: #223853 !important; }
-html.dark .maplibregl-canvas { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.95); }
 html.dark .maplibregl-ctrl-group { background: #12233a; }
 html.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
 html.dark .home-screen .home-intro { background: linear-gradient(145deg, #12233a, #0f1d31) !important; border-color: #223853 !important; box-shadow: none !important; }
 html.dark .home-screen .home-intro::after { background: rgba(23,137,244,.18) !important; }
 html.dark .home-screen .home-title { color: #eaf2fd !important; }
 html.dark .home-screen .home-greeting { color: #6db4ff !important; }
-html.dark [data-marshgo-map-layer="hybrid"] .maplibregl-canvas { filter: none; }
 
 /* ---- Home screen never scrolls: HomeHero measures the free height on the device; the illustration flexes into it. ---- */
 .home-hero--compact .home-hero-title { font-size: 1.4rem; }

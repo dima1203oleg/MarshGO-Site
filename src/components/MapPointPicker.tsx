@@ -40,7 +40,7 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
   useEffect(() => {
     let cancelled = false;
     let map: import('maplibre-gl').Map | null = null;
-    void Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl.css'), resolveMapAssets('MARSHGO_NAVIGATION_LIGHT')]).then(([maplibre, , assets]) => {
+    void Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl.css'), resolveMapAssets('MARSHGO_LIGHT')]).then(([maplibre, , assets]) => {
       if (cancelled || !container.current) return;
       const center: [number, number] = initial ? [initial.longitude, initial.latitude] : UKRAINE_CENTER;
       maplibre.setWorkerUrl(mapLibreWorkerUrl);

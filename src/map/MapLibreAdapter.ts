@@ -6,7 +6,8 @@ import type { Coordinate } from '../../shared/navigation/contracts';
 import type { CameraMode, MapAdapter, MapStatus, MapTheme } from './MapAdapter';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
-import { mapLayers, mapModes, styleForLayer, type MapLayer, type MapMode } from './mapMode';
+import type { FillLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
+import { mapLayers, satelliteAttribution, satelliteTiles, styleForLayer, type MapLayer } from './mapMode';
 import { TransportLayerController, type TransportLayerId } from './transportLayers';
 import { configuredMapStyleUrl } from './mapConfig';
 
@@ -20,10 +21,9 @@ export class MapLibreAdapter implements MapAdapter {
   private vehicle: Coordinate | null = null;
   private waypoints: Array<{ coordinate: Coordinate; kind: string }> = [];
   private cameraMode: CameraMode = 'OVERVIEW';
-  private theme: MapTheme = 'MARSHGO_NAVIGATION_LIGHT';
+  private theme: MapTheme = 'MARSHGO_3D_LIGHT';
   private seenTileError = false;
-  private mode: MapMode = 'google';
-  private layer: MapLayer = 'standard';
+  private layer: MapLayer = 'simple';
   private transport: TransportLayerController | null = null;
   private heading: number | null = null;
   private marker: maplibregl.Marker | null = null;
@@ -33,23 +33,23 @@ export class MapLibreAdapter implements MapAdapter {
   /** Shown when a layer needs a closer zoom or fails to load. */
   onTransportHint: (message: string | null) => void = () => undefined;
 
-  constructor(container: HTMLElement, style: string | StyleSpecification, private readonly onStatus: (status: MapStatus) => void, private readonly hasBasemap: boolean, private readonly styleUrls?: Partial<Record<MapTheme, string>>, initialTheme: MapTheme = 'MARSHGO_NAVIGATION_LIGHT') {
+  constructor(container: HTMLElement, style: string | StyleSpecification, private readonly onStatus: (status: MapStatus) => void, private readonly hasBasemap: boolean, private readonly styleUrls?: Partial<Record<MapTheme, string>>, initialTheme: MapTheme = 'MARSHGO_3D_LIGHT') {
     this.theme = initialTheme;
     if (!pmtilesProtocolRegistered) { maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile); pmtilesProtocolRegistered = true; }
     maplibregl.setWorkerUrl(mapLibreWorkerUrl);
     container.dataset.marshgoMapRenderer = 'maplibre';
     this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', center: [30.5234, 50.4501], zoom: 5, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false });
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: false, visualizePitch: true }), 'bottom-right');
-    this.map.on('load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.hasBasemap ? 'available' : 'unconfigured'); });
-    this.map.on('style.load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; if (this.hasBasemap && !this.map.getSource('marshgo-basemap') && this.status !== 'failed') this.publish('available'); });
+    this.map.on('load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.basemapConfigured() ? 'available' : 'unconfigured'); });
+    this.map.on('style.load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; if (this.basemapConfigured() && !this.map.getSource('marshgo-basemap') && this.status !== 'failed') this.publish('available'); });
     this.map.on('error', (event) => {
       const mapError = event as typeof event & {
         sourceId?: string;
         error?: typeof event.error & { sourceId?: string; status?: number; statusCode?: number; url?: string };
       };
       container.dataset.marshgoMapError = event.error?.message ?? 'MapLibre resource error';
-      const failedBasemapResource = mapError.sourceId === 'marshgo-basemap'
-        || mapError.error?.sourceId === 'marshgo-basemap'
+      const failedBasemapResource = mapError.sourceId === 'marshgo-basemap' || mapError.sourceId === 'marshgo-satellite'
+        || mapError.error?.sourceId === 'marshgo-basemap' || mapError.error?.sourceId === 'marshgo-satellite'
         || (this.hasBasemap && (
           this.status === 'available'
           || (mapError.error?.status ?? mapError.error?.statusCode ?? 0) >= 400
@@ -62,7 +62,7 @@ export class MapLibreAdapter implements MapAdapter {
       else if (this.status === 'loading') this.publish('failed');
     });
     this.map.on('sourcedata', (event) => {
-      if (event.sourceId !== 'marshgo-basemap' || !event.isSourceLoaded) return;
+      if ((event.sourceId !== 'marshgo-basemap' && event.sourceId !== 'marshgo-satellite') || !event.isSourceLoaded) return;
       this.publish(this.seenTileError ? 'degraded' : 'available');
     });
     // Only the user's own gestures leave follow mode; our camera animations (zoom, bearing) must not.
@@ -74,25 +74,99 @@ export class MapLibreAdapter implements MapAdapter {
   }
 
   private publish(status: MapStatus) { this.status = this.seenTileError && status === 'available' ? 'degraded' : status; this.onStatus(this.status); }
+  private basemapConfigured() { return this.hasBasemap && (this.layer !== 'satellite' || Boolean(satelliteTiles && satelliteAttribution)); }
+  private themeForLayer(layer: MapLayer, theme: MapTheme = this.theme): MapTheme {
+    const dark = theme.endsWith('_DARK');
+    if (layer === 'threeD') return dark ? 'MARSHGO_3D_DARK' : 'MARSHGO_3D_LIGHT';
+    return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
+  }
   private installLayers() {
-    const colors = { ...mapStyleTokens[this.theme], route: mapModes[this.mode].route, routeCasing: mapModes[this.mode].casing };
+    const colors = mapStyleTokens[this.theme];
     this.map.getContainer().dataset.marshgoMapLayer = this.layer;
+    if (this.layer === 'satellite') this.installSatelliteOverlay();
+    if (this.layer === 'threeD') this.install3DBuildings();
+    else this.remove3DBuildings();
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    if (!this.map.getLayer('marshgo-route-casing')) this.map.addLayer({ id: 'marshgo-route-casing', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.routeCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 5 * mapModes[this.mode].width, 15, 13 * mapModes[this.mode].width], 'line-opacity': 0.92 } });
-    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({ id: 'marshgo-route', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.route, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3 * mapModes[this.mode].width, 15, 8 * mapModes[this.mode].width], 'line-opacity': 0.98 } });
+    if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.route, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 10, 15, 22], 'line-opacity': 0.2, 'line-blur': 5 } });
+    if (!this.map.getLayer('marshgo-route-casing')) this.map.addLayer({ id: 'marshgo-route-casing', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.routeCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 5, 15, 13], 'line-opacity': 0.92 } });
+    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({ id: 'marshgo-route', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.route, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3, 15, 8], 'line-opacity': 0.98 } });
     if (!this.map.getLayer('marshgo-waypoints')) this.map.addLayer({ id: 'marshgo-waypoints', type: 'circle', source: 'marshgo-waypoints', paint: { 'circle-radius': 8, 'circle-color': ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, colors.route], 'circle-stroke-color': colors.routeCasing, 'circle-stroke-width': 3 } });
     if (!this.map.getLayer('marshgo-vehicle-halo')) this.map.addLayer({ id: 'marshgo-vehicle-halo', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 13, 'circle-color': colors.vehicle, 'circle-opacity': 0.2 } });
     if (!this.map.getLayer('marshgo-vehicle')) this.map.addLayer({ id: 'marshgo-vehicle', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 8, 'circle-color': colors.vehicle, 'circle-stroke-color': colors.routeCasing, 'circle-stroke-width': 3 } });
     // The DOM puck (rotating arrow) replaces the old circle dot; the source stays for consumers of its data.
     for (const id of ['marshgo-vehicle-halo', 'marshgo-vehicle']) if (this.map.getLayer(id)) this.map.setLayoutProperty(id, 'visibility', 'none');
     this.transport?.reinstall();
-    // 3D navigation keeps its tilt after every style load (a style swap resets the camera on some browsers).
-    if (this.layer === 'navigation' && Math.abs(this.map.getPitch() - mapLayers.navigation.pitch) > 1) this.map.easeTo({ pitch: mapLayers.navigation.pitch, duration: 500, essential: true });
+    // 3D mode keeps its tilt after every style load (a style swap resets the camera on some browsers).
+    if (this.layer === 'threeD' && Math.abs(this.map.getPitch() - mapLayers.threeD.pitch) > 1) this.map.easeTo({ pitch: mapLayers.threeD.pitch, duration: 500, essential: true });
     this.setRoute(this.route);
     if (this.vehicle) this.setVehicle(this.vehicle);
     this.setWaypoints(this.waypoints);
+  }
+
+  /** Keep vector roads and labels above the imagery; dim land/building fills to reveal the satellite base. */
+  private installSatelliteOverlay() {
+    if (this.layer !== 'satellite' || !this.map.isStyleLoaded()) return;
+    if (!satelliteTiles || !satelliteAttribution) {
+      this.onTransportHint('Супутникові знімки недоступні: не налаштовано ліцензоване джерело карти.');
+      this.publish('unconfigured');
+      return;
+    }
+    if (!this.map.getSource('marshgo-satellite')) this.map.addSource('marshgo-satellite', {
+      type: 'raster', tiles: [satelliteTiles], tileSize: 256, maxzoom: 19,
+      attribution: satelliteAttribution,
+    });
+    for (const layer of this.map.getStyle().layers ?? []) {
+      if (layer.id.startsWith('marshgo-')) continue;
+      if (layer.type === 'background') this.map.setPaintProperty(layer.id, 'background-opacity', 0);
+      else if (layer.type === 'fill') this.map.setPaintProperty(layer.id, 'fill-opacity', /water/i.test(`${layer.id} ${layer['source-layer'] ?? ''}`) ? 0.28 : 0.1);
+      else if (layer.type === 'line' && !/(road|street|transport|bridge|tunnel|rail)/i.test(`${layer.id} ${layer['source-layer'] ?? ''}`)) this.map.setPaintProperty(layer.id, 'line-opacity', 0.22);
+    }
+    if (!this.map.getLayer('marshgo-satellite')) {
+      const firstLayerId = this.map.getStyle().layers?.[0]?.id;
+      this.map.addLayer({
+        id: 'marshgo-satellite', type: 'raster', source: 'marshgo-satellite',
+        paint: { 'raster-opacity': 1 },
+      }, firstLayerId);
+    }
+    this.applySatellitePalette();
+  }
+
+  private applySatellitePalette() {
+    if (!this.map.getLayer('marshgo-satellite')) return;
+    const dark = this.theme.endsWith('_DARK');
+    this.map.setPaintProperty('marshgo-satellite', 'raster-opacity', dark ? 0.94 : 1);
+    this.map.setPaintProperty('marshgo-satellite', 'raster-brightness-min', dark ? 0.02 : 0);
+    this.map.setPaintProperty('marshgo-satellite', 'raster-brightness-max', dark ? 0.74 : 1);
+    this.map.setPaintProperty('marshgo-satellite', 'raster-saturation', dark ? -0.55 : 0);
+  }
+
+  /** Extrude only the existing vector building source; no separate 3D model assets are loaded. */
+  private install3DBuildings() {
+    if (this.layer !== 'threeD' || !this.map.isStyleLoaded() || this.map.getLayer('marshgo-buildings-3d')) return;
+    const layers = this.map.getStyle().layers ?? [];
+    const building = layers.find((layer): layer is FillLayerSpecification =>
+      layer.type === 'fill' && /building/i.test(`${layer.id} ${layer['source-layer'] ?? ''}`),
+    );
+    if (!building || !building.source || !building['source-layer']) return;
+    const labels = layers.find((layer) => layer.type === 'symbol' && layer.layout?.['text-field']);
+    this.map.addLayer({
+      id: 'marshgo-buildings-3d', type: 'fill-extrusion', source: building.source,
+      'source-layer': building['source-layer'], ...(building.filter ? { filter: building.filter } : {}),
+      minzoom: Math.max(14, building.minzoom ?? 14),
+      paint: {
+        'fill-extrusion-color': this.theme.endsWith('_DARK') ? '#29415E' : '#D5E2EE',
+        'fill-extrusion-height': ['coalesce', ['to-number', ['get', 'render_height']], ['to-number', ['get', 'height']], 8],
+        'fill-extrusion-base': ['coalesce', ['to-number', ['get', 'render_min_height']], ['to-number', ['get', 'min_height']], 0],
+        'fill-extrusion-opacity': 0.82,
+        'fill-extrusion-vertical-gradient': true,
+      },
+    }, labels?.id);
+  }
+
+  private remove3DBuildings() {
+    if (this.map.getLayer('marshgo-buildings-3d')) this.map.removeLayer('marshgo-buildings-3d');
   }
 
   setRoute(points: Coordinate[]) {
@@ -133,7 +207,7 @@ export class MapLibreAdapter implements MapAdapter {
   private followCamera(duration: number) {
     if (!this.vehicle) return;
     const { clientHeight } = this.map.getContainer();
-    const tilt = this.layer === 'navigation' ? mapLayers.navigation.pitch : 0;
+    const tilt = this.layer === 'threeD' ? mapLayers.threeD.pitch : 0;
     this.map.easeTo({
       center: this.vehicle, zoom: Math.max(this.map.getZoom(), 17), pitch: tilt,
       bearing: this.heading ?? this.map.getBearing(),
@@ -163,24 +237,18 @@ export class MapLibreAdapter implements MapAdapter {
     this.followCamera(1100);
   }
 
-  setMode(mode: MapMode) {
-    if (mode === this.mode) return;
-    this.mode = mode;
-    const style = styleForLayer(this.layer, mode, configuredMapStyleUrl);
-    if (style) { this.map.setStyle(style); return; }
-    if (!this.map.getLayer('marshgo-route')) return;
-    const { route, casing, width } = mapModes[mode];
-    this.map.setPaintProperty('marshgo-route', 'line-color', route);
-    this.map.setPaintProperty('marshgo-route-casing', 'line-color', casing);
-    this.map.setPaintProperty('marshgo-route', 'line-width', ['interpolate', ['linear'], ['zoom'], 5, 3 * width, 15, 8 * width]);
-    this.map.setPaintProperty('marshgo-route-casing', 'line-width', ['interpolate', ['linear'], ['zoom'], 5, 5 * width, 15, 13 * width]);
-  }
   setLayer(layer: MapLayer) {
     if (layer === this.layer) return;
+    if (layer !== 'threeD') this.remove3DBuildings();
     this.layer = layer;
-    const style = styleForLayer(layer, this.mode, configuredMapStyleUrl);
+    this.theme = this.themeForLayer(layer);
+    const style = layer === 'satellite'
+      ? this.styleUrls?.[this.themeForLayer('simple')] ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK'))
+      : this.styleUrls?.[this.theme] ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK'));
     if (style) this.map.setStyle(style);
-    else if (layer === 'standard') this.map.setStyle(this.map.getStyle());
+    else if (layer === 'satellite' && this.map.isStyleLoaded()) this.installSatelliteOverlay();
+    else if (layer === 'simple') this.map.setStyle(this.map.getStyle());
+    if (layer === 'threeD' && this.map.isStyleLoaded()) this.install3DBuildings();
     this.map.easeTo({ pitch: mapLayers[layer].pitch, duration: 700, essential: true });
   }
   /** 2D information layers (metro, buses, bikes, ...). Passing an empty set removes them and stops their polling. */
@@ -193,12 +261,17 @@ export class MapLibreAdapter implements MapAdapter {
   focus(point: Coordinate, zoom = 13) { this.cameraMode = 'FREE'; this.map.easeTo({ center: point, zoom, duration: 600, essential: true }); }
   setCameraMode(mode: CameraMode) { this.setCameraModeInternal(mode); }
   setTheme(theme: MapTheme) {
-    const changed = this.theme !== theme;
-    this.theme = theme;
-    const style = this.styleUrls?.[theme];
+    const nextTheme = this.themeForLayer(this.layer, theme);
+    const changed = this.theme !== nextTheme;
+    this.theme = nextTheme;
+    const style = this.layer === 'satellite'
+      ? this.styleUrls?.[this.themeForLayer('simple', theme)] ?? styleForLayer(this.layer, configuredMapStyleUrl, this.theme.endsWith('_DARK'))
+      : this.styleUrls?.[this.theme];
     if (changed && style) { this.map.setStyle(style); return; }
+    this.applySatellitePalette();
     if (!this.map.getLayer('marshgo-route')) return;
-    const colors = mapStyleTokens[theme];
+    const colors = mapStyleTokens[this.theme];
+    this.map.setPaintProperty('marshgo-route-halo', 'line-color', colors.route);
     this.map.setPaintProperty('marshgo-route-casing', 'line-color', colors.routeCasing);
     this.map.setPaintProperty('marshgo-route', 'line-color', colors.route);
     this.map.setPaintProperty('marshgo-waypoints', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, colors.route]);
@@ -206,9 +279,10 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.setPaintProperty('marshgo-vehicle-halo', 'circle-color', colors.vehicle);
     this.map.setPaintProperty('marshgo-vehicle', 'circle-color', colors.vehicle);
     this.map.setPaintProperty('marshgo-vehicle', 'circle-stroke-color', colors.routeCasing);
+    if (this.map.getLayer('marshgo-buildings-3d')) this.map.setPaintProperty('marshgo-buildings-3d', 'fill-extrusion-color', this.theme.endsWith('_DARK') ? '#29415E' : '#D5E2EE');
     if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);
   }
-  retry() { this.seenTileError = false; this.publish(this.hasBasemap ? 'loading' : 'unconfigured'); if (this.hasBasemap) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
+  retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
   destroy() { this.marker?.remove(); this.transport?.destroy(); this.map.remove(); }
   getStatus() { return this.status; }
 }

@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { formatDistance } from '../domain/transportCatalog';
-import { activeTypesForSearch, choiceFor, effectiveProviders, transportTypes, type TransportSelection, type TransportTypeId } from '../domain/transportPreferences';
+import { activeTypesForSearch, choiceFor, effectiveProviders, journeyTypesForCategory, transportTypes, type TransportSelection, type TransportTypeId } from '../domain/transportPreferences';
 import { productionApi, type ApiNearby, type ApiTransportProviders } from '../services/productionApi';
 
-const rentalType = { bike: 'bike', scooter: 'scooter', moped: 'moped', carsharing: 'carsharing' } as const;
+const rentalType = { bike: 'bike', scooter: 'scooter', carsharing: 'carsharing' } as const;
 type RentalType = keyof typeof rentalType;
 const isRental = (type: TransportTypeId): type is RentalType => type in rentalType;
-const transitTypes: TransportTypeId[] = ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'city_train', 'funicular', 'train', 'suburban_train', 'intercity_bus', 'ferry'];
+const transitTypes: TransportTypeId[] = ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'train'];
 
 /** Results for the selected non-carpool types, per provider. Only real data is shown: availability near the start point, or what is connected. */
 export function OtherModesPanel({ selection, groups, origin }: { selection: TransportSelection; groups: ApiTransportProviders[] | null; origin: { latitude: number; longitude: number } | null }) {
   const [nearby, setNearby] = useState<Partial<Record<RentalType, ApiNearby>>>({});
-  const active = activeTypesForSearch(selection).filter((type) => type !== 'carpool' && type !== 'walk');
+  const active = activeTypesForSearch(selection).filter((type) => type !== 'carpool');
   const rentals = active.filter(isRental);
   const rentalKey = rentals.join(',');
 
@@ -27,7 +27,7 @@ export function OtherModesPanel({ selection, groups, origin }: { selection: Tran
     <div className="space-y-2">{active.map((type) => {
       const label = transportTypes.find((item) => item.id === type)?.label ?? type;
       const providerIds = effectiveProviders(selection, type, groups);
-      const providers = groups?.find((group) => group.transportType === type)?.providers.filter((provider) => providerIds.includes(provider.id)) ?? [];
+      const providers = groups?.filter((group) => journeyTypesForCategory[type].includes(group.transportType)).flatMap((group) => group.providers).filter((provider) => providerIds.includes(provider.id)) ?? [];
       const data = isRental(type) ? nearby[type] : undefined;
       return <div key={type} className="rounded-2xl bg-white p-3 shadow-sm"><b className="text-sm text-[#0E1F35]">{label}</b>
         {providers.length === 0 ? <p className="mt-1 text-xs text-slate-500">{choiceFor(selection, type).all ? 'Провайдери недоступні у цьому районі.' : 'Вибрані провайдери недоступні у цьому районі.'}</p>

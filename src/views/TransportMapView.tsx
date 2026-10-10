@@ -32,7 +32,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
   }, []);
   useEffect(() => {
     // Planning happens on the 2D map; a 3D/satellite choice left over from navigation would hide the layers.
-    if (getMapLayer() === 'navigation') setMapLayer('standard');
+    if (getMapLayer() === 'threeD') setMapLayer('simple');
     return () => clearTransportLayers();
   }, []);
   const located = useRef(false);

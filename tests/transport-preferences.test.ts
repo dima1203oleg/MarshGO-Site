@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { transportTypes, supportedJourneySearchTypes, activeTypesForSearch, choiceFor, defaultSelection, effectiveProviders, isAllActive, selectAll, toggleProvider, toggleType, toJourneyPreferences, type TransportSelection } from '../src/domain/transportPreferences';
+import { transportTypes, supportedJourneySearchTypes, activeTypesForSearch, choiceFor, defaultSelection, effectiveProviders, isAllActive, journeyTypesForCategory, selectAll, toggleProvider, toggleType, toJourneyPreferences, type TransportSelection } from '../src/domain/transportPreferences';
 
 const groups = [
-  { transportType: 'carpool', providers: [{ id: 'carpool:MARSHGO', name: 'MARSHGO Community', available: true, cities: [], sources: [], services: [] }] },
+  { transportType: 'carpool', providers: [{ id: 'carpool:MARSHGO', name: 'MARSHGO Community', available: true, cities: [], sources: ['marshgo'], services: [] }] },
   { transportType: 'taxi', providers: [{ id: 'taxi:Uklon', name: 'Uklon', available: true, cities: [], sources: [], services: [] }, { id: 'taxi:Bolt', name: 'Bolt', available: true, cities: [], sources: [], services: [] }] },
   { transportType: 'scooter', providers: [{ id: 'scooter:Bolt', name: 'Bolt', available: true, cities: [], sources: [], services: [] }] },
   { transportType: 'bike', providers: [] },
@@ -14,20 +14,19 @@ const groups = [
 ];
 
 describe('transport types and providers', () => {
-  it('keeps all 21 catalogue tiles visible while only exposing implemented route modes to search', () => {
-    assert.equal(transportTypes.length, 21);
-    assert.equal(new Set(transportTypes.map((type) => type.group)).size, 5);
-    assert.equal(supportedJourneySearchTypes.length, 12);
-    assert.equal(supportedJourneySearchTypes.includes('bike'), false);
-    assert.equal(supportedJourneySearchTypes.includes('carsharing'), false);
-    assert.equal(supportedJourneySearchTypes.includes('walk'), false);
+  it('uses the exact twelve approved categories in order and keeps walking internal', () => {
+    assert.deepEqual(transportTypes.map((type) => type.id), ['bus','marshrutka','trolleybus','tram','metro','carpool','taxi','train','bike','scooter','carsharing','transfer']);
+    assert.equal(new Set(transportTypes.map((type) => type.id)).size, 12);
+    assert.equal(supportedJourneySearchTypes.length, 7);
+    assert.deepEqual(journeyTypesForCategory.train, ['train','suburban_train','city_train','funicular']);
+    assert.equal(transportTypes.some((type) => (type.id as string) === 'walk'), false);
   });
 
   it('starts with implemented route types selected and ignores attempts to select unsupported tiles', () => {
     assert.equal(isAllActive(defaultSelection), true);
-    const narrowed = toggleType(toggleType(defaultSelection, 'bike'), 'carpool');
+    const narrowed = toggleType(toggleType(defaultSelection, 'bus'), 'carpool');
     assert.equal(isAllActive(narrowed), false);
-    assert.equal(narrowed.active.includes('bike'), false);
+    assert.equal(narrowed.active.includes('bus'), false);
     assert.equal(narrowed.active.includes('taxi'), false);
     assert.equal(narrowed.active.includes('carpool'), false);
     assert.equal(isAllActive(selectAll(narrowed)), true);
@@ -88,7 +87,9 @@ describe('transport types and providers', () => {
     const busOnly = toJourneyPreferences({ ...defaultSelection, active: ['bus' as const] }, groups);
     assert.equal(busOnly.allowBus && busOnly.allowPublicTransport, true);
     assert.equal(busOnly.allowRail || busOnly.allowMinibus || busOnly.allowCommunity, false);
-    assert.deepEqual(busOnly.allowedTransportTypes, ['bus']);
+    // The canonical UI category is Bus; the current Journey API also routes
+    // intercity buses, so include its internal feed subtype at the API edge.
+    assert.deepEqual(busOnly.allowedTransportTypes, ['bus', 'intercity_bus']);
   });
 
   it('preserves supported route modes while provider availability is loading', () => {
@@ -96,7 +97,7 @@ describe('transport types and providers', () => {
     const preferences = toJourneyPreferences(selectedBus, null);
     assert.equal(preferences.allowBus, true);
     assert.equal(preferences.allowPublicTransport, true);
-    assert.deepEqual(preferences.allowedTransportTypes, ['bus']);
+    assert.deepEqual(preferences.allowedTransportTypes, ['bus', 'intercity_bus']);
     assert.deepEqual(preferences.allowedTransitProviders, []);
     assert.deepEqual(preferences.allowedTransitProvidersByType, {});
   });

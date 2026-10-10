@@ -13,7 +13,7 @@ export const mapAttribution = attribution;
 
 /** Prefer the versioned MARSHGO style manifest. Raster URL remains a compatibility path for owned tile services. */
 export function createFallbackMapStyle(): StyleSpecification {
-  return buildFallbackStyle('MARSHGO_NAVIGATION_LIGHT', tileUrl, attribution);
+  return buildFallbackStyle('MARSHGO_LIGHT', tileUrl, attribution);
 }
 
 export function mapTilesConfigured(): boolean { return Boolean(manifestUrl || styleUrl || tileUrl); }

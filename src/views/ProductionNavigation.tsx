@@ -181,8 +181,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, 
   useEffect(() => {
     if (!hasSession) return;
     const previous: MapLayer = getMapLayer();
-    if (previous !== 'navigation') setMapLayer('navigation');
-    return () => { if (previous !== 'navigation') setMapLayer(previous); };
+    if (previous !== 'threeD') setMapLayer('threeD');
+    return () => { if (previous !== 'threeD') setMapLayer(previous); };
   }, [hasSession]);
 
   useEffect(() => {

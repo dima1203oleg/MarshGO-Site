@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { passengersLabel } from '../src/domain/plural';
-import { mapModes, styleUrlForMode } from '../src/map/mapMode';
+import { mapLayers, styleForLayer } from '../src/map/mapMode';
 
 describe('passenger plural forms', () => {
   it('uses the correct Ukrainian form', () => {
@@ -10,14 +10,12 @@ describe('passenger plural forms', () => {
   });
 });
 
-describe('map modes', () => {
-  it('swaps only OpenFreeMap vector styles', () => {
-    assert.equal(styleUrlForMode('apple', 'https://tiles.openfreemap.org/styles/bright'), 'https://tiles.openfreemap.org/styles/liberty');
-    assert.equal(styleUrlForMode('waze', 'https://tiles.openfreemap.org/styles/liberty'), 'https://tiles.openfreemap.org/styles/positron');
-    assert.equal(styleUrlForMode('google', 'https://maps.example/style.json'), null);
-    assert.equal(styleUrlForMode('google', undefined), null);
-  });
-  it('defines three distinct route colours', () => {
-    assert.equal(new Set(Object.values(mapModes).map((mode) => mode.route)).size, 3);
+describe('base map modes', () => {
+  it('exposes only simple 2D, 3D, and satellite; transport stays an overlay', () => {
+    assert.deepEqual(Object.keys(mapLayers), ['simple', 'threeD', 'satellite']);
+    assert.deepEqual(Object.values(mapLayers).map((mode) => mode.label), ['Простий 2D', '3D', 'Супутник']);
+    assert.equal(styleForLayer('simple', 'https://maps.example/style.json'), 'https://maps.example/style.json');
+    assert.equal(styleForLayer('threeD', 'https://maps.example/style.json'), 'https://maps.example/style.json');
+    assert.equal(styleForLayer('satellite', 'https://maps.example/style.json'), 'https://maps.example/style.json');
   });
 });
