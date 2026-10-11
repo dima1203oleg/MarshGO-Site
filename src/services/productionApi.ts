@@ -222,6 +222,7 @@ export type ApiJourneySearchResult = {
   returnedCount?: number;
   alternativeLimitPerStrategy?: number;
   resultsTruncated?: boolean;
+  candidateGenerationTruncated?: boolean;
   partial: boolean;
   blockedProviders: string[];
   unsupportedPreferences: string[];
