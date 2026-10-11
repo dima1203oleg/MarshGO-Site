@@ -111,7 +111,7 @@ export function JourneyResultsPanel({ result, onOpenOffer }: { result: ApiJourne
     preferredVehicleClass: 'клас автомобіля не застосовується до розкладів громадського транспорту',
     'maxPriceMinor:public-transit-fare-unavailable': 'обмеження ціни не застосовується до рейсів без тарифів у джерелі',
     'CHEAPEST:public-transit-fares-unavailable': 'найдешевший варіант серед розкладів без оприлюднених тарифів визначити неможливо',
-    'maxTransfers:limited-to-2': 'планувальник будує максимум дві пересадки',
+    'maxTransfers:limited-to-4': 'планувальник будує максимум чотири пересадки',
     'transportType:taxi:not-in-route-engine': 'маршрути таксі ще не входять до планувальника',
     'transportType:carsharing:not-in-route-engine': 'маршрути каршерінгу ще не входять до планувальника',
     'transportType:car_rental:not-in-route-engine': 'оренда авто доступна окремо, але не додається до маршрутного ланцюжка',
