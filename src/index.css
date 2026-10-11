@@ -669,20 +669,56 @@ html.dark .home-screen .home-intro::after { background: rgba(23,137,244,.18) !im
 html.dark .home-screen .home-title { color: #eaf2fd !important; }
 html.dark .home-screen .home-greeting { color: #6db4ff !important; }
 
-/* ---- Home screen never scrolls: HomeHero measures the free height on the device; the illustration flexes into it. ---- */
-.home-hero--compact .home-hero-title { font-size: 1.4rem; }
-.home-hero--compact .home-hero-sub { margin-top: .35rem; font-size: 13px; line-height: 1.3rem; }
-.home-hero--compact > button { margin-top: .45rem !important; padding-top: .78rem; padding-bottom: .78rem; }
-/* Desktop: the home hero becomes one calm card — copy and actions on the left, illustration on the right. */
+/* Canonical home follows the owner reference: mountain cover, account trip card,
+   image-backed actions, popular routes, all held above the fixed tab bar. */
+.home-hero--canonical { min-height: 0; overflow: hidden; }
+.home-canonical-banner { height: clamp(8.25rem, 18svh, 9rem); min-height: 8.25rem; }
+.home-action-grid { flex: 0 0 auto; grid-template-rows: repeat(2, clamp(6.2rem, 12.5svh, 6.8rem)); gap: .5rem; }
+.home-action-card { box-shadow: 0 6px 18px rgba(17,47,88,.16); }
+.home-action-card img { transition: transform .3s ease; }
+.home-action-card:active img { transform: scale(1.04); }
+.home-action-card--navigation .home-action-tint { background: linear-gradient(145deg,rgba(0,99,255,.86),rgba(0,79,220,.8)); }
+.home-action-card--transport .home-action-tint { background: linear-gradient(145deg,rgba(0,185,132,.86),rgba(0,132,103,.82)); }
+.home-action-card--search .home-action-tint { background: linear-gradient(145deg,rgba(139,57,232,.88),rgba(91,40,190,.82)); }
+.home-action-card--publish .home-action-tint { background: linear-gradient(145deg,rgba(255,130,0,.89),rgba(236,75,12,.84)); }
+.home-popular-routes { flex: 0 0 auto; }
+.home-popular-route { height: 4rem; }
+html.dark .home-canonical-banner > span[aria-hidden="true"] { background: linear-gradient(90deg,rgba(7,20,38,.94),rgba(7,20,38,.78) 60%,rgba(7,20,38,.16)); }
+html.dark .home-trip-card { background: #0a261e; color: #eff6ff; }
+html.dark .home-canonical-banner h1 { color: #eff6ff; }
+html.dark .home-canonical-banner p { color: #bfdbfe; }
+html.dark .home-trip-card > span:nth-child(2) > span:nth-child(2) { color: #eff6ff; }
+html.dark .home-hero--canonical .home-city-pill { background: #12233a; color: #eff6ff; border-color: #20324a; }
+html.dark .home-action-card--navigation .home-action-tint { background: linear-gradient(145deg,rgba(9,38,95,.85),rgba(6,31,78,.8)); }
+html.dark .home-action-card--transport .home-action-tint { background: linear-gradient(145deg,rgba(7,89,67,.88),rgba(5,66,54,.83)); }
+html.dark .home-action-card--search .home-action-tint { background: linear-gradient(145deg,rgba(75,34,136,.9),rgba(51,26,104,.85)); }
+html.dark .home-action-card--publish .home-action-tint { background: linear-gradient(145deg,rgba(126,62,13,.9),rgba(101,37,11,.85)); }
+@media (max-width: 639px) and (max-height: 740px) {
+  .home-canonical-banner { height: 8rem; min-height: 8rem; padding: .7rem; }
+  .home-action-grid { grid-template-rows: repeat(2, 5.9rem); }
+  .home-trip-card { min-height: 4.25rem; padding-block: .6rem; }
+  .home-popular-routes { display: none; }
+}
+@media (max-width: 639px) and (max-height: 620px) {
+  .home-canonical-banner { height: 5.75rem; min-height: 5.75rem; padding: .5rem; }
+  .home-canonical-banner h1 { font-size: 1rem; }
+  .home-canonical-banner p { margin-top: .1rem; font-size: .625rem; }
+  .home-action-grid { grid-template-rows: repeat(2, 4.6rem); gap: .4rem; }
+  .home-action-grid > .home-action-card { min-height: 0 !important; padding: .5rem; }
+  .home-action-card > span:first-of-type { width: 1.75rem; height: 1.75rem; }
+  .home-action-card > span:first-of-type svg { width: 1rem; height: 1rem; }
+  .home-action-card > span:last-child > span:first-child > span:first-child { font-size: .75rem; }
+  .home-action-card > span:last-child > span:first-child > span:last-child { display: none; }
+  .home-trip-card { min-height: 3.1rem; padding: .35rem .6rem; }
+  .home-trip-card > span:first-child { width: 2rem; height: 2rem; }
+  .home-city-pill { min-height: 1.75rem; margin-bottom: .3rem; }
+}
+/* Desktop keeps the canonical composition in a wider reading column. */
 @media (min-width: 1024px) {
-  .production-app > .pt-1 > .home-hero { width: 100%; max-width: 1120px; padding-inline: 48px; }
-  .home-hero { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 56px; align-items: center; align-content: center;
-    margin-top: 28px; padding: 52px 56px !important; border-radius: 32px; background: rgba(255,255,255,.97); box-shadow: 0 24px 60px rgba(9,35,69,.16); }
-  .home-hero > section { grid-column: 1; text-align: left; }
-  .home-hero-title { font-size: clamp(2.2rem, 3vw, 3rem) !important; }
-  .home-hero-sub { margin-left: 0 !important; font-size: 17px !important; line-height: 1.7 !important; }
-  .home-hero-art { grid-column: 2; grid-row: 1 / span 4; height: 340px !important; }
-  .home-hero > button { grid-column: 1; max-width: 440px; margin-top: 14px !important; }
+  .home-hero--canonical { max-width: 800px; padding-inline: 24px; }
+  .home-canonical-banner { height: 12rem; }
+  .home-action-grid { grid-template-rows: repeat(2, 9rem); }
+  .home-popular-route { height: 5rem; }
 }
 
 /* Driver puck on the navigation map (Apple-Maps-like arrow with a soft accuracy halo). */
