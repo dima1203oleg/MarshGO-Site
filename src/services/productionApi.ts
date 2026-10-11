@@ -180,6 +180,8 @@ export type ApiJourney = {
   strategy: ApiJourneyStrategy;
   /** The same exact journey may be recommended under more than one strategy. */
   recommendedStrategies?: ApiJourneyStrategy[];
+  /** Rank among Pareto-feasible candidates for each strategy, starting at 1. */
+  strategyRanks?: Partial<Record<ApiJourneyStrategy, number>>;
   state: string;
   totalDurationSeconds: number;
   totalPriceMinor: number | null;
@@ -213,6 +215,13 @@ export type ApiJourney = {
 };
 export type ApiJourneySearchResult = {
   journeys: ApiJourney[];
+  requestedStrategy?: ApiJourneyStrategy;
+  availableStrategies?: ApiJourneyStrategy[];
+  candidateCount?: number;
+  paretoCount?: number;
+  returnedCount?: number;
+  alternativeLimitPerStrategy?: number;
+  resultsTruncated?: boolean;
   partial: boolean;
   blockedProviders: string[];
   unsupportedPreferences: string[];

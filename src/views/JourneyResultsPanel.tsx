@@ -27,9 +27,10 @@ const formatTime = (value: string) => new Intl.DateTimeFormat('uk-UA', {
   hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv',
 }).format(new Date(value));
 
-function JourneyCard({ journey, onOpenOffer }: {
+function JourneyCard({ journey, onOpenOffer, activeStrategy }: {
   journey: ApiJourney;
   onOpenOffer: (offerId: string, journeyId: string, journeyLegId: string) => void;
+  activeStrategy: ApiJourneyStrategy;
 }) {
   const legs = journey.legs;
   const firstLeg = legs[0];
@@ -52,7 +53,7 @@ function JourneyCard({ journey, onOpenOffer }: {
       <span className="rounded-full bg-blue-50 px-3 py-1.5 text-[10px] font-bold text-blue-700">
         {isMultimodal ? 'Комбінований маршрут' : modeLabels[firstLeg.mode] ?? 'Маршрут'}
       </span>
-      <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-semibold text-emerald-700">{strategyLabels[journey.strategy]}</span>
+      <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-semibold text-emerald-700">{strategyLabels[activeStrategy]}{journey.strategyRanks?.[activeStrategy] ? ` · №${journey.strategyRanks[activeStrategy]}` : ''}</span>
     </div>
 
     <div className="journey-result-path mt-4 grid grid-cols-[auto_1fr] gap-x-3">
@@ -96,14 +97,31 @@ function JourneyCard({ journey, onOpenOffer }: {
 
 export function JourneyResultsPanel({ result, onOpenOffer }: { result: ApiJourneySearchResult; onOpenOffer: (offerId: string, journeyId: string, journeyLegId: string) => void }) {
   const [activeFilter, setActiveFilter] = useState('all');
-  useEffect(() => setActiveFilter('all'), [result.journeys]);
+  const strategyOptions = result.availableStrategies?.length
+    ? result.availableStrategies
+    : [...new Set(result.journeys.flatMap(journey => journey.recommendedStrategies ?? [journey.strategy]))];
+  const defaultStrategy = result.requestedStrategy && strategyOptions.includes(result.requestedStrategy)
+    ? result.requestedStrategy
+    : strategyOptions.includes('BALANCED') ? 'BALANCED' : strategyOptions[0] ?? 'BALANCED';
+  const [activeStrategy, setActiveStrategy] = useState<ApiJourneyStrategy>(defaultStrategy);
+  useEffect(() => {
+    setActiveFilter('all');
+    setActiveStrategy(defaultStrategy);
+  }, [result, defaultStrategy]);
   const filterGroups = [
     { id: 'community', label: 'Попутки', modes: ['COMMUNITY'] },
     { id: 'bus', label: 'Автобуси', modes: ['BUS', 'MINIBUS'] },
     { id: 'rail', label: 'Потяги', modes: ['RAIL'] },
     ...['TRAM', 'TROLLEYBUS', 'METRO', 'FERRY', 'FUNICULAR'].map(mode => ({ id: mode, label: modeLabels[mode], modes: [mode] })),
   ].filter(group => result.journeys.some(journey => journey.legs.some(leg => group.modes.includes(leg.mode))));
-  const visibleJourneys = activeFilter === 'all' ? result.journeys : result.journeys.filter(journey => {
+  const strategyJourneys = result.journeys
+    .filter(journey => journey.strategyRanks
+      ? typeof journey.strategyRanks[activeStrategy] === 'number'
+      : (journey.recommendedStrategies ?? [journey.strategy]).includes(activeStrategy))
+    .sort((a, b) => (a.strategyRanks?.[activeStrategy] ?? Number.MAX_SAFE_INTEGER)
+      - (b.strategyRanks?.[activeStrategy] ?? Number.MAX_SAFE_INTEGER)
+      || a.totalDurationSeconds - b.totalDurationSeconds);
+  const visibleJourneys = activeFilter === 'all' ? strategyJourneys : strategyJourneys.filter(journey => {
     const group = filterGroups.find(item => item.id === activeFilter);
     return group && journey.legs.some(leg => group.modes.includes(leg.mode));
   });
@@ -124,10 +142,12 @@ export function JourneyResultsPanel({ result, onOpenOffer }: { result: ApiJourne
   };
   return <section aria-label="План маршруту" className="mt-4">
     <div className="mb-3"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-600">Ваш маршрут</p><h2 className="mt-1 text-xl font-extrabold">Найкращі доступні варіанти</h2><p className="mt-1 text-xs text-slate-500">Порівняйте час, пересадки та ціну.</p></div>
-    {result.journeys.length > 0 && <div role="group" aria-label="Фільтр маршрутів за транспортом" className="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1"><button type="button" aria-pressed={activeFilter === 'all'} onClick={() => setActiveFilter('all')} className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-bold ${activeFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>Усі · {result.journeys.length}</button>{filterGroups.map(group => { const count = result.journeys.filter(journey => journey.legs.some(leg => group.modes.includes(leg.mode))).length; return <button key={group.id} type="button" aria-pressed={activeFilter === group.id} onClick={() => setActiveFilter(group.id)} className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-bold ${activeFilter === group.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>{group.label} · {count}</button>; })}</div>}
+    {strategyOptions.length > 0 && <div role="group" aria-label="Ранжування маршрутів" className="mb-3 grid grid-cols-3 gap-2">{strategyOptions.filter(strategy => ['BALANCED','FASTEST','CHEAPEST'].includes(strategy)).map(strategy => { const count = result.journeys.filter(journey => journey.strategyRanks ? typeof journey.strategyRanks[strategy] === 'number' : (journey.recommendedStrategies ?? [journey.strategy]).includes(strategy)).length; return <button key={strategy} type="button" aria-pressed={activeStrategy === strategy} onClick={() => { setActiveStrategy(strategy); setActiveFilter('all'); }} className={`min-w-0 rounded-xl border px-2 py-2.5 text-[11px] font-bold ${activeStrategy === strategy ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-100 bg-white text-slate-600'}`}>{strategyLabels[strategy]} · {count}</button>; })}</div>}
+    {result.journeys.length > 0 && <div role="group" aria-label="Фільтр маршрутів за транспортом" className="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1"><button type="button" aria-pressed={activeFilter === 'all'} onClick={() => setActiveFilter('all')} className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-bold ${activeFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>Усі · {strategyJourneys.length}</button>{filterGroups.map(group => { const count = strategyJourneys.filter(journey => journey.legs.some(leg => group.modes.includes(leg.mode))).length; return <button key={group.id} type="button" aria-pressed={activeFilter === group.id} onClick={() => setActiveFilter(group.id)} className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-bold ${activeFilter === group.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>{group.label} · {count}</button>; })}</div>}
     {result.partial && <p className="mb-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Це частковий результат: враховані джерела, що відповіли для цієї території та часу. Розклад, наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.</p>}
     {result.unsupportedPreferences.length > 0 && <p className="mb-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Не всі умови можна врахувати: {result.unsupportedPreferences.map(value => preferenceMessages[value] ?? value).join('; ')}.</p>}
     {result.providerErrors.length > 0 && <p className="mb-3 rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs leading-5 text-rose-800">Деякі розклади тимчасово недоступні: {result.providerErrors.join('; ')}.</p>}
-    {result.journeys.length ? visibleJourneys.length ? <div className="space-y-3">{visibleJourneys.map(journey => <JourneyCard key={journey.id} journey={journey} onOpenOffer={onOpenOffer}/>)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><p className="font-bold">Немає маршрутів у цій категорії</p><button type="button" onClick={() => setActiveFilter('all')} className="mt-2 text-sm font-bold text-blue-700">Показати всі</button></div> : <div className="rounded-2xl bg-white p-6 text-center"><MapPin className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Актуальних маршрутів поки немає</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити вид транспорту, час або перевізників.</p></div>}
+    {result.resultsTruncated && <p className="mb-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">Показано до {result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із {result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.</p>}
+    {result.journeys.length ? visibleJourneys.length ? <div className="space-y-3">{visibleJourneys.map(journey => <JourneyCard key={journey.id} journey={journey} activeStrategy={activeStrategy} onOpenOffer={onOpenOffer}/>)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><p className="font-bold">Немає маршрутів у цій категорії</p><button type="button" onClick={() => setActiveFilter('all')} className="mt-2 text-sm font-bold text-blue-700">Показати всі</button></div> : <div className="rounded-2xl bg-white p-6 text-center"><MapPin className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Актуальних маршрутів поки немає</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити вид транспорту, час або перевізників.</p></div>}
   </section>;
 }
