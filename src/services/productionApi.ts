@@ -178,6 +178,8 @@ export type ApiJourney = {
   routeName?: string;
   headsign?: string;
   strategy: ApiJourneyStrategy;
+  /** The same exact journey may be recommended under more than one strategy. */
+  recommendedStrategies?: ApiJourneyStrategy[];
   state: string;
   totalDurationSeconds: number;
   totalPriceMinor: number | null;
