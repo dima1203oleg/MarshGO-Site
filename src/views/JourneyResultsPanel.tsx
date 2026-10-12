@@ -48,7 +48,7 @@ function JourneyCard({ journey, onOpenOffer, onOpenMap }: {
       ? `Оцінка ${formatPrice(journey.estimatedPriceMinMinor)}–${formatPrice(journey.estimatedPriceMaxMinor)}`
       : 'Ціна уточнюється';
 
-  return <article className="journey-result-card rounded-2xl border border-slate-100 bg-white p-3.5 shadow-[0_6px_18px_rgba(24,58,105,.06)]">
+  return <article data-journey-id={journey.id} className="journey-result-card rounded-2xl border border-slate-100 bg-white p-3.5 shadow-[0_6px_18px_rgba(24,58,105,.06)]">
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0 flex-1">
         <p className="truncate text-[11px] font-extrabold text-slate-800" aria-label={`Транспорт маршруту: ${chainLabel}`}>{chainLabel}</p>
