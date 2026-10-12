@@ -19,6 +19,8 @@ export class MapLibreAdapter implements MapAdapter {
   private status: MapStatus = 'loading';
   private route: Coordinate[] = [];
   private routeSegments: ColoredRouteSegment[] | null = null;
+  private activeRouteSegmentId: string | null = null;
+  private routeInteractionBound = false;
   private vehicle: Coordinate | null = null;
   private waypoints: Array<{ coordinate: Coordinate; kind: string }> = [];
   private cameraMode: CameraMode = 'OVERVIEW';
@@ -30,6 +32,7 @@ export class MapLibreAdapter implements MapAdapter {
   private marker: maplibregl.Marker | null = null;
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
+  onRouteSegmentSelect: (id: string) => void = () => undefined;
   private transportLayers: ReadonlySet<TransportLayerId> = new Set();
   /** Shown when a layer needs a closer zoom or fails to load. */
   onTransportHint: (message: string | null) => void = () => undefined;
@@ -90,10 +93,19 @@ export class MapLibreAdapter implements MapAdapter {
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 10, 15, 22], 'line-opacity': 0.2, 'line-blur': 5 } });
-    if (!this.map.getLayer('marshgo-route-casing')) this.map.addLayer({ id: 'marshgo-route-casing', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.routeCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 5, 15, 13], 'line-opacity': 0.92 } });
-    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({ id: 'marshgo-route', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3, 15, 8], 'line-opacity': 0.98 } });
-    if (!this.map.getLayer('marshgo-waypoints')) this.map.addLayer({ id: 'marshgo-waypoints', type: 'circle', source: 'marshgo-waypoints', paint: { 'circle-radius': 8, 'circle-color': ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, colors.route], 'circle-stroke-color': colors.routeCasing, 'circle-stroke-width': 3 } });
+    if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['get', 'selected'], 18, 10], 15, ['case', ['get', 'selected'], 34, 22]], 'line-opacity': ['case', ['get', 'selected'], 0.78, ['get', 'dimmed'], 0.035, 0.2], 'line-blur': 7 } });
+    if (!this.map.getLayer('marshgo-route-casing')) this.map.addLayer({ id: 'marshgo-route-casing', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.routeCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['get', 'selected'], 8, 5], 15, ['case', ['get', 'selected'], 17, 13]], 'line-opacity': ['case', ['get', 'dimmed'], 0.34, 0.96] } });
+    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({ id: 'marshgo-route', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['get', 'selected'], 5.5, 3], 15, ['case', ['get', 'selected'], 12, 8]], 'line-opacity': ['case', ['get', 'dimmed'], 0.38, 1] } });
+    if (!this.routeInteractionBound && this.map.getLayer('marshgo-route')) {
+      this.routeInteractionBound = true;
+      this.map.on('click', 'marshgo-route', (event) => {
+        const id = event.features?.find(feature => typeof feature.properties?.segmentId === 'string')?.properties?.segmentId;
+        if (typeof id === 'string') this.onRouteSegmentSelect(id);
+      });
+      this.map.on('mouseenter', 'marshgo-route', () => { this.map.getCanvas().style.cursor = 'pointer'; });
+      this.map.on('mouseleave', 'marshgo-route', () => { this.map.getCanvas().style.cursor = ''; });
+    }
+    if (!this.map.getLayer('marshgo-waypoints')) this.map.addLayer({ id: 'marshgo-waypoints', type: 'circle', source: 'marshgo-waypoints', paint: { 'circle-radius': ['match', ['get', 'kind'], 'STOP', 4, 'TRANSFER', 6, 8], 'circle-color': ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'STOP', '#D6E4F3', 'TRANSFER', '#FFFFFF', colors.route], 'circle-stroke-color': ['match', ['get', 'kind'], 'TRANSFER', '#1687FF', colors.routeCasing], 'circle-stroke-width': ['match', ['get', 'kind'], 'STOP', 1.5, 3] } });
     if (!this.map.getLayer('marshgo-vehicle-halo')) this.map.addLayer({ id: 'marshgo-vehicle-halo', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 13, 'circle-color': colors.vehicle, 'circle-opacity': 0.2 } });
     if (!this.map.getLayer('marshgo-vehicle')) this.map.addLayer({ id: 'marshgo-vehicle', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 8, 'circle-color': colors.vehicle, 'circle-stroke-color': colors.routeCasing, 'circle-stroke-width': 3 } });
     // The DOM puck (rotating arrow) replaces the old circle dot; the source stays for consumers of its data.
@@ -184,13 +196,33 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.getContainer().dataset.marshgoRouteSegmentCount = String(this.routeSegments.length);
     this.updateRouteSource();
   }
+  setActiveRouteSegment(id: string | null) {
+    this.activeRouteSegmentId = id;
+    const container = this.map.getContainer();
+    if (id) container.dataset.marshgoActiveRouteSegmentId = id;
+    else delete container.dataset.marshgoActiveRouteSegmentId;
+    this.updateRouteSource();
+  }
+  focusRouteSegment(id: string, padding: RouteFitPadding = {}) {
+    const segment = this.routeSegments?.find(item => item.id === id);
+    if (!segment || segment.coordinates.length < 2) return false;
+    this.cameraMode = 'FREE';
+    this.map.getContainer().dataset.marshgoFocusedRouteSegmentId = id;
+    this.fitCoordinates(segment.coordinates, padding, 17);
+    return true;
+  }
+  focusCoordinates(points: Coordinate[], padding: RouteFitPadding = {}, maxZoom = 15) {
+    if (points.length === 1) { this.focus(points[0], maxZoom); return; }
+    this.cameraMode = 'FREE';
+    this.fitCoordinates(points, padding, maxZoom);
+  }
   private updateRouteSource() {
     const source = this.map.getSource('marshgo-route') as maplibregl.GeoJSONSource | undefined;
     if (!source) return;
     if (this.routeSegments) {
       source.setData({ type: 'FeatureCollection', features: this.routeSegments.map(segment => ({
         type: 'Feature' as const,
-        properties: { modeColor: segment.modeColor },
+        properties: { modeColor: segment.modeColor, segmentId: segment.id ?? '', selected: this.activeRouteSegmentId === null || this.activeRouteSegmentId === segment.id, dimmed: this.activeRouteSegmentId !== null && this.activeRouteSegmentId !== segment.id },
         geometry: { type: 'LineString' as const, coordinates: segment.coordinates },
       })) });
       return;
@@ -243,9 +275,15 @@ export class MapLibreAdapter implements MapAdapter {
     source?.setData({ type: 'FeatureCollection', features: points.map(({ coordinate, kind }) => ({ type: 'Feature' as const, properties: { kind }, geometry: { type: 'Point' as const, coordinates: coordinate } })) });
   }
   fitRoute(overrides: RouteFitPadding = {}) {
-    if (this.route.length < 2) return;
-    const lngs = this.route.map((point) => point[0]); const lats = this.route.map((point) => point[1]);
+    const points = this.route.length >= 2 ? this.route : this.waypoints.map(point => point.coordinate);
+    if (points.length === 0) return;
+    delete this.map.getContainer().dataset.marshgoFocusedRouteSegmentId;
+    if (points.length === 1) { this.focus(points[0], 14); return; }
     this.cameraMode = 'OVERVIEW';
+    this.fitCoordinates(points, overrides, 15);
+  }
+  private fitCoordinates(points: Coordinate[], overrides: RouteFitPadding, maxZoom: number) {
+    const lngs = points.map((point) => point[0]); const lats = points.map((point) => point[1]);
     // Full-screen navigation reserves room for its overlays; small previews must scale the padding down or MapLibre rejects the fit.
     const { clientWidth, clientHeight } = this.map.getContainer();
     const padding = {
@@ -254,7 +292,7 @@ export class MapLibreAdapter implements MapAdapter {
       bottom: Math.min(clientHeight * 0.52, overrides.bottom ?? Math.min(270, clientHeight * 0.2)),
       left: Math.min(clientWidth * 0.15, overrides.left ?? Math.min(32, clientWidth * 0.1)),
     };
-    this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding, duration: 600, maxZoom: 15 });
+    this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding, duration: 520, maxZoom });
   }
   recenter(point?: Coordinate) {
     if (point) this.vehicle = point;
@@ -296,8 +334,9 @@ export class MapLibreAdapter implements MapAdapter {
       : this.styleUrls?.[this.theme];
     if (changed && style) { this.map.setStyle(style); return; }
     this.applySatellitePalette();
-    if (!this.map.getLayer('marshgo-route')) return;
     const colors = mapStyleTokens[this.theme];
+    if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);
+    if (!this.map.getLayer('marshgo-route')) return;
     this.map.setPaintProperty('marshgo-route-halo', 'line-color', ['coalesce', ['get', 'modeColor'], colors.route]);
     this.map.setPaintProperty('marshgo-route-casing', 'line-color', colors.routeCasing);
     this.map.setPaintProperty('marshgo-route', 'line-color', ['coalesce', ['get', 'modeColor'], colors.route]);

@@ -12,8 +12,8 @@ export const configuredMapStyleUrl = styleUrl || undefined;
 export const mapAttribution = attribution;
 
 /** Prefer the versioned MARSHGO style manifest. Raster URL remains a compatibility path for owned tile services. */
-export function createFallbackMapStyle(): StyleSpecification {
-  return buildFallbackStyle('MARSHGO_LIGHT', tileUrl, attribution);
+export function createFallbackMapStyle(theme: MapTheme = 'MARSHGO_LIGHT'): StyleSpecification {
+  return buildFallbackStyle(theme, tileUrl, attribution);
 }
 
 export function mapTilesConfigured(): boolean { return Boolean(manifestUrl || styleUrl || tileUrl); }
@@ -27,5 +27,5 @@ export async function resolveMapAssets(theme: MapTheme) {
     if (!style) throw new Error('MAP_STYLE_MISSING');
     return { style, styles: manifest.styles, mapDataVersion: manifest.mapDataVersion, styleVersion: manifest.styleVersion };
   }
-  return { style: styleUrl || createFallbackMapStyle(), styles: undefined, mapDataVersion: undefined, styleVersion: undefined };
+  return { style: styleUrl || createFallbackMapStyle(theme), styles: undefined, mapDataVersion: undefined, styleVersion: undefined };
 }

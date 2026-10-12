@@ -31,6 +31,7 @@ class ThemeService {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         if (this.currentTheme === 'system') {
           this.applyTheme();
+          this.notify();
         }
       });
     }

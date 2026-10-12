@@ -69,13 +69,13 @@ function maneuverIcon(maneuver: Maneuver): LucideIcon {
   return ArrowUp;
 }
 
-type Props = { onBack: () => void; onOpenDemand?: (demandId: string, candidateId: string) => void; autoStart?: boolean; onAddVehicle?: () => void };
+type Props = { onBack: () => void; onOpenDemand?: (demandId: string, candidateId: string) => void; autoStart?: boolean; initialDestination?: ApiPlace | null; onAddVehicle?: () => void };
 const AUTO_MATCHING_KEY = 'marshgo.navigation.autoMatching';
 const autoMatchingPreferred = () => { try { return localStorage.getItem(AUTO_MATCHING_KEY) !== 'off'; } catch { return true; } };
-export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, onAddVehicle }: Props) {
-  const [destinationText, setDestinationText] = useState('');
+export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, initialDestination = null, onAddVehicle }: Props) {
+  const [destinationText, setDestinationText] = useState(() => initialDestination?.label ?? '');
   const [suggestions, setSuggestions] = useState<ApiPlace[]>([]);
-  const [destination, setDestination] = useState<ApiPlace | null>(null);
+  const [destination, setDestination] = useState<ApiPlace | null>(initialDestination);
   const [session, setSession] = useState<ApiNavigationSession | null>(null);
   const [restoring, setRestoring] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -374,12 +374,37 @@ export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, 
     finally { setBusy(false); }
   };
 
-  // Pressing "Почати навігацію" on the home screen goes straight to the map: GPS starts now, the destination can be chosen on top at any time.
+  // A destination passed from a planned journey should be used by the real navigation session.
+  // If a session is already active, update it after restore; otherwise start at the current GPS fix.
   useEffect(() => {
     if (!autoStart || restoring || session || autoStartTried.current) return;
     autoStartTried.current = true;
-    void start(null);
-  }, [autoStart, restoring, session]);
+    if (initialDestination) {
+      setDestination(initialDestination);
+      setDestinationText(initialDestination.label);
+    }
+    void start(initialDestination);
+  }, [autoStart, restoring, session, initialDestination]);
+
+  useEffect(() => {
+    if (!autoStart || restoring || !session || !initialDestination || autoStartTried.current) return;
+    autoStartTried.current = true;
+    setDestination(initialDestination);
+    setDestinationText(initialDestination.label);
+    setBusy(true);
+    setGpsMessage('Оновлюємо пункт призначення активної навігації…');
+    void productionApi.setNavigationDestination(session.id, {
+      destination: [initialDestination.longitude, initialDestination.latitude],
+      destinationName: initialDestination.label,
+    }).then((updated) => {
+      navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: updated.id, route: canonicalRoute(updated), paused: updated.state === 'paused' });
+      setSession(updated);
+      setMatches([]);
+      setGpsMessage('Маршрут навігації оновлено до пункту з побудованого маршруту.');
+    }).catch((error: unknown) => {
+      setGpsMessage(navigationErrorMessage(error, 'Не вдалося змінити пункт активної навігації.'));
+    }).finally(() => setBusy(false));
+  }, [autoStart, restoring, session?.id, initialDestination, navigationStore]);
 
   const searchTopDestination = async () => {
     setBusy(true); setTopSuggestions([]);

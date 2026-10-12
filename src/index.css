@@ -44,6 +44,49 @@ html.dark {
   color-scheme: dark;
 }
 
+/* The selected journey sheet follows the app theme while keeping the same canonical geometry. */
+.route-map-screen {
+  --route-canvas: #F4F8FD;
+  --route-sheet-start: rgba(255, 255, 255, .98);
+  --route-sheet-end: rgba(247, 250, 254, .99);
+  --route-ink: #14243B;
+  --route-muted: #52637A;
+  --route-subtle: #64748B;
+  --route-border: #D8E2ED;
+  --route-card: #FFFFFF;
+  --route-card-alt: #F2F6FB;
+  --route-floating: rgba(255, 255, 255, .94);
+  --route-track: #E2E9F1;
+  --route-timeline-divider: rgba(255, 255, 255, .62);
+  --route-community-surface: #F4ECFF;
+  --route-footer: rgba(255, 255, 255, .96);
+  --route-hover: rgba(11, 110, 243, .07);
+  --route-grabber: #AAB8C8;
+  --route-sheet-shadow: 0 -18px 64px rgba(25, 53, 87, .18);
+  background-color: var(--route-canvas);
+  color-scheme: light;
+}
+.route-map-screen[data-theme="dark"] {
+  --route-canvas: #07111B;
+  --route-sheet-start: rgba(15, 29, 42, .98);
+  --route-sheet-end: rgba(8, 20, 31, .985);
+  --route-ink: #F5F9FF;
+  --route-muted: #B6C2D0;
+  --route-subtle: #8FA0B3;
+  --route-border: #294158;
+  --route-card: #10202E;
+  --route-card-alt: #111E2A;
+  --route-floating: rgba(11, 23, 34, .95);
+  --route-track: #263648;
+  --route-timeline-divider: rgba(7, 17, 27, .7);
+  --route-community-surface: rgba(111, 65, 165, .15);
+  --route-footer: rgba(11, 23, 34, .96);
+  --route-hover: rgba(255, 255, 255, .05);
+  --route-grabber: #71879B;
+  --route-sheet-shadow: 0 -18px 64px rgba(0, 0, 0, .38);
+  color-scheme: dark;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif;
   background-color: var(--color-marshgo-bg);

@@ -222,6 +222,9 @@ export type ApiJourney = {
     transportType?: string;
     /** Provider-supplied route shape, [longitude, latitude]; absent when the source has no verified geometry. */
     routeGeometry?: Array<[number, number]>;
+    /** Complete scheduled stop calls, populated only when the provider publishes GTFS stop times. */
+    stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string; pickupType?: number; dropOffType?: number }>;
+    liveStatus?: 'LIVE' | 'PREDICTED' | 'SCHEDULED' | 'UNVERIFIED' | 'UNAVAILABLE';
     driver: { id: string; name: string; averageRating: number | null; reviewCount: number } | null;
     vehicle: { id: string; make: string; model: string } | null;
   }>;
@@ -251,7 +254,7 @@ export type ApiStoredJourney = {
   passenger_count: number;
   total_price_minor: number | null;
   confirmed_price_minor: number | null;
-  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string }>;
+  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string; stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string }> }>;
 };
 export type GeoJsonCollection = { type: 'FeatureCollection'; features: Array<{ type: 'Feature'; properties: Record<string, unknown>; geometry: { type: string; coordinates: unknown } }> };
 export type ApiNavigationSession = {
