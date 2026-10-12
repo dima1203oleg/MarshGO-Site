@@ -1,7 +1,7 @@
 import { FormEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowDownUp, ArrowLeft, ArrowRight, Ban, Bell, CalendarDays, CarFront, ChevronRight,
-  CircleUserRound, Clock3, Compass, FileDown, Flag, Home, LogOut, MapPin, MessageCircle, Minus, Navigation, SlidersHorizontal,
+  CircleUserRound, Clock3, Compass, FileDown, Flag, Home, LogOut, MapPin, MessageCircle, Minus, Navigation,
   Plus, Search, ShieldCheck, Ticket, Users, X,
 } from 'lucide-react';
 
@@ -18,7 +18,7 @@ import { PlanTripChoice } from './PlanTripChoice';
 import { OnboardingSlides } from '../components/OnboardingSlides';
 import { DriverPhotoCard } from '../components/DriverPhotoCard';
 import { OfferEditSheet, PendingChangeCard, offerStatusLabel } from '../components/TripManagement';
-import { effectiveProviders, loadSelection, saveSelection, toJourneyPreferences, type TransportSelection } from '../domain/transportPreferences';
+import { loadSelection, saveSelection, toJourneyPreferences, type TransportSelection } from '../domain/transportPreferences';
 import { TicketQr } from '../components/TicketQr';
 import type { ProfileSection } from './ProfileSections';
 import { ApiAccountDeletionRequest, ApiBlockedUser, ApiBooking, ApiDemand, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiNotification, ApiNotificationPage, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiRendezvous, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, productionApi } from '../services/productionApi';
@@ -565,6 +565,7 @@ export function ProductionMarketplace() {
     const { form, field } = picker;
     if (form === 'search') {
       if (field === 'origin') { setSearchOriginPlace(place); setOrigin(place.label); } else { setSearchDestinationPlace(place); setDestination(place.label); }
+      setRoutePlaceSuggestions([]); setRoutePlaceField(null);
     } else if (form === 'offer') {
       if (field === 'origin') { setOfferOrigin(place); setOfferOriginText(place.label); } else { setOfferDestination(place); setOfferDestinationText(place.label); }
     } else if (field === 'origin') { setDemandOrigin(place); setDemandOriginText(place.label); } else { setDemandDestination(place); setDemandDestinationText(place.label); }
@@ -586,6 +587,26 @@ export function ProductionMarketplace() {
     if (routePlaceField === 'destination') { setSearchDestinationPlace(place); setDestination(place.label); }
     setRoutePlaceSuggestions([]); setRoutePlaceField(null);
   };
+
+  useEffect(() => {
+    if (!routePlaceField) return;
+    const query = (routePlaceField === 'origin' ? origin : destination).trim();
+    if (query.length < 3) {
+      setRoutePlaceSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setPlaceSearchBusy(true);
+      void productionApi.suggestPlaces(query)
+        .then((places) => { if (!cancelled) setRoutePlaceSuggestions(places); })
+        .catch((error: unknown) => {
+          if (!cancelled) setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.');
+        })
+        .finally(() => { if (!cancelled) setPlaceSearchBusy(false); });
+    }, 280);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [destination, origin, routePlaceField]);
 
   const refreshRescueCandidates = (cancelledBookings: ApiBooking[]) => {
     for (const cancelled of cancelledBookings) {
@@ -1310,20 +1331,20 @@ export function ProductionMarketplace() {
 
   const searchForm = <form onSubmit={(event) => { event.preventDefault(); void searchJourney(); }} className="journey-search-card rounded-[1.7rem] border border-white bg-white p-3 shadow-[0_10px_28px_rgba(31,67,114,.08)]">
     <div className="relative">
-      <label className="flex items-center gap-3 rounded-t-2xl bg-[#f6f8fc] px-3 py-3"><MapPin size={19} className="shrink-0 text-blue-600"/><span className="min-w-0 flex-1"><small className="block text-[10px] text-slate-400">Звідки</small><input required value={origin} onChange={(event) => {setOrigin(event.target.value);setSearchOriginPlace(null);}} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто відправлення" /></span><button type="button" aria-label="Знайти" onClick={()=>void searchRoutePlace('origin')} disabled={placeSearchBusy} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-blue-700">{placeSearchBusy&&routePlaceField==='origin'?'…':<Search size={16}/>}</button><button type="button" aria-label="Обрати на мапі" title="Обрати на мапі" onClick={()=>setPicker({form:'search',field:'origin'})} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-[#1789F4]"><MapPin size={16}/></button><button type="button" aria-label="Моя локація" title="Моя локація" onClick={()=>void useMyLocationAsOrigin()} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-emerald-600"><Navigation size={16}/></button></label>
-      {routePlaceField==='origin'&&routePlaceSuggestions.length>0&&<div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-white">{routePlaceSuggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseSearchPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs hover:bg-blue-50">{place.label}</button>)}</div>}
+      <div role="group" aria-label="Початкова точка" className="flex items-center gap-2 rounded-t-2xl bg-[#f6f8fc] px-3 py-3"><MapPin size={19} className="shrink-0 text-blue-600"/><label className="min-w-0 flex-1"><small className="block text-[10px] text-slate-400">Звідки</small><input required value={origin} onFocus={() => setRoutePlaceField('origin')} onChange={(event) => {setOrigin(event.target.value);setSearchOriginPlace(null);setRoutePlaceField('origin');}} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void searchRoutePlace('origin'); } }} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто відправлення" aria-autocomplete="list" aria-expanded={routePlaceField === 'origin' && routePlaceSuggestions.length > 0} /></label><button type="button" aria-label="Обрати на мапі" title="Обрати на мапі" onClick={()=>{setRoutePlaceField(null);setRoutePlaceSuggestions([]);setPicker({form:'search',field:'origin'});}} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[#1789F4]"><MapPin size={16}/></button><button type="button" aria-label="Моя локація" title="Моя локація" onClick={()=>void useMyLocationAsOrigin()} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-emerald-600"><Navigation size={16}/></button></div>
+      {routePlaceField==='origin'&&routePlaceSuggestions.length>0&&<div aria-label="Варіанти місць відправлення" className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-white">{routePlaceSuggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseSearchPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs hover:bg-blue-50">{place.label}</button>)}</div>}
       <div className="ml-[21px] h-3 border-l-2 border-dotted border-slate-300" />
-      <label className="flex items-center gap-3 rounded-b-2xl bg-[#f6f8fc] px-3 py-3"><MapPin size={19} className="shrink-0 text-rose-500"/><span className="min-w-0 flex-1"><small className="block text-[10px] text-slate-400">Куди</small><input required value={destination} onChange={(event) => {setDestination(event.target.value);setSearchDestinationPlace(null);}} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто призначення" /></span><button type="button" aria-label="Знайти" onClick={()=>void searchRoutePlace('destination')} disabled={placeSearchBusy} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-blue-700">{placeSearchBusy&&routePlaceField==='destination'?'…':<Search size={16}/>}</button><button type="button" aria-label="Обрати на мапі" title="Обрати на мапі" onClick={()=>setPicker({form:'search',field:'destination'})} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-[#1789F4]"><MapPin size={16}/></button><button type="button" onClick={() => { setOrigin(destination); setDestination(origin); setSearchOriginPlace(searchDestinationPlace); setSearchDestinationPlace(searchOriginPlace); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-blue-600 shadow-sm" aria-label="Поміняти місцями"><ArrowDownUp size={17}/></button></label>
-      {routePlaceField==='destination'&&routePlaceSuggestions.length>0&&<div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-white">{routePlaceSuggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseSearchPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs hover:bg-blue-50">{place.label}</button>)}</div>}
+      <div role="group" aria-label="Кінцева точка" className="flex items-center gap-2 rounded-b-2xl bg-[#f6f8fc] px-3 py-3"><MapPin size={19} className="shrink-0 text-rose-500"/><label className="min-w-0 flex-1"><small className="block text-[10px] text-slate-400">Куди</small><input required value={destination} onFocus={() => setRoutePlaceField('destination')} onChange={(event) => {setDestination(event.target.value);setSearchDestinationPlace(null);setRoutePlaceField('destination');}} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void searchRoutePlace('destination'); } }} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто призначення" aria-autocomplete="list" aria-expanded={routePlaceField === 'destination' && routePlaceSuggestions.length > 0} /></label><button type="button" aria-label="Обрати на мапі" title="Обрати на мапі" onClick={()=>{setRoutePlaceField(null);setRoutePlaceSuggestions([]);setPicker({form:'search',field:'destination'});}} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[#1789F4]"><MapPin size={16}/></button><button type="button" onClick={() => { setOrigin(destination); setDestination(origin); setSearchOriginPlace(searchDestinationPlace); setSearchDestinationPlace(searchOriginPlace); setRoutePlaceSuggestions([]); setRoutePlaceField(null); }} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-blue-600 shadow-sm" aria-label="Поміняти місцями"><ArrowDownUp size={17}/></button></div>
+      {routePlaceField==='destination'&&routePlaceSuggestions.length>0&&<div aria-label="Варіанти місць призначення" className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-white">{routePlaceSuggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseSearchPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs hover:bg-blue-50">{place.label}</button>)}</div>}
     </div>
     <div className="search-trip-details mt-2 grid grid-cols-[1fr_1fr_.9fr] gap-2">
       <label className="relative flex min-w-0 items-center gap-2 rounded-xl bg-[#f6f8fc] px-2.5 py-2.5"><CalendarDays size={16} className="shrink-0 text-slate-500"/><span className="min-w-0"><small className="block text-[10px] text-slate-400">Дата</small><span className="block truncate text-xs font-semibold">{new Intl.DateTimeFormat('uk-UA',{day:'numeric',month:'short',timeZone:'Europe/Kyiv'}).format(new Date(`${date}T12:00:00`))}</span></span><input aria-label="Дата поїздки" required lang="uk-UA" type="date" min={todayKyiv()} value={date} onChange={(event) => { setDate(event.target.value); setJourneyDeparture(`${event.target.value}T${journeyDeparture.slice(11, 16) || '08:00'}`); }} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" /></label>
       <button type="button" aria-label="Вибрати час відправлення" onClick={() => setDeparturePickerOpen(true)} className="flex min-w-0 items-center gap-2 rounded-xl bg-[#f6f8fc] px-2.5 py-2.5 text-left"><Clock3 size={16} className="shrink-0 text-slate-500"/><span className="min-w-0"><small className="block text-[10px] text-slate-400">Час</small><span className="block truncate text-xs font-semibold">{journeyDeparture.slice(11,16) || '08:00'}</span></span></button>
       <div className="flex min-w-0 items-center gap-1 rounded-xl bg-[#f6f8fc] px-2"><Users size={16} className="shrink-0 text-slate-500"/><span className="shrink-0 whitespace-nowrap text-[11px] font-semibold">{seats} пас.</span><button type="button" onClick={() => setSeats(Math.max(1,seats-1))} disabled={seats<=1} className="grid h-8 w-6 shrink-0 place-items-center text-slate-500 disabled:opacity-30" aria-label="Менше пасажирів"><Minus size={14}/></button><button type="button" onClick={() => setSeats(Math.min(8,seats+1))} disabled={seats>=8} className="grid h-8 w-6 shrink-0 place-items-center text-blue-600 disabled:opacity-30" aria-label="Більше пасажирів"><Plus size={16}/></button></div>
     </div>
-    <div className="search-priority mt-3"><p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Пріоритет маршруту</p><div role="group" aria-label="Пріоритет маршруту" className="grid grid-cols-3 gap-2">{([['BALANCED','Оптимально'],['FASTEST','Найшвидше'],['CHEAPEST','Найдешевше']] as const).map(([strategy,label])=><button key={strategy} type="button" aria-pressed={journeyStrategy===strategy} onClick={()=>setJourneyStrategy(strategy)} className={`min-w-0 rounded-xl border px-2 py-2.5 text-[10px] font-bold ${journeyStrategy===strategy?'border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/20':'border-slate-100 bg-[#f6f8fc] text-slate-600'}`}>{label}</button>)}</div></div>
+    <TransportTypesPanel compact selection={transportSelection} groups={providerGroups} onChange={changeTransportSelection}
+      onManageProviders={() => setTransportPickerOpen(true)}/>
     <button disabled={busy} className="search-submit mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 disabled:opacity-60"><Search size={17}/>{busy ? 'Шукаємо…' : 'Знайти маршрут'}<ArrowRight size={17}/></button>
-    <p className="mt-2 text-center text-[10px] text-slate-500">Пошук за всіма обраними видами транспорту</p>
   </form>;
 
   const sortedOffers = [...offers].sort((a, b) => offerSort === 'cheapest' ? a.price_per_seat_minor - b.price_per_seat_minor
@@ -1340,10 +1361,6 @@ export function ProductionMarketplace() {
   const searchScreen = <div className="home-screen search-screen mx-auto w-full max-w-xl px-5 pb-8">
     <section className="home-intro"><p className="home-greeting relative z-[1] text-xs font-semibold text-[#1789F4]">Пошук</p><h1 className="home-title relative z-[1] mt-0.5 text-[1.35rem] font-extrabold leading-tight tracking-tight text-[#0E1F35]">Куди їдемо?</h1><p className="home-description relative z-[1] mt-1 text-xs text-slate-500">Усі види транспорту в одному пошуку.</p></section>
     <div className="home-search-panel mt-4">{searchForm}</div>
-    <div className="search-screen-actions">
-      <button type="button" onClick={() => setTransportPickerOpen(true)} aria-haspopup="dialog" className="search-mode-action flex min-w-0 items-center gap-3 rounded-2xl border border-[#DFE7F1] bg-white px-3 py-2.5 text-left shadow-sm"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#EAF3FF] text-[#1789F4]"><SlidersHorizontal size={18}/></span><span className="min-w-0 flex-1"><b className="block text-xs text-[#0E1F35]">Види транспорту</b><small className="block truncate text-[10px] text-slate-500">{transportSelection.active.filter((type) => type === 'carpool' || providerGroups === null || effectiveProviders(transportSelection, type, providerGroups).length > 0).length} доступно для пошуку</small></span><ChevronRight size={17} className="shrink-0 text-slate-400"/></button>
-      <button type="button" onClick={() => setTab('map')} aria-label="Відкрити карту транспорту" className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[#DFE7F1] bg-white px-3 py-2 text-[10px] font-bold text-[#1789F4] shadow-sm"><MapPin size={18}/>Карта</button>
-    </div>
   </div>;
 
   // Start screen: just start navigating, or say where you are going. Navigation itself opens on its own screen.

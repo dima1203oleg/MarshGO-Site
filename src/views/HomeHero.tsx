@@ -17,7 +17,7 @@ type HomeTrip = {
 };
 
 const banners = [
-  { eyebrow: 'MARSHGO · ПОПУТКИ', title: 'Попутчики знайдуться на твоєму маршруті', description: 'Опублікуй поїздку й розділи витрати на дорогу.', image: '/images/welcome-road.jpg', imagePosition: 'center 84%', action: 'publish' as const, actionLabel: 'Опублікувати поїздку' },
+  { eyebrow: 'MARSHGO · ПОПУТКИ', title: 'Попутники знайдуться на твоєму маршруті', description: 'Опублікуй поїздку й розділи витрати на дорогу.', image: '/images/welcome-road.jpg', imagePosition: 'center 84%', action: 'publish' as const, actionLabel: 'Опублікувати поїздку' },
   { eyebrow: 'МІСТО ТА МІЖМІСТО', title: 'Усі способи доїхати в одному пошуку', description: 'Попутки, міський транспорт і подорожі Україною.', image: '/hero_car_route.png', imagePosition: 'center', action: 'search' as const, actionLabel: 'Знайти маршрут' },
 ];
 

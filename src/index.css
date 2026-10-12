@@ -84,9 +84,18 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
+html.dark .app-header {
+  background: rgba(11, 15, 20, .9);
+  border-bottom: 1px solid rgba(83, 107, 134, .18);
+}
+html.dark .app-header > div:first-child strong { color: #F5F9FF !important; }
 .home-screen { padding-top: .35rem; }
-.search-screen-actions { min-width: 0; }
-.search-mode-action { min-width: 0; }
+.transport-types-inline { margin-top: .7rem; }
+.transport-types-inline .transport-mode-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .4rem;
+}
+.transport-types-inline .transport-mode-grid button { min-height: 4.25rem; }
 .home-screen .home-intro {
   position: relative;
   overflow: hidden;
@@ -112,6 +121,54 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   border-color: rgba(255,255,255,.94) !important;
   box-shadow: 0 14px 34px rgba(23, 68, 126, .09), 0 2px 6px rgba(23, 68, 126, .04) !important;
 }
+html.dark .search-screen .home-intro {
+  border-color: rgba(83, 107, 134, .45);
+  background: linear-gradient(125deg, #10243a 0%, #111820 52%, #0d2035 100%);
+  box-shadow: inset 0 1px rgba(255,255,255,.035);
+}
+html.dark .search-screen .home-greeting { color: #66B2FF; }
+html.dark .search-screen .home-title { color: #F5F9FF; }
+html.dark .search-screen .home-description { color: #B6C2D0; }
+html.dark .search-screen .journey-search-card {
+  border-color: #263648 !important;
+  background: #111820 !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .28) !important;
+}
+html.dark .search-screen .journey-search-card label,
+html.dark .search-screen .journey-search-card .search-trip-details > button,
+html.dark .search-screen .journey-search-card .search-trip-details > div {
+  background: #16202B !important;
+  color: #F5F9FF;
+}
+html.dark .search-screen .journey-search-card [role="group"] {
+  background: #16202B !important;
+  color: #F5F9FF;
+}
+html.dark .search-screen .journey-search-card label small,
+html.dark .search-screen .journey-search-card .search-trip-details small { color: #8FA0B3; }
+html.dark .search-screen .journey-search-card input { color: #F5F9FF; }
+html.dark .search-screen .journey-search-card input::placeholder { color: #8FA0B3; }
+html.dark .search-screen .journey-search-card label > button {
+  border: 1px solid #263648;
+  background: #111820;
+  color: #66B2FF;
+}
+html.dark .search-screen .journey-search-card [role="group"] > button {
+  border: 1px solid #263648;
+  background: #111820;
+  color: #66B2FF;
+}
+html.dark .search-screen .journey-search-card .search-trip-details > button { color: #66B2FF; }
+html.dark .search-screen .journey-search-card .search-trip-details > div > button { color: #66B2FF; }
+html.dark .search-screen .transport-types-inline > div > button {
+  border-color: #536B86;
+  background: #16202B;
+  color: #66B2FF;
+}
+html.dark .search-screen .journey-search-card .search-submit {
+  background: #0B6EF3;
+  box-shadow: 0 8px 18px rgba(11, 110, 243, .24);
+}
 .journey-search-card label { min-height: 3.65rem; }
 .journey-search-card input { font-size: 16px; } /* Prevent WKWebView input zoom. */
 .journey-search-card button,
@@ -131,6 +188,13 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
 }
 .app-tabbar button { min-height: 2.9rem; }
 .app-tabbar button[aria-current="page"] { color: var(--mg-blue); }
+html.dark .app-tabbar {
+  border-color: #263648 !important;
+  background: rgba(17, 24, 32, .96) !important;
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, .28);
+  color: #B6C2D0;
+}
+html.dark .app-tabbar button[aria-current="page"] { color: #1687FF; }
 .auth-screen { isolation: isolate; min-height: 100svh; min-height: 100dvh; }
 .auth-screen button { min-height: 44px; }
 .auth-screen input { min-height: 48px; font-size: 16px; }
@@ -156,6 +220,10 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   .production-app .journey-search-card { padding: .65rem; }
   .production-app .transport-mode-grid { gap: .35rem; }
   .production-app .transport-mode-grid button { font-size: 9px; }
+  .search-screen .journey-search-card .search-trip-details { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .search-screen .journey-search-card .search-trip-details > div { grid-column: 1 / -1; justify-content: center; gap: .75rem; }
+  .transport-types-inline > div:first-child { gap: .25rem; }
+  .transport-types-inline > div:first-child h2 { white-space: nowrap; font-size: .8rem; }
 }
 
 @media (max-width: 639px) {
@@ -170,22 +238,19 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
   .search-screen .home-description { margin-top: .1rem !important; font-size: 10px; line-height: 1.3; }
   .search-screen > .home-search-panel { flex: none; margin-top: 0 !important; }
   .search-screen .journey-search-card { padding: .7rem !important; }
-  .search-screen .journey-search-card > .relative > label { padding-block: .55rem; }
+  .search-screen .journey-search-card > .relative > [role="group"] { min-height: 3.65rem; padding-block: .55rem; }
   .search-screen .journey-search-card .search-trip-details { gap: .4rem; margin-top: .5rem; }
-  .search-screen .journey-search-card .search-priority { margin-top: .7rem; }
-  .search-screen .journey-search-card .search-priority > p { margin-bottom: .35rem; }
-  .search-screen .journey-search-card .search-priority button { min-height: 2.35rem; padding-block: .55rem; }
+  .search-screen .transport-types-inline { margin-top: .55rem; }
+  .search-screen .transport-types-inline .transport-mode-grid { gap: .35rem; }
+  .search-screen .transport-types-inline .transport-mode-grid button { min-height: 3.9rem; }
   .search-screen .journey-search-card .search-submit { min-height: 2.8rem; margin-top: .65rem; padding-block: .7rem; }
-  .search-screen-actions { display: grid; flex: none; grid-template-columns: minmax(0, 1fr) 76px; gap: .5rem; }
-  .search-mode-action,
-  .search-screen-actions > button:last-child { min-height: 3.25rem; }
 }
 
 @media (max-width: 639px) and (max-height: 720px) {
   .search-screen .home-intro { padding-block: .5rem; }
   .search-screen .home-description { display: none; }
-  .search-screen .journey-search-card > .relative > label { padding-block: .45rem; }
-  .search-screen .journey-search-card .search-priority { margin-top: .5rem; }
+  .search-screen .journey-search-card > .relative > [role="group"] { padding-block: .45rem; }
+  .search-screen .transport-types-inline { margin-top: .45rem; }
   .search-screen .journey-search-card .search-submit { margin-top: .5rem; }
 }
 
