@@ -38,6 +38,7 @@ function JourneyCard({ journey, onOpenOffer, activeStrategy }: {
   const communityLeg = transitLegs.find(leg => leg.mode === 'COMMUNITY' || Boolean(leg.offerId));
   const reservableLeg = legs.find(leg => Boolean(leg.offerId));
   const shownPrice = journey.confirmedPriceMinor ?? journey.totalPriceMinor;
+  const routeStart = journey.requestedDepartureAt ?? firstLeg.departureAt;
   const priceLabel = journey.confirmedPriceMinor !== null ? 'Підтверджена ціна'
     : journey.estimatedPriceMinMinor !== null && journey.estimatedPriceMaxMinor !== null
       ? `Оцінка ${formatPrice(journey.estimatedPriceMinMinor)}–${formatPrice(journey.estimatedPriceMaxMinor)}`
@@ -54,8 +55,8 @@ function JourneyCard({ journey, onOpenOffer, activeStrategy }: {
     <div className="journey-result-path mt-4 grid grid-cols-[auto_1fr] gap-x-3">
       <div className="flex flex-col items-center pt-1"><span className="h-2.5 w-2.5 rounded-full border-[3px] border-blue-600 bg-white"/><span className="my-1.5 w-px flex-1 border-l border-dashed border-blue-300"/><span className="h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-rose-100"/></div>
       <div className="min-w-0 pb-3">
-        <div className="flex items-start justify-between gap-2"><div className="min-w-0"><small className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Відправлення</small><b className="mt-0.5 block truncate text-sm">{firstLeg.origin.name}</b></div><b className="shrink-0 text-sm tabular-nums">{formatTime(firstLeg.departureAt)}</b></div>
-        <div className="my-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium text-slate-500"><span className="flex items-center gap-1"><Clock3 size={12}/>{formatDuration(journey.totalDurationSeconds)}</span><span className="flex items-center gap-1"><MapPin size={12}/>{journey.transfers ? `${journey.transfers} пересадок` : 'Без пересадок'}</span>{journey.walkingMeters > 0 && <span className="flex items-center gap-1"><Footprints size={12}/>{journey.walkingMeters} м пішки</span>}</div>
+        <div className="flex items-start justify-between gap-2"><div className="min-w-0"><small className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Виїзд за запитом</small><b className="mt-0.5 block truncate text-sm">{firstLeg.origin.name}</b></div><b className="shrink-0 text-sm tabular-nums">{formatTime(routeStart)}</b></div>
+        <div className="my-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium text-slate-500"><span className="flex items-center gap-1"><Clock3 size={12}/>{formatDuration(journey.totalDurationSeconds)}</span><span className="flex items-center gap-1"><MapPin size={12}/>{journey.transfers ? `${journey.transfers} пересадок` : 'Без пересадок'}</span>{journey.waitingSeconds !== undefined && journey.waitingSeconds > 0 && <span className="flex items-center gap-1"><Clock3 size={12}/>{formatDuration(journey.waitingSeconds)} очікування</span>}{journey.walkingMeters > 0 && <span className="flex items-center gap-1"><Footprints size={12}/>{journey.walkingMeters} м пішки</span>}</div>
         <div className="flex items-start justify-between gap-2"><div className="min-w-0"><small className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Прибуття</small><b className="mt-0.5 block truncate text-sm">{lastLeg.destination.name}</b></div><b className="shrink-0 text-sm tabular-nums">{formatTime(lastLeg.arrivalAt)}</b></div>
       </div>
     </div>
@@ -67,7 +68,7 @@ function JourneyCard({ journey, onOpenOffer, activeStrategy }: {
         const waitSeconds = previous ? Math.max(0, (Date.parse(leg.departureAt) - Date.parse(previous.arrivalAt)) / 1000) : 0;
         const title = journeyLegLabel(leg.mode, leg.transportType);
         return <li key={leg.id} className="rounded-xl bg-slate-50 px-3 py-2.5">
-          {previous && waitSeconds > 0 && <p className="mb-2 border-l-2 border-amber-300 pl-2 text-[10px] text-slate-500">Пересадка · очікування {formatDuration(waitSeconds)}</p>}
+          {previous && waitSeconds > 0 && <p className="mb-2 border-l-2 border-amber-300 pl-2 text-[10px] text-slate-500">{index === 1 && previous.mode === 'WALK' ? 'Очікування першого транспорту' : 'Пересадка · очікування'} {formatDuration(waitSeconds)}</p>}
           <div className="flex items-start gap-2.5">
             <span className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full ${isWalk ? 'bg-slate-200 text-slate-600' : 'bg-blue-100 text-blue-700'}`}>{isWalk ? <Footprints size={14}/> : <TrainFront size={14}/>}</span>
             <div className="min-w-0 flex-1">

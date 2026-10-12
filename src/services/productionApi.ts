@@ -184,6 +184,9 @@ export type ApiJourney = {
   strategyRanks?: Partial<Record<ApiJourneyStrategy, number>>;
   state: string;
   totalDurationSeconds: number;
+  /** Time from the requested start until arrival includes scheduled waits. */
+  requestedDepartureAt?: string;
+  waitingSeconds?: number;
   totalPriceMinor: number | null;
   confirmedPriceMinor: number | null;
   estimatedPriceMinMinor: number | null;

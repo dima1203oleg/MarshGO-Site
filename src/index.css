@@ -670,17 +670,17 @@ html.dark .home-screen .home-title { color: #eaf2fd !important; }
 html.dark .home-screen .home-greeting { color: #6db4ff !important; }
 
 /* Canonical home follows the owner reference: mountain cover, account trip card,
-   image-backed actions, popular routes, all held above the fixed tab bar. */
+   four color-coded square actions, popular routes, above the fixed tab bar. */
 .home-hero--canonical { min-height: 0; overflow: hidden; }
 .home-canonical-banner { height: clamp(8.25rem, 18svh, 9rem); min-height: 8.25rem; }
 .home-action-grid { flex: 0 0 auto; grid-template-rows: repeat(2, clamp(6.2rem, 12.5svh, 6.8rem)); gap: .5rem; }
-.home-action-card { box-shadow: 0 6px 18px rgba(17,47,88,.16); }
-.home-action-card img { transition: transform .3s ease; }
-.home-action-card:active img { transform: scale(1.04); }
-.home-action-card--navigation .home-action-tint { background: linear-gradient(145deg,rgba(0,99,255,.86),rgba(0,79,220,.8)); }
-.home-action-card--transport .home-action-tint { background: linear-gradient(145deg,rgba(0,185,132,.86),rgba(0,132,103,.82)); }
-.home-action-card--search .home-action-tint { background: linear-gradient(145deg,rgba(139,57,232,.88),rgba(91,40,190,.82)); }
-.home-action-card--publish .home-action-tint { background: linear-gradient(145deg,rgba(255,130,0,.89),rgba(236,75,12,.84)); }
+.home-action-card { border-color: rgba(255,255,255,.7); box-shadow: 0 7px 18px rgba(17,47,88,.13), inset 0 1px rgba(255,255,255,.18); }
+.home-action-card--navigation { background: linear-gradient(145deg,#1264ed,#0b54c5); }
+.home-action-card--transport { background: linear-gradient(145deg,#08775c,#065a48); }
+.home-action-card--search { background: linear-gradient(145deg,#7040d7,#5730b7); }
+.home-action-card--publish { background: linear-gradient(145deg,#b64820,#923515); }
+.home-action-icon { border: 1px solid rgba(255,255,255,.4); color: #fff; background: rgba(255,255,255,.18); box-shadow: inset 0 1px rgba(255,255,255,.15); }
+.home-action-card:focus-visible { outline: 3px solid #0b6ef3; outline-offset: 3px; }
 .home-popular-routes { flex: 0 0 auto; }
 .home-popular-route { height: 4rem; }
 html.dark .home-canonical-banner > span[aria-hidden="true"] { background: linear-gradient(90deg,rgba(7,20,38,.94),rgba(7,20,38,.78) 60%,rgba(7,20,38,.16)); }
@@ -689,10 +689,12 @@ html.dark .home-canonical-banner h1 { color: #eff6ff; }
 html.dark .home-canonical-banner p { color: #bfdbfe; }
 html.dark .home-trip-card > span:nth-child(2) > span:nth-child(2) { color: #eff6ff; }
 html.dark .home-hero--canonical .home-city-pill { background: #12233a; color: #eff6ff; border-color: #20324a; }
-html.dark .home-action-card--navigation .home-action-tint { background: linear-gradient(145deg,rgba(9,38,95,.85),rgba(6,31,78,.8)); }
-html.dark .home-action-card--transport .home-action-tint { background: linear-gradient(145deg,rgba(7,89,67,.88),rgba(5,66,54,.83)); }
-html.dark .home-action-card--search .home-action-tint { background: linear-gradient(145deg,rgba(75,34,136,.9),rgba(51,26,104,.85)); }
-html.dark .home-action-card--publish .home-action-tint { background: linear-gradient(145deg,rgba(126,62,13,.9),rgba(101,37,11,.85)); }
+html.dark .home-action-card { border-color: #30465c; box-shadow: 0 8px 20px rgba(0,0,0,.22), inset 0 1px rgba(255,255,255,.04); }
+html.dark .home-action-card--navigation { background: linear-gradient(145deg,#1264ed,#0b54c5); }
+html.dark .home-action-card--transport { background: linear-gradient(145deg,#08775c,#065a48); }
+html.dark .home-action-card--search { background: linear-gradient(145deg,#7040d7,#5730b7); }
+html.dark .home-action-card--publish { background: linear-gradient(145deg,#b64820,#923515); }
+html.dark .home-action-icon { color: #fff; background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.42); }
 
 /* Shared interaction and dark-surface polish from the production navigation. */
 html.dark .production-app article,
@@ -806,7 +808,6 @@ html:not(.dark) .home-marshpass-card {
     padding: .7rem;
   }
   .home-action-card > span:first-of-type { width: 2.6rem; height: 2.6rem; }
-  .home-action-card > span:last-child > span:last-child { width: 2rem; height: 2rem; }
 }
 @media (max-width: 639px) and (max-height: 730px) {
   .home-hero--canonical { overflow-y: auto !important; }
