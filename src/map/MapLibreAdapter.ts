@@ -3,7 +3,7 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import type { CameraMode, MapAdapter, MapStatus, MapTheme } from './MapAdapter';
+import type { CameraMode, ColoredRouteSegment, MapAdapter, MapStatus, MapTheme } from './MapAdapter';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
 import type { FillLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
@@ -18,6 +18,7 @@ export class MapLibreAdapter implements MapAdapter {
   private map: MapLibreMap;
   private status: MapStatus = 'loading';
   private route: Coordinate[] = [];
+  private routeSegments: ColoredRouteSegment[] | null = null;
   private vehicle: Coordinate | null = null;
   private waypoints: Array<{ coordinate: Coordinate; kind: string }> = [];
   private cameraMode: CameraMode = 'OVERVIEW';
@@ -89,9 +90,9 @@ export class MapLibreAdapter implements MapAdapter {
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.route, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 10, 15, 22], 'line-opacity': 0.2, 'line-blur': 5 } });
+    if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 10, 15, 22], 'line-opacity': 0.2, 'line-blur': 5 } });
     if (!this.map.getLayer('marshgo-route-casing')) this.map.addLayer({ id: 'marshgo-route-casing', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.routeCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 5, 15, 13], 'line-opacity': 0.92 } });
-    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({ id: 'marshgo-route', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.route, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3, 15, 8], 'line-opacity': 0.98 } });
+    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({ id: 'marshgo-route', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3, 15, 8], 'line-opacity': 0.98 } });
     if (!this.map.getLayer('marshgo-waypoints')) this.map.addLayer({ id: 'marshgo-waypoints', type: 'circle', source: 'marshgo-waypoints', paint: { 'circle-radius': 8, 'circle-color': ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, colors.route], 'circle-stroke-color': colors.routeCasing, 'circle-stroke-width': 3 } });
     if (!this.map.getLayer('marshgo-vehicle-halo')) this.map.addLayer({ id: 'marshgo-vehicle-halo', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 13, 'circle-color': colors.vehicle, 'circle-opacity': 0.2 } });
     if (!this.map.getLayer('marshgo-vehicle')) this.map.addLayer({ id: 'marshgo-vehicle', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 8, 'circle-color': colors.vehicle, 'circle-stroke-color': colors.routeCasing, 'circle-stroke-width': 3 } });
@@ -100,7 +101,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.transport?.reinstall();
     // 3D mode keeps its tilt after every style load (a style swap resets the camera on some browsers).
     if (this.layer === 'threeD' && Math.abs(this.map.getPitch() - mapLayers.threeD.pitch) > 1) this.map.easeTo({ pitch: mapLayers.threeD.pitch, duration: 500, essential: true });
-    this.setRoute(this.route);
+    this.updateRouteSource();
     if (this.vehicle) this.setVehicle(this.vehicle);
     this.setWaypoints(this.waypoints);
   }
@@ -171,9 +172,30 @@ export class MapLibreAdapter implements MapAdapter {
 
   setRoute(points: Coordinate[]) {
     this.route = points;
+    this.routeSegments = null;
     this.map.getContainer().dataset.marshgoRoutePointCount = String(points.length);
+    this.map.getContainer().dataset.marshgoRouteSegmentCount = String(points.length >= 2 ? 1 : 0);
+    this.updateRouteSource();
+  }
+  setRouteSegments(segments: ColoredRouteSegment[]) {
+    this.routeSegments = segments.filter(segment => segment.coordinates.length >= 2);
+    this.route = this.routeSegments.flatMap(segment => segment.coordinates);
+    this.map.getContainer().dataset.marshgoRoutePointCount = String(this.route.length);
+    this.map.getContainer().dataset.marshgoRouteSegmentCount = String(this.routeSegments.length);
+    this.updateRouteSource();
+  }
+  private updateRouteSource() {
     const source = this.map.getSource('marshgo-route') as maplibregl.GeoJSONSource | undefined;
-    if (source) source.setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points } });
+    if (!source) return;
+    if (this.routeSegments) {
+      source.setData({ type: 'FeatureCollection', features: this.routeSegments.map(segment => ({
+        type: 'Feature' as const,
+        properties: { modeColor: segment.modeColor },
+        geometry: { type: 'LineString' as const, coordinates: segment.coordinates },
+      })) });
+      return;
+    }
+    source.setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: this.route } });
   }
   setVehicle(point: Coordinate, heading?: number | null) {
     this.vehicle = point;
@@ -271,9 +293,9 @@ export class MapLibreAdapter implements MapAdapter {
     this.applySatellitePalette();
     if (!this.map.getLayer('marshgo-route')) return;
     const colors = mapStyleTokens[this.theme];
-    this.map.setPaintProperty('marshgo-route-halo', 'line-color', colors.route);
+    this.map.setPaintProperty('marshgo-route-halo', 'line-color', ['coalesce', ['get', 'modeColor'], colors.route]);
     this.map.setPaintProperty('marshgo-route-casing', 'line-color', colors.routeCasing);
-    this.map.setPaintProperty('marshgo-route', 'line-color', colors.route);
+    this.map.setPaintProperty('marshgo-route', 'line-color', ['coalesce', ['get', 'modeColor'], colors.route]);
     this.map.setPaintProperty('marshgo-waypoints', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, colors.route]);
     this.map.setPaintProperty('marshgo-waypoints', 'circle-stroke-color', colors.routeCasing);
     this.map.setPaintProperty('marshgo-vehicle-halo', 'circle-color', colors.vehicle);

@@ -3,8 +3,10 @@ import type { Coordinate } from '../../shared/navigation/contracts';
 export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 'failed';
 export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK' | 'MARSHGO_3D_LIGHT' | 'MARSHGO_3D_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
+export type ColoredRouteSegment = { coordinates: Coordinate[]; modeColor: string };
 export interface MapAdapter {
   setRoute(points: Coordinate[]): void;
+  setRouteSegments?(segments: ColoredRouteSegment[]): void;
   setVehicle(point: Coordinate, heading?: number | null): void;
   onCameraModeChange: (mode: CameraMode) => void;
   setWaypoints(points: Array<{ coordinate: Coordinate; kind: string }>): void;

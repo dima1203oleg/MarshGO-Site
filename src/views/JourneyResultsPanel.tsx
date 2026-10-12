@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Clock3, Footprints, MapPin, ShieldCheck, Ticket, TrainFront } from 'lucide-react';
+import { ArrowRight, Clock3, Footprints, Map as MapIcon, MapPin, ShieldCheck, Ticket, TrainFront } from 'lucide-react';
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
 import { journeyLegLabel } from './journeyLegLabel';
 
@@ -22,9 +22,10 @@ const formatTime = (value: string) => new Intl.DateTimeFormat('uk-UA', {
   hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv',
 }).format(new Date(value));
 
-function JourneyCard({ journey, onOpenOffer, activeStrategy }: {
+function JourneyCard({ journey, onOpenOffer, onOpenMap, activeStrategy }: {
   journey: ApiJourney;
   onOpenOffer: (offerId: string, journeyId: string, journeyLegId: string) => void;
+  onOpenMap: (journey: ApiJourney) => void;
   activeStrategy: ApiJourneyStrategy;
 }) {
   const legs = journey.legs;
@@ -81,6 +82,10 @@ function JourneyCard({ journey, onOpenOffer, activeStrategy }: {
       })}
     </ol>
 
+    <button type="button" onClick={() => onOpenMap(journey)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-blue-100 bg-blue-50 py-3 text-xs font-bold text-blue-800 hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+      <MapIcon size={15}/>Показати маршрут на карті<ArrowRight size={14}/>
+    </button>
+
     <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
       {communityLeg?.driver ? <div className="flex min-w-0 items-center gap-2"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-50 text-sm font-bold text-blue-700">{communityLeg.driver.name.slice(0, 1).toLocaleUpperCase('uk-UA')}</span><div className="min-w-0"><b className="block truncate text-xs">{communityLeg.driver.name}</b><span className="flex items-center gap-1 text-[10px] text-slate-500"><ShieldCheck size={12} className="text-emerald-600"/>{communityLeg.driver.reviewCount ? `${communityLeg.driver.averageRating?.toFixed(1)} · ${communityLeg.driver.reviewCount} відгуків` : 'Новий водій'}</span></div></div>
         : <div className="flex min-w-0 items-center gap-2"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-700"><TrainFront size={18}/></span><div className="min-w-0"><b className="block truncate text-xs">{journey.providerName ?? transitLegs[0]?.providerName ?? 'Перевізники маршруту'}</b><span className="block truncate text-[10px] text-slate-500">{hasTransitSchedule ? 'Розклад без підтвердженого бронювання' : `${transitLegs.length} відрізки маршруту`}</span></div></div>}
@@ -91,7 +96,7 @@ function JourneyCard({ journey, onOpenOffer, activeStrategy }: {
   </article>;
 }
 
-export function JourneyResultsPanel({ result, onOpenOffer }: { result: ApiJourneySearchResult; onOpenOffer: (offerId: string, journeyId: string, journeyLegId: string) => void }) {
+export function JourneyResultsPanel({ result, onOpenOffer, onOpenMap }: { result: ApiJourneySearchResult; onOpenOffer: (offerId: string, journeyId: string, journeyLegId: string) => void; onOpenMap: (journey: ApiJourney) => void }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const strategyOptions = result.availableStrategies?.length
     ? result.availableStrategies
@@ -148,6 +153,6 @@ export function JourneyResultsPanel({ result, onOpenOffer }: { result: ApiJourne
     {result.providerErrors.length > 0 && <p className="mb-3 rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs leading-5 text-rose-800">Деякі розклади тимчасово недоступні: {result.providerErrors.join('; ')}.</p>}
     {result.resultsTruncated && <p className="mb-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">Показано до {result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із {result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.</p>}
     {result.candidateGenerationTruncated && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Пошук досяг ліміту обробки джерел; частина маршрутів могла не потрапити до результатів. Уточніть час або види транспорту й повторіть пошук.</p>}
-    {result.journeys.length ? visibleJourneys.length ? <div className="space-y-3">{visibleJourneys.map(journey => <JourneyCard key={journey.id} journey={journey} activeStrategy={activeStrategy} onOpenOffer={onOpenOffer}/>)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><p className="font-bold">Немає маршрутів у цій категорії</p><button type="button" onClick={() => setActiveFilter('all')} className="mt-2 text-sm font-bold text-blue-700">Показати всі</button></div> : <div className="rounded-2xl bg-white p-6 text-center"><MapPin className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Актуальних маршрутів поки немає</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити вид транспорту, час або перевізників.</p></div>}
+    {result.journeys.length ? visibleJourneys.length ? <div className="space-y-3">{visibleJourneys.map(journey => <JourneyCard key={journey.id} journey={journey} activeStrategy={activeStrategy} onOpenOffer={onOpenOffer} onOpenMap={onOpenMap}/>)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><p className="font-bold">Немає маршрутів у цій категорії</p><button type="button" onClick={() => setActiveFilter('all')} className="mt-2 text-sm font-bold text-blue-700">Показати всі</button></div> : <div className="rounded-2xl bg-white p-6 text-center"><MapPin className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Актуальних маршрутів поки немає</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити вид транспорту, час або перевізників.</p></div>}
   </section>;
 }
