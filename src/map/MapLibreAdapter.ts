@@ -3,7 +3,7 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import type { CameraMode, ColoredRouteSegment, MapAdapter, MapStatus, MapTheme } from './MapAdapter';
+import type { CameraMode, ColoredRouteSegment, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
 import type { FillLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
@@ -242,13 +242,18 @@ export class MapLibreAdapter implements MapAdapter {
     const source = this.map.getSource('marshgo-waypoints') as maplibregl.GeoJSONSource | undefined;
     source?.setData({ type: 'FeatureCollection', features: points.map(({ coordinate, kind }) => ({ type: 'Feature' as const, properties: { kind }, geometry: { type: 'Point' as const, coordinates: coordinate } })) });
   }
-  fitRoute() {
+  fitRoute(overrides: RouteFitPadding = {}) {
     if (this.route.length < 2) return;
     const lngs = this.route.map((point) => point[0]); const lats = this.route.map((point) => point[1]);
     this.cameraMode = 'OVERVIEW';
     // Full-screen navigation reserves room for its overlays; small previews must scale the padding down or MapLibre rejects the fit.
     const { clientWidth, clientHeight } = this.map.getContainer();
-    const padding = { top: Math.min(110, clientHeight * 0.2), right: Math.min(32, clientWidth * 0.1), bottom: Math.min(270, clientHeight * 0.2), left: Math.min(32, clientWidth * 0.1) };
+    const padding = {
+      top: Math.min(clientHeight * 0.25, overrides.top ?? Math.min(110, clientHeight * 0.2)),
+      right: Math.min(clientWidth * 0.15, overrides.right ?? Math.min(32, clientWidth * 0.1)),
+      bottom: Math.min(clientHeight * 0.52, overrides.bottom ?? Math.min(270, clientHeight * 0.2)),
+      left: Math.min(clientWidth * 0.15, overrides.left ?? Math.min(32, clientWidth * 0.1)),
+    };
     this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding, duration: 600, maxZoom: 15 });
   }
   recenter(point?: Coordinate) {

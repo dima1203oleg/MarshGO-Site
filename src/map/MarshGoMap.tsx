@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Coordinate } from '../../shared/navigation/contracts';
 import { mapTilesConfigured, resolveMapAssets } from './mapConfig';
-import type { ColoredRouteSegment, MapAdapter, MapStatus, MapTheme } from './MapAdapter';
+import type { ColoredRouteSegment, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
 import { getMapLayer, styleForLayer, subscribeMapLayer, type MapLayer } from './mapMode';
 import { getTransportLayers, subscribeTransportLayers } from './transportLayers';
 import { configuredMapStyleUrl } from './mapConfig';
 import { themeService } from '../services/theme';
 
-type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: Array<{ coordinate: Coordinate; kind: string }>; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers are independent from the three base map modes. */ overlays?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
+type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: Array<{ coordinate: Coordinate; kind: string }>; routeFitPadding?: RouteFitPadding; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers are independent from the three base map modes. */ overlays?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
 function themeForMapLayer(layer: MapLayer, dark: boolean): MapTheme {
   if (layer === 'simple') return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
   return dark ? 'MARSHGO_3D_DARK' : 'MARSHGO_3D_LIGHT';
 }
-export function MarshGoMap({ route, routeSegments, routeWaypoints, vehicle, heading = null, theme, overlays = false, onTransportHint, onStatus, onAdapter }: Props) {
+export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPadding, vehicle, heading = null, theme, overlays = false, onTransportHint, onStatus, onAdapter }: Props) {
   const container = useRef<HTMLDivElement | null>(null);
   const adapter = useRef<MapAdapter | null>(null);
   const syncOverlays = useRef<() => void>(() => undefined);
@@ -36,7 +36,7 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, vehicle, head
       adapter.current = instance; onAdapter(instance);
       instance.onTransportHint = (message) => onTransportHint?.(message);
       syncOverlays.current();
-      if (routeSegments?.length) instance.setRouteSegments(routeSegments); else instance.setRoute(route); if (routeWaypoints) instance.setWaypoints(routeWaypoints); if (vehicle) instance.setVehicle(vehicle); instance.fitRoute();
+      if (routeSegments?.length) instance.setRouteSegments(routeSegments); else instance.setRoute(route); if (routeWaypoints) instance.setWaypoints(routeWaypoints); if (vehicle) instance.setVehicle(vehicle); instance.fitRoute(routeFitPadding);
     }).catch(() => onStatus('failed'));
     return () => { cancelled = true; adapter.current?.destroy(); adapter.current = null; onAdapter(null); };
   }, []);

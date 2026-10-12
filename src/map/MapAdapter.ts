@@ -4,13 +4,14 @@ export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 
 export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK' | 'MARSHGO_3D_LIGHT' | 'MARSHGO_3D_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
 export type ColoredRouteSegment = { coordinates: Coordinate[]; modeColor: string };
+export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number };
 export interface MapAdapter {
   setRoute(points: Coordinate[]): void;
   setRouteSegments?(segments: ColoredRouteSegment[]): void;
   setVehicle(point: Coordinate, heading?: number | null): void;
   onCameraModeChange: (mode: CameraMode) => void;
   setWaypoints(points: Array<{ coordinate: Coordinate; kind: string }>): void;
-  fitRoute(): void;
+  fitRoute(padding?: RouteFitPadding): void;
   recenter(point?: Coordinate): void;
   setCameraMode(mode: CameraMode): void;
   setTheme(theme: MapTheme): void;

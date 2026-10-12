@@ -24,7 +24,7 @@ export function JourneyRouteMapScreen({ journey, onBack }: { journey: ApiJourney
 
   return <main className="fixed inset-0 z-[80] overflow-hidden bg-slate-100 text-slate-900 dark:bg-[#0B0F14] dark:text-[#F5F9FF]" aria-label="Карта маршруту">
     {model.legs.length > 0 && <div className="absolute inset-0">
-      <MarshGoMap route={[]} routeSegments={model.routeSegments} routeWaypoints={model.routeWaypoints} onStatus={setMapStatus} onAdapter={() => undefined}/>
+      <MarshGoMap route={[]} routeSegments={model.routeSegments} routeWaypoints={model.routeWaypoints} routeFitPadding={{ bottom: 440 }} onStatus={setMapStatus} onAdapter={() => undefined}/>
     </div>}
     <header className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-xl items-center gap-3 px-4 pb-3 pt-[max(.75rem,env(safe-area-inset-top))]">
       <button type="button" aria-label="Назад до результатів" onClick={onBack} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-slate-800 shadow-md dark:bg-[#111820] dark:text-white">
