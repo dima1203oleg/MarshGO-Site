@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ApiJourney } from '../src/services/productionApi';
-import { buildJourneyRouteMapModel, formatTransferCount } from '../src/map/journeyRouteModel';
+import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from '../src/map/journeyRouteModel';
 
 function legs(value: unknown): ApiJourney['legs'] {
   return value as ApiJourney['legs'];
@@ -51,4 +51,20 @@ test('formats transfer counts with Ukrainian plural forms', () => {
   assert.equal(formatTransferCount(3), '3 пересадки');
   assert.equal(formatTransferCount(5), '5 пересадок');
   assert.equal(formatTransferCount(21), '21 пересадка');
+});
+
+test('uses one stable canonical color for each supported transport category', () => {
+  const cases: Array<[string, string | undefined, string]> = [
+    ['BUS', 'bus', '#1687FF'], ['MINIBUS', 'marshrutka', '#F59E0B'],
+    ['TROLLEYBUS', 'trolleybus', '#10A884'], ['TRAM', 'tram', '#EF4444'],
+    ['METRO', 'metro', '#8B5CF6'], ['COMMUNITY', 'carpool', '#0EA5E9'],
+    ['TAXI', 'taxi', '#F59E0B'], ['RAIL', 'train', '#7C3AED'],
+    ['BIKE', 'bike', '#10A884'], ['SCOOTER', 'scooter', '#06B6D4'],
+    ['CARSHARING', 'carsharing', '#2563EB'], ['TRANSFER', 'transfer', '#F97316'],
+    ['WALK', 'walk', '#94A3B8'],
+  ];
+
+  for (const [mode, type, expected] of cases) {
+    assert.equal(journeyModeColor(mode, type), expected, `${mode}/${type} color`);
+  }
 });

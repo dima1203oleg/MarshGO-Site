@@ -6,11 +6,12 @@ import { journeyLegLabel } from '../views/journeyLegLabel';
 const MODE_COLORS: Record<string, string> = {
   BUS: '#1687FF', URBAN_BUS: '#1687FF', MINIBUS: '#F59E0B', MARSHRUTKA: '#F59E0B',
   TROLLEYBUS: '#10A884', TRAM: '#EF4444', METRO: '#8B5CF6', RAIL: '#7C3AED',
-  COMMUNITY: '#0EA5E9', COMMUNITY_DEMAND: '#0EA5E9', TAXI: '#F59E0B', TRANSFER: '#0EA5E9',
-  BIKE: '#10A884', BICYCLE: '#10A884', SCOOTER: '#8B5CF6', WALK: '#94A3B8',
+  COMMUNITY: '#0EA5E9', COMMUNITY_DEMAND: '#0EA5E9', TAXI: '#F59E0B', TRANSFER: '#F97316',
+  CARSHARING: '#2563EB', CAR_RENTAL: '#2563EB', BIKE: '#10A884', BICYCLE: '#10A884',
+  SCOOTER: '#06B6D4', FERRY: '#0891B2', FUNICULAR: '#64748B', WALK: '#94A3B8',
 };
 
-const colorForMode = (mode: string, transportType?: string) =>
+export const journeyModeColor = (mode: string, transportType?: string) =>
   MODE_COLORS[transportType?.toUpperCase() ?? ''] ?? MODE_COLORS[mode.toUpperCase()] ?? '#1687FF';
 
 export function formatTransferCount(value: number): string {
@@ -46,7 +47,7 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     return coordinates.length >= 2 ? [{
       id: leg.id,
       label: `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`,
-      color: colorForMode(leg.mode, leg.transportType),
+      color: journeyModeColor(leg.mode, leg.transportType),
       coordinates,
     }] : [];
   });

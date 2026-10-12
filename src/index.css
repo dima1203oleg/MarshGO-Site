@@ -737,6 +737,12 @@ html.dark :is(.text-emerald-700, .text-green-700) { color: #74E0A1 !important; }
 html.dark :is(.text-amber-700, .text-amber-800) { color: #FFD27A !important; }
 html.dark :is(.text-rose-700, .text-red-700) { color: #FF9CA7 !important; }
 html.dark :is(.border-slate-100, .border-slate-200, .border-\[\#E5EDF7\], .border-\[\#EEF3F9\], .border-\[\#DFE7F1\], .border-t, .border-b) { border-color: var(--mg-border-subtle) !important; }
+html.dark .journey-results [aria-label="Ранжування маршрутів"] > button:disabled {
+  opacity: 1 !important;
+  background-color: var(--mg-canvas) !important;
+  border-color: var(--mg-border-subtle) !important;
+  color: var(--mg-ink-muted) !important;
+}
 html.dark :is(.divide-slate-100 > :not([hidden]) ~ :not([hidden])) { border-color: var(--mg-border-subtle) !important; }
 html.dark :is(input, textarea, select) { background-color: var(--mg-surface-secondary) !important; color: var(--mg-ink-primary) !important; border-color: var(--mg-border-subtle) !important; }
 html.dark ::placeholder { color: var(--mg-ink-muted) !important; }
@@ -760,6 +766,9 @@ html.dark .transport-mode-grid > button:disabled {
   background-color: var(--mg-surface-secondary) !important;
   color: var(--mg-ink-muted) !important;
 }
+html.dark .journey-result-card { border-color: #263648 !important; box-shadow: 0 8px 24px rgba(0,0,0,.22) !important; }
+html.dark .coverage-details[open] { border-color: #263648 !important; }
+.coverage-details[open] .coverage-chevron { transform: rotate(180deg); }
 
 /* Canonical home follows the owner reference: mountain cover, account trip card,
    four color-coded square actions, popular routes, above the fixed tab bar. */
