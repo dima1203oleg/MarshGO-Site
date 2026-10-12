@@ -529,7 +529,12 @@ export function ProductionMarketplace() {
       });
       hydratedSearchLocation.current = searchPath;
       setRoutePath(searchPath);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося побудувати маршрут.'); }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      setStatusMessage(/authentication required|unauthorized/i.test(message)
+        ? 'Щоб отримати реальні пропозиції, увійдіть за номером телефону та повторіть пошук.'
+        : message || 'Не вдалося побудувати маршрут.');
+    }
     finally { setBusy(false); }
   };
 
@@ -1344,23 +1349,27 @@ export function ProductionMarketplace() {
   // Start screen: just start navigating, or say where you are going. Navigation itself opens on its own screen.
   // Role comes from the action, not from a global switch: navigation is for everyone (passenger matching starts only with a verified vehicle),
   // searching is the passenger scenario, planning asks "how are you travelling?".
-  const homeTrip = [
+  const homeTrips = [
     ...bookings
       .filter((booking) => ['boarding', 'in_progress', 'confirmed'].includes(booking.status))
       .map((booking) => ({
         id: booking.id,
         kind: 'booking' as const,
+        currentUserIsDriver: booking.current_user_is_driver,
         origin: booking.origin_name,
         destination: booking.destination_name,
         departureAt: booking.departure_at,
         price: formatMoney(booking.total_price_minor, booking.currency),
-        status: booking.status === 'boarding' || booking.status === 'in_progress' ? 'active' as const : 'upcoming' as const,
+        driverName: booking.driver_name,
+        seatCount: booking.seat_count,
+        status: booking.status,
       })),
     ...journeys
       .filter((journey) => ['ACTIVE', 'PLANNED', 'READY', 'PARTIALLY_RESERVED'].includes(journey.state))
       .map((journey) => ({
         id: journey.id,
         kind: 'journey' as const,
+        currentUserIsDriver: false,
         origin: journey.origin_name,
         destination: journey.destination_name,
         departureAt: journey.requested_departure_at,
@@ -1368,8 +1377,8 @@ export function ProductionMarketplace() {
           : journey.total_price_minor !== null ? formatMoney(journey.total_price_minor, 'UAH') : undefined,
         status: journey.state === 'ACTIVE' ? 'active' as const : 'upcoming' as const,
       })),
-  ].sort((a, b) => Number(b.status === 'active') - Number(a.status === 'active')
-    || Date.parse(a.departureAt) - Date.parse(b.departureAt))[0];
+  ].sort((a, b) => Number(['boarding', 'in_progress', 'ACTIVE'].includes(b.status)) - Number(['boarding', 'in_progress', 'ACTIVE'].includes(a.status))
+    || Date.parse(a.departureAt) - Date.parse(b.departureAt));
 
   const homeScreen = <HomeHero
     onStartNavigation={() => { setNavAutoStart(true); setTab('navigation'); }}
@@ -1384,10 +1393,10 @@ export function ProductionMarketplace() {
       setNavAutoStart(false);
       setTab('search');
     }}
-    trip={homeTrip ? { ...homeTrip, onOpen: () => {
+    trips={homeTrips.map((trip) => ({ ...trip, onOpen: () => {
       setTab('trips');
-      setRoutePath(pathForProductionEntity(homeTrip.kind, homeTrip.id));
-    } } : undefined}
+      setRoutePath(pathForProductionEntity(trip.kind, trip.id));
+    } }))}
   />;
 
   const planScreen = <PlanTripChoice onBack={() => setTab('home')}

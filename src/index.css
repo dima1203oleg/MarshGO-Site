@@ -2,7 +2,7 @@
 
 :root {
   --color-marshgo-navy: #081B35;
-  --color-marshgo-blue: #1769F4;
+  --color-marshgo-blue: #0B6EF3;
   --color-marshgo-bg: #F5F8FD;
   --color-marshgo-card: #FFFFFF;
   --color-marshgo-text: #14243B;
@@ -14,24 +14,24 @@
 }
 
 html.dark {
-  --mg-blue: #53a1ff;
-  --mg-blue-pressed: #2784f5;
-  --mg-navy: #071426;
-  --mg-ink: #eff6ff;
-  --mg-muted: #a8b5c8;
-  --mg-canvas: #071426;
-  --mg-line: #20324a;
-  --mg-card-shadow: 0 8px 24px rgba(0, 0, 0, .22);
-  --color-marshgo-navy: #051020;
-  --color-marshgo-blue: #38BDF8;
-  --color-marshgo-bg: #071324;
-  --color-marshgo-card: #0D1E36;
-  --color-marshgo-text: #F1F5F9;
-  --color-marshgo-muted: #94A3B8;
-  --color-marshgo-border: #1B2F4C;
-  --color-marshgo-green: #10B981;
-  --color-marshgo-amber: #F59E0B;
-  --color-marshgo-red: #EF4444;
+  --mg-blue: #1687FF;
+  --mg-blue-pressed: #0B6EF3;
+  --mg-navy: #071C33;
+  --mg-ink: #F5F9FF;
+  --mg-muted: #B6C2D0;
+  --mg-canvas: #0B0F14;
+  --mg-line: #263648;
+  --mg-card-shadow: 0 8px 24px rgba(0, 0, 0, .28);
+  --color-marshgo-navy: #071C33;
+  --color-marshgo-blue: #1687FF;
+  --color-marshgo-bg: #0B0F14;
+  --color-marshgo-card: #111820;
+  --color-marshgo-text: #F5F9FF;
+  --color-marshgo-muted: #B6C2D0;
+  --color-marshgo-border: #263648;
+  --color-marshgo-green: #2CD67D;
+  --color-marshgo-amber: #FFB020;
+  --color-marshgo-red: #FF5A6A;
   color-scheme: dark;
 }
 
@@ -755,3 +755,59 @@ html.dark .app-tabbar { border-color: var(--mg-line) !important; }
 .marshgo-puck__halo { position: absolute; inset: -14px; border-radius: 9999px; background: rgba(23, 137, 244, .18); animation: marshgo-puck-pulse 2.4s ease-out infinite; }
 @keyframes marshgo-puck-pulse { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.25); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .marshgo-puck__halo { animation: none; } }
+
+/* Canonical MARSHGO matte-graphite theme and square Home composition. */
+html.dark body,
+html.dark .production-app {
+  background-color: #0B0F14;
+  color: #F5F9FF;
+}
+html.dark .production-app {
+  background-image: radial-gradient(ellipse at 50% -12%, rgba(22, 135, 255, .12), transparent 32rem);
+}
+html.dark .app-header,
+html.dark .app-tabbar {
+  background-color: rgba(11, 15, 20, .94) !important;
+  border-color: #263648 !important;
+}
+html.dark .home-hero--canonical .home-city-pill { background: #111820; color: #F5F9FF; border-color: #263648; }
+html.dark .home-banner-scrim {
+  background: linear-gradient(90deg, rgba(7, 28, 51, .97), rgba(7, 28, 51, .84) 58%, rgba(7, 28, 51, .16));
+}
+.home-banner-scrim { background: linear-gradient(90deg, rgba(255,255,255,.96), rgba(255,255,255,.86) 58%, rgba(255,255,255,.08)); }
+.home-marshpass-slot--multiple .home-marshpass-card { height: calc(100% - 2.5rem); }
+html.dark .home-marshpass-card {
+  color: #F5F9FF;
+  border-color: rgba(83, 107, 134, .56);
+  background: linear-gradient(125deg, #101923 0%, #13263B 58%, #0F1A28 100%);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .3), inset 0 1px rgba(255, 255, 255, .05);
+}
+html:not(.dark) .home-marshpass-card {
+  color: #102344;
+  border-color: #D4E2F1;
+  background: linear-gradient(125deg, #FFFFFF 0%, #F0F7FF 62%, #E3F0FF 100%);
+  box-shadow: 0 9px 24px rgba(23, 68, 126, .1), inset 0 1px #fff;
+}
+
+@media (max-width: 639px) {
+  .app-header { padding-top: max(.5rem, env(safe-area-inset-top, 0px)); }
+  .home-canonical-banner,
+  .home-marshpass-slot { height: clamp(8.75rem, 18svh, 9.5rem); min-height: 8.75rem; }
+  .home-banner { padding: .7rem .8rem; }
+  .home-hero--canonical > .home-action-grid {
+    grid-template-rows: auto auto;
+    grid-auto-rows: auto;
+    gap: .55rem;
+  }
+  .home-action-grid > .home-action-card {
+    height: auto;
+    min-height: 0 !important;
+    aspect-ratio: 1 / 1;
+    padding: .7rem;
+  }
+  .home-action-card > span:first-of-type { width: 2.6rem; height: 2.6rem; }
+  .home-action-card > span:last-child > span:last-child { width: 2rem; height: 2rem; }
+}
+@media (max-width: 639px) and (max-height: 730px) {
+  .home-hero--canonical { overflow-y: auto !important; }
+}
