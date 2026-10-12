@@ -188,6 +188,8 @@ export type ApiJourney = {
   requestedDepartureAt?: string;
   waitingSeconds?: number;
   totalPriceMinor: number | null;
+  currency?: string | null;
+  priceStatus?: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
   confirmedPriceMinor: number | null;
   estimatedPriceMinMinor: number | null;
   estimatedPriceMaxMinor: number | null;
@@ -205,7 +207,11 @@ export type ApiJourney = {
     durationSeconds: number;
     distanceMeters: number | null;
     priceMinor: number | null;
+    currency?: string | null;
     priceStatus: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
+    fareProductId?: string;
+    fareIncludedByPreviousSegment?: boolean;
+    fareSource?: 'gtfs-v1';
     availabilityStatus: string;
     source: string;
     lastUpdatedAt: string;

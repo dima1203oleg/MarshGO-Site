@@ -9,8 +9,8 @@ const strategyLabels: Record<ApiJourneyStrategy, string> = {
   PREMIUM: 'Premium', RELIABLE: 'Найнадійніше', CUSTOM: 'Ваш пріоритет',
 };
 
-const formatPrice = (minor: number) => new Intl.NumberFormat('uk-UA', {
-  style: 'currency', currency: 'UAH', maximumFractionDigits: 0,
+const formatPrice = (minor: number, currency = 'UAH') => new Intl.NumberFormat('uk-UA', {
+  style: 'currency', currency, maximumFractionDigits: 0,
 }).format(minor / 100);
 
 const formatDuration = (seconds: number) => {
@@ -61,7 +61,7 @@ function JourneyCard({ journey, onOpenOffer, onOpenMap }: {
         <strong className="text-base font-extrabold tabular-nums">{formatTime(routeStart)}–{formatTime(lastLeg.arrivalAt)}</strong>
         <span className="truncate text-[10px] font-medium text-slate-500">{formatDuration(journey.totalDurationSeconds)}</span>
       </div>
-      <div className="shrink-0 text-right"><small className="block text-[9px] leading-3 text-slate-500">{priceLabel}</small><strong className="text-base font-extrabold tabular-nums">{shownPrice === null ? '—' : formatPrice(shownPrice)}</strong></div>
+      <div className="shrink-0 text-right"><small className="block text-[9px] leading-3 text-slate-500">{priceLabel}</small><strong className="text-base font-extrabold tabular-nums">{shownPrice === null ? '—' : formatPrice(shownPrice, journey.currency ?? 'UAH')}</strong></div>
     </div>
 
     <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: `repeat(${transitLegs.length}, minmax(0, 1fr))` }} role="list" aria-label={`Послідовність транспорту: ${chainLabel}`}>
@@ -72,6 +72,9 @@ function JourneyCard({ journey, onOpenOffer, onOpenMap }: {
         </div>
         <div className="mt-1 h-1.5 rounded-full" style={{ backgroundColor: journeyModeColor(leg.mode, leg.transportType) }}/>
         <span className="mt-1 block truncate text-[9px] tabular-nums text-slate-500">{formatDuration(leg.durationSeconds)}</span>
+        <span className="block truncate text-[9px] font-semibold text-slate-600" aria-label={leg.fareIncludedByPreviousSegment ? 'Вартість цього сегмента включена у попередній квиток' : leg.priceMinor === null ? 'Ціна сегмента уточнюється' : `Орієнтовна ціна сегмента ${formatPrice(leg.priceMinor, leg.currency ?? journey.currency ?? 'UAH')}`}>
+          {leg.fareIncludedByPreviousSegment ? 'у квитку' : leg.priceMinor === null ? 'ціна уточнюється' : formatPrice(leg.priceMinor, leg.currency ?? journey.currency ?? 'UAH')}
+        </span>
       </div>)}
     </div>
 
