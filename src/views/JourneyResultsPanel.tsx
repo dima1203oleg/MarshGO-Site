@@ -1,16 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Clock3, Footprints, MapPin, ShieldCheck, Ticket, TrainFront } from 'lucide-react';
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
+import { journeyLegLabel } from './journeyLegLabel';
 
 const strategyLabels: Record<ApiJourneyStrategy, string> = {
   FASTEST: 'Найшвидше', CHEAPEST: 'Найдешевше', BALANCED: 'Оптимально',
   PREMIUM: 'Premium', RELIABLE: 'Найнадійніше', CUSTOM: 'Ваш пріоритет',
-};
-
-const modeLabels: Record<string, string> = {
-  WALK: 'Пішки', COMMUNITY: 'Попутка MARSHGO', BUS: 'Автобус', MINIBUS: 'Маршрутка',
-  RAIL: 'Залізниця', FUNICULAR: 'Фунікулер', city_train: 'Міська електричка', funicular: 'Фунікулер',
-  TRAM: 'Трамвай', TROLLEYBUS: 'Тролейбус', METRO: 'Метро', FERRY: 'Пором',
 };
 
 const formatPrice = (minor: number) => new Intl.NumberFormat('uk-UA', {
@@ -51,7 +46,7 @@ function JourneyCard({ journey, onOpenOffer, activeStrategy }: {
   return <article className="journey-result-card rounded-[1.4rem] border border-slate-100 bg-white p-4 shadow-[0_8px_24px_rgba(24,58,105,.07)]">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <span className="rounded-full bg-blue-50 px-3 py-1.5 text-[10px] font-bold text-blue-700">
-        {isMultimodal ? 'Комбінований маршрут' : modeLabels[firstLeg.mode] ?? 'Маршрут'}
+        {isMultimodal ? 'Комбінований маршрут' : journeyLegLabel(firstLeg.mode, firstLeg.transportType)}
       </span>
       <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-semibold text-emerald-700">{strategyLabels[activeStrategy]}{journey.strategyRanks?.[activeStrategy] ? ` · №${journey.strategyRanks[activeStrategy]}` : ''}</span>
     </div>
@@ -70,7 +65,7 @@ function JourneyCard({ journey, onOpenOffer, activeStrategy }: {
         const isWalk = leg.mode === 'WALK';
         const previous = legs[index - 1];
         const waitSeconds = previous ? Math.max(0, (Date.parse(leg.departureAt) - Date.parse(previous.arrivalAt)) / 1000) : 0;
-        const title = modeLabels[leg.mode] ?? leg.mode;
+        const title = journeyLegLabel(leg.mode, leg.transportType);
         return <li key={leg.id} className="rounded-xl bg-slate-50 px-3 py-2.5">
           {previous && waitSeconds > 0 && <p className="mb-2 border-l-2 border-amber-300 pl-2 text-[10px] text-slate-500">Пересадка · очікування {formatDuration(waitSeconds)}</p>}
           <div className="flex items-start gap-2.5">
@@ -109,10 +104,13 @@ export function JourneyResultsPanel({ result, onOpenOffer }: { result: ApiJourne
     setActiveStrategy(defaultStrategy);
   }, [result, defaultStrategy]);
   const filterGroups = [
-    { id: 'community', label: 'Попутки', modes: ['COMMUNITY'] },
-    { id: 'bus', label: 'Автобуси', modes: ['BUS', 'MINIBUS'] },
+    { id: 'community', label: 'Попутки', modes: ['COMMUNITY', 'COMMUNITY_DEMAND'] },
+    { id: 'bus', label: 'Автобуси', modes: ['BUS', 'URBAN_BUS', 'MINIBUS'] },
     { id: 'rail', label: 'Потяги', modes: ['RAIL'] },
-    ...['TRAM', 'TROLLEYBUS', 'METRO', 'FERRY', 'FUNICULAR'].map(mode => ({ id: mode, label: modeLabels[mode], modes: [mode] })),
+    ...[
+      ['TRAM', 'Трамваї'], ['TROLLEYBUS', 'Тролейбуси'], ['METRO', 'Метро'],
+      ['FERRY', 'Пороми'], ['FUNICULAR', 'Фунікулери'],
+    ].map(([mode, label]) => ({ id: mode, label, modes: [mode] })),
   ].filter(group => result.journeys.some(journey => journey.legs.some(leg => group.modes.includes(leg.mode))));
   const strategyJourneys = result.journeys
     .filter(journey => journey.strategyRanks

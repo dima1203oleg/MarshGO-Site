@@ -209,6 +209,8 @@ export type ApiJourney = {
     providerName?: string;
     routeName?: string;
     headsign?: string;
+    /** Concrete feed mode, such as suburban_train or marshrutka. */
+    transportType?: string;
     driver: { id: string; name: string; averageRating: number | null; reviewCount: number } | null;
     vehicle: { id: string; make: string; model: string } | null;
   }>;
