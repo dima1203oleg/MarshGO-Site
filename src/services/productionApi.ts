@@ -166,7 +166,7 @@ export type ApiRealtimeEvent =
   | { type: 'navigation.match.passenger-confirmed'; data: { candidate_id: string; demand_id: string; status: 'passenger_confirmed' } }
   | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } }
   | { type: `rendezvous.${string}`; data: { rendezvous_id: string; state?: string; participant?: 'driver' | 'passenger'; coordinates?: [number, number]; accuracyMeters?: number; capturedAt?: string; near_pickup?: boolean } }
-  | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'REPLANNING' } };
+  | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'PARTIALLY_RESERVED' | 'REPLANNING' } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
 export type ApiJourneyStrategy = 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM' | 'RELIABLE' | 'CUSTOM';

@@ -390,7 +390,9 @@ export function ProductionMarketplace() {
       }
       if (event.type === 'journey.updated') {
         void refreshJourneys().catch(() => setStatusMessage('Маршрут не оновився. Оновіть список поїздок.'));
-        setStatusMessage(event.data.state === 'READY' ? 'Ваш маршрут готов, бронювання збережене.' : 'Стан маршруту змінився. Перевірте актуальні варіанти.');
+        setStatusMessage(event.data.state === 'READY' ? 'Ваш маршрут готов, бронювання збережене.'
+          : event.data.state === 'PARTIALLY_RESERVED' ? 'Бронювання попутки підтверджене. Квитки на інші сегменти маршруту оформлюються окремо.'
+            : 'Стан маршруту змінився. Перевірте актуальні варіанти.');
         return;
       }
       if (event.type === 'booking.change-requested') setStatusMessage('Водій змінив умови поїздки. Перегляньте зміни в «Поїздках» і погодьтеся або відмовтеся.');
