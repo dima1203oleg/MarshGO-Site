@@ -229,6 +229,16 @@ export type ApiJourney = {
     vehicle: { id: string; make: string; model: string } | null;
   }>;
 };
+export type ApiJourneyLive = {
+  journeyId: string;
+  checkedAt: string;
+  segments: Array<{
+    legId: string;
+    status: 'LIVE' | 'SCHEDULED' | 'UNVERIFIED';
+    reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
+    vehicle?: { coordinates: [number, number]; bearing: number | null; speed: number | null; route: string; updatedAt: string };
+  }>;
+};
 export type ApiJourneySearchResult = {
   journeys: ApiJourney[];
   requestedStrategy?: ApiJourneyStrategy;
@@ -395,6 +405,7 @@ export const productionApi = {
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
+  journeyLive(id: string, signal?: AbortSignal) { return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live`, { signal }); },
   startNavigation(input: { origin: [number, number]; destination?: [number, number]; destinationName?: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },

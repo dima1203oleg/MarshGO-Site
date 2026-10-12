@@ -4,11 +4,13 @@ export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 
 export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK' | 'MARSHGO_3D_LIGHT' | 'MARSHGO_3D_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
 export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; modeColor: string };
+export type LiveTransitPosition = { coordinates: Coordinate; color: string; label: string; updatedAt: string };
 export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number };
 export interface MapAdapter {
   setRoute(points: Coordinate[]): void;
   setRouteSegments?(segments: ColoredRouteSegment[]): void;
   setActiveRouteSegment?(id: string | null): void;
+  setLiveTransitPosition?(position: LiveTransitPosition | null): void;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
   focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;
   onRouteSegmentSelect: (id: string) => void;

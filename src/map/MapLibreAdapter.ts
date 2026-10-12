@@ -3,7 +3,7 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import type { CameraMode, ColoredRouteSegment, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
+import type { CameraMode, ColoredRouteSegment, LiveTransitPosition, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
 import type { FillLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
@@ -30,6 +30,8 @@ export class MapLibreAdapter implements MapAdapter {
   private transport: TransportLayerController | null = null;
   private heading: number | null = null;
   private marker: maplibregl.Marker | null = null;
+  private liveTransitMarker: maplibregl.Marker | null = null;
+  private liveTransitElement: HTMLDivElement | null = null;
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
   onRouteSegmentSelect: (id: string) => void = () => undefined;
@@ -238,6 +240,36 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.cameraMode === 'FOLLOW_HEADING' || this.cameraMode === 'FOLLOW') this.followCamera(900);
   }
 
+  /** A separate marker for an exact, timestamp-verified public-transport journey position. */
+  setLiveTransitPosition(position: LiveTransitPosition | null) {
+    if (!position) {
+      this.liveTransitMarker?.remove();
+      this.liveTransitMarker = null;
+      this.liveTransitElement = null;
+      delete this.map.getContainer().dataset.marshgoLiveTransitUpdatedAt;
+      return;
+    }
+    if (!this.liveTransitElement) {
+      this.liveTransitElement = document.createElement('div');
+      this.liveTransitElement.className = 'marshgo-transit-live-marker';
+      this.liveTransitElement.setAttribute('role', 'img');
+      const dot = document.createElement('span');
+      dot.setAttribute('aria-hidden', 'true');
+      this.liveTransitElement.append(dot);
+      this.liveTransitMarker = new maplibregl.Marker({ element: this.liveTransitElement, anchor: 'center' }).addTo(this.map);
+    }
+    this.liveTransitElement.setAttribute('aria-label', `${position.label}: GPS оновлено ${position.updatedAt}`);
+    this.liveTransitElement.title = `${position.label} · GPS ${position.updatedAt}`;
+    this.liveTransitElement.style.backgroundColor = position.color;
+    this.liveTransitElement.style.border = '3px solid white';
+    this.liveTransitElement.style.boxShadow = `0 0 0 3px ${position.color}66,0 0 20px ${position.color}cc`;
+    Object.assign(this.liveTransitElement.style, { width: '30px', height: '30px', borderRadius: '50%', display: 'grid', placeItems: 'center' });
+    const child = this.liveTransitElement.firstElementChild as HTMLElement | null;
+    if (child) Object.assign(child.style, { width: '8px', height: '8px', borderRadius: '50%', background: '#fff' });
+    this.liveTransitMarker?.setLngLat(position.coordinates);
+    this.map.getContainer().dataset.marshgoLiveTransitUpdatedAt = position.updatedAt;
+  }
+
   /** The driver's puck: a blue arrow that points where the car is heading, lying flat on the (tilted) road like in Apple Maps. */
   private updateMarker(point: Coordinate) {
     if (!this.marker) {
@@ -349,6 +381,6 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);
   }
   retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
-  destroy() { this.marker?.remove(); this.transport?.destroy(); this.map.remove(); }
+  destroy() { this.marker?.remove(); this.liveTransitMarker?.remove(); this.transport?.destroy(); this.map.remove(); }
   getStatus() { return this.status; }
 }

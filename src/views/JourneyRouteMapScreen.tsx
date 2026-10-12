@@ -8,7 +8,7 @@ import { MarshGoMap } from '../map/MarshGoMap';
 import { buildJourneyRouteMapModel, journeyModeColor } from '../map/journeyRouteModel';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
-import type { ApiJourney } from '../services/productionApi';
+import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
 import { themeService } from '../services/theme';
 
@@ -115,6 +115,8 @@ export function JourneyRouteMapScreen({
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
   const [dragging, setDragging] = useState(false);
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
+  const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
+  const [mapAdapterReady, setMapAdapterReady] = useState(false);
   const [expandedSegments, setExpandedSegments] = useState<Set<string>>(() => new Set());
   const [feedback, setFeedback] = useState('');
   const mapAdapter = useRef<MapAdapter | null>(null);
@@ -123,6 +125,54 @@ export function JourneyRouteMapScreen({
   const suppressHandleClick = useRef(false);
 
   useEffect(() => themeService.subscribe((_theme, dark) => setIsDark(dark)), []);
+
+  useEffect(() => {
+    if (!journey.legs.some(isScheduledRouteLeg)) { setLiveJourney(null); return; }
+    let stopped = false;
+    let timer: number | undefined;
+    let controller: AbortController | undefined;
+    const poll = async () => {
+      const now = Date.now();
+      const transitLegs = journey.legs.filter(isScheduledRouteLeg);
+      const inGpsWindow = transitLegs.some(leg => {
+        const departure = Date.parse(leg.departureAt);
+        const arrival = Date.parse(leg.arrivalAt);
+        return Number.isFinite(departure) && Number.isFinite(arrival) && now >= departure - 5 * 60_000 && now <= arrival + 10 * 60_000;
+      });
+      if (!inGpsWindow && !['ACTIVE', 'TRANSFER'].includes(journey.state)) {
+        setLiveJourney(null);
+        if (!stopped) timer = window.setTimeout(() => void poll(), 60_000);
+        return;
+      }
+      controller = new AbortController();
+      try {
+        const live = await productionApi.journeyLive(journey.id, controller.signal);
+        if (!stopped) setLiveJourney(live);
+      } catch {
+        if (!stopped) setLiveJourney(null);
+      } finally {
+        if (!stopped) timer = window.setTimeout(() => void poll(), 15_000);
+      }
+    };
+    void poll();
+    return () => { stopped = true; controller?.abort(); if (timer !== undefined) window.clearTimeout(timer); };
+  }, [journey.id, journey.legs, journey.state]);
+
+  useEffect(() => {
+    if (!mapAdapterReady) return;
+    const positions = liveJourney?.segments.filter(segment => segment.status === 'LIVE' && segment.vehicle) ?? [];
+    const live = activeSegmentId
+      ? positions.find(segment => segment.legId === activeSegmentId)
+      : positions[0];
+    const leg = live && journey.legs.find(item => item.id === live.legId);
+    if (!live?.vehicle || !leg) { mapAdapter.current?.setLiveTransitPosition?.(null); return; }
+    mapAdapter.current?.setLiveTransitPosition?.({
+      coordinates: live.vehicle.coordinates,
+      color: journeyModeColor(leg.mode, leg.transportType),
+      label: live.vehicle.route || journeyLegLabel(leg.mode, leg.transportType),
+      updatedAt: live.vehicle.updatedAt,
+    });
+  }, [activeSegmentId, journey.legs, liveJourney, mapAdapterReady]);
 
   const snapHeight = useCallback((snap: SheetSnap, viewport = viewportHeight) => {
     const safeBottom = 8;
@@ -263,7 +313,7 @@ export function JourneyRouteMapScreen({
         routeFitPadding={mapPadding}
         theme={isDark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT'}
         onStatus={setMapStatus}
-        onAdapter={adapter => { mapAdapter.current = adapter; if (adapter) adapter.setActiveRouteSegment?.(activeSegmentId); }}
+        onAdapter={adapter => { mapAdapter.current = adapter; setMapAdapterReady(Boolean(adapter)); if (adapter) { adapter.setActiveRouteSegment?.(activeSegmentId); } }}
         activeRouteSegmentId={activeSegmentId}
         onRouteSegmentSelect={id => chooseSegment(id)}
       />
@@ -367,6 +417,7 @@ export function JourneyRouteMapScreen({
             const color = item.color;
             const selected = activeSegmentId === leg.id;
             const scheduled = isScheduledRouteLeg(leg);
+            const liveStatus = liveJourney?.segments.find(segment => segment.legId === leg.id)?.status === 'LIVE' ? 'LIVE' : leg.liveStatus;
             const expanded = expandedSegments.has(leg.id);
             const caveat = journeyLegCaveat(leg.mode, leg.source);
             const canBook = Boolean(leg.offerId) && leg.availabilityStatus !== 'UNAVAILABLE';
@@ -386,7 +437,7 @@ export function JourneyRouteMapScreen({
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <b className="text-sm font-extrabold">{leg.mode === 'COMMUNITY' ? 'Попутка · приватний автомобіль' : `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`}</b>
-                      {leg.liveStatus && <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-extrabold ${leg.liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>{leg.liveStatus === 'LIVE' ? 'LIVE' : leg.liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : leg.liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : leg.liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}</span>}
+                      {liveStatus && <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-extrabold ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>{liveStatus === 'LIVE' ? 'LIVE' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}</span>}
                     </span>
                     <span className="mt-1 block text-[11px] tabular-nums text-[var(--route-muted)]">{formatTime(leg.departureAt)}–{formatTime(leg.arrivalAt)} · {formatDuration(item.durationSeconds)}{hasMeasuredDistance(leg) ? ` · ${(leg.distanceMeters / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 1 })} км` : ''}</span>
                     <span className="mt-1 block text-[10px] leading-4 text-[var(--route-subtle)]">{leg.mode === 'COMMUNITY' ? `Посадка: ${leg.origin.name} · висадка: ${leg.destination.name}` : `${leg.origin.name} → ${leg.destination.name}`}</span>
