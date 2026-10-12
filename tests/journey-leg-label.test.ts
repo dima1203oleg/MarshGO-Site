@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { journeyLegLabel } from '../src/views/journeyLegLabel';
+import { journeyLegCaveat, journeyLegLabel } from '../src/views/journeyLegLabel';
 
 describe('journey leg labels', () => {
   it('prefers the concrete transport type from the API', () => {
@@ -16,5 +16,11 @@ describe('journey leg labels', () => {
     ]) assert.notEqual(journeyLegLabel(mode), 'Транспорт', mode);
     assert.equal(journeyLegLabel('RAIL'), 'Залізниця');
     assert.equal(journeyLegLabel('NEW_MODE'), 'NEW_MODE');
+  });
+
+  it('marks estimated straight-line walking without confusing other modes', () => {
+    assert.match(journeyLegCaveat('WALK', 'walking-estimate') ?? '', /оцінено по прямій/);
+    assert.equal(journeyLegCaveat('WALK', 'pedestrian-router'), null);
+    assert.equal(journeyLegCaveat('BUS', 'walking-estimate'), null);
   });
 });

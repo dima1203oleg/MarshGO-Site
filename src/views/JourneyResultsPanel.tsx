@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Clock3, Footprints, Map as MapIcon, MapPin, ShieldCheck, Ticket, TrainFront } from 'lucide-react';
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
-import { journeyLegLabel } from './journeyLegLabel';
+import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
 
 const strategyLabels: Record<ApiJourneyStrategy, string> = {
   FASTEST: 'Найшвидше', CHEAPEST: 'Найдешевше', BALANCED: 'Оптимально',
@@ -34,6 +34,7 @@ function JourneyCard({ journey, onOpenOffer, onOpenMap, activeStrategy }: {
   if (!firstLeg || !lastLeg) return null;
 
   const transitLegs = legs.filter(leg => leg.mode !== 'WALK');
+  const hasEstimatedWalking = legs.some(leg => journeyLegCaveat(leg.mode, leg.source) !== null);
   const isMultimodal = transitLegs.length > 1 || (transitLegs.length === 1 && legs.length > 1);
   const hasTransitSchedule = transitLegs.some(leg => leg.source === 'gtfs-static');
   const communityLeg = transitLegs.find(leg => leg.mode === 'COMMUNITY' || Boolean(leg.offerId));
@@ -57,7 +58,7 @@ function JourneyCard({ journey, onOpenOffer, onOpenMap, activeStrategy }: {
       <div className="flex flex-col items-center pt-1"><span className="h-2.5 w-2.5 rounded-full border-[3px] border-blue-600 bg-white"/><span className="my-1.5 w-px flex-1 border-l border-dashed border-blue-300"/><span className="h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-rose-100"/></div>
       <div className="min-w-0 pb-3">
         <div className="flex items-start justify-between gap-2"><div className="min-w-0"><small className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Виїзд за запитом</small><b className="mt-0.5 block truncate text-sm">{firstLeg.origin.name}</b></div><b className="shrink-0 text-sm tabular-nums">{formatTime(routeStart)}</b></div>
-        <div className="my-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium text-slate-500"><span className="flex items-center gap-1"><Clock3 size={12}/>{formatDuration(journey.totalDurationSeconds)}</span><span className="flex items-center gap-1"><MapPin size={12}/>{journey.transfers ? `${journey.transfers} пересадок` : 'Без пересадок'}</span>{journey.waitingSeconds !== undefined && journey.waitingSeconds > 0 && <span className="flex items-center gap-1"><Clock3 size={12}/>{formatDuration(journey.waitingSeconds)} очікування</span>}{journey.walkingMeters > 0 && <span className="flex items-center gap-1"><Footprints size={12}/>{journey.walkingMeters} м пішки</span>}</div>
+        <div className="my-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium text-slate-500"><span className="flex items-center gap-1"><Clock3 size={12}/>{formatDuration(journey.totalDurationSeconds)}</span><span className="flex items-center gap-1"><MapPin size={12}/>{journey.transfers ? `${journey.transfers} пересадок` : 'Без пересадок'}</span>{journey.waitingSeconds !== undefined && journey.waitingSeconds > 0 && <span className="flex items-center gap-1"><Clock3 size={12}/>{formatDuration(journey.waitingSeconds)} очікування</span>}{journey.walkingMeters > 0 && <span className="flex items-center gap-1"><Footprints size={12}/>{hasEstimatedWalking ? '≈ ' : ''}{journey.walkingMeters} м пішки</span>}</div>
         <div className="flex items-start justify-between gap-2"><div className="min-w-0"><small className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Прибуття</small><b className="mt-0.5 block truncate text-sm">{lastLeg.destination.name}</b></div><b className="shrink-0 text-sm tabular-nums">{formatTime(lastLeg.arrivalAt)}</b></div>
       </div>
     </div>
@@ -68,13 +69,15 @@ function JourneyCard({ journey, onOpenOffer, onOpenMap, activeStrategy }: {
         const previous = legs[index - 1];
         const waitSeconds = previous ? Math.max(0, (Date.parse(leg.departureAt) - Date.parse(previous.arrivalAt)) / 1000) : 0;
         const title = journeyLegLabel(leg.mode, leg.transportType);
+        const caveat = journeyLegCaveat(leg.mode, leg.source);
         return <li key={leg.id} className="rounded-xl bg-slate-50 px-3 py-2.5">
           {previous && waitSeconds > 0 && <p className="mb-2 border-l-2 border-amber-300 pl-2 text-[10px] text-slate-500">{index === 1 && previous.mode === 'WALK' ? 'Очікування першого транспорту' : 'Пересадка · очікування'} {formatDuration(waitSeconds)}</p>}
           <div className="flex items-start gap-2.5">
             <span className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full ${isWalk ? 'bg-slate-200 text-slate-600' : 'bg-blue-100 text-blue-700'}`}>{isWalk ? <Footprints size={14}/> : <TrainFront size={14}/>}</span>
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5"><b className="text-xs">{title}{leg.routeName ? ` · ${leg.routeName}` : ''}</b><span className="text-[10px] tabular-nums text-slate-500">{formatTime(leg.departureAt)}–{formatTime(leg.arrivalAt)}</span></div>
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5"><b className="text-xs">{title}{caveat ? ' · орієнтовно' : ''}{leg.routeName ? ` · ${leg.routeName}` : ''}</b><span className="text-[10px] tabular-nums text-slate-500">{formatTime(leg.departureAt)}–{formatTime(leg.arrivalAt)}</span></div>
               <p className="mt-0.5 truncate text-[10px] text-slate-500">{leg.origin.name} → {leg.destination.name}</p>
+              {caveat && <p className="mt-1 text-[10px] leading-4 text-amber-800">{caveat}</p>}
               {!isWalk && (leg.providerName || leg.headsign) && <p className="mt-0.5 truncate text-[10px] text-slate-500">{[leg.providerName, leg.headsign].filter(Boolean).join(' · ')}</p>}
             </div>
           </div>

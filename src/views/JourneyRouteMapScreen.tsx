@@ -4,7 +4,7 @@ import { MarshGoMap } from '../map/MarshGoMap';
 import { buildJourneyRouteMapModel, formatTransferCount } from '../map/journeyRouteModel';
 import type { MapStatus } from '../map/MapAdapter';
 import type { ApiJourney } from '../services/productionApi';
-import { journeyLegLabel } from './journeyLegLabel';
+import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
 
 const formatTime = (value: string) => new Intl.DateTimeFormat('uk-UA', {
   hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv',
@@ -53,11 +53,13 @@ export function JourneyRouteMapScreen({ journey, onBack }: { journey: ApiJourney
       <ol className="mt-3 space-y-2 border-t border-slate-100 pt-3 dark:border-[#263648]">
         {journey.legs.map((leg) => {
           const shaped = model.legs.find(item => item.id === leg.id);
+          const caveat = journeyLegCaveat(leg.mode, leg.source);
           return <li key={leg.id} className="flex items-start gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-[#16202B]">
             <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: shaped?.color ?? '#94A3B8' }}/>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2"><b className="truncate text-xs">{journeyLegLabel(leg.mode, leg.transportType)}{leg.routeName ? ` · ${leg.routeName}` : ''}</b><span className="shrink-0 text-[10px] tabular-nums text-slate-500 dark:text-[#B6C2D0]">{formatTime(leg.departureAt)}–{formatTime(leg.arrivalAt)}</span></div>
               <p className="mt-0.5 truncate text-[10px] text-slate-500 dark:text-[#B6C2D0]">{leg.origin.name} → {leg.destination.name}</p>
+              {caveat && <p className="mt-1 text-[10px] leading-4 text-amber-800 dark:text-amber-300">{caveat}</p>}
               {!shaped && leg.mode !== 'WALK' && <p className="mt-1 text-[9px] text-amber-700 dark:text-amber-300">Геометрія відрізка відсутня в даних перевізника</p>}
             </div>
           </li>;

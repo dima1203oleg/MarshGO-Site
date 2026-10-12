@@ -31,3 +31,10 @@ export function journeyLegLabel(mode: string, transportType?: string | null): st
   const concreteType = transportType?.toLocaleLowerCase('en-US');
   return (concreteType && transportTypeLabels[concreteType]) || modeLabels[mode] || mode || 'Транспорт';
 }
+
+export function journeyLegCaveat(mode: string, source?: string | null): string | null {
+  if (mode === 'WALK' && source === 'walking-estimate') {
+    return 'Пішохідну відстань оцінено по прямій; реальний шлях може бути довшим.';
+  }
+  return null;
+}
