@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Clock3, Footprints, MapPin, Route as RouteIcon } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
-import { buildJourneyRouteMapModel } from '../map/journeyRouteModel';
+import { buildJourneyRouteMapModel, formatTransferCount } from '../map/journeyRouteModel';
 import type { MapStatus } from '../map/MapAdapter';
 import type { ApiJourney } from '../services/productionApi';
 import { journeyLegLabel } from './journeyLegLabel';
@@ -42,7 +42,7 @@ export function JourneyRouteMapScreen({ journey, onBack }: { journey: ApiJourney
           <p className="truncate text-sm font-extrabold">{firstLeg?.origin.name} → {lastLeg?.destination.name}</p>
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500 dark:text-[#B6C2D0]">
             <span className="inline-flex items-center gap-1"><Clock3 size={12}/>{formatDuration(journey.totalDurationSeconds)}</span>
-            <span className="inline-flex items-center gap-1"><RouteIcon size={12}/>{journey.transfers} пересадок</span>
+            <span className="inline-flex items-center gap-1"><RouteIcon size={12}/>{formatTransferCount(journey.transfers)}</span>
             {journey.walkingMeters > 0 && <span className="inline-flex items-center gap-1"><Footprints size={12}/>{journey.walkingMeters} м пішки</span>}
           </p>
         </div>

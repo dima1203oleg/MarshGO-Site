@@ -13,6 +13,13 @@ const MODE_COLORS: Record<string, string> = {
 const colorForMode = (mode: string, transportType?: string) =>
   MODE_COLORS[transportType?.toUpperCase() ?? ''] ?? MODE_COLORS[mode.toUpperCase()] ?? '#1687FF';
 
+export function formatTransferCount(value: number): string {
+  const count = Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+  const category = new Intl.PluralRules('uk-UA').select(count);
+  const noun = category === 'one' ? 'пересадка' : category === 'few' ? 'пересадки' : 'пересадок';
+  return `${count} ${noun}`;
+}
+
 function validGeometry(points: Array<[number, number]> | undefined): Coordinate[] {
   if (!Array.isArray(points)) return [];
   const valid = points.every(point => Array.isArray(point) && point.length === 2

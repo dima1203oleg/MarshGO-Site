@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ApiJourney } from '../src/services/productionApi';
-import { buildJourneyRouteMapModel } from '../src/map/journeyRouteModel';
+import { buildJourneyRouteMapModel, formatTransferCount } from '../src/map/journeyRouteModel';
 
 function legs(value: unknown): ApiJourney['legs'] {
   return value as ApiJourney['legs'];
@@ -43,4 +43,12 @@ test('drops malformed coordinates before passing route geometry to the map', () 
 
   assert.deepEqual(model.routeSegments, []);
   assert.equal(model.missingShapeCount, 1);
+});
+
+test('formats transfer counts with Ukrainian plural forms', () => {
+  assert.equal(formatTransferCount(0), '0 пересадок');
+  assert.equal(formatTransferCount(1), '1 пересадка');
+  assert.equal(formatTransferCount(3), '3 пересадки');
+  assert.equal(formatTransferCount(5), '5 пересадок');
+  assert.equal(formatTransferCount(21), '21 пересадка');
 });
