@@ -20,6 +20,7 @@ describe('journey leg labels', () => {
 
   it('marks estimated straight-line walking without confusing other modes', () => {
     assert.match(journeyLegCaveat('WALK', 'walking-estimate') ?? '', /оцінено по прямій/);
+    assert.match(journeyLegCaveat('WALK', 'straight-line-estimate') ?? '', /оцінено по прямій/);
     assert.equal(journeyLegCaveat('WALK', 'pedestrian-router'), null);
     assert.equal(journeyLegCaveat('BUS', 'walking-estimate'), null);
   });

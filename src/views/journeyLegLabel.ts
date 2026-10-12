@@ -33,7 +33,7 @@ export function journeyLegLabel(mode: string, transportType?: string | null): st
 }
 
 export function journeyLegCaveat(mode: string, source?: string | null): string | null {
-  if (mode === 'WALK' && source === 'walking-estimate') {
+  if (mode === 'WALK' && (source === 'walking-estimate' || source === 'straight-line-estimate')) {
     return 'Пішохідну відстань оцінено по прямій; реальний шлях може бути довшим.';
   }
   return null;
