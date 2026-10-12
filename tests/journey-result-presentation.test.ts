@@ -47,9 +47,11 @@ describe('journey result presentation data', () => {
   });
 
   it('marks estimated leg fares and route totals as approximate in hryvnias', () => {
-    const estimate = leg({ id: 'carpool', mode: 'COMMUNITY', priceMinor: 12_000, priceStatus: 'DYNAMIC' });
+    const estimate = leg({ id: 'carpool', mode: 'COMMUNITY', routeName: 'MARSHGO', priceMinor: 12_000, priceStatus: 'DYNAMIC' });
     const result = journey({ legs: [estimate], totalPriceMinor: 12_000, priceStatus: 'DYNAMIC' });
-    assert.equal(formatJourneySegmentPrice(buildJourneyResultSegments(result).find(item => item.leg?.id === 'carpool')!), '≈ 120\u00a0₴');
+    const community = buildJourneyResultSegments(result).find(item => item.leg?.id === 'carpool')!;
+    assert.equal(community.label, 'Попутка');
+    assert.equal(formatJourneySegmentPrice(community), '≈ 120\u00a0₴');
     assert.equal(formatJourneyTotalPrice(result), '≈ 120\u00a0₴');
   });
 

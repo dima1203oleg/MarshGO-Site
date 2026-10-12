@@ -44,12 +44,12 @@ export function buildJourneyResultSegments(journey: ApiJourney): JourneyResultSe
       ? Math.round((arrival - departure) / 1000)
       : Math.max(0, Math.round(leg.durationSeconds));
     if (durationSeconds > 0) {
-      const modeLabel = journeyLegLabel(leg.mode, leg.transportType);
+      const modeLabel = leg.mode === 'COMMUNITY' ? 'Попутка' : journeyLegLabel(leg.mode, leg.transportType);
       segments.push({
         id: `leg:${leg.id}`,
         kind: 'LEG',
         mode: leg.mode,
-        label: `${modeLabel}${leg.routeName ? ` ${leg.routeName}` : ''}`,
+        label: `${modeLabel}${leg.routeName && leg.mode !== 'COMMUNITY' ? ` ${leg.routeName}` : ''}`,
         color: journeyModeColor(leg.mode, leg.transportType),
         durationSeconds,
         departureAt: leg.departureAt,

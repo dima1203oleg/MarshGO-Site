@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeftRight, Bike, BusFront, CarFront, ChevronRight, Clock3, Coins, Footprints,
   Heart, Scale, Timer, TrainFront, TrainTrack, TramFront, Zap,
@@ -72,6 +72,11 @@ function formatDistance(meters: number | null): string {
     : `${Math.round(meters)} м`;
 }
 
+function segmentItemWidth(segment: JourneyResultSegment, price: string): number {
+  const contentWidth = Math.ceil(Math.max(segment.label.length * 4.8, `${formatJourneyDuration(segment.durationSeconds)} · ${price}`.length * 4.1) + 38);
+  return Math.max(80, Math.min(176, contentWidth));
+}
+
 function RouteResultCard({ journey, strategy, index, onOpen }: {
   journey: ApiJourney;
   strategy: ApiJourneyStrategy;
@@ -87,6 +92,8 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
     catch { return false; }
   });
   const [announcement, setAnnouncement] = useState('');
+  const segmentScroller = useRef<HTMLDivElement>(null);
+  const [segmentScroll, setSegmentScroll] = useState({ overflow: false, atEnd: false });
 
   useEffect(() => {
     try {
@@ -94,6 +101,29 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
       setSaved(Array.isArray(ids) && ids.includes(journey.id));
     } catch { setSaved(false); }
   }, [journey.id]);
+
+  useEffect(() => {
+    const element = segmentScroller.current;
+    if (!element) return;
+    const syncScrollState = () => {
+      const next = {
+        overflow: element.scrollWidth > element.clientWidth + 2,
+        atEnd: element.scrollLeft + element.clientWidth >= element.scrollWidth - 2,
+      };
+      setSegmentScroll(current => current.overflow === next.overflow && current.atEnd === next.atEnd ? current : next);
+    };
+    syncScrollState();
+    element.addEventListener('scroll', syncScrollState, { passive: true });
+    window.addEventListener('resize', syncScrollState, { passive: true });
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncScrollState);
+    observer?.observe(element);
+    for (const child of element.children) observer?.observe(child);
+    return () => {
+      element.removeEventListener('scroll', syncScrollState);
+      window.removeEventListener('resize', syncScrollState);
+      observer?.disconnect();
+    };
+  }, [journey.id, segments.length]);
 
   if (!firstLeg || !lastLeg) return null;
   const strategyItem = strategyConfig.find(item => item.id === strategy) ?? strategyConfig[0];
@@ -147,20 +177,30 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
         {segments.map(segment => <span key={segment.id} data-segment-mode={segment.mode} title={`${segment.label} · ${formatJourneyDuration(segment.durationSeconds)}`} style={{ flexGrow: segment.durationSeconds, flexBasis: 0, backgroundColor: segment.color }} className="h-full min-w-[2px] transition-[flex-grow]"/>)}
       </div>
 
-      <div className="journey-result-segments no-scrollbar mt-2 flex snap-x gap-0 overflow-x-auto" role="list" aria-label="Послідовність етапів маршруту; прокрутіть горизонтально, щоб переглянути всі">
+      <div className="relative mt-2">
+        <div ref={segmentScroller} id={`journey-segments-${journey.id}`} className="journey-result-segments no-scrollbar flex snap-x gap-0 overflow-x-auto scroll-smooth" role="list" aria-label={segmentScroll.overflow ? 'Послідовність етапів маршруту; доступна горизонтальна прокрутка' : 'Послідовність етапів маршруту'}>
         {segments.map(segment => {
           const price = formatJourneySegmentPrice(segment, journey.currency ?? 'UAH');
           const leg = segment.leg;
           const text = `${segment.label}, ${formatJourneyDuration(segment.durationSeconds)}, ${price}`;
-          return <div key={segment.id} role="listitem" aria-label={text} className="min-w-[88px] max-w-[132px] flex-1 snap-start border-r border-slate-200 px-2 first:pl-0 last:border-r-0 last:pr-0 dark:border-slate-700" title={text}>
-            <span className="flex items-center gap-1.5 text-[10px] font-bold leading-4 text-slate-800 dark:text-slate-100">
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: segment.color }}><SegmentIcon segment={segment}/></span>
+          return <div key={segment.id} role="listitem" aria-label={text} className="shrink-0 snap-start border-r border-slate-200 px-1 first:pl-0 last:border-r-0 last:pr-0 dark:border-slate-700" style={{ width: `${segmentItemWidth(segment, price)}px` }} title={text}>
+            <span className="flex items-center gap-1 text-[9px] font-bold leading-4 text-slate-800 dark:text-slate-100">
+              <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: segment.color }}><SegmentIcon segment={segment}/></span>
               <span className="min-w-0 truncate">{segment.label}</span>
             </span>
-            <span className="mt-0.5 block truncate pl-[26px] text-[9px] font-semibold leading-3 tabular-nums text-slate-500 dark:text-slate-400">{formatJourneyDuration(segment.durationSeconds)} · {price}</span>
+            <span className="mt-0.5 block truncate pl-[22px] text-[8px] font-semibold leading-3 tabular-nums text-slate-500 dark:text-slate-400">{formatJourneyDuration(segment.durationSeconds)} · {price}</span>
             {leg && <span className="sr-only">{formatDistance(leg.distanceMeters)}</span>}
           </div>;
         })}
+        </div>
+        {segmentScroll.overflow && <button type="button" aria-label={segmentScroll.atEnd ? 'Повернутися до початку етапів маршруту' : 'Прокрутити до наступних етапів маршруту'} aria-controls={`journey-segments-${journey.id}`} onPointerDown={event => event.stopPropagation()} onClick={event => {
+          event.stopPropagation();
+          const element = segmentScroller.current;
+          if (!element) return;
+          element.scrollTo({ left: segmentScroll.atEnd ? 0 : element.scrollLeft + Math.max(120, element.clientWidth * 0.72), behavior: 'smooth' });
+        }} className="pointer-events-auto absolute right-0 top-[-2px] z-20 grid h-11 w-11 place-items-center rounded-full text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200" title={segmentScroll.atEnd ? 'До початку етапів' : 'Є наступні етапи'}>
+          <span data-testid="segment-scroll-cue-surface" className="grid h-6 w-6 place-items-center rounded-full border border-slate-200 bg-white/95 shadow-sm dark:border-slate-600 dark:bg-[#111820]"><ChevronRight size={16} className={segmentScroll.atEnd ? 'rotate-180' : ''} aria-hidden="true"/></span>
+        </button>}
       </div>
       {caveats.length > 0 && <p className="mt-1 text-[10px] leading-4 text-amber-800 dark:text-amber-200">{[...new Set(caveats)].join(' ')}</p>}
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
