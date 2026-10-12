@@ -45,6 +45,12 @@ function strategyJourneys(result: ApiJourneySearchResult, strategy: ApiJourneySt
     });
 }
 
+function formatRouteCount(count: number): string {
+  const plural = new Intl.PluralRules('uk-UA').select(count);
+  const noun = plural === 'one' ? 'маршрут' : plural === 'few' ? 'маршрути' : 'маршрутів';
+  return `${count} ${noun}`;
+}
+
 function SegmentIcon({ segment }: { segment: JourneyResultSegment }) {
   const mode = segment.mode;
   const Icon = mode === 'WALK' ? Footprints
@@ -198,7 +204,7 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
       {strategyConfig.map(({ id, label, Icon }) => {
         const count = strategyJourneys(result, id).length;
         const active = activeStrategy === id;
-        return <button key={id} type="button" disabled={count === 0} aria-pressed={active} aria-label={`${label}${count ? `, ${count} маршрутів` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-2xl border px-1.5 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-blue-600 bg-blue-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-[#111820] dark:text-slate-200'}`}>
+        return <button key={id} type="button" disabled={count === 0} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-2xl border px-1.5 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-blue-600 bg-blue-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-[#111820] dark:text-slate-200'}`}>
           <Icon size={16} className="shrink-0" aria-hidden="true"/><span className="whitespace-nowrap text-[10px] font-extrabold leading-tight sm:text-[11px]">{label}</span>
         </button>;
       })}
