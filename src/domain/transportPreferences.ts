@@ -116,12 +116,12 @@ export function effectiveProviders(selection: TransportSelection, type: Transpor
   return available.filter((provider) => choice.all || choice.ids.includes(provider.id)).map((provider) => provider.id);
 }
 
-/** Convert approved categories to the current Journey API's legacy feed-specific mode values. */
+/** Send approved user categories; feed-specific transport aliases stay an internal server concern. */
 export function toJourneyPreferences(selection: TransportSelection, groups: ApiTransportProviders[] | null): Record<string, boolean | string[] | Record<string, string[]>> {
   const active = supportedJourneySearchTypes.filter((type) => selection.active.includes(type));
   const categoryHasProviders = (type: TransportTypeId) => type === 'carpool' || groups === null || effectiveProviders(selection, type, groups).length > 0;
   const withProviders = active.filter(categoryHasProviders);
-  const allowedTransportTypes = withProviders.flatMap((category) => journeyTypesForCategory[category]);
+  const allowedTransportTypes = [...withProviders];
   const transit = withProviders.filter((type) => type !== 'carpool');
   const allowedTransitProvidersByType: Record<string, string[]> = {};
   const selectedTransitProviders: string[] = [];
@@ -131,7 +131,7 @@ export function toJourneyPreferences(selection: TransportSelection, groups: ApiT
       const ids = group.providers.filter((provider) => provider.available && providerCanRoute(category, provider) && selectedIds.has(provider.id))
         .map((provider) => provider.id.slice(provider.id.indexOf(':') + 1));
       if (ids.length) {
-        allowedTransitProvidersByType[group.transportType] = [...new Set([...(allowedTransitProvidersByType[group.transportType] ?? []), ...ids])];
+        allowedTransitProvidersByType[category] = [...new Set([...(allowedTransitProvidersByType[category] ?? []), ...ids])];
         selectedTransitProviders.push(...ids);
       }
     }

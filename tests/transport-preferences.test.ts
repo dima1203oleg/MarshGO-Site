@@ -59,6 +59,17 @@ describe('transport types and providers', () => {
     });
   });
 
+  it('sends feed-specific rail providers under the canonical train category', () => {
+    const legacyRailGroups = [{
+      transportType: 'city_train',
+      providers: [{ id: 'city_train:Київська міська електричка', name: 'Київська міська електричка', available: true, cities: ['Київ'], sources: ['gtfs'], services: ['rail'] }],
+    }];
+    const selection = toggleProvider({ ...defaultSelection, active: ['train'] }, 'train', 'city_train:Київська міська електричка');
+    const preferences = toJourneyPreferences(selection, legacyRailGroups);
+    assert.deepEqual(preferences.allowedTransportTypes, ['train']);
+    assert.deepEqual(preferences.allowedTransitProvidersByType, { train: ['Київська міська електричка'] });
+  });
+
   it('"Усі провайдери" uses every connected provider and returns when the last specific one is cleared', () => {
     assert.deepEqual(effectiveProviders(defaultSelection, 'train', groups).sort(), ['train:Test rail', 'train:Укрзалізниця']);
     const one = toggleProvider(defaultSelection, 'train', 'train:Test rail');
@@ -87,9 +98,7 @@ describe('transport types and providers', () => {
     const busOnly = toJourneyPreferences({ ...defaultSelection, active: ['bus' as const] }, groups);
     assert.equal(busOnly.allowBus && busOnly.allowPublicTransport, true);
     assert.equal(busOnly.allowRail || busOnly.allowMinibus || busOnly.allowCommunity, false);
-    // The canonical UI category is Bus; the current Journey API also routes
-    // intercity buses, so include its internal feed subtype at the API edge.
-    assert.deepEqual(busOnly.allowedTransportTypes, ['bus', 'intercity_bus']);
+    assert.deepEqual(busOnly.allowedTransportTypes, ['bus']);
   });
 
   it('preserves supported route modes while provider availability is loading', () => {
@@ -97,7 +106,7 @@ describe('transport types and providers', () => {
     const preferences = toJourneyPreferences(selectedBus, null);
     assert.equal(preferences.allowBus, true);
     assert.equal(preferences.allowPublicTransport, true);
-    assert.deepEqual(preferences.allowedTransportTypes, ['bus', 'intercity_bus']);
+    assert.deepEqual(preferences.allowedTransportTypes, ['bus']);
     assert.deepEqual(preferences.allowedTransitProviders, []);
     assert.deepEqual(preferences.allowedTransitProvidersByType, {});
   });
