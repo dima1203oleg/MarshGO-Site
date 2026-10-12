@@ -223,7 +223,7 @@ export type ApiJourney = {
     /** Provider-supplied route shape, [longitude, latitude]; absent when the source has no verified geometry. */
     routeGeometry?: Array<[number, number]>;
     /** Complete scheduled stop calls, populated only when the provider publishes GTFS stop times. */
-    stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string; pickupType?: number; dropOffType?: number }>;
+    stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string; pickupType?: number; dropOffType?: number; skipped?: boolean }>;
     liveStatus?: 'LIVE' | 'PREDICTED' | 'SCHEDULED' | 'UNVERIFIED' | 'UNAVAILABLE';
     driver: { id: string; name: string; averageRating: number | null; reviewCount: number } | null;
     vehicle: { id: string; make: string; model: string } | null;

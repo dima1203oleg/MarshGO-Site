@@ -409,7 +409,7 @@ export function JourneyRouteMapScreen({
                     return <li key={`${stop.id}:${index}`} className="relative grid min-h-7 grid-cols-[44px_minmax(0,1fr)] gap-2 py-1 text-[10px]">
                       <span className="absolute -left-[1.05rem] top-[.55rem] h-2.5 w-2.5 rounded-full border-2 border-[var(--route-card)]" style={{ backgroundColor: color }}/>
                       <time className="tabular-nums text-[var(--route-subtle)]">{stopTime(stop, index, stops.length - 1)}</time>
-                      <span className={endpoint ? 'font-extrabold text-[var(--route-ink)]' : 'text-[var(--route-muted)]'}>{stop.name}{index === 0 ? <strong className="ml-1 text-[#1687FF]">· ПОСАДКА</strong> : index === stops.length - 1 ? <strong className="ml-1 text-[#1687FF]">· ВИСАДКА</strong> : null}</span>
+                      <span className={endpoint ? 'font-extrabold text-[var(--route-ink)]' : stop.skipped ? 'text-[var(--route-subtle)] line-through decoration-rose-500/70' : 'text-[var(--route-muted)]'}>{stop.name}{stop.skipped ? <strong className="ml-1 text-rose-600 no-underline dark:text-rose-300">· ПРОПУСКАЄТЬСЯ</strong> : index === 0 ? <strong className="ml-1 text-[#1687FF]">· ПОСАДКА</strong> : index === stops.length - 1 ? <strong className="ml-1 text-[#1687FF]">· ВИСАДКА</strong> : null}</span>
                     </li>;
                   })}
                 </ol> : <p className="text-[10px] text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
