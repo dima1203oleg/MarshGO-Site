@@ -1,6 +1,6 @@
 # Canonical MARSHGO route map and bottom sheet
 
-These five owner-provided dark-theme references define the route-map, route-details, and bottom-sheet experience. The JPEGs are retained byte-for-byte and SHA-256 locked in `tests/canonical-design.test.ts`. The owner has also approved the corresponding [light-theme references](./light/README.md).
+The latest three owner-provided dark references below define the canonical collapsed, half-open, and expanded route-map states. They supersede earlier dark images for these corresponding states. All JPEGs are retained byte-for-byte and SHA-256 locked in `tests/canonical-design.test.ts`. The owner has also approved the corresponding [light-theme references](./light/README.md).
 
 | Image | Canonical state | SHA-256 |
 |---|---|---|
@@ -9,17 +9,20 @@ These five owner-provided dark-theme references define the route-map, route-deta
 | [03 · Map overview](./03-map-overview.jpg) | Collapsed summary with the complete route visible | `4a72f1308dc9ca74cbe7bea88b1a6ae903330788f6220215f9991259a0c0c630` |
 | [04 · Route and segment map](./04-route-details-map.jpg) | Color-coded segment map and synchronized itinerary | `56654feb65be639e06b38b3962c8a7329ddd4fd535826f07041feebc69daba0b` |
 | [05 · Detailed segment cards](./05-route-details-sheet.jpg) | Summary, proportional timeline, expandable stops, and actions | `3ee7cac6b35b273dc65fe3b5fb2acae7f1065ceb116dd70a6f0ba6a2d53b460e` |
+| [06 · Final expanded dark details](./06-expanded-route-details-dark-final.jpg) | Canonical dark itinerary with the map visible above, compact summary, segment strip, stop lists, and purple private ride | `93d3c8db8eadedb3d3ae339be40a87adfcd097633f37d1b3d4edfed68b1b1df9` |
+| [07 · Final dark half sheet](./07-half-sheet-dark-final.jpg) | Canonical dark half-open state with map context and compact collapsed segment cards | `c029db8f7f0afcd55649ae66d2b29a791d13b8e8c558710546427fad0b9da8ee` |
+| [08 · Final dark collapsed map](./08-collapsed-map-dark-final.jpg) | Canonical dark collapsed summary with the full route visible and horizontally arranged segment chips | `104dae85afe60d83b66040006f0628f166e790248f96ca13ababb4a23899a884` |
 
 ## Locked behavior
 
 - One interactive screen: a full-screen map behind a draggable bottom sheet with collapsed, half-open, and expanded snap points.
-- The map remains visible in every sheet state. The collapsed state preserves the trip summary and colored time-proportional segment bar.
+- The map remains visible in every sheet state. Follow the final dark reference heights: collapsed around 29% of viewport, half-open around 66%, and expanded around 80%. The collapsed state preserves the compact trip summary, colored time-proportional bar, and horizontal mode/fare chips.
 - The same segment is selected from its map line, timeline interval, or card. Selection brightens and thickens its map line, dims other lines, centers and zooms to the selected segment, and brings its card into view.
-- Scheduled transit cards have explicit expand/collapse controls. When the data source provides stop calls, show every stop in order with its published times. If it does not, disclose that the list is unavailable.
+- Scheduled transit cards have explicit expand/collapse controls. In the expanded state, open all scheduled transit stop lists by default. When the data source provides stop calls, show every stop in order with its published times. If it does not, disclose that the list is unavailable.
 - Each segment shows its own price state. Missing fares remain unknown; estimated fares remain marked approximate.
 - MARSHGO private rides use a purple accent and booking action. The button opens the existing offer details/booking flow; it does not book immediately.
 - Do not add vehicle or driver photos to this route screen, separate map/detail pages, or per-card “На карті” buttons.
 - Keep the route colors consistent in the map, timeline, card accents, and markers. Do not draw guessed geometry, stops, live positions, or availability.
 - Preserve accessible labels, keyboard-operable sheet snapping, and touch targets.
 
-The screenshots define visual layout and color treatment. Their illustrative route values are not production data; render only values and geometry returned by real MARSHGO/provider data.
+The final dark screenshots define the current dark layout and color treatment; earlier dark shots remain archived design history. Their illustrative route values are not production data; render only values and geometry returned by real MARSHGO/provider data.

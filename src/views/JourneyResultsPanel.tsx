@@ -153,20 +153,20 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
   return <article
     data-testid="journey-result-card"
     data-journey-id={journey.id}
-    className={`journey-result-card relative isolate overflow-hidden rounded-[20px] border bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:bg-[#101923] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)] ${index === 0 ? 'border-blue-400 ring-1 ring-blue-100 dark:border-blue-600 dark:ring-blue-950' : 'border-slate-200 dark:border-slate-700'}`}
+    className={`journey-result-card relative isolate overflow-hidden rounded-[16px] border bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)] ${index === 0 ? 'border-blue-400 ring-1 ring-blue-100 dark:border-blue-600 dark:ring-blue-950' : 'border-slate-200 dark:border-[#20354A]'}`}
   >
-    <button type="button" aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[20px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+    <button type="button" aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
       <span className="sr-only">Переглянути карту й деталі маршруту</span>
     </button>
-    <div className="pointer-events-none relative z-10 p-3">
-      <div className="flex min-h-11 items-center gap-1.5">
+    <div className="journey-result-card-content pointer-events-none relative z-10 p-2">
+      <div className="flex min-h-10 items-center gap-1">
         <div className="min-w-0 flex-1">
-          <p className="text-[20px] font-black leading-6 tracking-tight tabular-nums text-slate-900 dark:text-white">{formatJourneyDuration(journey.totalDurationSeconds)}</p>
-          <p className="mt-0.5 text-[10px] font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">{formatJourneyClock(startAt)}–{formatJourneyClock(lastLeg.arrivalAt)}</p>
+          <p className="text-[19px] font-black leading-5 tracking-tight tabular-nums text-slate-900 dark:text-white">{formatJourneyDuration(journey.totalDurationSeconds)}</p>
+          <p className="text-[9px] font-semibold leading-3 tabular-nums text-slate-500 dark:text-slate-400">{formatJourneyClock(startAt)}–{formatJourneyClock(lastLeg.arrivalAt)}</p>
         </div>
-        <span aria-label={`Загальна вартість: ${totalPrice === '—' ? 'невідома' : totalPrice}`} className={`shrink-0 text-[18px] font-black leading-6 tabular-nums ${totalPrice === '—' ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{totalPrice}</span>
-        <span aria-label={strategyItem.label} title={strategyItem.label} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${strategy === 'FASTEST' ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/60 dark:text-orange-300' : strategy === 'CHEAPEST' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300'}`}><StrategyIcon size={19} strokeWidth={2.2} aria-hidden="true"/></span>
-        <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2 text-[11px] font-extrabold tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200"><ArrowLeftRight size={14} aria-hidden="true"/>{journey.transfers}</span>
+        <span aria-label={`Загальна вартість: ${totalPrice === '—' ? 'невідома' : totalPrice}`} className={`shrink-0 text-[17px] font-black leading-5 tabular-nums ${totalPrice === '—' ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>{totalPrice}</span>
+        <span aria-label={strategyItem.label} title={strategyItem.label} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${strategy === 'FASTEST' ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/60 dark:text-orange-300' : strategy === 'CHEAPEST' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300'}`}><StrategyIcon size={18} strokeWidth={2.2} aria-hidden="true"/></span>
+        <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-slate-100 px-1.5 text-[10px] font-extrabold tabular-nums text-slate-700 dark:bg-[#15283A] dark:text-slate-200"><ArrowLeftRight size={13} aria-hidden="true"/>{journey.transfers}</span>
         <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} onPointerDown={event => event.stopPropagation()} className="pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800" title={saved ? 'Збережено на цьому пристрої' : 'Зберегти маршрут'}>
           <Heart size={19} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''} aria-hidden="true"/>
         </button>
@@ -183,12 +183,12 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
           const price = formatJourneySegmentPrice(segment, journey.currency ?? 'UAH');
           const leg = segment.leg;
           const text = `${segment.label}, ${formatJourneyDuration(segment.durationSeconds)}, ${price}`;
-          return <div key={segment.id} role="listitem" aria-label={text} className="shrink-0 snap-start border-r border-slate-200 px-1 first:pl-0 last:border-r-0 last:pr-0 dark:border-slate-700" style={{ width: `${segmentItemWidth(segment, price)}px` }} title={text}>
+          return <div key={segment.id} role="listitem" aria-label={text} className="shrink-0 snap-start border-r border-slate-200 px-1 first:pl-0 last:border-r-0 last:pr-0 dark:border-[#20354A]" style={{ width: `${segmentItemWidth(segment, price)}px` }} title={text}>
             <span className="flex items-center gap-1 text-[9px] font-bold leading-4 text-slate-800 dark:text-slate-100">
-              <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: segment.color }}><SegmentIcon segment={segment}/></span>
+              <span className="grid h-[18px] w-[18px] shrink-0 place-items-center" style={{ color: segment.color }}><SegmentIcon segment={segment}/></span>
               <span className="min-w-0 truncate">{segment.label}</span>
             </span>
-            <span className="mt-0.5 block truncate pl-[22px] text-[8px] font-semibold leading-3 tabular-nums text-slate-500 dark:text-slate-400">{formatJourneyDuration(segment.durationSeconds)} · {price}</span>
+            <span className="block truncate pl-[22px] text-[8px] font-semibold leading-3 tabular-nums text-slate-500 dark:text-slate-400">{formatJourneyDuration(segment.durationSeconds)} · {price}</span>
             {leg && <span className="sr-only">{formatDistance(leg.distanceMeters)}</span>}
           </div>;
         })}
@@ -202,7 +202,7 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
           <span data-testid="segment-scroll-cue-surface" className="grid h-6 w-6 place-items-center rounded-full border border-slate-200 bg-white/95 shadow-sm dark:border-slate-600 dark:bg-[#111820]"><ChevronRight size={16} className={segmentScroll.atEnd ? 'rotate-180' : ''} aria-hidden="true"/></span>
         </button>}
       </div>
-      {caveats.length > 0 && <p className="mt-1 text-[10px] leading-4 text-amber-800 dark:text-amber-200">{[...new Set(caveats)].join(' ')}</p>}
+      {caveats.length > 0 && <p title={[...new Set(caveats)].join(' ')} className="mt-1 truncate text-[9px] leading-3 text-amber-800 dark:text-amber-200">{[...new Set(caveats)].join(' ')}</p>}
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
       <span className="sr-only">Шкала містить {segments.length} етапів і відповідає їхній тривалості{ribbonTotal > 0 ? `, разом ${formatJourneyDuration(ribbonTotal)}` : ''}.</span>
     </div>
@@ -240,11 +240,11 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   };
 
   return <section aria-label="Результати мультимодального пошуку" className="mt-2">
-    <div role="group" aria-label="Режим пошуку маршрутів" className="mb-3 grid grid-cols-3 gap-2">
+    <div role="group" aria-label="Режим пошуку маршрутів" className="mb-2 grid grid-cols-3 gap-1.5">
       {strategyConfig.map(({ id, label, Icon }) => {
         const count = strategyJourneys(result, id).length;
         const active = activeStrategy === id;
-        return <button key={id} type="button" disabled={count === 0} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-2xl border px-1.5 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-blue-600 bg-blue-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-[#111820] dark:text-slate-200'}`}>
+        return <button key={id} type="button" disabled={count === 0} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-blue-600 bg-blue-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-[#20354A] dark:bg-[#0D1B28] dark:text-slate-200'}`}>
           <Icon size={16} className="shrink-0" aria-hidden="true"/><span className="whitespace-nowrap text-[10px] font-extrabold leading-tight sm:text-[11px]">{label}</span>
         </button>;
       })}
@@ -256,7 +256,7 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
     {result.resultsTruncated && <p className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">Показано до {result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із {result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.</p>}
     {result.candidateGenerationTruncated && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Пошук досяг ліміту обробки джерел; частина маршрутів могла не потрапити до результатів. Уточніть час або види транспорту й повторіть пошук.</p>}
 
-    {shownJourneys.length ? <div className="space-y-2.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} strategy={activeStrategy} index={index} onOpen={onOpenMap}/>)}</div>
+    {shownJourneys.length ? <div className="space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} strategy={activeStrategy} index={index} onOpen={onOpenMap}/>)}</div>
       : <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]">
         <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{result.journeys.length ? 'Спробуйте інший режим або змініть умови пошуку.' : 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>

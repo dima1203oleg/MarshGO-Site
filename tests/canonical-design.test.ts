@@ -19,6 +19,10 @@ const references = [
   ['route-map-bottom-sheet/light/03-map-overview.jpg', 'c798aae62becae863386698d2548462afa88ef45711203c001c9c234b0a200be'],
   ['journey-search-results/01-results-light-dark-board.jpg', '81ec8c9049a12a29b093faa0b6d0977f3102e16c4a90e9c8e696debf7d5862a5'],
   ['journey-search-results/02-results-light-detail.jpg', '2cd6bf47ad92f9ece3622a29803286148e1d2fbe21f76c6995fe3bffb7286259'],
+  ['journey-search-results/03-results-dark-final.jpg', 'ed3954cce34fa604d6d14570b533b242ebb3b8c089f0a00b7503de408a9b6e00'],
+  ['route-map-bottom-sheet/06-expanded-route-details-dark-final.jpg', '93d3c8db8eadedb3d3ae339be40a87adfcd097633f37d1b3d4edfed68b1b1df9'],
+  ['route-map-bottom-sheet/07-half-sheet-dark-final.jpg', 'c029db8f7f0afcd55649ae66d2b29a791d13b8e8c558710546427fad0b9da8ee'],
+  ['route-map-bottom-sheet/08-collapsed-map-dark-final.jpg', '104dae85afe60d83b66040006f0628f166e790248f96ca13ababb4a23899a884'],
 ] as const;
 
 test('canonical MARSHGO design references stay owner-approved', async () => {

@@ -67,20 +67,20 @@ html.dark {
   color-scheme: light;
 }
 .route-map-screen[data-theme="dark"] {
-  --route-canvas: #07111B;
-  --route-sheet-start: rgba(15, 29, 42, .98);
-  --route-sheet-end: rgba(8, 20, 31, .985);
+  --route-canvas: #061522;
+  --route-sheet-start: rgba(8, 24, 36, .985);
+  --route-sheet-end: rgba(5, 19, 30, .995);
   --route-ink: #F5F9FF;
   --route-muted: #B6C2D0;
   --route-subtle: #8FA0B3;
-  --route-border: #294158;
-  --route-card: #10202E;
-  --route-card-alt: #111E2A;
-  --route-floating: rgba(11, 23, 34, .95);
-  --route-track: #263648;
-  --route-timeline-divider: rgba(7, 17, 27, .7);
-  --route-community-surface: rgba(111, 65, 165, .15);
-  --route-footer: rgba(11, 23, 34, .96);
+  --route-border: #20394E;
+  --route-card: #0B1C2B;
+  --route-card-alt: #102235;
+  --route-floating: rgba(5, 20, 32, .96);
+  --route-track: #74879A;
+  --route-timeline-divider: rgba(5, 19, 30, .7);
+  --route-community-surface: rgba(113, 66, 190, .15);
+  --route-footer: rgba(5, 19, 30, .98);
   --route-hover: rgba(255, 255, 255, .05);
   --route-grabber: #71879B;
   --route-sheet-shadow: 0 -18px 64px rgba(0, 0, 0, .38);
@@ -233,6 +233,34 @@ html.dark .search-screen .journey-search-card .search-submit {
   box-shadow: var(--mg-card-shadow) !important;
 }
 .journey-results { padding-top: .15rem; }
+.route-immersive-shell { min-height: 100svh; padding-bottom: 0 !important; }
+.journey-results-header { flex: 0 0 auto; }
+.journey-result-card-content { min-width: 0; }
+.route-summary-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "eyebrow actions" "title title";
+  align-items: center;
+  column-gap: .25rem;
+  row-gap: .15rem;
+}
+.route-summary-eyebrow { grid-area: eyebrow; min-width: 0; }
+.route-summary-title { grid-area: title; line-height: 1.2; overflow-wrap: anywhere; }
+.route-summary-actions { grid-area: actions; }
+.route-summary-actions > :is(span, button) { width: 2.25rem; height: 2.25rem; min-width: 2.25rem; }
+@media (min-width: 480px) {
+  .route-summary-heading {
+    grid-template-areas: "eyebrow actions" "title actions";
+  }
+}
+.route-summary-segments { overscroll-behavior-x: contain; scrollbar-width: none; }
+.route-summary-segments::-webkit-scrollbar { display: none; }
+html.dark .route-immersive-shell {
+  background-color: #061522 !important;
+  background-image: radial-gradient(ellipse at 50% -12%, rgba(15, 83, 139, .12), transparent 34rem) !important;
+}
+html.dark .journey-result-card { background-color: #0B1A27 !important; border-color: #1B3348; }
+html.dark .journey-result-card [data-segment-mode] { filter: saturate(1.08); }
 .app-tabbar {
   padding-bottom: max(.45rem, env(safe-area-inset-bottom)) !important;
   background: rgba(255,255,255,.94) !important;
@@ -767,6 +795,8 @@ html.dark .bg-white\/90 {
 html.dark body { background-color: var(--mg-canvas); color: var(--mg-ink-primary); }
 html.dark .production-app, html.dark .journey-results, html.dark .home-screen { color: var(--mg-ink-primary); }
 html.dark :is(.bg-white, .bg-white\/95, .bg-white\/90, .bg-white\/80, .bg-\[\#101E38\], .bg-\[\#0B1730\]) { background-color: var(--mg-surface-primary) !important; }
+html.dark .journey-results .journey-result-card { background-color: #0B1A27 !important; }
+html.dark .journey-results [aria-label="Режим пошуку маршрутів"] > button:not([aria-pressed="true"]) { background-color: #0D1B28 !important; }
 html.dark :is(.bg-slate-50, .bg-\[\#f6f8fc\], .bg-\[\#F1F5F9\], .bg-\[\#f5f8fd\]) { background-color: var(--mg-canvas) !important; }
 html.dark :is(.bg-blue-50, .bg-\[\#EAF3FF\], .bg-\[\#E8F8F1\]) { background-color: rgba(22, 135, 255, .14) !important; }
 html.dark :is(.bg-emerald-50, .bg-\[\#F0FDF4\]) { background-color: rgba(44, 214, 125, .12) !important; }

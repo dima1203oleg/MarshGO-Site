@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, Bike, BusFront, CarFront, ChevronDown, ChevronUp, Clock3, Footprints,
-  Layers, Navigation, Route as RouteIcon, Share2,
-  Star, TramFront, TrainFront, TrainTrack, Zap,
+  ArrowLeft, ArrowLeftRight, Bike, BusFront, CarFront, ChevronDown, ChevronRight, ChevronUp, Clock3, Coins, Footprints,
+  Heart, Layers, Navigation, Route as RouteIcon, Scale,
+  Share2, Star, Timer, TramFront, TrainFront, TrainTrack, Zap,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
-import { buildJourneyRouteMapModel, journeyModeColor } from '../map/journeyRouteModel';
+import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from '../map/journeyRouteModel';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
 import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
@@ -92,16 +92,12 @@ export function JourneyRouteMapScreen({
   journey,
   onBack,
   onBookOffer,
-  onShowSaved,
   onNavigate,
-  shareUrl,
 }: {
   journey: ApiJourney;
   onBack: () => void;
   onBookOffer?: (offerId: string, journeyId: string, journeyLegId: string) => void;
-  onShowSaved?: () => void;
   onNavigate?: (destination: { label: string; latitude: number; longitude: number }) => void;
-  shareUrl?: string;
 }) {
   const model = useMemo(() => buildJourneyRouteMapModel(journey.legs), [journey.legs]);
   const timeline = useMemo(() => timelineFor(journey), [journey]);
@@ -111,13 +107,17 @@ export function JourneyRouteMapScreen({
   const [isDark, setIsDark] = useState(themeService.isDark());
   const [mapLayer, setCurrentMapLayer] = useState<MapLayer>(getMapLayer);
   const [sheetSnap, setSheetSnap] = useState<SheetSnap>('half');
-  const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 480 : Math.round(window.innerHeight * 0.58));
+  const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 560 : Math.round(window.innerHeight * 0.66));
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
   const [dragging, setDragging] = useState(false);
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
   const [expandedSegments, setExpandedSegments] = useState<Set<string>>(() => new Set());
+  const [saved, setSaved] = useState(() => {
+    try { return (JSON.parse(window.localStorage.getItem('marshgo.saved-route-results.v1') ?? '[]') as unknown[]).includes(journey.id); }
+    catch { return false; }
+  });
   const [feedback, setFeedback] = useState('');
   const mapAdapter = useRef<MapAdapter | null>(null);
   const segmentCards = useRef(new Map<string, HTMLElement>());
@@ -176,9 +176,9 @@ export function JourneyRouteMapScreen({
 
   const snapHeight = useCallback((snap: SheetSnap, viewport = viewportHeight) => {
     const safeBottom = 8;
-    if (snap === 'collapsed') return Math.min(viewport * 0.26, Math.max(170, viewport * 0.21)) + safeBottom;
-    if (snap === 'expanded') return Math.min(viewport * 0.9, 820);
-    return Math.min(viewport * 0.58, 560);
+    if (snap === 'collapsed') return Math.min(viewport * 0.3, Math.max(228, viewport * 0.285)) + safeBottom;
+    if (snap === 'expanded') return Math.min(viewport * 0.8, 820);
+    return Math.min(viewport * 0.66, 660);
   }, [viewportHeight]);
 
   useEffect(() => {
@@ -227,6 +227,10 @@ export function JourneyRouteMapScreen({
     if (points.length) mapAdapter.current?.focusCoordinates?.(points, mapPadding, leg?.mode === 'RAIL' ? 10 : 14);
     else mapAdapter.current?.fitRoute(mapPadding);
   }, [activeSegmentId, dragging, journey.legs, mapPadding]);
+
+  useEffect(() => {
+    if (sheetSnap === 'expanded') setExpandedSegments(new Set(journey.legs.filter(isScheduledRouteLeg).map(leg => leg.id)));
+  }, [sheetSnap, journey.legs]);
 
   const allDuration = journey.totalDurationSeconds;
   const hasMeasuredDistance = (leg: JourneyLeg): leg is JourneyLeg & { distanceMeters: number } => typeof leg.distanceMeters === 'number'
@@ -283,8 +287,34 @@ export function JourneyRouteMapScreen({
     setDragging(false);
   };
 
+  const setCardRef = (id: string, node: HTMLElement | null) => {
+    if (node) segmentCards.current.set(id, node); else segmentCards.current.delete(id);
+  };
+  const toggleExpanded = (id: string) => setExpandedSegments(current => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const toggleSaved = () => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem('marshgo.saved-route-results.v1') ?? '[]') as unknown;
+      const ids = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+      const nextSaved = !saved;
+      const nextIds = nextSaved ? [...new Set([...ids, journey.id])] : ids.filter(id => id !== journey.id);
+      window.localStorage.setItem('marshgo.saved-route-results.v1', JSON.stringify(nextIds));
+      setSaved(nextSaved);
+      setFeedback(nextSaved ? 'Маршрут збережено на цьому пристрої.' : 'Маршрут видалено зі збережених.');
+    } catch {
+      setFeedback('Не вдалося зберегти маршрут на цьому пристрої.');
+    }
+  };
+
+  const StrategyIcon = journey.strategy === 'FASTEST' ? Timer : journey.strategy === 'CHEAPEST' ? Coins : Scale;
+  const strategyLabel = journey.strategy === 'FASTEST' ? 'Найшвидший' : journey.strategy === 'CHEAPEST' ? 'Найдешевший' : 'Оптимальний';
+
   const shareRoute = async () => {
-    const url = shareUrl ?? window.location.href;
+    const url = `${window.location.origin}${window.location.pathname}${window.location.search}`;
     try {
       if (navigator.share) await navigator.share({ title: 'Маршрут MARSHGO', text: `${firstLeg?.origin.name ?? ''} → ${lastLeg?.destination.name ?? ''}`, url });
       else if (navigator.clipboard) { await navigator.clipboard.writeText(url); setFeedback('Посилання на маршрут скопійовано.'); }
@@ -294,15 +324,6 @@ export function JourneyRouteMapScreen({
       setFeedback('Не вдалося поділитися посиланням. Спробуйте ще раз.');
     }
   };
-
-  const setCardRef = (id: string, node: HTMLElement | null) => {
-    if (node) segmentCards.current.set(id, node); else segmentCards.current.delete(id);
-  };
-  const toggleExpanded = (id: string) => setExpandedSegments(current => {
-    const next = new Set(current);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
 
   return <main className="route-map-screen fixed inset-0 z-[80] overflow-hidden text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'} aria-label="Побудований маршрут">
     <div className="absolute inset-0" data-testid="journey-route-map">
@@ -355,54 +376,60 @@ export function JourneyRouteMapScreen({
           if (event.key === 'Home') { event.preventDefault(); setSheetSnap('collapsed'); setSheetHeight(heightForSnap('collapsed')); }
           if (event.key === 'End') { event.preventDefault(); setSheetSnap('expanded'); setSheetHeight(heightForSnap('expanded')); }
         }}
-        className="flex h-9 w-full shrink-0 touch-none items-center justify-center"
+        className="flex h-7 w-full shrink-0 touch-none items-center justify-center"
       >
         <span className="h-1.5 w-12 rounded-full bg-[var(--route-grabber)]"/>
       </button>
 
-      <div className="shrink-0 px-4 pb-3">
-        {sheetSnap !== 'collapsed' && <div className="mb-2 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-extrabold tracking-tight">Деталі маршруту</h1>
-            <p className="text-[10px] font-bold uppercase tracking-[.11em] text-[#1687FF]">{journey.source === 'gtfs-static' ? 'Рейс за розкладом' : 'MARSHGO · ваш маршрут'}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <button type="button" aria-label="Зберегти маршрут, уже доданий до моїх поїздок" title="Маршрут збережено у Мої поїздки" onClick={onShowSaved} className="grid h-10 w-10 place-items-center rounded-full border border-[var(--route-border)] text-[var(--route-ink)] hover:bg-[var(--route-hover)]"><Star size={17}/></button>
-            <button type="button" aria-label="Поділитися маршрутом" title="Поділитися маршрутом" onClick={() => void shareRoute()} className="grid h-10 w-10 place-items-center rounded-full border border-[var(--route-border)] text-[var(--route-ink)] hover:bg-[var(--route-hover)]"><Share2 size={17}/></button>
-          </div>
-        </div>}
-        <div className="rounded-2xl border border-[var(--route-border)] bg-[var(--route-card)] p-3">
-          <div className="flex items-center justify-between gap-2 text-sm font-extrabold">
-            <span className="min-w-0 truncate">{firstLeg?.origin.name ?? 'Початок'}</span>
-            <span className="shrink-0 text-[#1687FF]">→</span>
-            <span className="min-w-0 truncate text-right">{lastLeg?.destination.name ?? 'Кінець'}</span>
-          </div>
-          <div className="mt-1 flex items-end justify-between gap-3">
-            <strong className="text-xl font-black tabular-nums">{formatDuration(allDuration)}</strong>
-            <div className="text-right text-[11px] font-semibold text-[var(--route-muted)]">
-              <span>{distanceSummary}</span><span className="mx-1.5 text-[var(--route-subtle)]">·</span><span>{priceSummary}</span>
+      <div className="route-sheet-summary shrink-0 px-3 pb-2">
+        <div className="rounded-2xl border border-[var(--route-border)] bg-[var(--route-card)] px-3 py-2">
+          <div className="route-summary-heading">
+            <p className="route-summary-eyebrow text-[9px] font-extrabold uppercase tracking-[.12em] text-[#1687FF]">Маршрут · MARSHGO</p>
+            <p className="route-summary-title min-w-0 text-[14px] font-extrabold">{firstLeg?.origin.name ?? 'Початок'} <span className="mx-1 text-[#1687FF]">→</span> {lastLeg?.destination.name ?? 'Кінець'}</p>
+            <div className="route-summary-actions flex shrink-0 items-center gap-1">
+              <span aria-label={`Режим: ${strategyLabel}`} title={strategyLabel} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[#1687FF]"><StrategyIcon size={18}/></span>
+              <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-[var(--route-border)] px-2 text-[10px] font-extrabold tabular-nums"><ArrowLeftRight size={13}/>{journey.transfers}</span>
+              <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[var(--route-ink)] hover:bg-[var(--route-hover)]"><Heart size={17} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''}/></button>
+              <button type="button" aria-label={sheetSnap === 'expanded' ? 'Згорнути панель до карти' : sheetSnap === 'half' ? 'Розгорнути панель повністю' : 'Показати деталі маршруту'} onClick={cycleSheet} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[#1687FF] hover:bg-[var(--route-hover)]"><ChevronRight size={19} className={sheetSnap === 'expanded' ? 'rotate-90' : ''}/></button>
             </div>
           </div>
-          {(firstLeg || lastLeg) && <p className="mt-0.5 text-[10px] font-semibold tabular-nums text-[var(--route-muted)]">{firstLeg ? formatTime(firstLeg.departureAt) : '—'} → {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}</p>}
+          <div className="mt-1 flex items-baseline justify-between gap-2">
+            <strong className="text-[21px] font-black leading-6 tabular-nums">{formatDuration(allDuration)}</strong>
+            <span className="flex shrink-0 flex-col items-end leading-tight"><strong className="text-[15px] font-extrabold tabular-nums">{priceSummary}</strong><span className="text-[9px] font-semibold text-[var(--route-muted)]">{distanceSummary}</span></span>
+          </div>
           {(mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured' || missingShapes > 0) && <p role="status" className={`mt-1 text-[9px] font-semibold ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{mapStatusText}</p>}
           {timeline.length > 0 ? <>
-            <div className="mt-3 flex h-3.5 overflow-hidden rounded-full border border-[var(--route-border)] bg-[var(--route-track)]" role="group" aria-label="Часова шкала етапів маршруту">
+            <div className="mt-2 flex h-3 overflow-hidden rounded-full border border-[var(--route-border)] bg-[var(--route-track)]" role="group" aria-label="Часова шкала етапів маршруту">
               {timeline.map(item => <button
                 key={item.id}
                 type="button"
+                aria-pressed={activeSegmentId === item.targetLegId}
                 aria-label={item.kind === 'WAIT' ? `Очікування, ${formatDuration(item.durationSeconds)}; перейти до наступного сегмента` : `${journeyLegLabel(item.leg!.mode, item.leg!.transportType)}${item.leg!.routeName ? ` ${item.leg!.routeName}` : ''}, ${formatDuration(item.durationSeconds)}`}
                 title={item.kind === 'WAIT' ? `Очікування · ${formatDuration(item.durationSeconds)}` : `${journeyLegLabel(item.leg!.mode, item.leg!.transportType)} · ${formatDuration(item.durationSeconds)}`}
                 onClick={() => chooseSegment(item.targetLegId)}
                 className="h-full min-w-[3px] border-r border-[var(--route-timeline-divider)] transition-[filter,opacity] hover:brightness-150 focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1687FF]"
-                style={{ flex: `${item.durationSeconds} 1 0%`, backgroundColor: item.color, filter: activeSegmentId && activeSegmentId !== item.targetLegId ? 'brightness(.55) saturate(.65)' : activeSegmentId === item.targetLegId ? 'brightness(1.35) drop-shadow(0 0 5px currentColor)' : undefined }}
+                style={{ flex: `${item.durationSeconds} 1 0%`, backgroundColor: item.color, filter: activeSegmentId && activeSegmentId !== item.targetLegId ? 'brightness(.55) saturate(.65)' : activeSegmentId === item.targetLegId ? `brightness(1.4) drop-shadow(0 0 5px ${item.color})` : undefined }}
               />)}
             </div>
-            <div className="mt-1 flex gap-1 overflow-x-auto no-scrollbar" aria-label="Тривалість сегментів маршруту">
-              {timeline.map(item => <button key={`${item.id}:label`} type="button" onClick={() => chooseSegment(item.targetLegId)} className="min-h-8 shrink-0 px-1 text-[9px] font-extrabold tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1687FF]" style={{ flex: `${item.durationSeconds} 1 0%`, color: item.color }}>
+            <div className="mt-0.5 flex gap-1 overflow-x-auto no-scrollbar" aria-label="Тривалість сегментів маршруту">
+              {timeline.map(item => <button key={`${item.id}:label`} type="button" aria-pressed={activeSegmentId === item.targetLegId} onClick={() => chooseSegment(item.targetLegId)} className="min-h-6 shrink-0 px-1 text-[9px] font-extrabold tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1687FF]" style={{ flex: `${item.durationSeconds} 1 0%`, color: item.color }}>
                 {formatDuration(item.durationSeconds)}
               </button>)}
             </div>
-            <p className="mt-0.5 text-[9px] leading-4 text-[var(--route-subtle)]">Шкала пропорційна часу етапів · {formatDuration(timelineTotal)} = 100% повного часу</p>
+            <div className="route-summary-segments no-scrollbar mt-1 flex overflow-x-auto border-t border-[var(--route-border)] pt-1" role="list" aria-label="Етапи маршруту та їхня вартість">
+              {timeline.map(item => {
+                const leg = item.leg;
+                const label = item.kind === 'WAIT' ? 'Очікування' : leg!.mode === 'COMMUNITY' ? 'Попутка' : journeyLegLabel(leg!.mode, leg!.transportType);
+                const price = item.kind === 'WAIT' ? '0 грн' : legPriceLabel(leg!);
+                return <div key={`${item.id}:summary`} role="listitem" className="min-w-[62px] flex-1 shrink-0 border-r border-[var(--route-border)] last:border-0" style={{ opacity: activeSegmentId && activeSegmentId !== item.targetLegId ? .48 : 1 }}>
+                  <button type="button" aria-pressed={activeSegmentId === item.targetLegId} onClick={() => chooseSegment(item.targetLegId)} aria-label={`${label}, ${formatDuration(item.durationSeconds)}, ${price}`} className="flex min-h-11 w-full flex-col items-center justify-center gap-0.5 px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1687FF]" style={{ color: item.color }}>
+                    <span className="flex items-center gap-1 text-[8px] font-extrabold leading-3"><span className="shrink-0">{item.kind === 'WAIT' ? <Clock3 size={14}/> : <SegmentIcon leg={leg!}/>}</span><span className="max-w-[65px] truncate">{label}</span></span>
+                    <span className="w-full truncate text-center text-[8px] font-semibold leading-3 tabular-nums text-[var(--route-muted)]">{formatDuration(item.durationSeconds)} · {price}</span>
+                  </button>
+                </div>;
+              })}
+            </div>
+            <span className="sr-only">Загальна відстань: {distanceSummary}. Виїзд {firstLeg ? formatTime(firstLeg.departureAt) : '—'}, прибуття {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}. Часова шкала пропорційна тривалості кожного етапу: {formatDuration(timelineTotal)} = 100% маршруту.</span>
           </> : <p className="mt-2 text-xs text-[var(--route-muted)]">Дані сегментів цього маршруту не надійшли.</p>}
         </div>
       </div>
@@ -431,9 +458,9 @@ export function JourneyRouteMapScreen({
               className={`overflow-hidden rounded-[1rem] border bg-[var(--route-card)] transition-[border-color,box-shadow,opacity] duration-200 ${selected ? 'border-[#7CBFFF] shadow-[0_0_0_1px_rgba(22,135,255,.45),0_0_24px_rgba(22,135,255,.16)]' : 'border-[var(--route-border)]'}`}
               style={{ borderLeftWidth: 4, borderLeftColor: color, opacity: activeSegmentId && !selected ? 0.68 : 1, ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}) }}
             >
-              <div className="flex items-start gap-3 p-3">
+              <div className="flex items-start gap-2 p-2">
                 <button type="button" onClick={() => chooseSegment(leg.id)} aria-pressed={selected} aria-label={`Вибрати сегмент: ${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`} className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1687FF]">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_color-mix(in_srgb,var(--segment-color)_48%,transparent)]" style={{ backgroundColor: color, ['--segment-color' as string]: color }}><SegmentIcon leg={leg}/></span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_color-mix(in_srgb,var(--segment-color)_48%,transparent)]" style={{ backgroundColor: color, ['--segment-color' as string]: color }}><SegmentIcon leg={leg}/></span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <b className="text-sm font-extrabold">{leg.mode === 'COMMUNITY' ? 'Попутка · приватний автомобіль' : `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`}</b>
@@ -478,14 +505,14 @@ export function JourneyRouteMapScreen({
           {missingShapes} сегм. без геометрії перевізника. Їх не з’єднуємо прямими лініями; карта показує лише підтверджені форми та точки з даних джерела.
         </p>}
         {mapStatus === 'unconfigured' && <p className={`mt-2 rounded-xl px-3 py-2 text-[10px] ${isDark ? 'bg-amber-300/10 text-amber-100' : 'bg-amber-50 text-amber-900'}`}>Для цієї карти не налаштовано базові тайли. Маршрутні геометрії залишаються доступними, якщо їх надав перевізник.</p>}
+        {sheetSnap === 'expanded' && <div className="grid grid-cols-3 gap-2 border-t border-[var(--route-border)] px-1 pt-2">
+          <button type="button" aria-pressed={saved} onClick={toggleSaved} className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-[10px] font-bold"><Star size={15} fill={saved ? 'currentColor' : 'none'}/>{saved ? 'Збережено' : 'Зберегти'}</button>
+          <button type="button" onClick={() => void shareRoute()} className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-[10px] font-bold"><Share2 size={15}/>Поділитися</button>
+          <button type="button" disabled={!lastLeg || !onNavigate} onClick={() => lastLeg && onNavigate?.({ label: lastLeg.destination.name, latitude: lastLeg.destination.coordinates[1], longitude: lastLeg.destination.coordinates[0] })} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-[#0B6EF3] text-[10px] font-extrabold text-white disabled:opacity-45"><Navigation size={15}/>Навігація</button>
+        </div>}
       </div>}
 
       {feedback && <p role="status" className="px-4 pb-1 text-center text-[10px] text-[var(--route-muted)]">{feedback}</p>}
-      {sheetSnap === 'expanded' && <footer className="grid shrink-0 grid-cols-3 gap-2 border-t border-[var(--route-border)] bg-[var(--route-footer)] px-3 py-2">
-        <button type="button" onClick={onShowSaved} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-[var(--route-border)] text-[10px] font-bold text-[var(--route-ink)] hover:bg-[var(--route-hover)]"><Star size={15}/>Зберегти</button>
-        <button type="button" onClick={() => void shareRoute()} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-[var(--route-border)] text-[10px] font-bold text-[var(--route-ink)] hover:bg-[var(--route-hover)]"><Share2 size={15}/>Поділитися</button>
-        <button type="button" disabled={!lastLeg || !onNavigate} onClick={() => lastLeg && onNavigate?.({ label: lastLeg.destination.name, latitude: lastLeg.destination.coordinates[1], longitude: lastLeg.destination.coordinates[0] })} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#0B6EF3] text-[10px] font-extrabold text-white disabled:opacity-45"><Navigation size={15}/>Навігація</button>
-      </footer>}
     </section>
     <span className="sr-only" aria-live="polite">{feedback}</span>
   </main>;
