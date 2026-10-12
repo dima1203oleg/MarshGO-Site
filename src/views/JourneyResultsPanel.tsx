@@ -1,154 +1,219 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Clock3, Footprints, Map as MapIcon, MapPin, ShieldCheck, Ticket, TrainFront } from 'lucide-react';
+import {
+  ArrowLeftRight, Bike, BusFront, CarFront, ChevronRight, Clock3, Coins, Footprints,
+  Heart, Scale, Timer, TrainFront, TrainTrack, TramFront, Zap,
+} from 'lucide-react';
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
-import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
-import { formatTransferCount, journeyModeColor } from '../map/journeyRouteModel';
+import { journeyLegCaveat } from './journeyLegLabel';
+import { formatTransferCount } from '../map/journeyRouteModel';
+import {
+  buildJourneyResultSegments, formatJourneyClock, formatJourneyDuration,
+  formatJourneySegmentPrice, formatJourneyTotalPrice, type JourneyResultSegment,
+} from './journeyResultPresentation';
 
-const strategyLabels: Record<ApiJourneyStrategy, string> = {
-  FASTEST: 'Найшвидші', CHEAPEST: 'Найдешевші', BALANCED: 'Оптимальні',
-  PREMIUM: 'Premium', RELIABLE: 'Найнадійніше', CUSTOM: 'Ваш пріоритет',
-};
+const FAVORITES_KEY = 'marshgo.saved-route-results.v1';
 
-const formatPrice = (minor: number, currency = 'UAH') => new Intl.NumberFormat('uk-UA', {
-  style: 'currency', currency, maximumFractionDigits: 0,
-}).format(minor / 100);
+const strategyConfig: Array<{ id: ApiJourneyStrategy; label: string; Icon: typeof Scale }> = [
+  { id: 'BALANCED', label: 'Оптимальний', Icon: Scale },
+  { id: 'FASTEST', label: 'Найшвидший', Icon: Timer },
+  { id: 'CHEAPEST', label: 'Найдешевший', Icon: Coins },
+];
 
-const formatDuration = (seconds: number) => {
-  const minutes = Math.max(1, Math.round(seconds / 60));
-  const hours = Math.floor(minutes / 60);
-  return hours ? `${hours} год ${minutes % 60} хв` : `${minutes} хв`;
-};
+function strategyJourneys(result: ApiJourneySearchResult, strategy: ApiJourneyStrategy): ApiJourney[] {
+  return result.journeys
+    .filter(journey => journey.strategyRanks
+      ? typeof journey.strategyRanks[strategy] === 'number'
+      : (journey.recommendedStrategies ?? [journey.strategy]).includes(strategy))
+    .filter(journey => strategy !== 'CHEAPEST' || formatJourneyTotalPrice(journey) !== '—')
+    .sort((a, b) => {
+      const rankA = a.strategyRanks?.[strategy];
+      const rankB = b.strategyRanks?.[strategy];
+      if (typeof rankA === 'number' || typeof rankB === 'number') {
+        return (rankA ?? Number.MAX_SAFE_INTEGER) - (rankB ?? Number.MAX_SAFE_INTEGER);
+      }
+      if (strategy === 'FASTEST') return a.totalDurationSeconds - b.totalDurationSeconds;
+      if (strategy === 'CHEAPEST') {
+        const priceA = a.confirmedPriceMinor ?? a.totalPriceMinor;
+        const priceB = b.confirmedPriceMinor ?? b.totalPriceMinor;
+        if (priceA === null) return priceB === null ? a.totalDurationSeconds - b.totalDurationSeconds : 1;
+        if (priceB === null) return -1;
+        return priceA - priceB || a.totalDurationSeconds - b.totalDurationSeconds;
+      }
+      return a.totalDurationSeconds - b.totalDurationSeconds
+        || (a.confirmedPriceMinor ?? a.totalPriceMinor ?? Number.MAX_SAFE_INTEGER)
+          - (b.confirmedPriceMinor ?? b.totalPriceMinor ?? Number.MAX_SAFE_INTEGER);
+    });
+}
 
-const formatTime = (value: string) => new Intl.DateTimeFormat('uk-UA', {
-  hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv',
-}).format(new Date(value));
+function SegmentIcon({ segment }: { segment: JourneyResultSegment }) {
+  const mode = segment.mode;
+  const Icon = mode === 'WALK' ? Footprints
+    : mode === 'WAIT' ? Clock3
+      : mode === 'TRAM' ? TramFront
+        : mode === 'TROLLEYBUS' || mode === 'BUS' || mode === 'MINIBUS' || mode === 'URBAN_BUS' ? BusFront
+          : mode === 'METRO' || mode === 'RAIL' ? mode === 'METRO' ? TrainTrack : TrainFront
+            : mode === 'BIKE' ? Bike
+              : mode === 'SCOOTER' ? Zap
+                : mode === 'COMMUNITY' || mode === 'TAXI' || mode === 'TRANSFER' || mode === 'CARSHARING' ? CarFront
+                  : BusFront;
+  return <Icon size={15} strokeWidth={2.3} aria-hidden="true"/>;
+}
 
-function JourneyCard({ journey, onOpenOffer, onOpenMap }: {
+function formatDistance(meters: number | null): string {
+  if (meters === null || !Number.isFinite(meters) || meters < 0) return 'відстань невідома';
+  return meters >= 1000
+    ? `${(meters / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 1 })} км`
+    : `${Math.round(meters)} м`;
+}
+
+function RouteResultCard({ journey, strategy, index, onOpen }: {
   journey: ApiJourney;
-  onOpenOffer: (offerId: string, journeyId: string, journeyLegId: string) => void;
-  onOpenMap: (journey: ApiJourney) => void;
+  strategy: ApiJourneyStrategy;
+  index: number;
+  onOpen: (journey: ApiJourney) => void;
 }) {
-  const legs = journey.legs;
-  const firstLeg = legs[0];
-  const lastLeg = legs.at(-1);
+  const segments = buildJourneyResultSegments(journey);
+  const ribbonTotal = segments.reduce((sum, segment) => sum + segment.durationSeconds, 0);
+  const firstLeg = journey.legs[0];
+  const lastLeg = journey.legs.at(-1);
+  const [saved, setSaved] = useState(() => {
+    try { return JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? '[]').includes(journey.id); }
+    catch { return false; }
+  });
+  const [announcement, setAnnouncement] = useState('');
+
+  useEffect(() => {
+    try {
+      const ids = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? '[]') as unknown;
+      setSaved(Array.isArray(ids) && ids.includes(journey.id));
+    } catch { setSaved(false); }
+  }, [journey.id]);
+
   if (!firstLeg || !lastLeg) return null;
+  const strategyItem = strategyConfig.find(item => item.id === strategy) ?? strategyConfig[0];
+  const StrategyIcon = strategyItem.Icon;
+  const totalPrice = formatJourneyTotalPrice(journey);
+  const startAt = journey.requestedDepartureAt ?? firstLeg.departureAt;
+  const caveats = journey.legs.map(leg => journeyLegCaveat(leg.mode, leg.source)).filter(Boolean);
+  const openLabel = `Відкрити маршрут: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`;
 
-  const transitLegs = legs.filter(leg => leg.mode !== 'WALK');
-  if (transitLegs.length === 0) return null;
-  const hasEstimatedWalking = legs.some(leg => journeyLegCaveat(leg.mode, leg.source) !== null);
-  const isMultimodal = transitLegs.length > 1 || (transitLegs.length === 1 && legs.length > 1);
-  const hasTransitSchedule = transitLegs.some(leg => leg.source === 'gtfs-static');
-  const communityLeg = transitLegs.find(leg => leg.mode === 'COMMUNITY' || Boolean(leg.offerId));
-  const reservableLeg = legs.find(leg => Boolean(leg.offerId));
-  const shownPrice = journey.confirmedPriceMinor ?? journey.totalPriceMinor;
-  const routeStart = journey.requestedDepartureAt ?? firstLeg.departureAt;
-  const chainLabel = transitLegs.map(leg => `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`).join(' + ');
-  const priceLabel = journey.confirmedPriceMinor !== null ? 'Підтверджена ціна'
-    : journey.estimatedPriceMinMinor !== null && journey.estimatedPriceMaxMinor !== null
-      ? `Оцінка ${formatPrice(journey.estimatedPriceMinMinor)}–${formatPrice(journey.estimatedPriceMaxMinor)}`
-      : 'Ціна уточнюється';
+  const toggleSaved = () => {
+    let ids: string[] = [];
+    try {
+      const existing = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? '[]') as unknown;
+      if (Array.isArray(existing)) ids = existing.filter((id): id is string => typeof id === 'string');
+    } catch { /* Start a clean local list when saved browser data is invalid. */ }
+    const nextSaved = !saved;
+    const next = nextSaved ? [...new Set([...ids, journey.id])] : ids.filter(id => id !== journey.id);
+    try {
+      window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+      setSaved(nextSaved);
+      setAnnouncement(nextSaved ? 'Маршрут збережено на цьому пристрої' : 'Маршрут видалено зі збережених');
+    } catch {
+      setAnnouncement('Не вдалося зберегти маршрут на цьому пристрої');
+    }
+  };
 
-  return <article data-journey-id={journey.id} className="journey-result-card rounded-2xl border border-slate-100 bg-white p-3.5 shadow-[0_6px_18px_rgba(24,58,105,.06)]">
-    <div className="flex items-start justify-between gap-2">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[11px] font-extrabold text-slate-800" aria-label={`Транспорт маршруту: ${chainLabel}`}>{chainLabel}</p>
-        <p className="mt-1 truncate text-[10px] text-slate-500">{firstLeg.origin.name} <ArrowRight className="mx-0.5 inline" size={11}/> {lastLeg.destination.name}</p>
-      </div>
-    </div>
-
-    <div className="mt-3 flex items-center justify-between gap-2">
-      <div className="flex min-w-0 items-baseline gap-2">
-        <strong className="text-base font-extrabold tabular-nums">{formatTime(routeStart)}–{formatTime(lastLeg.arrivalAt)}</strong>
-        <span className="truncate text-[10px] font-medium text-slate-500">{formatDuration(journey.totalDurationSeconds)}</span>
-      </div>
-      <div className="shrink-0 text-right"><small className="block text-[9px] leading-3 text-slate-500">{priceLabel}</small><strong className="text-base font-extrabold tabular-nums">{shownPrice === null ? '—' : formatPrice(shownPrice, journey.currency ?? 'UAH')}</strong></div>
-    </div>
-
-    <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: `repeat(${transitLegs.length}, minmax(0, 1fr))` }} role="list" aria-label={`Послідовність транспорту: ${chainLabel}`}>
-      {transitLegs.map(leg => <div key={leg.id} role="listitem" className="min-w-0">
-        <div className="flex items-center gap-1.5 overflow-hidden text-[9px] font-bold">
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: journeyModeColor(leg.mode, leg.transportType) }}/>
-          <span className="truncate">{journeyLegLabel(leg.mode, leg.transportType)}{leg.routeName ? ` ${leg.routeName}` : ''}</span>
+  return <article
+    data-testid="journey-result-card"
+    data-journey-id={journey.id}
+    className={`journey-result-card relative isolate overflow-hidden rounded-[20px] border bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:bg-[#101923] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)] ${index === 0 ? 'border-blue-400 ring-1 ring-blue-100 dark:border-blue-600 dark:ring-blue-950' : 'border-slate-200 dark:border-slate-700'}`}
+  >
+    <button type="button" aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[20px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+      <span className="sr-only">Переглянути карту й деталі маршруту</span>
+    </button>
+    <div className="pointer-events-none relative z-10 p-3">
+      <div className="flex min-h-11 items-center gap-1.5">
+        <div className="min-w-0 flex-1">
+          <p className="text-[20px] font-black leading-6 tracking-tight tabular-nums text-[#111827] dark:text-[#F5F9FF]">{formatJourneyDuration(journey.totalDurationSeconds)}</p>
+          <p className="mt-0.5 text-[10px] font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">{formatJourneyClock(startAt)}–{formatJourneyClock(lastLeg.arrivalAt)}</p>
         </div>
-        <div className="mt-1 h-1.5 rounded-full" style={{ backgroundColor: journeyModeColor(leg.mode, leg.transportType) }}/>
-        <span className="mt-1 block truncate text-[9px] tabular-nums text-slate-500">{formatDuration(leg.durationSeconds)}</span>
-        <span className="block truncate text-[9px] font-semibold text-slate-600" aria-label={leg.fareIncludedByPreviousSegment ? 'Вартість цього сегмента включена у попередній квиток' : leg.priceMinor === null ? 'Ціна сегмента уточнюється' : `Орієнтовна ціна сегмента ${formatPrice(leg.priceMinor, leg.currency ?? journey.currency ?? 'UAH')}`}>
-          {leg.fareIncludedByPreviousSegment ? 'у квитку' : leg.priceMinor === null ? 'ціна уточнюється' : formatPrice(leg.priceMinor, leg.currency ?? journey.currency ?? 'UAH')}
-        </span>
-      </div>)}
-    </div>
+        <span aria-label={`Загальна вартість: ${totalPrice === '—' ? 'невідома' : totalPrice}`} className={`shrink-0 text-[18px] font-black leading-6 tabular-nums ${totalPrice === '—' ? 'text-slate-400 dark:text-slate-500' : 'text-[#111827] dark:text-[#F5F9FF]'}`}>{totalPrice}</span>
+        <span aria-label={strategyItem.label} title={strategyItem.label} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${strategy === 'FASTEST' ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/60 dark:text-orange-300' : strategy === 'CHEAPEST' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300'}`}><StrategyIcon size={19} strokeWidth={2.2} aria-hidden="true"/></span>
+        <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2 text-[11px] font-extrabold tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200"><ArrowLeftRight size={14} aria-hidden="true"/>{journey.transfers}</span>
+        <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} onPointerDown={event => event.stopPropagation()} className="pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800" title={saved ? 'Збережено на цьому пристрої' : 'Зберегти маршрут'}>
+          <Heart size={19} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''} aria-hidden="true"/>
+        </button>
+        <span className="grid h-6 w-3 shrink-0 place-items-center text-slate-500 dark:text-slate-400" aria-hidden="true"><ChevronRight size={18}/></span>
+      </div>
 
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium text-slate-500">
-      <span className="inline-flex items-center gap-1"><MapPin size={12}/>{formatTransferCount(journey.transfers)}</span>
-      {journey.walkingMeters > 0 && <span className="inline-flex items-center gap-1"><Footprints size={12}/>{hasEstimatedWalking ? '≈ ' : ''}{journey.walkingMeters} м пішки</span>}
-      {journey.waitingSeconds !== undefined && journey.waitingSeconds > 0 && <span className="inline-flex items-center gap-1"><Clock3 size={12}/>{formatDuration(journey.waitingSeconds)} очікування</span>}
-      {communityLeg?.driver && <span className="inline-flex items-center gap-1"><ShieldCheck size={12} className="text-emerald-600"/>{communityLeg.driver.name}{communityLeg.driver.reviewCount ? ` · ${communityLeg.driver.averageRating?.toFixed(1)}` : ''}</span>}
-    </div>
+      <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="img" aria-label={`Часова шкала маршруту: ${segments.map(segment => `${segment.label} ${formatJourneyDuration(segment.durationSeconds)}`).join(', ')}`}>
+        {segments.map(segment => <span key={segment.id} data-segment-mode={segment.mode} title={`${segment.label} · ${formatJourneyDuration(segment.durationSeconds)}`} style={{ flexGrow: segment.durationSeconds, flexBasis: 0, backgroundColor: segment.color }} className="h-full min-w-[2px] transition-[flex-grow]"/>)}
+      </div>
 
-    <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
-      <button type="button" onClick={() => onOpenMap(journey)} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-blue-100 bg-blue-50 px-3 text-[10px] font-bold text-blue-800 hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><MapIcon size={14}/>На карті<ArrowRight size={13}/></button>
-      {reservableLeg ? <button type="button" onClick={() => onOpenOffer(reservableLeg.offerId!, journey.id, reservableLeg.id)} className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 text-[10px] font-bold text-white shadow-sm"><Ticket size={14}/>{isMultimodal ? 'Попутка' : 'Поїздка'}</button>
-        : <span className="flex min-h-10 flex-1 items-center justify-center rounded-xl bg-slate-50 px-2 text-center text-[9px] font-semibold text-slate-500"><TrainFront size={13} className="mr-1 shrink-0"/>{hasTransitSchedule ? 'Розклад · без бронювання' : 'Бронювання недоступне'}</span>}
+      <div className="journey-result-segments no-scrollbar mt-2 flex snap-x gap-0 overflow-x-auto" role="list" aria-label="Послідовність етапів маршруту; прокрутіть горизонтально, щоб переглянути всі">
+        {segments.map(segment => {
+          const price = formatJourneySegmentPrice(segment, journey.currency ?? 'UAH');
+          const leg = segment.leg;
+          const text = `${segment.label}, ${formatJourneyDuration(segment.durationSeconds)}, ${price}`;
+          return <div key={segment.id} role="listitem" aria-label={text} className="min-w-[88px] max-w-[132px] flex-1 snap-start border-r border-slate-200 px-2 first:pl-0 last:border-r-0 last:pr-0 dark:border-slate-700" title={text}>
+            <span className="flex items-center gap-1.5 text-[10px] font-bold leading-4 text-slate-800 dark:text-slate-100">
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: segment.color }}><SegmentIcon segment={segment}/></span>
+              <span className="min-w-0 truncate">{segment.label}</span>
+            </span>
+            <span className="mt-0.5 block truncate pl-[26px] text-[9px] font-semibold leading-3 tabular-nums text-slate-500 dark:text-slate-400">{formatJourneyDuration(segment.durationSeconds)} · {price}</span>
+            {leg && <span className="sr-only">{formatDistance(leg.distanceMeters)}</span>}
+          </div>;
+        })}
+      </div>
+      {caveats.length > 0 && <p className="mt-1 text-[10px] leading-4 text-amber-800 dark:text-amber-200">{[...new Set(caveats)].join(' ')}</p>}
+      <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
+      <span className="sr-only">Шкала містить {segments.length} етапів і відповідає їхній тривалості{ribbonTotal > 0 ? `, разом ${formatJourneyDuration(ribbonTotal)}` : ''}.</span>
     </div>
   </article>;
 }
 
-export function JourneyResultsPanel({ result, onOpenOffer, onOpenMap }: { result: ApiJourneySearchResult; onOpenOffer: (offerId: string, journeyId: string, journeyLegId: string) => void; onOpenMap: (journey: ApiJourney) => void }) {
-  const [activeFilter, setActiveFilter] = useState('all');
-  const strategyOptions = result.availableStrategies?.length
-    ? result.availableStrategies
-    : [...new Set(result.journeys.flatMap(journey => journey.recommendedStrategies ?? [journey.strategy]))];
-  const defaultStrategy = result.requestedStrategy && strategyOptions.includes(result.requestedStrategy)
-    ? result.requestedStrategy
-    : strategyOptions.includes('BALANCED') ? 'BALANCED' : strategyOptions[0] ?? 'BALANCED';
+export function JourneyResultsPanel({ result, onOpenMap }: {
+  result: ApiJourneySearchResult;
+  onOpenMap: (journey: ApiJourney) => void;
+}) {
+  const requestedStrategy = strategyConfig.some(strategy => strategy.id === result.requestedStrategy)
+    ? result.requestedStrategy as ApiJourneyStrategy : undefined;
+  const defaultStrategy = requestedStrategy && strategyJourneys(result, requestedStrategy).length > 0
+    ? requestedStrategy
+    : strategyJourneys(result, 'BALANCED').length > 0 ? 'BALANCED'
+      : strategyConfig.find(strategy => strategyJourneys(result, strategy.id).length > 0)?.id ?? 'BALANCED';
   const [activeStrategy, setActiveStrategy] = useState<ApiJourneyStrategy>(defaultStrategy);
-  useEffect(() => {
-    setActiveFilter('all');
-    setActiveStrategy(defaultStrategy);
-  }, [result, defaultStrategy]);
-  const filterGroups = [
-    { id: 'community', label: 'Попутки', modes: ['COMMUNITY', 'COMMUNITY_DEMAND'] },
-    { id: 'bus', label: 'Автобуси', modes: ['BUS', 'URBAN_BUS', 'MINIBUS'] },
-    { id: 'rail', label: 'Потяги', modes: ['RAIL'] },
-    ...[
-      ['TRAM', 'Трамваї'], ['TROLLEYBUS', 'Тролейбуси'], ['METRO', 'Метро'],
-      ['FERRY', 'Пороми'], ['FUNICULAR', 'Фунікулери'],
-    ].map(([mode, label]) => ({ id: mode, label, modes: [mode] })),
-  ].filter(group => result.journeys.some(journey => journey.legs.some(leg => group.modes.includes(leg.mode))));
-  const strategyJourneys = result.journeys
-    .filter(journey => journey.strategyRanks
-      ? typeof journey.strategyRanks[activeStrategy] === 'number'
-      : (journey.recommendedStrategies ?? [journey.strategy]).includes(activeStrategy))
-    .sort((a, b) => (a.strategyRanks?.[activeStrategy] ?? Number.MAX_SAFE_INTEGER)
-      - (b.strategyRanks?.[activeStrategy] ?? Number.MAX_SAFE_INTEGER)
-      || a.totalDurationSeconds - b.totalDurationSeconds);
-  const visibleJourneys = activeFilter === 'all' ? strategyJourneys : strategyJourneys.filter(journey => {
-    const group = filterGroups.find(item => item.id === activeFilter);
-    return group && journey.legs.some(leg => group.modes.includes(leg.mode));
-  });
+  useEffect(() => setActiveStrategy(defaultStrategy), [result, defaultStrategy]);
+  const shownJourneys = strategyJourneys(result, activeStrategy);
+
   const preferenceMessages: Record<string, string> = {
     preferredVehicleClass: 'клас автомобіля не застосовується до розкладів громадського транспорту',
     'maxPriceMinor:public-transit-fare-unavailable': 'обмеження ціни не застосовується до рейсів без тарифів у джерелі',
     'CHEAPEST:public-transit-fares-unavailable': 'найдешевший варіант серед розкладів без оприлюднених тарифів визначити неможливо',
     'maxTransfers:limited-to-4': 'планувальник будує максимум чотири пересадки',
     'transportType:taxi:not-in-route-engine': 'маршрути таксі ще не входять до планувальника',
-    'transportType:carsharing:not-in-route-engine': 'маршрути каршерінгу ще не входять до планувальника',
+    'transportType:carsharing:not-in-route-engine': 'маршрути каршерингу ще не входять до планувальника',
     'transportType:car_rental:not-in-route-engine': 'оренда авто доступна окремо, але не додається до маршрутного ланцюжка',
     'transportType:transfer:not-in-route-engine': 'зовнішні трансфери ще не входять до планувальника',
     'transportType:bike:not-in-route-engine': 'велосипедні прокати ще не додаються до маршрутного ланцюжка',
     'transportType:scooter:not-in-route-engine': 'самокати ще не додаються до маршрутного ланцюжка',
     'transportType:moped:not-in-route-engine': 'прокат мопедів ще не додається до маршрутного ланцюжка',
-    'transportType:plane:not-in-route-engine': 'авіарейси ще не входять до планувальника',
+    'transportType:plane:not-in-route-engine': 'авіарейси не входять до затвердженого списку MARSHGO',
     'transportType:walk:not-in-route-engine': 'пішки доступно лише як короткий підхід до зупинки, окремий маршрут не будується',
   };
-  return <section aria-label="План маршруту" className="mt-4">
-    <div role="group" aria-label="Ранжування маршрутів" className="mb-3 grid grid-cols-3 gap-2">{(['BALANCED', 'FASTEST', 'CHEAPEST'] as const).map(strategy => { const count = result.journeys.filter(journey => journey.strategyRanks ? typeof journey.strategyRanks[strategy] === 'number' : (journey.recommendedStrategies ?? [journey.strategy]).includes(strategy)).length; const available = count > 0; return <button key={strategy} type="button" disabled={!available} aria-pressed={activeStrategy === strategy} aria-label={`${strategyLabels[strategy]}${available ? `, ${count} маршрутів` : ', недоступно для цього запиту'}`} title={available ? undefined : 'Немає маршрутів із достатніми даними для цього режиму'} onClick={() => { setActiveStrategy(strategy); setActiveFilter('all'); }} className={`flex min-h-10 min-w-0 items-center justify-center rounded-full border px-1 text-[9px] font-bold disabled:cursor-not-allowed ${activeStrategy === strategy ? 'border-blue-600 bg-blue-600 text-white' : available ? 'border-slate-100 bg-white text-slate-600' : 'border-slate-100 bg-slate-50 text-slate-400'}`}><span className="whitespace-nowrap text-center">{strategyLabels[strategy]}</span></button>; })}</div>
-    {result.journeys.length > 0 && <div role="group" aria-label="Фільтр маршрутів за транспортом" className="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1"><button type="button" aria-pressed={activeFilter === 'all'} onClick={() => setActiveFilter('all')} className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-bold ${activeFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>Усі · {strategyJourneys.length}</button>{filterGroups.map(group => { const count = strategyJourneys.filter(journey => journey.legs.some(leg => group.modes.includes(leg.mode))).length; return <button key={group.id} type="button" aria-pressed={activeFilter === group.id} onClick={() => setActiveFilter(group.id)} className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-bold ${activeFilter === group.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>{group.label} · {count}</button>; })}</div>}
-    {result.partial && <p className="mb-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Це частковий результат: враховані джерела, що відповіли для цієї території та часу. Розклад, наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.</p>}
-    {result.unsupportedPreferences.length > 0 && <p className="mb-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Не всі умови можна врахувати: {result.unsupportedPreferences.map(value => preferenceMessages[value] ?? value).join('; ')}.</p>}
-    {result.providerErrors.length > 0 && <p className="mb-3 rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs leading-5 text-rose-800">Деякі розклади тимчасово недоступні: {result.providerErrors.join('; ')}.</p>}
-    {result.resultsTruncated && <p className="mb-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">Показано до {result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із {result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.</p>}
-    {result.candidateGenerationTruncated && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Пошук досяг ліміту обробки джерел; частина маршрутів могла не потрапити до результатів. Уточніть час або види транспорту й повторіть пошук.</p>}
-    {result.journeys.length ? visibleJourneys.length ? <div className="space-y-3">{visibleJourneys.map(journey => <JourneyCard key={journey.id} journey={journey} onOpenOffer={onOpenOffer} onOpenMap={onOpenMap}/>)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><p className="font-bold">Немає маршрутів у цій категорії</p><button type="button" onClick={() => setActiveFilter('all')} className="mt-2 text-sm font-bold text-blue-700">Показати всі</button></div> : <div className="rounded-2xl bg-white p-6 text-center"><MapPin className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Актуальних маршрутів поки немає</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити вид транспорту, час або перевізників.</p></div>}
+
+  return <section aria-label="Результати мультимодального пошуку" className="mt-2">
+    <div role="group" aria-label="Режим пошуку маршрутів" className="mb-3 grid grid-cols-3 gap-2">
+      {strategyConfig.map(({ id, label, Icon }) => {
+        const count = strategyJourneys(result, id).length;
+        const active = activeStrategy === id;
+        return <button key={id} type="button" disabled={count === 0} aria-pressed={active} aria-label={`${label}${count ? `, ${count} маршрутів` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-2xl border px-1.5 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-blue-600 bg-blue-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-[#111820] dark:text-slate-200'}`}>
+          <Icon size={16} className="shrink-0" aria-hidden="true"/><span className="whitespace-nowrap text-[10px] font-extrabold leading-tight sm:text-[11px]">{label}</span>
+        </button>;
+      })}
+    </div>
+
+    {result.partial && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Це частковий результат: враховані джерела, що відповіли для цієї території та часу. Розклад, наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.</p>}
+    {result.unsupportedPreferences.length > 0 && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Не всі умови можна врахувати: {result.unsupportedPreferences.map(value => preferenceMessages[value] ?? value).join('; ')}.</p>}
+    {result.providerErrors.length > 0 && <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">Деякі розклади тимчасово недоступні: {result.providerErrors.join('; ')}.</p>}
+    {result.resultsTruncated && <p className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">Показано до {result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із {result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.</p>}
+    {result.candidateGenerationTruncated && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Пошук досяг ліміту обробки джерел; частина маршрутів могла не потрапити до результатів. Уточніть час або види транспорту й повторіть пошук.</p>}
+
+    {shownJourneys.length ? <div className="space-y-2.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} strategy={activeStrategy} index={index} onOpen={onOpenMap}/>)}</div>
+      : <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]">
+        <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{result.journeys.length ? 'Спробуйте інший режим або змініть умови пошуку.' : 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>
+      </div>}
   </section>;
 }

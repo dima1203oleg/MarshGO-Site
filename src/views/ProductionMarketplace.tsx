@@ -1,6 +1,6 @@
 import { FormEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ArrowDownUp, ArrowLeft, ArrowRight, Ban, Bell, CalendarDays, CarFront, ChevronDown, ChevronRight,
+  ArrowDownUp, ArrowLeft, ArrowRight, Ban, Bell, CalendarDays, CarFront, ChevronRight,
   CircleUserRound, Clock3, Compass, FileDown, Flag, Home, LogOut, MapPin, MessageCircle, Minus, Navigation,
   Plus, Search, ShieldCheck, Ticket, Users, X,
 } from 'lucide-react';
@@ -12,7 +12,6 @@ import { VehiclePhoto } from '../components/VehiclePhoto';
 import { passengersLabel } from '../domain/plural';
 import { TransportTypesPanel } from '../components/TransportTypesPanel';
 import { DepartureDateTimePicker } from '../components/DepartureDateTimePicker';
-import { OtherModesPanel } from '../components/OtherModesPanel';
 import { HomeHero } from './HomeHero';
 import { PlanTripChoice } from './PlanTripChoice';
 import { OnboardingSlides } from '../components/OnboardingSlides';
@@ -1431,20 +1430,14 @@ export function ProductionMarketplace() {
 
   const resultsOriginLabel = searchOriginPlace?.label ?? origin;
   const resultsDestinationLabel = searchDestinationPlace?.label ?? destination;
-  const originCity = resultsOriginLabel.split(',')[0].trim();
-  const destinationCity = resultsDestinationLabel.split(',')[0].trim();
-  const sameCity = originCity.toLocaleLowerCase('uk-UA') === destinationCity.toLocaleLowerCase('uk-UA');
-  const shortLocation = (label: string) => label.includes(',') ? label.split(',').slice(1).join(',').trim() || label : label;
-  const displayOrigin = sameCity ? shortLocation(resultsOriginLabel) : originCity;
-  const displayDestination = sameCity ? shortLocation(resultsDestinationLabel) : destinationCity;
-  const displayRoute = `${displayOrigin} → ${displayDestination}`;
-  const resultsScreen = <div className="journey-results mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-4 flex items-center gap-3"><button onClick={() => { setShowResults(false); setTab('search'); }} aria-label="Повернутися до пошуку" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><h1 className="text-base font-extrabold leading-snug">Результати пошуку</h1><p title={`${resultsOriginLabel} → ${resultsDestinationLabel}`} className="truncate text-[10px] text-slate-500">{displayRoute}</p><p className="truncate text-[10px] text-slate-500">{new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeZone:'Europe/Kyiv'}).format(new Date(`${date}T12:00:00`))} · {journeyDeparture.slice(11,16)} · {passengersLabel(seats)}</p></div><button aria-label="Сповіщення про маршрут" onClick={() => setStatusMessage('Збереження маршруту сповістить вас після підключення push-сповіщень.')} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white shadow-sm"><Bell size={18}/></button></div>
-    {journeyResult ? <JourneyResultsPanel result={journeyResult} onOpenOffer={(offerId,journeyId,journeyLegId)=>void openJourneyOffer(offerId,journeyId,journeyLegId)} onOpenMap={setSelectedRouteMap}/> : restoredSearchMode === 'planner' ? <div className="rounded-2xl bg-white p-6 text-center"><Compass className="mx-auto text-blue-600"/><p className="mt-2 font-bold">Параметри маршруту відновлено</p><p className="mt-1 text-sm text-slate-500">Оновіть план, щоб перевірити актуальні пропозиції.</p><button onClick={()=>void searchJourney()} className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Знайти маршрут</button></div> : <><div className="no-scrollbar mb-4 flex items-center gap-2 overflow-x-auto pb-1"><span className="shrink-0 text-[11px] font-semibold text-slate-400">Сортувати:</span>{([['earliest','Найраніше'],['cheapest','Найдешевше'],['fastest','Найшвидше']] as const).map(([key,label])=><button key={key} type="button" aria-pressed={offerSort===key} onClick={()=>setOfferSort(key)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${offerSort===key?'border-[#1789F4] bg-[#EAF3FF] text-[#1789F4]':'border-[#E5EDF7] bg-white text-slate-500'}`}>{label}</button>)}</div><div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Попутки MARSHGO</h2><span className="text-xs text-slate-500">{offers.length} варіантів</span></div>{offers.length ? <div className="space-y-3">{sortedOffers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає попуток за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}</>}
-    <details className="coverage-details mt-3 rounded-2xl border border-slate-100 bg-white px-4 shadow-sm">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-xs font-bold text-slate-700 marker:hidden [&::-webkit-details-marker]:hidden">Покриття транспорту та оператори<ChevronDown size={15} className="coverage-chevron shrink-0 transition-transform"/></summary>
-      <div className="border-t border-slate-100 pb-3 pt-1"><OtherModesPanel selection={transportSelection} groups={providerGroups} origin={searchOriginPlace ? { latitude: searchOriginPlace.latitude, longitude: searchOriginPlace.longitude } : null}/></div>
-    </details>
-  </div>;
+  const displayRoute = `${resultsOriginLabel} → ${resultsDestinationLabel}`;
+  const resultsScreen = <main className="journey-results mx-auto flex min-h-[100svh] w-full max-w-xl flex-col px-4 pb-8 pt-[max(.5rem,env(safe-area-inset-top))] text-[#0B1730] dark:text-[#F5F9FF]">
+    <header className="mb-3 flex min-h-12 items-center gap-3 border-b border-slate-100 pb-2 dark:border-slate-800">
+      <button type="button" onClick={() => { setShowResults(false); setTab('search'); }} aria-label="Назад до пошуку" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-slate-700 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800"><ArrowLeft size={20}/></button>
+      <p title={displayRoute} className="min-w-0 flex-1 break-words text-[13px] font-bold leading-5"><span className="text-slate-500 dark:text-slate-400">Маршрут: </span>{displayRoute}</p>
+    </header>
+    {journeyResult ? <JourneyResultsPanel result={journeyResult} onOpenMap={setSelectedRouteMap}/> : restoredSearchMode === 'planner' ? <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]"><Compass className="mx-auto text-blue-600"/><p className="mt-2 font-bold">Параметри маршруту відновлено</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Оновіть план, щоб перевірити актуальні пропозиції.</p><button onClick={()=>void searchJourney()} className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Знайти маршрут</button></div> : <><div className="no-scrollbar mb-4 flex items-center gap-2 overflow-x-auto pb-1"><span className="shrink-0 text-[11px] font-semibold text-slate-400">Сортувати:</span>{([['earliest','Найраніше'],['cheapest','Найдешевше'],['fastest','Найшвидше']] as const).map(([key,label])=><button key={key} type="button" aria-pressed={offerSort===key} onClick={()=>setOfferSort(key)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${offerSort===key?'border-[#1789F4] bg-[#EAF3FF] text-[#1789F4]':'border-[#E5EDF7] bg-white text-slate-500'}`}>{label}</button>)}</div><div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Попутки MARSHGO</h2><span className="text-xs text-slate-500">{offers.length} варіантів</span></div>{offers.length ? <div className="space-y-3">{sortedOffers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center dark:bg-[#111820]"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає попуток за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}</>}
+  </main>;
 
   const visibleBookings = route?.kind === 'booking' && route.entityId ? bookings.filter((booking) => booking.id === route.entityId) : bookings;
   const upcomingOffers = myOffers.filter((offer) => (offer.status ?? 'published') === 'published' && new Date(offer.departure_at).getTime() > Date.now());

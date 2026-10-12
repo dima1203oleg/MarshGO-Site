@@ -16,6 +16,8 @@ Both boards describe the same nine-screen product flow. The light board defines 
 
 The route-map and route-details interaction is refined by the dedicated [canonical route-map / bottom-sheet references](./route-map-bottom-sheet/README.md), with approved [light-theme screenshots](./route-map-bottom-sheet/light/README.md). The route map and details share one screen; the map remains behind the draggable bottom sheet in both themes.
 
+The compact, three-strategy journey result cards are locked by the [latest canonical search-results references](./journey-search-results/README.md), which cover the light and dark themes and take precedence over the general boards for this screen.
+
 ## Invariants
 
 - Keep the same screen order and information architecture in both themes.

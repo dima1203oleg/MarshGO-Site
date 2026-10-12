@@ -17,6 +17,8 @@ const references = [
   ['route-map-bottom-sheet/light/01-expanded-route-details.jpg', '3aaa6d452c6f05e842eb1ce35dd1888977b0ef131fa1287129877c70de195f91'],
   ['route-map-bottom-sheet/light/02-half-sheet.jpg', '37c647a4cadf7bd3b62bc250cb10436ec8caa964b6facbfe399e4a03660a49ac'],
   ['route-map-bottom-sheet/light/03-map-overview.jpg', 'c798aae62becae863386698d2548462afa88ef45711203c001c9c234b0a200be'],
+  ['journey-search-results/01-results-light-dark-board.jpg', '81ec8c9049a12a29b093faa0b6d0977f3102e16c4a90e9c8e696debf7d5862a5'],
+  ['journey-search-results/02-results-light-detail.jpg', '2cd6bf47ad92f9ece3622a29803286148e1d2fbe21f76c6995fe3bffb7286259'],
 ] as const;
 
 test('canonical MARSHGO design references stay owner-approved', async () => {
