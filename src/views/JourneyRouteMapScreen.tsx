@@ -317,7 +317,13 @@ export function JourneyRouteMapScreen({
     const heights = routeSheetHeights(viewportHeight);
     const nextHeight = Math.min(heights.expanded, Math.max(heights.collapsed, start.height + delta));
     sheetHeightRef.current = nextHeight;
-    if (sheetElement.current) sheetElement.current.style.height = `${nextHeight}px`;
+    if (sheetElement.current) {
+      // Keep a React commit between pointer events from restoring the snap
+      // transition while the finger is still moving. WebKit can otherwise
+      // animate each intermediate height and visibly lag behind the gesture.
+      sheetElement.current.style.transition = 'none';
+      sheetElement.current.style.height = `${nextHeight}px`;
+    }
   };
   const handlePointerEnd = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStart.current;

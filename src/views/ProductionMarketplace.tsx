@@ -1647,7 +1647,7 @@ export function ProductionMarketplace() {
   if (tab === 'navigation' && !selectedOffer) return screen;
 
   const immersiveRouteView = Boolean(selectedRouteMap || (showResults && (tab === 'search' || tab === 'home')));
-  return <main className={`production-app min-h-[100svh] bg-[#f5f8fd] text-[#17243a] ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[calc(5.3rem+env(safe-area-inset-bottom))]'}`}>
+  return <main className={`production-app min-h-[100svh] bg-[#f5f8fd] text-[#17243a] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[calc(5.3rem+env(safe-area-inset-bottom))]'}`}>
     {!hideSharedHeader && header}
     {!immersiveRouteView && status}
     <div className={immersiveRouteView ? '' : 'pt-1'}>{screen}</div>
