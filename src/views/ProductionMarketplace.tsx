@@ -214,7 +214,11 @@ export function ProductionMarketplace() {
     setVehicles(nextVehicles); setVerificationRecords(nextVerification); setVehiclePhotos(Object.fromEntries(photos));
   }, []);
   const refreshMyDemands = useCallback(async () => setMyDemands(await productionApi.myDemands()), []);
-  const refreshPassengerNavigationMatches = useCallback(async () => setPassengerNavigationMatches(await productionApi.myNavigationMatches()), []);
+  const refreshPassengerNavigationMatches = useCallback(async () => {
+    const matches = await productionApi.myNavigationMatches();
+    setPassengerNavigationMatches(matches);
+    return matches;
+  }, []);
   const refreshOpenDemands = useCallback(async () => setOpenDemands(await productionApi.openDemands()), []);
   const refreshAdminQueue = useCallback(async () => setAdminQueue(await productionApi.adminVerificationQueue()), []);
   const refreshModerationCases = useCallback(async () => setModerationCases(await productionApi.moderationCases('all')), []);
@@ -414,7 +418,11 @@ export function ProductionMarketplace() {
       if (event.type === 'navigation.match.driver-interested') {
         if (user.roles.includes('passenger')) {
           void refreshPassengerNavigationMatches()
-            .then(() => setStatusMessage('Водій зацікавився вашою заявкою на маршрут.'))
+            .then((matches) => {
+              if (matches.some((match) => match.candidate_id === event.data.candidate_id && match.status === 'driver_interested')) {
+                setStatusMessage('Водій зацікавився вашою заявкою на маршрут.');
+              }
+            })
             .catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити пропозиції водіїв.'));
         }
         return;
@@ -426,7 +434,7 @@ export function ProductionMarketplace() {
       if (selectedDemand) refreshes.push(productionApi.demandProposals(selectedDemand.id).then(setProposals));
       void Promise.all(refreshes).catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Цінова пропозиція змінилася. Оновіть список.'));
     }, () => undefined);
-  }, [refreshBookings, refreshJourneys, refreshMyDemands, refreshMyOffers, refreshNotifications, refreshOpenDemands, refreshUnreadConversations, selectedDemand?.id, user?.id, user?.roles.join(',')]);
+  }, [refreshBookings, refreshJourneys, refreshMyDemands, refreshMyOffers, refreshNotifications, refreshOpenDemands, refreshPassengerNavigationMatches, refreshUnreadConversations, selectedDemand?.id, user?.id, user?.roles.join(',')]);
 
   useEffect(() => {
     if (!user) return;
