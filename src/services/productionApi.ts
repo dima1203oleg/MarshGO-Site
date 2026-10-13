@@ -126,7 +126,7 @@ export type ApiVerificationQueueItem = ApiVerificationRecord & {
 };
 
 export type ApiMobilityProvider = {
-  id: string; name: string; city: string; provider_type: string; source_type: string; feed_url: string; realtime_url: string | null;
+  id: string; name: string; city: string; provider_type: string; source_type: string; feed_host: string | null; realtime_host: string | null;
   priority: number; status: 'enabled' | 'disabled' | 'paused'; health: 'unknown' | 'healthy' | 'degraded' | 'offline';
   country: string; access: 'open' | 'requires_credentials' | 'requires_partner_access' | 'insecure_endpoint'; license: string | null; update_frequency: string | null; coverage: string | null; source_ref: string | null;
   last_checked_at: string | null; last_sync_at: string | null; last_error: string | null;
