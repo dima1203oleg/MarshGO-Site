@@ -436,7 +436,8 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   .journey-segment-tile--scroll { flex-basis: 0; }
 }
 @media (max-width: 479px) {
-  .journey-segment-tile-heading { font-size: clamp(8.75px, 2.35vw, 9.5px); }
+  .journey-segment-tile-heading { gap: .125rem; font-size: clamp(8.5px, 2.15vw, 9px); }
+  .journey-segment-tile-icon { flex-basis: 1rem; }
   .journey-segment-tile:not(.journey-segment-tile--scroll) .journey-segment-tile-meta {
     padding-left: 1.25rem;
     text-align: left;
