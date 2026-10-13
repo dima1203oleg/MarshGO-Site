@@ -1234,8 +1234,8 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
 @media (max-width: 639px) and (max-height: 730px) {
   .home-hero--canonical {
     overflow-y: auto !important;
-    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px)) !important;
-    scroll-padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
   }
   .production-app.home-viewport-shell {
     height: 100svh;
