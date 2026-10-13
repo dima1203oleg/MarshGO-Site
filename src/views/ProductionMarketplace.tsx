@@ -26,6 +26,7 @@ import { defaultKyivDateTime, formatKyivDateTimeInput, kyivDateTimeInputToDate, 
 import { useProductionTabRouter } from '../routing/useProductionTabRouter';
 import { pathForProductionEntity, type ProductionTab } from '../routing/productionRoutes';
 import { buildSearchRoute, parseSearchRoute } from '../routing/searchRouteState';
+import { parseSharedNavigationDestination } from '../routing/navigationShare';
 import { JourneyResultsPanel } from './JourneyResultsPanel';
 import { JourneyRouteMapScreen } from './JourneyRouteMapScreen';
 const MobilityAdminPanel = lazy(() => import('./MobilityAdminPanel').then((module) => ({ default: module.MobilityAdminPanel })));
@@ -138,7 +139,7 @@ export function ProductionMarketplace() {
   const [profileSection, setProfileSection] = useState<ProfileSection | null>(null);
   const [transportSelection, setTransportSelection] = useState<TransportSelection>(() => loadSelection());
   const [navAutoStart, setNavAutoStart] = useState(false);
-  const [navInitialDestination, setNavInitialDestination] = useState<ApiPlace | null>(null);
+  const [navInitialDestination, setNavInitialDestination] = useState<ApiPlace | null>(() => route?.tab === 'navigation' ? parseSharedNavigationDestination(window.location.search) : null);
   const [navigationMounted, setNavigationMounted] = useState(tab === 'navigation');
   const [navigationActive, setNavigationActive] = useState(false);
   useEffect(() => { if (tab === 'navigation') setNavigationMounted(true); }, [tab]);

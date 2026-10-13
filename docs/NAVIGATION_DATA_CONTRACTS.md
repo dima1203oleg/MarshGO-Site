@@ -6,6 +6,7 @@
 - API session: `ApiNavigationSession` у `src/services/productionApi.ts` — id/state, destination, route, route version, session opt-in, vehicle availability, last location та accuracy/time.
 - Клієнтська state machine: `src/navigation/NavigationCore.ts` — lifecycle, connectivity, current route, ETA та matched location.
 - GPS fix: `LocationFix` — координати, accuracy, captured time та available motion metadata.
+- Посилання навігації: `/navigate?lat=…&lon=…&destination=…`; у URL передається лише кінцева точка. Координати перевіряються за межами WGS84; початок маршруту, історія GPS, ID сесії та дані бронювання не передаються.
 - Map route: GeoJSON/coordinate arrays передаються MapLibre adapter; transport data використовує provider/vehicle freshness fields на API межі.
 
 ## Контрактні обмеження

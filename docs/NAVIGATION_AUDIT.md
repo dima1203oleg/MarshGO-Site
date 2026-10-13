@@ -25,7 +25,7 @@
 | `src/navigation/OffRouteGuard.ts` | IMPLEMENTED_AND_TESTED | Вимагає послідовні відхилення і cooldown; шумові GPS-пакети не спричиняють нескінченний reroute |
 | `src/navigation/OfflineNavigationStore.ts` | IMPLEMENTED_AND_TESTED | Локально зберігає маршрут/сесію без сирої історії позицій; тести restore/clear проходять |
 | `src/navigation/BasicRouteMapMatchingProvider.ts` | IMPLEMENTED_NEEDS_FIX | Проєкція на геометрію маршруту; це не road-graph matching для паралельних доріг і рівнів розв’язок |
-| `src/views/ProductionNavigation.tsx` | PARTIALLY_IMPLEMENTED | Реальні browser GPS fixes, guidance, reroute, ETA, голос; ще бракує дій уздовж маршруту, speed limit data та повного UX |
+| `src/views/ProductionNavigation.tsx` | PARTIALLY_IMPLEMENTED | Реальні browser GPS fixes, guidance, reroute, ETA, голос, persistent session і контекстне меню з overview/share/end; stop/POI/report дії без backend залишаються вимкненими |
 | `src/map/MapLibreAdapter.ts` | PARTIALLY_IMPLEMENTED | Реальний MapLibre canvas, route/transport overlays, GPS puck і camera follow; static satellite imagery потребує налаштованого джерела |
 | Схема / Супутник / 3D | IMPLEMENTED_NEEDS_FIX | P1 відділяє 3D camera perspective від двох базових карт; супутниковий провайдер не підтверджений для production |
 | Глобальна нижня панель під час навігації | IMPLEMENTED_NEEDS_FIX | Було приховано раннім return; P1 прибирає return і зберігає панель під картою |
@@ -38,7 +38,7 @@
 
 `IMPLEMENTED_AND_TESTED` означає наявність перевірюваної логіки й автоматичних тестів. Вона не означає тестування на фізичному телефоні або production SLA.
 
-## P1 зміни в цьому наборі
+## P1 зміни в поточному наборі
 
 - У моделі карти залишено `simple` (Схема) і `satellite`; `3d` зберігається окремо як перспектива камери. Старе збережене значення `threeD/navigation` мігрує без втрати вибору перспективи.
 - В навігації з’являються окремі кнопки шарів, 3D, геолокації та постійна мініатюра, що перемикає базову карту. Мініатюра не створює другого MapLibre canvas; raster tile використовується лише якщо задані ліцензовані джерело й attribution.
@@ -46,6 +46,8 @@
 - Нижня навігація лишається видимою, «Головна» позначена активною під час навігації, а поза картою з’являється кнопка повернення до активної сесії.
 - Вибір карти прибрано з панелі шарів і профілю; тип карти не змішується з transport overlays.
 - Панель шарів показує 12 категорій, відфільтрованих за відповіддю backend, зберігає вибір і має три visibility-only пресети. Недоступні категорії не запитують вигадані об’єкти.
+- Маневровий банер має контрастний синій стан, а згорнута картка над tabbar показує найближчий підтверджений маневр, тривалість, відстань і ETA, якщо він обчислений.
+- Context actions має клавіатурний focus trap; share link передає лише destination і не містить origin, GPS history чи session ID.
 
 ## Точність приймання
 

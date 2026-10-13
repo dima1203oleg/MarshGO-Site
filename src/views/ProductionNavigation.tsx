@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowLeft, ArrowUp, ChevronUp, CornerUpLeft, CornerUpRight, Flag, Layers, MapPin, Navigation, LocateFixed, RotateCcw, RefreshCw, Search, ShieldCheck, Square, Volume2, VolumeX, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ChevronUp, CornerUpLeft, CornerUpRight, Flag, Layers, Map, MapPin, MoreHorizontal, Navigation, LocateFixed, RotateCcw, RefreshCw, Search, Share2, ShieldCheck, Square, TriangleAlert, Volume2, VolumeX, X, type LucideIcon } from 'lucide-react';
 import { dueAnnouncement, formatGuidanceDistance, instructionText, nextGuidance, prepareGuidance, voiceLine } from '../navigation/guidance';
 import type { Maneuver } from '../../shared/navigation/contracts';
 import { ApiNavigationMatch, ApiNavigationSession, ApiPlace, productionApi } from '../services/productionApi';
@@ -15,6 +15,7 @@ import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
 import { BasicRouteMapMatchingProvider } from '../navigation/BasicRouteMapMatchingProvider';
 import { navigationError } from '../../shared/navigation/errors';
 import { OffRouteGuard } from '../navigation/OffRouteGuard';
+import { createNavigationShareUrl } from '../routing/navigationShare';
 import { getMapLayer, getMapPerspective, mapLayers, satelliteAttribution, satelliteTiles, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 
 function navigationErrorMessage(error: unknown, fallback: string) {
@@ -72,12 +73,12 @@ function previewTileUrl(layer: MapLayer, center: [number, number] | null) {
   return template.replaceAll('{z}', String(zoom)).replaceAll('{x}', String(x)).replaceAll('{y}', String(y)).replaceAll('{-y}', String(count - 1 - y));
 }
 
-function NavigationBasemapPreview({ center }: { center: [number, number] | null }) {
+function NavigationBasemapPreview({ center, aboveSummary = false }: { center: [number, number] | null; aboveSummary?: boolean }) {
   const [layer, setLayer] = useState<MapLayer>(getMapLayer());
   useEffect(() => subscribeMapLayer(setLayer), []);
   const next: MapLayer = layer === 'simple' ? 'satellite' : 'simple';
   const tile = previewTileUrl(next, center);
-  return <button type="button" data-testid="navigation-basemap-preview" aria-label={`Перемкнути карту на ${mapLayers[next].label}`} title={`Перемкнути карту на ${mapLayers[next].label}`} onClick={() => setMapLayer(next)} className="absolute right-3 z-[500] h-[4.7rem] w-[4.7rem] overflow-hidden rounded-xl border border-slate-200 bg-white text-[#0B1730] shadow-xl dark:border-white/80 dark:bg-[#0A1D2D] dark:text-white" style={{ bottom: 'calc(8rem + env(safe-area-inset-bottom))' }}>
+  return <button type="button" data-testid="navigation-basemap-preview" aria-label={`Перемкнути карту на ${mapLayers[next].label}`} title={`Перемкнути карту на ${mapLayers[next].label}`} onClick={() => setMapLayer(next)} className="absolute right-3 z-[500] h-[4.7rem] w-[4.7rem] overflow-hidden rounded-xl border border-slate-200 bg-white text-[#0B1730] shadow-xl dark:border-white/80 dark:bg-[#0A1D2D] dark:text-white" style={{ bottom: aboveSummary ? 'calc(10.2rem + env(safe-area-inset-bottom))' : 'calc(8rem + env(safe-area-inset-bottom))' }}>
     <span className="absolute inset-0 block overflow-hidden">
       {tile ? <img src={tile} alt="" loading="lazy" className="h-full w-full object-cover"/> : <span aria-hidden="true" className="grid h-full w-full place-items-center bg-slate-100 dark:bg-[#112438]"><Layers size={23} className="text-slate-500 dark:text-slate-300"/></span>}
     </span>
@@ -116,6 +117,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const [liveFix, setLiveFix] = useState<[number, number] | null>(null);
   const autoStartTried = useRef(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsDialogRef = useRef<HTMLElement | null>(null);
   const dragStart = useRef<number | null>(null);
   const centeredOnce = useRef<string | null>(null);
   const sheetRef = useRef<HTMLElement | null>(null);
@@ -155,6 +158,30 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   }));
   const navigationState = useSyncExternalStore(navigationStore.subscribe, navigationStore.getSnapshot, navigationStore.getSnapshot);
   useEffect(() => onSessionActiveChange?.(Boolean(session && session.state !== 'ended')), [onSessionActiveChange, session?.id, session?.state]);
+  useEffect(() => { if (!isPresented) setActionsOpen(false); }, [isPresented]);
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusableSelector = 'button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex="-1"])';
+    const dialog = actionsDialogRef.current;
+    const focusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>(focusableSelector) ?? []);
+    focusable()[0]?.focus();
+    const keepFocusInside = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setActionsOpen(false); return; }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    window.addEventListener('keydown', keepFocusInside);
+    return () => {
+      window.removeEventListener('keydown', keepFocusInside);
+      if (previouslyFocused?.isConnected && !previouslyFocused.closest('[aria-hidden="true"]')) previouslyFocused.focus();
+    };
+  }, [actionsOpen]);
   const mapRef = useRef<MapAdapter | null>(null);
   const locationProvider = useRef(new WebGeolocationProvider());
   const mapMatchingProvider = useRef(new BasicRouteMapMatchingProvider());
@@ -369,6 +396,23 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     else if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   };
 
+  const shareRoute = async () => {
+    const destination = session?.route?.at(-1);
+    if (!session || !destination) return;
+    const title = 'Маршрут MARSHGO';
+    const text = session.destination_name ? `Навігація MARSHGO до ${session.destination_name}` : 'Маршрут MARSHGO';
+    const url = createNavigationShareUrl({ label: session.destination_name ?? 'Спільна точка призначення', latitude: destination[1], longitude: destination[0] }, window.location.origin);
+    try {
+      if (navigator.share) await navigator.share({ title, text, url });
+      else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(url); setGpsMessage('Посилання на пункт призначення скопійовано.'); }
+      else setGpsMessage('На цьому пристрої немає доступного способу поділитися маршрутом.');
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setGpsMessage('Не вдалося поділитися маршрутом. Спробуйте ще раз.');
+    }
+    setActionsOpen(false);
+  };
+
   const start = async (withDestination: ApiPlace | null = destination) => {
     if (!('geolocation' in navigator)) { setGpsMessage('Цей пристрій не надає доступ до GPS.'); return; }
     setBusy(true); setGpsMessage('Очікуємо точне місце розташування…');
@@ -560,8 +604,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     </div>
     </>}
     {routed && <>
-    {guidance?.next && navigationState.lifecycle !== 'ARRIVED' ? (() => { const Icon = maneuverIcon(guidance.next); return <div data-testid="navigation-guidance" style={{ top: 'calc(max(.8rem, env(safe-area-inset-top)) + 2.35rem)' }} className="pointer-events-none absolute left-4 right-4 z-[500] overflow-hidden rounded-[1.4rem] bg-[#0b2345]/95 text-white shadow-xl backdrop-blur">
-      <div className="flex items-center gap-3 p-4"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#1789F4]"><Icon size={32} strokeWidth={2.6}/></span>
+    {guidance?.next && navigationState.lifecycle !== 'ARRIVED' ? (() => { const Icon = maneuverIcon(guidance.next); return <div data-testid="navigation-guidance" style={{ top: 'calc(max(.8rem, env(safe-area-inset-top)) + 2.35rem)' }} className="pointer-events-none absolute left-4 right-4 z-[500] overflow-hidden rounded-[1.4rem] bg-gradient-to-br from-[#087BFF] to-[#0754D8] text-white shadow-xl shadow-blue-950/25">
+      <div className="flex items-center gap-3 p-4"><span className="grid h-14 w-14 shrink-0 place-items-center"><Icon size={42} strokeWidth={2.6}/></span>
         <div className="min-w-0 flex-1"><p className="text-[1.9rem] font-extrabold leading-none tracking-tight">{formatGuidanceDistance(guidance.distanceMeters)}</p><p className="mt-1 line-clamp-2 text-[15px] font-bold leading-snug">{instructionText(guidance.next)}</p></div></div>
     </div>; })() : <>
       <div style={{ top: 'calc(max(.8rem, env(safe-area-inset-top)) + 2.35rem)' }} className="pointer-events-none absolute left-4 right-4 z-[500] rounded-[1.3rem] bg-[#0b2345]/95 p-4 text-white shadow-xl backdrop-blur">
@@ -582,10 +626,25 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       <MapLayersControl overlays variant="navigation" visible={isPresented}/>
       <NavigationPerspectiveControl/>
       <button type="button" aria-label="Показати моє місце" aria-pressed={following} onClick={() => { const point = navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number] : liveFix ?? session.current_location ?? undefined; mapRef.current?.recenter(point ?? undefined); }} title="Показати моє місце" className={`grid h-12 w-12 place-items-center rounded-full border border-slate-200 shadow-lg backdrop-blur dark:border-white/15 ${following ? 'bg-[#1789F4] text-white' : 'bg-white/95 text-[#0B1730] dark:bg-[#0A1D2D]/90 dark:text-white'}`}><Navigation size={20} fill={following ? 'currentColor' : 'none'}/></button>
-      <button type="button" aria-label={voiceOn ? 'Вимкнути голос' : 'Увімкнути голос'} aria-pressed={voiceOn} onClick={toggleVoice} title={voiceOn ? 'Вимкнути голосові підказки' : 'Увімкнути голосові підказки'} className={`grid h-12 w-12 place-items-center rounded-full border border-slate-200 shadow-lg dark:border-white/10 ${voiceOn ? 'bg-[#1789F4] text-white' : 'bg-white/95 text-slate-600 dark:bg-[#10283B]/90 dark:text-slate-300'}`}>{voiceOn ? <Volume2 size={20}/> : <VolumeX size={20}/>}</button>
+      <button type="button" aria-label="Інструменти навігації" aria-expanded={actionsOpen} onClick={() => setActionsOpen(true)} title="Інструменти навігації" className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white/95 text-[#0B1730] shadow-lg backdrop-blur dark:border-white/15 dark:bg-[#0A1D2D]/90 dark:text-white"><MoreHorizontal size={22}/></button>
     </div>
-    <NavigationBasemapPreview center={previewCenter}/>
-    <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `calc(${sheetHeight}px + 4.6rem + env(safe-area-inset-bottom))` } : undefined} className={`absolute left-4 z-[500] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-300 dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen ? (sheetHeight ? '' : 'bottom-[20rem]') : 'bottom-[calc(4.8rem+env(safe-area-inset-bottom))]'}`}>
+    {actionsOpen && <div style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))' }} className="fixed inset-x-0 top-0 z-[1000] flex items-end justify-center bg-slate-950/45 px-0 pt-[max(.8rem,env(safe-area-inset-top))] backdrop-blur-sm sm:items-center sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setActionsOpen(false); }}>
+      <section ref={actionsDialogRef} role="dialog" aria-modal="true" aria-labelledby="navigation-actions-title" tabIndex={-1} className="max-h-[calc(100dvh-5.5rem-env(safe-area-inset-bottom))] w-full max-w-xl overflow-y-auto rounded-t-[1.7rem] border border-slate-200 bg-white px-4 pb-4 pt-2 text-[#0B1730] shadow-2xl dark:border-[#263648] dark:bg-[#0A1D2D] dark:text-white sm:rounded-[1.7rem]">
+        <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600 sm:hidden" aria-hidden="true"/>
+        <header className="mb-2 flex items-center justify-between"><div><h2 id="navigation-actions-title" className="text-lg font-extrabold">Дії маршруту</h2><p className="text-[11px] text-slate-500 dark:text-slate-400">{session.destination_name ?? 'Активна навігація'}</p></div><button type="button" onClick={() => setActionsOpen(false)} aria-label="Закрити дії маршруту" className="grid h-11 w-11 place-items-center rounded-full hover:bg-slate-100 dark:hover:bg-white/10"><X size={19}/></button></header>
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
+          <button type="button" disabled={!hasRoute(session)} onClick={() => { mapRef.current?.fitRoute({ top: 150, bottom: sheetHeight || 240 }); setActionsOpen(false); }} className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Map size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Огляд маршруту</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Показати весь маршрут на карті</small></span><ChevronUp size={17} className="rotate-90 text-slate-400"/></button>
+          <button type="button" disabled title="Серверний API ще не підтримує проміжні зупинки" className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><MapPin size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Додати зупинку</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Потрібна підтримка проміжних точок маршруту</small></span><small className="text-[10px]">недоступно</small></button>
+          <button type="button" disabled title="Пошук POI уздовж маршруту ще не підключений" className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Search size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Пошук уздовж маршруту</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Пошук місць і detour-оцінка ще не підключені</small></span><small className="text-[10px]">недоступно</small></button>
+          <button type="button" disabled={!session.route?.length} onClick={() => void shareRoute()} className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Share2 size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Поділитися маршрутом</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Одержувач побудує маршрут до цієї точки зі свого місця</small></span><ChevronUp size={17} className="rotate-90 text-slate-400"/></button>
+          <button type="button" disabled title="Серверне джерело дорожніх подій ще не підключене" className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><TriangleAlert size={21} className="shrink-0 text-amber-600"/><span className="flex-1"><b className="block text-sm">Повідомити про подію</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Надсилання дорожніх подій ще не підключене</small></span><small className="text-[10px]">недоступно</small></button>
+          <button type="button" aria-pressed={voiceOn} onClick={toggleVoice} className="flex min-h-14 w-full items-center gap-3 py-2 text-left"><span className={`grid h-9 w-9 place-items-center rounded-full ${voiceOn ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>{voiceOn ? <Volume2 size={19}/> : <VolumeX size={19}/>}</span><span className="flex-1"><b className="block text-sm">Голосові підказки</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Українське озвучення маневрів</small></span><span className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform ${voiceOn ? 'bg-[#1789F4] after:translate-x-4' : 'bg-slate-300 dark:bg-slate-600'}`}/></button>
+          <button type="button" disabled={busy} onClick={() => { setActionsOpen(false); void end(); }} className="flex min-h-14 w-full items-center gap-3 py-2 text-left text-rose-600 disabled:opacity-45"><span className="grid h-9 w-9 place-items-center rounded-full bg-rose-100 dark:bg-rose-500/15"><Square size={17} fill="currentColor"/></span><span className="flex-1"><b className="block text-sm">Завершити навігацію</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Зупинити ведення маршрутом</small></span></button>
+        </div>
+      </section>
+    </div>}
+    <NavigationBasemapPreview center={previewCenter} aboveSummary={!sheetOpen}/>
+    <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `calc(${sheetHeight}px + 4.6rem + env(safe-area-inset-bottom))` } : !sheetOpen ? { bottom: 'calc(10.2rem + env(safe-area-inset-bottom))' } : undefined} className={`absolute left-4 z-[500] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-300 dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen && !sheetHeight ? 'bottom-[20rem]' : ''}`}>
       <span><b data-testid="navigation-speed" className="block text-2xl font-extrabold leading-none">{liveSpeed === null ? '—' : Math.round(liveSpeed * 3.6)}</b><small className="text-[10px] font-bold text-slate-600 dark:text-slate-300">км/год</small></span>
     </div>
     {!sheetOpen && <>
@@ -593,9 +652,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       <button type="button" aria-label="Розгорнути панель" aria-describedby={routed ? 'navigation-route-summary' : undefined} aria-expanded={false} onClick={() => setSheetOpen(true)}
         onPointerDown={(event) => { dragStart.current = event.clientY; }}
         onPointerUp={(event) => { const start = dragStart.current; dragStart.current = null; if (start !== null && event.clientY - start < -16) setSheetOpen(true); }}
-        className="absolute z-[500] flex h-[3.25rem] items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 text-left text-[#0B1730] shadow-xl backdrop-blur active:scale-[.99] dark:border-white/15 dark:bg-[#071827]/90 dark:text-white" style={{ left: 'calc(env(safe-area-inset-left) + 5.65rem)', right: 'calc(env(safe-area-inset-right) + 5.5rem)', bottom: 'calc(4.8rem + env(safe-area-inset-bottom))' }}>
-        {routed ? <span id="navigation-route-summary" data-testid="navigation-live-progress" className="flex min-w-0 flex-1 items-center justify-between gap-1.5 text-[11px] font-bold"><span className="truncate">{compactDuration}</span><span className="text-slate-400 dark:text-white/50">·</span><span className="truncate">{distance}</span><span className="text-slate-400 dark:text-white/50">·</span><span className="shrink-0 tabular-nums" title={eta ? `Орієнтовне прибуття ${eta}` : 'Час прибуття ще не розраховано'}>{eta ?? '—'}</span></span> : <span className="min-w-0 flex-1 truncate text-xs font-semibold">GPS-навігація активна</span>}
-        <ChevronUp size={17} className="shrink-0 text-[#66B2FF]" aria-hidden="true"/>
+        className="absolute z-[500] flex min-h-[5.2rem] items-center justify-between gap-2 rounded-t-[1.6rem] border border-slate-200 bg-white/95 px-4 py-2 text-left text-[#0B1730] shadow-xl backdrop-blur active:scale-[.99] dark:border-white/15 dark:bg-[#071827]/95 dark:text-white" style={{ left: 'max(env(safe-area-inset-left), calc((100% - 36rem) / 2))', right: 'max(env(safe-area-inset-right), calc((100% - 36rem) / 2))', bottom: 'calc(4.6rem + env(safe-area-inset-bottom))' }}>
+        {routed && guidance?.next ? (() => { const Icon = maneuverIcon(guidance.next); return <span id="navigation-route-summary" data-testid="navigation-live-progress" className="flex min-w-0 flex-1 items-center gap-2"><span className="grid h-10 w-10 shrink-0 place-items-center text-[#0878F9]"><Icon size={34} strokeWidth={2.6}/></span><span className="min-w-0 flex-1"><b className="block text-lg leading-tight">{formatGuidanceDistance(guidance.distanceMeters)}</b><span className="block truncate text-xs text-slate-500 dark:text-slate-300">{guidance.next.streetName || instructionText(guidance.next)}</span></span><span className="shrink-0 border-l border-slate-200 pl-2 text-right dark:border-white/15"><b className="block text-base leading-tight">{compactDuration}</b><span className="block text-[10px] text-slate-500 dark:text-slate-300">{distance}{eta ? ` · ${eta}` : ''}</span></span><ChevronUp size={17} className="shrink-0 text-[#66B2FF]" aria-hidden="true"/></span>; })() : routed ? <span id="navigation-route-summary" data-testid="navigation-live-progress" className="flex min-w-0 flex-1 items-center justify-between gap-2 text-sm font-bold"><span>{compactDuration}</span><span className="text-slate-400 dark:text-white/50">·</span><span>{distance}</span><span className="shrink-0 tabular-nums">{eta ?? '—'}</span><ChevronUp size={17} className="shrink-0 text-[#66B2FF]" aria-hidden="true"/></span> : <span className="min-w-0 flex-1 truncate text-xs font-semibold">GPS-навігація активна</span>}
       </button>
     </>}
     {sheetOpen && <section ref={sheetRef} aria-label="Панель навігації" style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))', maxHeight: 'calc(100dvh - max(.8rem, env(safe-area-inset-top)) - 5.4rem - env(safe-area-inset-bottom))' }} className="absolute inset-x-0 z-[500] overflow-y-auto rounded-t-[1.8rem] border-t border-slate-200 bg-white/95 px-5 pb-4 pt-1.5 text-[#0B1730] shadow-[0_-12px_35px_rgba(0,0,0,.2)] backdrop-blur-xl transition-[padding] duration-200 dark:border-white/10 dark:bg-[#071827]/95 dark:text-white dark:shadow-[0_-12px_35px_rgba(0,0,0,.4)]">

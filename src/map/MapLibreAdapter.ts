@@ -26,6 +26,7 @@ export class MapLibreAdapter implements MapAdapter {
   private waypoints: Array<{ coordinate: Coordinate; kind: string }> = [];
   private cameraMode: CameraMode = 'OVERVIEW';
   private cameraRequestSequence = 0;
+  private styleSwapSequence = 0;
   private theme: MapTheme = 'MARSHGO_LIGHT';
   private seenTileError = false;
   private layer: MapLayer = 'simple';
@@ -431,7 +432,21 @@ export class MapLibreAdapter implements MapAdapter {
     // installLayers() restores route, transport, vehicle and rental overlays afterwards.
     const center = this.map.getCenter();
     const camera = { center: [center.lng, center.lat] as [number, number], zoom: this.map.getZoom(), bearing: this.map.getBearing(), pitch: this.map.getPitch(), padding: this.map.getPadding() };
-    this.map.once('style.load', () => this.map.jumpTo(camera));
+    const styleSwap = ++this.styleSwapSequence;
+    this.map.once('style.load', () => {
+      if (styleSwap !== this.styleSwapSequence) return;
+      if ((this.cameraMode === 'FOLLOW' || this.cameraMode === 'FOLLOW_HEADING') && this.vehicle) {
+        this.map.jumpTo({
+          ...camera,
+          center: this.vehicle,
+          zoom: Math.max(camera.zoom, 17),
+          bearing: this.heading ?? camera.bearing,
+          pitch: this.perspective === '3d' ? PERSPECTIVE_PITCH : 0,
+        });
+        return;
+      }
+      this.map.jumpTo(camera);
+    });
     this.map.setStyle(style, { diff: false });
   }
   setPerspective(perspective: MapPerspective) {
