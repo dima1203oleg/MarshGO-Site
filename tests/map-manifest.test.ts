@@ -19,7 +19,7 @@ test('map asset manifest accepts immutable versioned data and style URLs', () =>
 
 test('map asset manifest rejects mutable URLs and incompatible versions', () => {
   assert.throws(() => parseMapAssetManifest({ ...manifest, mapDataUrl: 'https://maps.example/maps/current.pmtiles' }), /immutable and versioned/);
-  assert.throws(() => parseMapAssetManifest({ ...manifest, styles: { ...manifest.styles, MARSHGO_3D_LIGHT: 'https://maps.example/styles/current.json' } }), /immutable and versioned/);
+  assert.throws(() => parseMapAssetManifest({ ...manifest, styles: { ...manifest.styles, MARSHGO_LIGHT: 'https://maps.example/styles/current.json' } }), /immutable and versioned/);
   assert.throws(() => parseMapAssetManifest({ ...manifest, styles: { MARSHGO_LIGHT: manifest.styles.MARSHGO_LIGHT } }), /Invalid input/);
   assert.throws(() => parseMapAssetManifest({ ...manifest, schemaVersion: 2 }), /Invalid input/);
 });

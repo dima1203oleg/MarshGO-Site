@@ -11,11 +11,10 @@ describe('passenger plural forms', () => {
 });
 
 describe('base map modes', () => {
-  it('exposes only simple 2D, 3D, and satellite; transport stays an overlay', () => {
-    assert.deepEqual(Object.keys(mapLayers), ['simple', 'threeD', 'satellite']);
-    assert.deepEqual(Object.values(mapLayers).map((mode) => mode.label), ['Простий 2D', '3D', 'Супутник']);
+  it('exposes only scheme and satellite basemaps; 3D is a separate camera mode', () => {
+    assert.deepEqual(Object.keys(mapLayers), ['simple', 'satellite']);
+    assert.deepEqual(Object.values(mapLayers).map((mode) => mode.label), ['Схема', 'Супутник']);
     assert.equal(styleForLayer('simple', 'https://maps.example/style.json'), 'https://maps.example/style.json');
-    assert.equal(styleForLayer('threeD', 'https://maps.example/style.json'), 'https://maps.example/style.json');
     assert.equal(styleForLayer('satellite', 'https://maps.example/style.json'), 'https://maps.example/style.json');
   });
 });

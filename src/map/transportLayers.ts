@@ -2,8 +2,9 @@ import type { GeoJSONSource, Map as MapLibreMap, MapMouseEvent } from 'maplibre-
 import * as maplibregl from 'maplibre-gl';
 import { productionApi, type GeoJsonCollection } from '../services/productionApi';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
-import { microTypesFor, type TransportLayerId } from './transportLayerConfig';
-export { microTypesFor, transportLayerList } from './transportLayerConfig';
+import { lineTypesFor, microTypesFor, transportLayerList, type TransportLayerId } from './transportLayerConfig';
+import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
+export { cityTransportLayerIds, lineTypesFor, microTypesFor, transportLayerList } from './transportLayerConfig';
 export type { TransportLayerId } from './transportLayerConfig';
 
 /**
@@ -11,35 +12,37 @@ export type { TransportLayerId } from './transportLayerConfig';
  * Static geometry is cached on the server for hours; vehicle positions are polled every 15 s only while a line layer is visible.
  */
 // ---- selection store (all layers are off by default) ----
-const selected = new Set<TransportLayerId>();
+const STORAGE_KEY = 'marshgo.map.transport-layers.v1';
+const hiddenLayerIds: TransportLayerId[] = ['PUBLIC_TRANSPORT', 'CITY_TRAIN', 'FUNICULAR', 'STOPS', 'RENTAL_POINTS'];
+const validLayerIds = new Set<TransportLayerId>([...transportLayerList.map((item) => item.id), ...hiddenLayerIds]);
+function restoreSelectedLayers(): Set<TransportLayerId> {
+  try {
+    const values: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
+    return new Set(Array.isArray(values) ? values.filter((value): value is TransportLayerId => typeof value === 'string' && validLayerIds.has(value as TransportLayerId)) : []);
+  } catch { return new Set(); }
+}
+const selected = restoreSelectedLayers();
 const listeners = new Set<(layers: ReadonlySet<TransportLayerId>) => void>();
 export const getTransportLayers = (): ReadonlySet<TransportLayerId> => new Set(selected);
+function publishSelection() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...selected])); } catch { /* The in-memory selection still applies. */ }
+  listeners.forEach((listener) => listener(getTransportLayers()));
+}
 export function toggleTransportLayer(id: TransportLayerId) {
   if (selected.has(id)) selected.delete(id); else selected.add(id);
-  listeners.forEach((listener) => listener(getTransportLayers()));
+  publishSelection();
 }
 export function setTransportLayers(ids: readonly TransportLayerId[], enabled: boolean) {
   ids.forEach((id) => enabled ? selected.add(id) : selected.delete(id));
-  listeners.forEach((listener) => listener(getTransportLayers()));
+  publishSelection();
 }
-export function clearTransportLayers() { selected.clear(); listeners.forEach((listener) => listener(getTransportLayers())); }
+export function clearTransportLayers() { selected.clear(); publishSelection(); }
 export function subscribeTransportLayers(listener: (layers: ReadonlySet<TransportLayerId>) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 
 // ---- what each selection asks the server for ----
-export function lineTypesFor(layers: ReadonlySet<TransportLayerId>): string[] {
-  const types = new Set<string>();
-  if (layers.has('PUBLIC_TRANSPORT')) ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'city_train', 'funicular'].forEach((type) => types.add(type));
-  if (layers.has('BUS')) { types.add('bus'); types.add('marshrutka'); }
-  if (layers.has('TRAM')) types.add('tram');
-  if (layers.has('TROLLEYBUS')) types.add('trolleybus');
-  if (layers.has('METRO')) types.add('metro');
-  if (layers.has('CITY_TRAIN')) types.add('city_train');
-  if (layers.has('FUNICULAR')) types.add('funicular');
-  return [...types];
-}
 export function stopTypesFor(layers: ReadonlySet<TransportLayerId>): string[] {
   const lines = lineTypesFor(layers);
-  return lines.length ? lines : ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'city_train', 'funicular'];
+  return lines.length ? lines : ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'train', 'suburban', 'city_train', 'funicular'];
 }
 // ---- level of detail: below these zooms a layer is not requested at all ----
 export const minZoom = { routes: 10, vehicles: 11, stops: 13, micro: 12 } as const;
@@ -64,7 +67,7 @@ const colors: Record<string, string> = {
 };
 const empty: GeoJsonCollection = { type: 'FeatureCollection', features: [] };
 const SOURCES = { routes: 'mg-t-routes', stops: 'mg-t-stops', vehicles: 'mg-t-vehicles', micro: 'mg-t-micro', zones: 'mg-t-micro-zones' } as const;
-const lineColor = ['match', ['get', 'transport'], 'bus', colors.bus, 'marshrutka', colors.marshrutka, 'trolleybus', colors.trolleybus, 'tram', colors.tram, 'metro', colors.metro, 'city_train', colors.city_train, 'funicular', colors.funicular, colors.other] as never;
+const lineColor = ['match', ['get', 'transport'], 'bus', colors.bus, 'marshrutka', colors.marshrutka, 'trolleybus', colors.trolleybus, 'tram', colors.tram, 'metro', colors.metro, 'train', getTransportModeVisual('TRAIN').color, 'suburban', getTransportModeVisual('TRAIN').color, 'city_train', colors.city_train, 'funicular', colors.funicular, colors.other] as never;
 
 export class TransportLayerController {
   private enabled: ReadonlySet<TransportLayerId> = new Set();
@@ -76,7 +79,7 @@ export class TransportLayerController {
   private readonly onMove = () => { if (this.moveTimer) clearTimeout(this.moveTimer); this.moveTimer = setTimeout(() => void this.refresh(), 350); };
   private readonly onVisibility = () => { if (document.visibilityState === 'visible') void this.refreshVehicles(); };
 
-  constructor(private readonly map: MapLibreMap, private readonly onHint: (message: string | null) => void) {}
+  constructor(private readonly map: MapLibreMap, private readonly onHint: (message: string | null) => void, private display: MapDisplayPreferences = getMapDisplayPreferences()) {}
 
   private hasGlyphs() { return Boolean(this.map.getStyle()?.glyphs); }
 
@@ -88,11 +91,31 @@ export class TransportLayerController {
     this.map.off('moveend', this.onMove); this.map.on('moveend', this.onMove);
     document.removeEventListener('visibilitychange', this.onVisibility); document.addEventListener('visibilitychange', this.onVisibility);
     this.restartPolling();
+    this.applyDisplayPreferences();
     void this.refresh();
   }
 
-  /** A style change (2D ↔ 3D ↔ satellite) drops custom sources; rebuild them from the cached data without refetching. */
-  reinstall() { if (this.enabled.size) { this.install(); this.pushData(); } }
+  setDisplayPreferences(preferences: MapDisplayPreferences) {
+    this.display = preferences;
+    this.applyDisplayPreferences();
+    this.restartPolling();
+    if (this.enabled.size) void this.refresh();
+  }
+
+  private applyDisplayPreferences() {
+    const visibility: Array<[string, boolean]> = [
+      ['mg-t-routes', this.display.routeLines],
+      ['mg-t-route-label', this.display.routeLines && this.display.routeNumbers],
+      ['mg-t-stops', this.enabled.has('STOPS')],
+      ['mg-t-stop-label', this.enabled.has('STOPS')],
+      ['mg-t-vehicles', this.display.liveVehicles],
+      ['mg-t-vehicle-label', this.display.liveVehicles && this.display.routeNumbers],
+    ];
+    for (const [id, enabled] of visibility) if (this.map.getLayer(id)) this.map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none');
+  }
+
+  /** A basemap or theme change drops custom sources; rebuild them from cached data without refetching. */
+  reinstall() { if (this.enabled.size) { this.install(); this.pushData(); this.applyDisplayPreferences(); } }
 
   destroy() { this.teardown(); }
 
@@ -236,9 +259,9 @@ export class TransportLayerController {
     this.onHint(null);
     const tasks: Array<Promise<void>> = [];
     if (lines.length) {
-      if (zoom >= minZoom.routes) tasks.push(this.load('routes', (signal) => productionApi.transportRoutes(viewportBbox(bounds, maxSpan.routes), lines, signal)));
-      else { this.clear('routes'); hints.push('лінії'); }
-      if (zoom >= minZoom.vehicles) tasks.push(this.refreshVehicles()); else { this.clear('vehicles'); }
+      if (this.display.routeLines && zoom >= minZoom.routes) tasks.push(this.load('routes', (signal) => productionApi.transportRoutes(viewportBbox(bounds, maxSpan.routes), lines, signal)));
+      else { this.clear('routes'); if (this.display.routeLines) hints.push('лінії'); }
+      if (this.display.liveVehicles && zoom >= minZoom.vehicles) tasks.push(this.refreshVehicles()); else { this.clear('vehicles'); }
     } else { this.clear('routes'); this.clear('vehicles'); }
     if (this.enabled.has('STOPS')) {
       if (zoom >= minZoom.stops) tasks.push(this.load('stops', (signal) => productionApi.transportStops(viewportBbox(bounds, maxSpan.stops), stopTypesFor(this.enabled), signal)));
@@ -258,12 +281,12 @@ export class TransportLayerController {
 
   async refreshVehicles() {
     const lines = lineTypesFor(this.enabled);
-    if (!lines.length || this.map.getZoom() < minZoom.vehicles || document.visibilityState !== 'visible') return;
+    if (!this.display.liveVehicles || !lines.length || this.map.getZoom() < minZoom.vehicles || document.visibilityState !== 'visible') return;
     await this.load('vehicles', (signal) => productionApi.transportVehicles(viewportBbox(this.bounds(), maxSpan.vehicles), lines, signal));
   }
 
   private restartPolling() {
     if (this.pollTimer) clearInterval(this.pollTimer);
-    this.pollTimer = lineTypesFor(this.enabled).length ? setInterval(() => void this.refreshVehicles(), 15_000) : null;
+    this.pollTimer = this.display.liveVehicles && lineTypesFor(this.enabled).length ? setInterval(() => void this.refreshVehicles(), 15_000) : null;
   }
 }

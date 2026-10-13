@@ -9,6 +9,8 @@ const attribution = (import.meta.env.VITE_MAP_TILE_ATTRIBUTION as string | undef
 const manifestUrl = (import.meta.env.VITE_MAP_STYLE_MANIFEST_URL as string | undefined)?.trim();
 
 export const configuredMapStyleUrl = styleUrl || undefined;
+export const schemePreviewTiles = tileUrl || undefined;
+export const schemePreviewAttribution = attribution;
 export const mapAttribution = attribution;
 
 /** Prefer the versioned MARSHGO style manifest. Raster URL remains a compatibility path for owned tile services. */
@@ -16,7 +18,11 @@ export function createFallbackMapStyle(theme: MapTheme = 'MARSHGO_LIGHT'): Style
   return buildFallbackStyle(theme, tileUrl, attribution);
 }
 
-export function mapTilesConfigured(): boolean { return Boolean(manifestUrl || styleUrl || tileUrl); }
+/** A configured road/style source is separate from the licensed satellite raster source. */
+export function schemeBasemapConfigured(): boolean { return Boolean(manifestUrl || styleUrl || tileUrl); }
+
+/** Kept for older callers; this only describes the vector/scheme base map. */
+export const mapTilesConfigured = schemeBasemapConfigured;
 
 export async function resolveMapAssets(theme: MapTheme) {
   if (manifestUrl) {

@@ -7,8 +7,9 @@ import type { CameraMode, ColoredRouteSegment, LiveTransitPosition, MapAdapter, 
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
 import type { FillLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
-import { mapLayers, satelliteAttribution, satelliteTiles, styleForLayer, type MapLayer } from './mapMode';
+import { isBasemapConfigured, PERSPECTIVE_PITCH, satelliteAttribution, satelliteTiles, styleForLayer, type MapLayer, type MapPerspective } from './mapMode';
 import { TransportLayerController, type TransportLayerId } from './transportLayers';
+import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
 import { configuredMapStyleUrl } from './mapConfig';
 
 const pmtilesProtocol = new Protocol();
@@ -25,10 +26,13 @@ export class MapLibreAdapter implements MapAdapter {
   private waypoints: Array<{ coordinate: Coordinate; kind: string }> = [];
   private cameraMode: CameraMode = 'OVERVIEW';
   private cameraRequestSequence = 0;
-  private theme: MapTheme = 'MARSHGO_3D_LIGHT';
+  private theme: MapTheme = 'MARSHGO_LIGHT';
   private seenTileError = false;
   private layer: MapLayer = 'simple';
+  private perspective: MapPerspective = '2d';
+  private baseStyle: string | StyleSpecification;
   private transport: TransportLayerController | null = null;
+  private transportDisplayPreferences: MapDisplayPreferences = getMapDisplayPreferences();
   private heading: number | null = null;
   private marker: maplibregl.Marker | null = null;
   private liveTransitMarker: maplibregl.Marker | null = null;
@@ -40,8 +44,9 @@ export class MapLibreAdapter implements MapAdapter {
   /** Shown when a layer needs a closer zoom or fails to load. */
   onTransportHint: (message: string | null) => void = () => undefined;
 
-  constructor(container: HTMLElement, style: string | StyleSpecification, private readonly onStatus: (status: MapStatus) => void, private readonly hasBasemap: boolean, private readonly styleUrls?: Partial<Record<MapTheme, string>>, initialTheme: MapTheme = 'MARSHGO_3D_LIGHT') {
+  constructor(container: HTMLElement, style: string | StyleSpecification, private readonly onStatus: (status: MapStatus) => void, private readonly hasBasemap: boolean, private readonly styleUrls?: Partial<Record<MapTheme, string>>, initialTheme: MapTheme = 'MARSHGO_LIGHT') {
     this.theme = initialTheme;
+    this.baseStyle = style;
     if (!pmtilesProtocolRegistered) { maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile); pmtilesProtocolRegistered = true; }
     maplibregl.setWorkerUrl(mapLibreWorkerUrl);
     container.dataset.marshgoMapRenderer = 'maplibre';
@@ -62,7 +67,6 @@ export class MapLibreAdapter implements MapAdapter {
       container.dataset.marshgoCameraSettledId = String(this.cameraRequestSequence);
       container.dataset.marshgoCameraMoving = 'false';
     });
-    this.map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: false, visualizePitch: true }), 'bottom-right');
     this.map.on('load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.basemapConfigured() ? 'available' : 'unconfigured'); });
     this.map.on('style.load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; if (this.basemapConfigured() && !this.map.getSource('marshgo-basemap') && this.status !== 'failed') this.publish('available'); });
     this.map.on('error', (event) => {
@@ -102,17 +106,19 @@ export class MapLibreAdapter implements MapAdapter {
   }
 
   private publish(status: MapStatus) { this.status = this.seenTileError && status === 'available' ? 'degraded' : status; this.onStatus(this.status); }
-  private basemapConfigured() { return this.hasBasemap && (this.layer !== 'satellite' || Boolean(satelliteTiles && satelliteAttribution)); }
+  private basemapConfigured() {
+    return isBasemapConfigured(this.layer, this.hasBasemap, Boolean(satelliteTiles && satelliteAttribution));
+  }
   private themeForLayer(layer: MapLayer, theme: MapTheme = this.theme): MapTheme {
+    void layer;
     const dark = theme.endsWith('_DARK');
-    if (layer === 'threeD') return dark ? 'MARSHGO_3D_DARK' : 'MARSHGO_3D_LIGHT';
     return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
   }
   private installLayers() {
     const colors = mapStyleTokens[this.theme];
     this.map.getContainer().dataset.marshgoMapLayer = this.layer;
     if (this.layer === 'satellite') this.installSatelliteOverlay();
-    if (this.layer === 'threeD') this.install3DBuildings();
+    if (this.perspective === '3d') this.install3DBuildings();
     else this.remove3DBuildings();
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -149,8 +155,9 @@ export class MapLibreAdapter implements MapAdapter {
     // The DOM puck (rotating arrow) replaces the old circle dot; the source stays for consumers of its data.
     for (const id of ['marshgo-vehicle-halo', 'marshgo-vehicle']) if (this.map.getLayer(id)) this.map.setLayoutProperty(id, 'visibility', 'none');
     this.transport?.reinstall();
-    // 3D mode keeps its tilt after every style load (a style swap resets the camera on some browsers).
-    if (this.layer === 'threeD' && Math.abs(this.map.getPitch() - mapLayers.threeD.pitch) > 1) this.map.easeTo({ pitch: mapLayers.threeD.pitch, duration: 500, essential: true });
+    // The camera perspective is independent of the selected basemap.
+    const desiredPitch = this.perspective === '3d' ? PERSPECTIVE_PITCH : 0;
+    if (Math.abs(this.map.getPitch() - desiredPitch) > 1) this.map.easeTo({ pitch: desiredPitch, duration: 500, essential: true });
     this.updateRouteSource();
     if (this.vehicle) this.setVehicle(this.vehicle);
     this.setWaypoints(this.waypoints);
@@ -195,7 +202,7 @@ export class MapLibreAdapter implements MapAdapter {
 
   /** Extrude only the existing vector building source; no separate 3D model assets are loaded. */
   private install3DBuildings() {
-    if (this.layer !== 'threeD' || !this.map.isStyleLoaded() || this.map.getLayer('marshgo-buildings-3d')) return;
+    if (this.perspective !== '3d' || !this.map.isStyleLoaded() || this.map.getLayer('marshgo-buildings-3d')) return;
     const layers = this.map.getStyle().layers ?? [];
     const building = layers.find((layer): layer is FillLayerSpecification =>
       layer.type === 'fill' && /building/i.test(`${layer.id} ${layer['source-layer'] ?? ''}`),
@@ -362,7 +369,7 @@ export class MapLibreAdapter implements MapAdapter {
   private followCamera(duration: number) {
     if (!this.vehicle) return;
     const { clientHeight } = this.map.getContainer();
-    const tilt = this.layer === 'threeD' ? mapLayers.threeD.pitch : 0;
+    const tilt = this.perspective === '3d' ? PERSPECTIVE_PITCH : 0;
     this.markCameraRequest();
     this.map.easeTo({
       center: this.vehicle, zoom: Math.max(this.map.getZoom(), 17), pitch: tilt,
@@ -416,24 +423,34 @@ export class MapLibreAdapter implements MapAdapter {
 
   setLayer(layer: MapLayer) {
     if (layer === this.layer) return;
-    if (layer !== 'threeD') this.remove3DBuildings();
     this.layer = layer;
     this.theme = this.themeForLayer(layer);
-    const style = layer === 'satellite'
-      ? this.styleUrls?.[this.themeForLayer('simple')] ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK'))
-      : this.styleUrls?.[this.theme] ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK'));
-    if (style) this.map.setStyle(style);
-    else if (layer === 'satellite' && this.map.isStyleLoaded()) this.installSatelliteOverlay();
-    else if (layer === 'simple') this.map.setStyle(this.map.getStyle());
-    if (layer === 'threeD' && this.map.isStyleLoaded()) this.install3DBuildings();
-    this.map.easeTo({ pitch: mapLayers[layer].pitch, duration: 700, essential: true });
+    const style = this.styleUrls?.[this.theme] ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) ?? this.baseStyle;
+    this.baseStyle = style;
+    // A full style swap also removes custom sources/layers such as satellite imagery;
+    // installLayers() restores route, transport, vehicle and rental overlays afterwards.
+    const center = this.map.getCenter();
+    const camera = { center: [center.lng, center.lat] as [number, number], zoom: this.map.getZoom(), bearing: this.map.getBearing(), pitch: this.map.getPitch(), padding: this.map.getPadding() };
+    this.map.once('style.load', () => this.map.jumpTo(camera));
+    this.map.setStyle(style, { diff: false });
+  }
+  setPerspective(perspective: MapPerspective) {
+    if (perspective === this.perspective) return;
+    this.perspective = perspective;
+    if (perspective === '2d') this.remove3DBuildings();
+    else this.install3DBuildings();
+    this.map.easeTo({ pitch: perspective === '3d' ? PERSPECTIVE_PITCH : 0, duration: 500, essential: true });
   }
   /** 2D information layers (metro, buses, bikes, ...). Passing an empty set removes them and stops their polling. */
   setTransportLayers(layers: ReadonlySet<TransportLayerId>) {
     this.transportLayers = layers;
     if (layers.size === 0 && !this.transport) return;
-    this.transport ??= new TransportLayerController(this.map, (message) => this.onTransportHint(message));
+    this.transport ??= new TransportLayerController(this.map, (message) => this.onTransportHint(message), this.transportDisplayPreferences);
     this.transport.apply(layers);
+  }
+  setTransportDisplayPreferences(preferences: MapDisplayPreferences) {
+    this.transportDisplayPreferences = preferences;
+    this.transport?.setDisplayPreferences(preferences);
   }
   focus(point: Coordinate, zoom = 13) { this.cameraMode = 'FREE'; this.markCameraRequest(); this.map.easeTo({ center: point, zoom, duration: 600, essential: true }); }
   setCameraMode(mode: CameraMode) { this.setCameraModeInternal(mode); }
@@ -441,10 +458,8 @@ export class MapLibreAdapter implements MapAdapter {
     const nextTheme = this.themeForLayer(this.layer, theme);
     const changed = this.theme !== nextTheme;
     this.theme = nextTheme;
-    const style = this.layer === 'satellite'
-      ? this.styleUrls?.[this.themeForLayer('simple', theme)] ?? styleForLayer(this.layer, configuredMapStyleUrl, this.theme.endsWith('_DARK'))
-      : this.styleUrls?.[this.theme];
-    if (changed && style) { this.map.setStyle(style); return; }
+    const style = this.styleUrls?.[this.theme] ?? (configuredMapStyleUrl ? styleForLayer(this.layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) : null);
+    if (changed && style) { this.baseStyle = style; this.map.setStyle(style); return; }
     this.applySatellitePalette();
     const colors = mapStyleTokens[this.theme];
     if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);

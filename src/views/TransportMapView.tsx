@@ -4,7 +4,6 @@ import { productionApi, type ApiTransportCity } from '../services/productionApi'
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
-import { getMapLayer, setMapLayer } from '../map/mapMode';
 import { clearTransportLayers, getTransportLayers, subscribeTransportLayers, toggleTransportLayer, type TransportLayerId } from '../map/transportLayers';
 
 const chips: Array<{ label: string; id: TransportLayerId; Icon: typeof Bus }> = [
@@ -30,11 +29,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
     }).catch(() => { if (!controller.signal.aborted) setHint('Не вдалося завантажити список міст.'); });
     return () => controller.abort();
   }, []);
-  useEffect(() => {
-    // Planning happens on the 2D map; a 3D/satellite choice left over from navigation would hide the layers.
-    if (getMapLayer() === 'threeD') setMapLayer('simple');
-    return () => clearTransportLayers();
-  }, []);
+  useEffect(() => () => clearTransportLayers(), []);
   const located = useRef(false);
   const onAdapter = (next: MapAdapter | null) => {
     adapter.current = next;

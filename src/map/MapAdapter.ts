@@ -1,7 +1,8 @@
-import type { MapLayer } from './mapMode';
+import type { MapLayer, MapPerspective } from './mapMode';
+import type { MapDisplayPreferences } from './mapLayerPreferences';
 import type { Coordinate } from '../../shared/navigation/contracts';
 export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 'failed';
-export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK' | 'MARSHGO_3D_LIGHT' | 'MARSHGO_3D_DARK';
+export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
 export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; modeColor: string; approximate?: boolean };
 export type LiveTransitPosition = { coordinates: Coordinate; color: string; label: string; updatedAt: string };
@@ -22,7 +23,9 @@ export interface MapAdapter {
   setCameraMode(mode: CameraMode): void;
   setTheme(theme: MapTheme): void;
   setLayer(layer: MapLayer): void;
+  setPerspective(perspective: MapPerspective): void;
   setTransportLayers(layers: ReadonlySet<import('./transportLayers').TransportLayerId>): void;
+  setTransportDisplayPreferences(preferences: MapDisplayPreferences): void;
   focus(point: Coordinate, zoom?: number): void;
   onTransportHint: (message: string | null) => void;
   retry(): void;

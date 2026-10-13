@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Box, Layers, Map as MapIcon } from 'lucide-react';
+import { Layers, Map as MapIcon } from 'lucide-react';
 import { getMapLayer, mapLayers, setMapLayer, subscribeMapLayer, type MapLayer } from '../map/mapMode';
 
-const icons = { simple: MapIcon, threeD: Box, satellite: Layers } as const;
+const icons = { simple: MapIcon, satellite: Layers } as const;
 
-/** The three map modes: 2D, 3D navigation, satellite. */
+/** Selects one of the two basemaps. 3D is controlled separately as a camera perspective. */
 export function MapLayerSwitch({ className = '' }: { className?: string }) {
   const [layer, setLayer] = useState<MapLayer>(getMapLayer());
   useEffect(() => subscribeMapLayer(setLayer), []);

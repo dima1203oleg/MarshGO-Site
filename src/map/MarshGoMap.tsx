@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import { mapTilesConfigured, resolveMapAssets } from './mapConfig';
+import { resolveMapAssets, schemeBasemapConfigured } from './mapConfig';
 import type { ColoredRouteSegment, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
-import { getMapLayer, styleForLayer, subscribeMapLayer, type MapLayer } from './mapMode';
+import { getMapLayer, getMapPerspective, styleForLayer, subscribeMapLayer, subscribeMapPerspective, type MapLayer } from './mapMode';
 import { getTransportLayers, subscribeTransportLayers } from './transportLayers';
+import { getMapDisplayPreferences, subscribeMapDisplayPreferences } from './mapLayerPreferences';
 import { configuredMapStyleUrl } from './mapConfig';
 import { themeService } from '../services/theme';
 
-type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: Array<{ coordinate: Coordinate; kind: string }>; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers are independent from the three base map modes. */ overlays?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
+type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: Array<{ coordinate: Coordinate; kind: string }>; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
 function themeForMapLayer(layer: MapLayer, dark: boolean): MapTheme {
-  if (layer === 'simple') return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
-  return dark ? 'MARSHGO_3D_DARK' : 'MARSHGO_3D_LIGHT';
+  void layer;
+  return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
 }
 export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPadding, activeRouteSegmentId = null, onRouteSegmentSelect, vehicle, heading = null, theme, overlays = false, onTransportHint, onStatus, onAdapter }: Props) {
   const container = useRef<HTMLDivElement | null>(null);
@@ -47,8 +48,10 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
       const initialStyle = initialLayer === 'satellite'
         ? styleForLayer(initialLayer, configuredMapStyleUrl, initialTheme.endsWith('_DARK')) ?? assets.style
         : assets.styles?.[initialTheme] ?? styleForLayer(initialLayer, configuredMapStyleUrl, initialTheme.endsWith('_DARK')) ?? assets.style;
-      const instance = new MapLibreAdapter(container.current, initialStyle, onStatus, mapTilesConfigured(), assets.styles, initialTheme);
+      const instance = new MapLibreAdapter(container.current, initialStyle, onStatus, schemeBasemapConfigured(), assets.styles, initialTheme);
       instance.setLayer(initialLayer);
+      instance.setPerspective(getMapPerspective());
+      instance.setTransportDisplayPreferences(getMapDisplayPreferences());
       adapter.current = instance; instance.onRouteSegmentSelect = (id) => routeSegmentSelect.current?.(id); onAdapter(instance);
       instance.onTransportHint = (message) => onTransportHint?.(message);
       syncOverlays.current();
@@ -73,6 +76,8 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
   useEffect(() => { if (vehicle) adapter.current?.setVehicle(vehicle, heading); }, [vehicle?.[0], vehicle?.[1], heading]);
   useEffect(() => { adapter.current?.setTheme(activeTheme); }, [activeTheme]);
   useEffect(() => subscribeMapLayer((layer) => adapter.current?.setLayer(layer)), []);
+  useEffect(() => subscribeMapPerspective((perspective) => adapter.current?.setPerspective(perspective)), []);
+  useEffect(() => subscribeMapDisplayPreferences((preferences) => adapter.current?.setTransportDisplayPreferences(preferences)), []);
   // Information layers remain independent from the selected 2D/3D/satellite basemap.
   syncOverlays.current = () => adapter.current?.setTransportLayers(overlays ? getTransportLayers() : new Set());
   useEffect(() => { syncOverlays.current(); }, [overlays]);

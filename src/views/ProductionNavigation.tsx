@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowLeft, ArrowUp, ChevronUp, CornerUpLeft, CornerUpRight, Flag, MapPin, Navigation, LocateFixed, RotateCcw, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Square, Volume2, VolumeX, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ChevronUp, CornerUpLeft, CornerUpRight, Flag, Layers, MapPin, Navigation, LocateFixed, RotateCcw, RefreshCw, Search, ShieldCheck, Square, Volume2, VolumeX, type LucideIcon } from 'lucide-react';
 import { dueAnnouncement, formatGuidanceDistance, instructionText, nextGuidance, prepareGuidance, voiceLine } from '../navigation/guidance';
 import type { Maneuver } from '../../shared/navigation/contracts';
 import { ApiNavigationMatch, ApiNavigationSession, ApiPlace, productionApi } from '../services/productionApi';
 import type { LocationFix } from '../../shared/navigation/contracts';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
+import { schemePreviewAttribution, schemePreviewTiles } from '../map/mapConfig';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
 import { WebGeolocationProvider, validateLocationFix } from '../platform/LocationProvider';
 import { NavigationStore } from '../navigation/NavigationStore';
+import { canonicalRoute } from '../navigation/canonicalRoute';
 import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
 import { BasicRouteMapMatchingProvider } from '../navigation/BasicRouteMapMatchingProvider';
-import { boundsOf, encodePolyline6 } from '../../shared/navigation/geometry';
-import { routeResultSchema } from '../../shared/navigation/contracts';
 import { navigationError } from '../../shared/navigation/errors';
 import { OffRouteGuard } from '../navigation/OffRouteGuard';
-import { getMapLayer, setMapLayer, subscribeMapLayer, type MapLayer } from '../map/mapMode';
+import { getMapLayer, getMapPerspective, mapLayers, satelliteAttribution, satelliteTiles, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 
 function navigationErrorMessage(error: unknown, fallback: string) {
   if (!(error instanceof Error)) return fallback;
@@ -35,17 +35,6 @@ function navigationErrorMessage(error: unknown, fallback: string) {
 
 const hasRoute = (session: ApiNavigationSession) => (session.route?.length ?? 0) >= 2 && session.route_distance_m !== null && session.route_duration_s !== null;
 
-function canonicalRoute(session: ApiNavigationSession) {
-  const points = session.route ?? [];
-  return routeResultSchema.parse({
-    id: session.id, provider: 'marshgo-routing', geometry: { encoding: 'polyline6', value: encodePolyline6(points) },
-    bounds: boundsOf(points), distanceMeters: session.route_distance_m ?? 0, durationSeconds: session.route_duration_s ?? 0,
-    durationWithoutTrafficSeconds: session.route_duration_s ?? 0, trafficAware: false,
-    legs: [{ distanceMeters: session.route_distance_m ?? 0, durationSeconds: session.route_duration_s ?? 0 }], maneuvers: [],
-    confidence: 'BASELINE', calculatedAt: session.started_at, routeVersion: session.route_version,
-  });
-}
-
 const VOICE_KEY = 'marshgo.navigation.voice';
 const voicePreferred = () => { try { return localStorage.getItem(VOICE_KEY) === 'on'; } catch { return false; } };
 /** Speaks Ukrainian guidance with the device voice; silently does nothing where speech synthesis is unavailable. */
@@ -61,11 +50,39 @@ function speak(text: string) {
   synth.speak(utterance);
 }
 
-function NavigationMapModeControl() {
+function NavigationPerspectiveControl() {
+  const [perspective, setPerspective] = useState<MapPerspective>(getMapPerspective());
+  useEffect(() => subscribeMapPerspective(setPerspective), []);
+  const next: MapPerspective = perspective === '3d' ? '2d' : '3d';
+  return <button type="button" aria-label={`Увімкнути ${next.toUpperCase()}-перспективу`} aria-pressed={perspective === '3d'} onClick={() => setMapPerspective(next)} className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white/95 text-sm font-extrabold text-[#0B1730] shadow-lg backdrop-blur dark:border-white/15 dark:bg-[#0A1D2D]/90 dark:text-white">3D</button>;
+}
+
+function previewTileUrl(layer: MapLayer, center: [number, number] | null) {
+  const source = layer === 'satellite' ? satelliteTiles : schemePreviewTiles;
+  const attribution = layer === 'satellite' ? satelliteAttribution : schemePreviewAttribution;
+  if (!center || !source || !attribution) return null;
+  const zoom = 14;
+  const count = 2 ** zoom;
+  const x = Math.max(0, Math.min(count - 1, Math.floor(((center[0] + 180) / 360) * count)));
+  const latitude = Math.max(-85.0511, Math.min(85.0511, center[1]));
+  const radians = latitude * Math.PI / 180;
+  const y = Math.max(0, Math.min(count - 1, Math.floor((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2 * count)));
+  const template = source;
+  if (!['{z}', '{x}'].every((key) => template.includes(key)) || (!template.includes('{y}') && !template.includes('{-y}'))) return null;
+  return template.replaceAll('{z}', String(zoom)).replaceAll('{x}', String(x)).replaceAll('{y}', String(y)).replaceAll('{-y}', String(count - 1 - y));
+}
+
+function NavigationBasemapPreview({ center }: { center: [number, number] | null }) {
   const [layer, setLayer] = useState<MapLayer>(getMapLayer());
   useEffect(() => subscribeMapLayer(setLayer), []);
-  const nextLayer: MapLayer = layer === 'threeD' ? 'simple' : 'threeD';
-  return <button type="button" aria-label={`Увімкнути ${nextLayer === 'threeD' ? '3D' : '2D'}-карту`} aria-pressed={layer === 'threeD'} onClick={() => setMapLayer(nextLayer)} className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#0A1D2D]/90 text-[11px] font-extrabold text-white shadow-lg backdrop-blur">3D</button>;
+  const next: MapLayer = layer === 'simple' ? 'satellite' : 'simple';
+  const tile = previewTileUrl(next, center);
+  return <button type="button" data-testid="navigation-basemap-preview" aria-label={`Перемкнути карту на ${mapLayers[next].label}`} title={`Перемкнути карту на ${mapLayers[next].label}`} onClick={() => setMapLayer(next)} className="absolute right-3 z-[500] h-[4.7rem] w-[4.7rem] overflow-hidden rounded-xl border border-slate-200 bg-white text-[#0B1730] shadow-xl dark:border-white/80 dark:bg-[#0A1D2D] dark:text-white" style={{ bottom: 'calc(8rem + env(safe-area-inset-bottom))' }}>
+    <span className="absolute inset-0 block overflow-hidden">
+      {tile ? <img src={tile} alt="" loading="lazy" className="h-full w-full object-cover"/> : <span aria-hidden="true" className="grid h-full w-full place-items-center bg-slate-100 dark:bg-[#112438]"><Layers size={23} className="text-slate-500 dark:text-slate-300"/></span>}
+    </span>
+    <span className="absolute inset-x-0 bottom-0 bg-black/70 px-1 py-1 text-[9px] font-semibold leading-tight text-white">{mapLayers[next].label}{!tile ? ' · без preview' : ''}</span>
+  </button>;
 }
 
 function maneuverIcon(maneuver: Maneuver): LucideIcon {
@@ -77,10 +94,10 @@ function maneuverIcon(maneuver: Maneuver): LucideIcon {
   return ArrowUp;
 }
 
-type Props = { onBack: () => void; onOpenDemand?: (demandId: string, candidateId: string) => void; autoStart?: boolean; initialDestination?: ApiPlace | null; onAddVehicle?: () => void };
+type Props = { onBack: () => void; onOpenDemand?: (demandId: string, candidateId: string) => void; onSessionActiveChange?: (active: boolean) => void; isPresented?: boolean; autoStart?: boolean; initialDestination?: ApiPlace | null; onAddVehicle?: () => void };
 const AUTO_MATCHING_KEY = 'marshgo.navigation.autoMatching';
 const autoMatchingPreferred = () => { try { return localStorage.getItem(AUTO_MATCHING_KEY) !== 'off'; } catch { return true; } };
-export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, initialDestination = null, onAddVehicle }: Props) {
+export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChange, isPresented = true, autoStart = false, initialDestination = null, onAddVehicle }: Props) {
   const [destinationText, setDestinationText] = useState(() => initialDestination?.label ?? '');
   const [suggestions, setSuggestions] = useState<ApiPlace[]>([]);
   const [destination, setDestination] = useState<ApiPlace | null>(initialDestination);
@@ -99,7 +116,6 @@ export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, 
   const [liveFix, setLiveFix] = useState<[number, number] | null>(null);
   const autoStartTried = useRef(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [mapControlsOpen, setMapControlsOpen] = useState(false);
   const dragStart = useRef<number | null>(null);
   const centeredOnce = useRef<string | null>(null);
   const sheetRef = useRef<HTMLElement | null>(null);
@@ -137,16 +153,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, 
     }
     if (effect.type === 'EMIT_TELEMETRY') window.dispatchEvent(new CustomEvent('marshgo:telemetry', { detail: { name: effect.name, sessionId: state.sessionId } }));
   }));
-
-  useEffect(() => {
-    if (!mapControlsOpen) return;
-    const closeControls = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMapControlsOpen(false);
-    };
-    window.addEventListener('keydown', closeControls);
-    return () => window.removeEventListener('keydown', closeControls);
-  }, [mapControlsOpen]);
   const navigationState = useSyncExternalStore(navigationStore.subscribe, navigationStore.getSnapshot, navigationStore.getSnapshot);
+  useEffect(() => onSessionActiveChange?.(Boolean(session && session.state !== 'ended')), [onSessionActiveChange, session?.id, session?.state]);
   const mapRef = useRef<MapAdapter | null>(null);
   const locationProvider = useRef(new WebGeolocationProvider());
   const mapMatchingProvider = useRef(new BasicRouteMapMatchingProvider());
@@ -193,15 +201,6 @@ export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, 
     // Like Apple Maps: navigation opens on the driver, close and tilted, following the direction of travel.
     if (mapRef.current) { mapRef.current.recenter(liveFix); centeredOnce.current = session.id; }
   }, [session?.id, liveFix?.[0], liveFix?.[1], mapStatus]);
-
-  // Active navigation is always the clean 3D map; the user's previous map mode comes back afterwards.
-  const hasSession = Boolean(session);
-  useEffect(() => {
-    if (!hasSession) return;
-    const previous: MapLayer = getMapLayer();
-    if (previous !== 'threeD') setMapLayer('threeD');
-    return () => { if (previous !== 'threeD') setMapLayer(previous); };
-  }, [hasSession]);
 
   useEffect(() => {
     lastValidatedFixRef.current = null;
@@ -543,8 +542,12 @@ export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, 
     ? new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(new Date(navigationState.eta.arrivalAt))
     : null;
   const fixAge = session.current_location_at ? Math.max(0, Math.floor((clock - new Date(session.current_location_at).getTime()) / 1000)) : null;
-  return <main className="fixed inset-0 overflow-hidden bg-[#dbeafe] text-[#17243a]">
+  const previewCenter = navigationState.currentLocation
+    ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number]
+    : liveFix ?? session.current_location ?? session.route?.[0] ?? null;
+  return <main aria-hidden={!isPresented} className={`fixed inset-0 z-20 overflow-hidden bg-[#dbeafe] text-[#17243a] dark:bg-[#081B35] dark:text-white ${isPresented ? '' : 'invisible pointer-events-none'}`}>
     <MarshGoMap route={session.route ?? []} vehicle={navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] : liveFix ?? session.current_location} heading={liveHeading} onStatus={setMapStatus} onAdapter={(adapter) => { mapRef.current = adapter; if (adapter) adapter.onCameraModeChange = (mode) => setFollowing(mode === 'FOLLOW' || mode === 'FOLLOW_HEADING'); }} />
+    {routed && <div aria-label="MARSHGO" className="absolute left-4 z-[490] select-none text-[1.3rem] font-black tracking-[-.06em] text-[#0B1730] drop-shadow-sm dark:text-white" style={{ top: 'max(.6rem, env(safe-area-inset-top))' }}>MARSH<span className="text-[#0878F9]">GO</span></div>}
     {!routed && <>
     <div className="absolute left-4 right-4 top-[max(.8rem,env(safe-area-inset-top))] z-[500] rounded-[1.3rem] bg-white p-3 shadow-xl">
       <form onSubmit={(event) => { event.preventDefault(); if (topQuery.trim().length >= 3) void searchTopDestination(); }} className="flex items-center gap-2">
@@ -557,11 +560,11 @@ export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, 
     </div>
     </>}
     {routed && <>
-    {guidance?.next && navigationState.lifecycle !== 'ARRIVED' ? (() => { const Icon = maneuverIcon(guidance.next); return <div data-testid="navigation-guidance" className="pointer-events-none absolute left-4 right-4 top-[max(.8rem,env(safe-area-inset-top))] z-[500] overflow-hidden rounded-[1.4rem] bg-[#0b2345]/95 text-white shadow-xl backdrop-blur">
+    {guidance?.next && navigationState.lifecycle !== 'ARRIVED' ? (() => { const Icon = maneuverIcon(guidance.next); return <div data-testid="navigation-guidance" style={{ top: 'calc(max(.8rem, env(safe-area-inset-top)) + 2.35rem)' }} className="pointer-events-none absolute left-4 right-4 z-[500] overflow-hidden rounded-[1.4rem] bg-[#0b2345]/95 text-white shadow-xl backdrop-blur">
       <div className="flex items-center gap-3 p-4"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#1789F4]"><Icon size={32} strokeWidth={2.6}/></span>
         <div className="min-w-0 flex-1"><p className="text-[1.9rem] font-extrabold leading-none tracking-tight">{formatGuidanceDistance(guidance.distanceMeters)}</p><p className="mt-1 line-clamp-2 text-[15px] font-bold leading-snug">{instructionText(guidance.next)}</p></div></div>
     </div>; })() : <>
-      <div className="pointer-events-none absolute left-4 right-4 top-[max(.8rem,env(safe-area-inset-top))] z-[500] rounded-[1.3rem] bg-[#0b2345]/95 p-4 text-white shadow-xl backdrop-blur">
+      <div style={{ top: 'calc(max(.8rem, env(safe-area-inset-top)) + 2.35rem)' }} className="pointer-events-none absolute left-4 right-4 z-[500] rounded-[1.3rem] bg-[#0b2345]/95 p-4 text-white shadow-xl backdrop-blur">
       <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/10"><Navigation size={21}/></span><div className="min-w-0 flex-1"><p className="truncate text-[11px] font-bold uppercase tracking-wide text-blue-200">{navigationState.lifecycle === 'ARRIVED' ? 'Ви досягли пункту призначення' : 'До пункту призначення'}</p><h1 className="truncate text-lg font-extrabold">{session.destination_name}</h1><p className="mt-1 text-xs text-blue-100">{distance} · {duration}{eta ? ` · прибуття ${eta}` : navigationState.connectivity === 'OFFLINE' ? ' · офлайн ETA' : ''}</p></div></div>
     </div>
     </>}
@@ -575,33 +578,31 @@ export function ProductionNavigation({ onBack, onOpenDemand, autoStart = false, 
       </span>
       {(mapStatus === 'degraded' || mapStatus === 'failed') && <button type="button" className="pointer-events-auto shrink-0 rounded-lg px-1 py-0.5 underline underline-offset-2" onClick={() => mapRef.current?.retry()}>Повторити завантаження карти</button>}
     </div>}
-    <div style={routed && sheetOpen ? { top: 'max(7rem, calc(env(safe-area-inset-top) + 5rem))', transform: 'none' } : undefined} className="absolute right-4 top-1/2 z-[510] flex -translate-y-1/2 flex-col items-center gap-2">
-      {mapControlsOpen && <div role="group" aria-label="Додаткове керування навігацією" className="grid gap-2 rounded-[1.4rem] border border-white/15 bg-[#071827]/90 p-2 text-white shadow-xl backdrop-blur">
-        <MapLayersControl overlays variant="navigation"/>
-        <NavigationMapModeControl/>
-        <button type="button" aria-label={voiceOn ? 'Вимкнути голос' : 'Увімкнути голос'} aria-pressed={voiceOn} onClick={toggleVoice} title={voiceOn ? 'Вимкнути голосові підказки' : 'Увімкнути голосові підказки'} className={`grid h-12 w-12 place-items-center rounded-full border border-white/10 shadow-lg ${voiceOn ? 'bg-[#1789F4] text-white' : 'bg-[#10283B] text-slate-300'}`}>{voiceOn ? <Volume2 size={20}/> : <VolumeX size={20}/>}</button>
-      </div>}
-      <button type="button" aria-label={mapControlsOpen ? 'Сховати керування картою' : 'Керування картою'} aria-expanded={mapControlsOpen} onClick={() => setMapControlsOpen((open) => !open)} title={mapControlsOpen ? 'Сховати керування картою' : 'Керування картою'} className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#0A1D2D]/90 text-white shadow-lg backdrop-blur"><SlidersHorizontal size={20}/></button>
-      <button type="button" aria-label="Показати моє місце" aria-pressed={following} onClick={() => { const point = navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number] : liveFix ?? session.current_location ?? undefined; mapRef.current?.recenter(point ?? undefined); }} title="Показати моє місце" className={`grid h-12 w-12 place-items-center rounded-full border border-white/15 shadow-lg backdrop-blur ${following ? 'bg-[#1789F4] text-white' : 'bg-[#0A1D2D]/90 text-white'}`}><Navigation size={20} fill={following ? 'currentColor' : 'none'}/></button>
+    <div style={routed && sheetOpen ? { top: 'max(7rem, calc(env(safe-area-inset-top) + 5rem))', transform: 'none' } : undefined} className="absolute right-3 top-[max(6rem,calc(env(safe-area-inset-top)+4rem))] z-[510] flex flex-col items-center gap-2">
+      <MapLayersControl overlays variant="navigation" visible={isPresented}/>
+      <NavigationPerspectiveControl/>
+      <button type="button" aria-label="Показати моє місце" aria-pressed={following} onClick={() => { const point = navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number] : liveFix ?? session.current_location ?? undefined; mapRef.current?.recenter(point ?? undefined); }} title="Показати моє місце" className={`grid h-12 w-12 place-items-center rounded-full border border-slate-200 shadow-lg backdrop-blur dark:border-white/15 ${following ? 'bg-[#1789F4] text-white' : 'bg-white/95 text-[#0B1730] dark:bg-[#0A1D2D]/90 dark:text-white'}`}><Navigation size={20} fill={following ? 'currentColor' : 'none'}/></button>
+      <button type="button" aria-label={voiceOn ? 'Вимкнути голос' : 'Увімкнути голос'} aria-pressed={voiceOn} onClick={toggleVoice} title={voiceOn ? 'Вимкнути голосові підказки' : 'Увімкнути голосові підказки'} className={`grid h-12 w-12 place-items-center rounded-full border border-slate-200 shadow-lg dark:border-white/10 ${voiceOn ? 'bg-[#1789F4] text-white' : 'bg-white/95 text-slate-600 dark:bg-[#10283B]/90 dark:text-slate-300'}`}>{voiceOn ? <Volume2 size={20}/> : <VolumeX size={20}/>}</button>
     </div>
-    <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: sheetHeight + 14 } : undefined} className={`absolute left-4 z-[500] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-white/25 bg-[#071827]/90 text-center text-white shadow-lg backdrop-blur transition-[bottom] duration-300 ${sheetOpen ? (sheetHeight ? '' : 'bottom-[16rem]') : 'bottom-[max(.35rem,env(safe-area-inset-bottom))]'}`}>
-      <span><b data-testid="navigation-speed" className="block text-2xl font-extrabold leading-none text-white">{liveSpeed === null ? '—' : Math.round(liveSpeed * 3.6)}</b><small className="text-[10px] font-bold text-slate-300">км/год</small></span>
+    <NavigationBasemapPreview center={previewCenter}/>
+    <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `calc(${sheetHeight}px + 4.6rem + env(safe-area-inset-bottom))` } : undefined} className={`absolute left-4 z-[500] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-300 dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen ? (sheetHeight ? '' : 'bottom-[20rem]') : 'bottom-[calc(4.8rem+env(safe-area-inset-bottom))]'}`}>
+      <span><b data-testid="navigation-speed" className="block text-2xl font-extrabold leading-none">{liveSpeed === null ? '—' : Math.round(liveSpeed * 3.6)}</b><small className="text-[10px] font-bold text-slate-600 dark:text-slate-300">км/год</small></span>
     </div>
     {!sheetOpen && <>
-      {gpsMessage && <p role="status" className="absolute z-[500] rounded-xl bg-amber-50/95 p-2.5 text-xs leading-5 text-amber-900 shadow" style={{ left: 'calc(env(safe-area-inset-left) + 5.65rem)', right: 'calc(env(safe-area-inset-right) + 4.4rem)', bottom: 'calc(max(.35rem, env(safe-area-inset-bottom)) + 3.7rem)' }}>{gpsMessage}</p>}
+      {gpsMessage && <p role="status" className="absolute z-[500] rounded-xl bg-amber-50/95 p-2.5 text-xs leading-5 text-amber-900 shadow" style={{ left: 'calc(env(safe-area-inset-left) + 5.65rem)', right: 'calc(env(safe-area-inset-right) + 4.4rem)', bottom: 'calc(max(.35rem, env(safe-area-inset-bottom)) + 8rem)' }}>{gpsMessage}</p>}
       <button type="button" aria-label="Розгорнути панель" aria-describedby={routed ? 'navigation-route-summary' : undefined} aria-expanded={false} onClick={() => setSheetOpen(true)}
         onPointerDown={(event) => { dragStart.current = event.clientY; }}
         onPointerUp={(event) => { const start = dragStart.current; dragStart.current = null; if (start !== null && event.clientY - start < -16) setSheetOpen(true); }}
-        className="absolute z-[500] flex h-[3.25rem] items-center justify-between gap-2 rounded-2xl border border-white/15 bg-[#071827]/90 px-3 text-left text-white shadow-xl backdrop-blur active:scale-[.99]" style={{ left: 'calc(env(safe-area-inset-left) + 5.65rem)', right: 'calc(env(safe-area-inset-right) + 4.4rem)', bottom: 'max(.35rem, env(safe-area-inset-bottom))' }}>
-        {routed ? <span id="navigation-route-summary" data-testid="navigation-live-progress" className="flex min-w-0 flex-1 items-center justify-between gap-1.5 text-[11px] font-bold"><span className="truncate">{compactDuration}</span><span className="text-white/50">·</span><span className="truncate">{distance}</span><span className="text-white/50">·</span><span className="shrink-0 tabular-nums" title={eta ? `Орієнтовне прибуття ${eta}` : 'Час прибуття ще не розраховано'}>{eta ?? '—'}</span></span> : <span className="min-w-0 flex-1 truncate text-xs font-semibold">GPS-навігація активна</span>}
+        className="absolute z-[500] flex h-[3.25rem] items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 text-left text-[#0B1730] shadow-xl backdrop-blur active:scale-[.99] dark:border-white/15 dark:bg-[#071827]/90 dark:text-white" style={{ left: 'calc(env(safe-area-inset-left) + 5.65rem)', right: 'calc(env(safe-area-inset-right) + 5.5rem)', bottom: 'calc(4.8rem + env(safe-area-inset-bottom))' }}>
+        {routed ? <span id="navigation-route-summary" data-testid="navigation-live-progress" className="flex min-w-0 flex-1 items-center justify-between gap-1.5 text-[11px] font-bold"><span className="truncate">{compactDuration}</span><span className="text-slate-400 dark:text-white/50">·</span><span className="truncate">{distance}</span><span className="text-slate-400 dark:text-white/50">·</span><span className="shrink-0 tabular-nums" title={eta ? `Орієнтовне прибуття ${eta}` : 'Час прибуття ще не розраховано'}>{eta ?? '—'}</span></span> : <span className="min-w-0 flex-1 truncate text-xs font-semibold">GPS-навігація активна</span>}
         <ChevronUp size={17} className="shrink-0 text-[#66B2FF]" aria-hidden="true"/>
       </button>
     </>}
-    {sheetOpen && <section ref={sheetRef} aria-label="Панель навігації" className="absolute inset-x-0 bottom-0 z-[500] rounded-t-[1.8rem] border-t border-white/10 bg-[#071827]/95 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1.5 text-white shadow-[0_-12px_35px_rgba(0,0,0,.4)] backdrop-blur-xl transition-[padding] duration-200">
+    {sheetOpen && <section ref={sheetRef} aria-label="Панель навігації" style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))', maxHeight: 'calc(100dvh - max(.8rem, env(safe-area-inset-top)) - 5.4rem - env(safe-area-inset-bottom))' }} className="absolute inset-x-0 z-[500] overflow-y-auto rounded-t-[1.8rem] border-t border-slate-200 bg-white/95 px-5 pb-4 pt-1.5 text-[#0B1730] shadow-[0_-12px_35px_rgba(0,0,0,.2)] backdrop-blur-xl transition-[padding] duration-200 dark:border-white/10 dark:bg-[#071827]/95 dark:text-white dark:shadow-[0_-12px_35px_rgba(0,0,0,.4)]">
       <button type="button" aria-label={sheetOpen ? 'Згорнути панель' : 'Розгорнути панель'} aria-expanded={sheetOpen} onClick={() => setSheetOpen((open) => !open)}
         onPointerDown={(event) => { dragStart.current = event.clientY; }}
         onPointerUp={(event) => { const start = dragStart.current; dragStart.current = null; if (start === null) return; const delta = event.clientY - start; if (delta > 24) { setSheetOpen(false); event.preventDefault(); } else if (delta < -24) { setSheetOpen(true); event.preventDefault(); } }}
-        className="mx-auto mb-1 flex h-7 w-24 touch-none items-center justify-center"><span className="h-1.5 w-11 rounded-full bg-slate-500"/></button>{sheetOpen && <div className="flex items-center justify-between"><div><p className="text-lg font-extrabold">{session.state === 'paused' ? 'Навігацію призупинено' : fixAge === null ? 'Очікуємо GPS' : fixAge > 45 || !visible ? 'GPS застарів' : 'Навігація активна'}</p><p className="mt-1 text-xs text-slate-300">{session.current_location_accuracy_m ? `Точність ±${Math.round(session.current_location_accuracy_m)} м` : 'Очікуємо першу GPS-точку'}{fixAge !== null ? ` · ${fixAge} с тому` : ''}</p></div><span className={`rounded-full px-3 py-1.5 text-xs font-bold ${session.state === 'paused' || !visible || fixAge !== null && fixAge > 45 ? 'bg-amber-100 text-amber-800' : onRoute === false ? 'bg-rose-100 text-rose-700' : routed && onRoute === true ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{session.state === 'paused' ? 'Безпечно зупинено' : !visible || fixAge !== null && fixAge > 45 ? 'GPS пауза' : onRoute === false ? 'Поза маршрутом' : !routed && fixAge !== null ? 'Без маршруту' : onRoute === true ? 'На маршруті' : 'Перевірка GPS'}</span></div>}
+        className="mx-auto mb-1 flex h-7 w-24 touch-none items-center justify-center"><span className="h-1.5 w-11 rounded-full bg-slate-300 dark:bg-slate-500"/></button>{sheetOpen && <div className="flex items-center justify-between"><div><p className="text-lg font-extrabold">{session.state === 'paused' ? 'Навігацію призупинено' : fixAge === null ? 'Очікуємо GPS' : fixAge > 45 || !visible ? 'GPS застарів' : 'Навігація активна'}</p><p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{session.current_location_accuracy_m ? `Точність ±${Math.round(session.current_location_accuracy_m)} м` : 'Очікуємо першу GPS-точку'}{fixAge !== null ? ` · ${fixAge} с тому` : ''}</p></div><span className={`rounded-full px-3 py-1.5 text-xs font-bold ${session.state === 'paused' || !visible || fixAge !== null && fixAge > 45 ? 'bg-amber-100 text-amber-800' : onRoute === false ? 'bg-rose-100 text-rose-700' : routed && onRoute === true ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{session.state === 'paused' ? 'Безпечно зупинено' : !visible || fixAge !== null && fixAge > 45 ? 'GPS пауза' : onRoute === false ? 'Поза маршрутом' : !routed && fixAge !== null ? 'Без маршруту' : onRoute === true ? 'На маршруті' : 'Перевірка GPS'}</span></div>}
       {gpsMessage && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">{gpsMessage}</p>}
       {sheetOpen && session.state === 'paused' && <div className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-900">Навігацію призупинено. Перевірте, що автомобіль безпечно зупинений.</div>}
       {sheetOpen && matchingPanel}

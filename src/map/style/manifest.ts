@@ -3,13 +3,11 @@ import { z } from 'zod';
 export const mapAssetManifestSchema = z.object({
   schemaVersion: z.literal(1), mapDataVersion: z.string().min(1), styleVersion: z.string().min(1),
   mapDataUrl: z.string().url(),
-  // All vector states must be versioned together. A partially configured map
-  // would make a mode/theme switch silently reuse the wrong visual treatment.
+  // Both themes of the vector basemap are versioned together. Camera perspective
+  // is independent and does not require a separate map style.
   styles: z.object({
     MARSHGO_LIGHT: z.string().url(),
     MARSHGO_DARK: z.string().url(),
-    MARSHGO_3D_LIGHT: z.string().url(),
-    MARSHGO_3D_DARK: z.string().url(),
   }),
 }).superRefine((manifest, context) => {
   for (const [name, url] of Object.entries(manifest.styles)) {

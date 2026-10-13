@@ -46,7 +46,6 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
       maplibre.setWorkerUrl(mapLibreWorkerUrl);
       map = new maplibre.Map({ container: container.current, style: assets.style, center, zoom: initial ? 14 : 5.5, attributionControl: { compact: true } });
       mapRef.current = map;
-      map.addControl(new maplibre.NavigationControl({ showCompass: false }), 'bottom-right');
       map.on('moveend', () => { const c = map!.getCenter(); scheduleResolve(c.lat, c.lng); });
       map.once('load', () => { const c = map!.getCenter(); if (initial) void resolve(c.lat, c.lng); else setState('ready'); });
     }).catch(() => { setState('error'); setMessage('Не вдалося завантажити мапу.'); });
