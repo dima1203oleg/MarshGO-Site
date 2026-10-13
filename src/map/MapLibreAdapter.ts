@@ -24,6 +24,7 @@ export class MapLibreAdapter implements MapAdapter {
   private vehicle: Coordinate | null = null;
   private waypoints: Array<{ coordinate: Coordinate; kind: string }> = [];
   private cameraMode: CameraMode = 'OVERVIEW';
+  private cameraRequestSequence = 0;
   private theme: MapTheme = 'MARSHGO_3D_LIGHT';
   private seenTileError = false;
   private layer: MapLayer = 'simple';
@@ -45,15 +46,21 @@ export class MapLibreAdapter implements MapAdapter {
     maplibregl.setWorkerUrl(mapLibreWorkerUrl);
     container.dataset.marshgoMapRenderer = 'maplibre';
     container.dataset.marshgoMapIdle = 'false';
+    container.dataset.marshgoCameraRequestId = '0';
+    container.dataset.marshgoCameraSettledId = '0';
+    container.dataset.marshgoCameraMoving = 'false';
     this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', center: [30.5234, 50.4501], zoom: 5, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false });
     this.map.on('render', () => { container.dataset.marshgoMapIdle = 'false'; });
     this.map.on('resize', () => { container.dataset.marshgoMapIdle = 'false'; });
     this.map.on('idle', () => { container.dataset.marshgoMapIdle = 'true'; });
+    this.map.on('movestart', () => { container.dataset.marshgoCameraMoving = 'true'; });
     this.map.on('moveend', () => {
       const center = this.map.getCenter();
       container.dataset.marshgoCameraZoom = this.map.getZoom().toFixed(2);
       container.dataset.marshgoCameraCenter = `${center.lng.toFixed(6)},${center.lat.toFixed(6)}`;
       container.dataset.marshgoCameraBearing = this.map.getBearing().toFixed(2);
+      container.dataset.marshgoCameraSettledId = String(this.cameraRequestSequence);
+      container.dataset.marshgoCameraMoving = 'false';
     });
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: false, visualizePitch: true }), 'bottom-right');
     this.map.on('load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.basemapConfigured() ? 'available' : 'unconfigured'); });
@@ -87,6 +94,11 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.on('zoomstart', userGesture);
     this.map.on('rotatestart', userGesture);
     this.map.on('pitchstart', userGesture);
+  }
+
+  private markCameraRequest() {
+    this.cameraRequestSequence += 1;
+    this.map.getContainer().dataset.marshgoCameraRequestId = String(this.cameraRequestSequence);
   }
 
   private publish(status: MapStatus) { this.status = this.seenTileError && status === 'available' ? 'degraded' : status; this.onStatus(this.status); }
@@ -351,6 +363,7 @@ export class MapLibreAdapter implements MapAdapter {
     if (!this.vehicle) return;
     const { clientHeight } = this.map.getContainer();
     const tilt = this.layer === 'threeD' ? mapLayers.threeD.pitch : 0;
+    this.markCameraRequest();
     this.map.easeTo({
       center: this.vehicle, zoom: Math.max(this.map.getZoom(), 17), pitch: tilt,
       bearing: this.heading ?? this.map.getBearing(),
@@ -385,6 +398,7 @@ export class MapLibreAdapter implements MapAdapter {
       bottom: Math.min(Math.max(0, clientHeight - top - 1), overrides.bottom ?? Math.min(270, clientHeight * 0.2)),
       left: Math.min(clientWidth * 0.15, overrides.left ?? Math.min(32, clientWidth * 0.1)),
     };
+    this.markCameraRequest();
     this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
       padding,
       duration: 520,
@@ -421,7 +435,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.transport ??= new TransportLayerController(this.map, (message) => this.onTransportHint(message));
     this.transport.apply(layers);
   }
-  focus(point: Coordinate, zoom = 13) { this.cameraMode = 'FREE'; this.map.easeTo({ center: point, zoom, duration: 600, essential: true }); }
+  focus(point: Coordinate, zoom = 13) { this.cameraMode = 'FREE'; this.markCameraRequest(); this.map.easeTo({ center: point, zoom, duration: 600, essential: true }); }
   setCameraMode(mode: CameraMode) { this.setCameraModeInternal(mode); }
   setTheme(theme: MapTheme) {
     const nextTheme = this.themeForLayer(this.layer, theme);
