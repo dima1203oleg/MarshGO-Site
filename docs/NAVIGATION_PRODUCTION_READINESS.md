@@ -10,7 +10,8 @@
 - MapLibre route renderer, базові UI layers, вибір двох basemaps та незалежна камера-перспектива у поточних P1 змінах.
 - Навігаційний actions sheet: route overview, голос, завершення сесії та destination-only share link; дії без відповідного API відключені й позначені.
 - Згорнута картка ведення показує наступний маршрутний маневр із доступними ETA/відстанню/тривалістю; це browser UI, а не native lock-screen guidance.
-- Поточний локальний Site baseline: 76/76 unit tests, typecheck, lint, build і gzip bundle check проходять.
+- Нижня navigation sheet має протестовані unit-функцією collapsed / partial / expanded snap transitions.
+- Поточний локальний Site baseline: 78/78 unit tests, typecheck, lint, build і gzip bundle check проходять.
 - Unit/lint/typecheck/build пройшли на локальному Site tree.
 
 ## Заблоковано або не підтверджено
