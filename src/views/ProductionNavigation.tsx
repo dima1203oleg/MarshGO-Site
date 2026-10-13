@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowLeft, ArrowUp, ChevronUp, CornerUpLeft, CornerUpRight, Flag, Layers, Map, MapPin, MoreHorizontal, Navigation, LocateFixed, RotateCcw, RefreshCw, Search, Share2, ShieldCheck, Square, TriangleAlert, Volume2, VolumeX, X, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ChevronUp, CornerUpLeft, CornerUpRight, Eye, Flag, Layers, Map, MapPin, MoreHorizontal, Navigation, LocateFixed, RotateCcw, RefreshCw, Search, Share2, ShieldCheck, Square, TriangleAlert, Volume2, VolumeX, X, type LucideIcon } from 'lucide-react';
 import { dueAnnouncement, formatGuidanceDistance, instructionText, nextGuidance, prepareGuidance, voiceLine } from '../navigation/guidance';
 import type { Maneuver } from '../../shared/navigation/contracts';
 import { ApiNavigationMatch, ApiNavigationSession, ApiPlace, productionApi } from '../services/productionApi';
@@ -119,6 +119,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const autoStartTried = useRef(false);
   const [sheetLevel, setSheetLevel] = useState<NavigationSheetLevel>('collapsed');
   const sheetOpen = sheetLevel !== 'collapsed';
+  const [focusMode, setFocusMode] = useState(() => { try { return localStorage.getItem('marshgo.navigation.focusMode') === 'on'; } catch { return false; } });
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsDialogRef = useRef<HTMLElement | null>(null);
   const dragStart = useRef<number | null>(null);
@@ -160,6 +161,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   }));
   const navigationState = useSyncExternalStore(navigationStore.subscribe, navigationStore.getSnapshot, navigationStore.getSnapshot);
   useEffect(() => onSessionActiveChange?.(Boolean(session && session.state !== 'ended')), [onSessionActiveChange, session?.id, session?.state]);
+  useEffect(() => { try { localStorage.setItem('marshgo.navigation.focusMode', focusMode ? 'on' : 'off'); } catch { /* focus preference is optional */ } }, [focusMode]);
   useEffect(() => { if (!isPresented) setActionsOpen(false); }, [isPresented]);
   useEffect(() => {
     if (!actionsOpen) return;
@@ -592,8 +594,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number]
     : liveFix ?? session.current_location ?? session.route?.[0] ?? null;
   return <main aria-hidden={!isPresented} className={`fixed inset-0 z-20 overflow-hidden bg-[#dbeafe] text-[#17243a] dark:bg-[#081B35] dark:text-white ${isPresented ? '' : 'invisible pointer-events-none'}`}>
-    <MarshGoMap route={session.route ?? []} vehicle={navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] : liveFix ?? session.current_location} heading={liveHeading} overlays onStatus={setMapStatus} onAdapter={(adapter) => { mapRef.current = adapter; if (adapter) adapter.onCameraModeChange = (mode) => setFollowing(mode === 'FOLLOW' || mode === 'FOLLOW_HEADING'); }} />
-    {routed && <div aria-label="MARSHGO" className="absolute left-4 z-[490] select-none text-[1.3rem] font-black tracking-[-.06em] text-[#0B1730] drop-shadow-sm dark:text-white" style={{ top: 'max(.6rem, env(safe-area-inset-top))' }}>MARSH<span className="text-[#0878F9]">GO</span></div>}
+    <MarshGoMap route={session.route ?? []} vehicle={navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] : liveFix ?? session.current_location} heading={liveHeading} overlays focusMode={focusMode} onStatus={setMapStatus} onAdapter={(adapter) => { mapRef.current = adapter; if (adapter) adapter.onCameraModeChange = (mode) => setFollowing(mode === 'FOLLOW' || mode === 'FOLLOW_HEADING'); }} />
+    {routed && !focusMode && <div aria-label="MARSHGO" className="absolute left-4 z-[490] select-none text-[1.3rem] font-black tracking-[-.06em] text-[#0B1730] drop-shadow-sm dark:text-white" style={{ top: 'max(.6rem, env(safe-area-inset-top))' }}>MARSH<span className="text-[#0878F9]">GO</span></div>}
     {!routed && <>
     <div className="absolute left-4 right-4 top-[max(.8rem,env(safe-area-inset-top))] z-[500] rounded-[1.3rem] bg-white p-3 shadow-xl">
       <form onSubmit={(event) => { event.preventDefault(); if (topQuery.trim().length >= 3) void searchTopDestination(); }} className="flex items-center gap-2">
@@ -640,12 +642,13 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
           <button type="button" disabled title="Пошук POI уздовж маршруту ще не підключений" className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Search size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Пошук уздовж маршруту</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Пошук місць і detour-оцінка ще не підключені</small></span><small className="text-[10px]">недоступно</small></button>
           <button type="button" disabled={!session.route?.length} onClick={() => void shareRoute()} className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Share2 size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Поділитися маршрутом</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Одержувач побудує маршрут до цієї точки зі свого місця</small></span><ChevronUp size={17} className="rotate-90 text-slate-400"/></button>
           <button type="button" disabled title="Серверне джерело дорожніх подій ще не підключене" className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><TriangleAlert size={21} className="shrink-0 text-amber-600"/><span className="flex-1"><b className="block text-sm">Повідомити про подію</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Надсилання дорожніх подій ще не підключене</small></span><small className="text-[10px]">недоступно</small></button>
+          <button type="button" aria-pressed={focusMode} onClick={() => { setFocusMode((value) => !value); setActionsOpen(false); }} className="flex min-h-14 w-full items-center gap-3 py-2 text-left"><Eye size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Фокус-режим карти</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Приховати другорядні транспортні шари й мініатюру карти</small></span><span className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform ${focusMode ? 'bg-[#1789F4] after:translate-x-4' : 'bg-slate-300 dark:bg-slate-600'}`}/></button>
           <button type="button" aria-pressed={voiceOn} onClick={toggleVoice} className="flex min-h-14 w-full items-center gap-3 py-2 text-left"><span className={`grid h-9 w-9 place-items-center rounded-full ${voiceOn ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>{voiceOn ? <Volume2 size={19}/> : <VolumeX size={19}/>}</span><span className="flex-1"><b className="block text-sm">Голосові підказки</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Українське озвучення маневрів</small></span><span className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform ${voiceOn ? 'bg-[#1789F4] after:translate-x-4' : 'bg-slate-300 dark:bg-slate-600'}`}/></button>
           <button type="button" disabled={busy} onClick={() => { setActionsOpen(false); void end(); }} className="flex min-h-14 w-full items-center gap-3 py-2 text-left text-rose-600 disabled:opacity-45"><span className="grid h-9 w-9 place-items-center rounded-full bg-rose-100 dark:bg-rose-500/15"><Square size={17} fill="currentColor"/></span><span className="flex-1"><b className="block text-sm">Завершити навігацію</b><small className="text-[11px] text-slate-500 dark:text-slate-400">Зупинити ведення маршрутом</small></span></button>
         </div>
       </section>
     </div>}
-    <NavigationBasemapPreview center={previewCenter} aboveSummary={!sheetOpen}/>
+    {!focusMode && <NavigationBasemapPreview center={previewCenter} aboveSummary={!sheetOpen}/>}
     <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `calc(${sheetHeight}px + 4.6rem + env(safe-area-inset-bottom))` } : !sheetOpen ? { bottom: 'calc(10.2rem + env(safe-area-inset-bottom))' } : undefined} className={`absolute left-4 z-[500] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-300 dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen && !sheetHeight ? 'bottom-[20rem]' : ''}`}>
       <span><b data-testid="navigation-speed" className="block text-2xl font-extrabold leading-none">{liveSpeed === null ? '—' : Math.round(liveSpeed * 3.6)}</b><small className="text-[10px] font-bold text-slate-600 dark:text-slate-300">км/год</small></span>
     </div>

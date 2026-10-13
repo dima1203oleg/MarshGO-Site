@@ -5,15 +5,16 @@ import type { ColoredRouteSegment, MapAdapter, MapStatus, MapTheme, RouteFitPadd
 import { getMapLayer, getMapPerspective, styleForLayer, subscribeMapLayer, subscribeMapPerspective, type MapLayer } from './mapMode';
 import { getTransportLayers, subscribeTransportLayers } from './transportLayers';
 import { getMapDisplayPreferences, subscribeMapDisplayPreferences } from './mapLayerPreferences';
+import { visibleTransportLayers } from './focusMode';
 import { configuredMapStyleUrl } from './mapConfig';
 import { themeService } from '../services/theme';
 
-type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: Array<{ coordinate: Coordinate; kind: string }>; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
+type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: Array<{ coordinate: Coordinate; kind: string }>; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; focusMode?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
 function themeForMapLayer(layer: MapLayer, dark: boolean): MapTheme {
   void layer;
   return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
 }
-export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPadding, activeRouteSegmentId = null, onRouteSegmentSelect, vehicle, heading = null, theme, overlays = false, onTransportHint, onStatus, onAdapter }: Props) {
+export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPadding, activeRouteSegmentId = null, onRouteSegmentSelect, vehicle, heading = null, theme, overlays = false, focusMode = false, onTransportHint, onStatus, onAdapter }: Props) {
   const container = useRef<HTMLDivElement | null>(null);
   const adapter = useRef<MapAdapter | null>(null);
   const syncOverlays = useRef<() => void>(() => undefined);
@@ -79,8 +80,8 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
   useEffect(() => subscribeMapPerspective((perspective) => adapter.current?.setPerspective(perspective)), []);
   useEffect(() => subscribeMapDisplayPreferences((preferences) => adapter.current?.setTransportDisplayPreferences(preferences)), []);
   // Information layers remain independent from the selected 2D/3D/satellite basemap.
-  syncOverlays.current = () => adapter.current?.setTransportLayers(overlays ? getTransportLayers() : new Set());
-  useEffect(() => { syncOverlays.current(); }, [overlays]);
+  syncOverlays.current = () => adapter.current?.setTransportLayers(overlays ? visibleTransportLayers(getTransportLayers(), focusMode) : new Set());
+  useEffect(() => { syncOverlays.current(); }, [overlays, focusMode]);
   useEffect(() => subscribeMapLayer(() => syncOverlays.current()), []);
   useEffect(() => subscribeTransportLayers(() => syncOverlays.current()), []);
   const fallbackBackground = activeTheme.endsWith('_DARK')
