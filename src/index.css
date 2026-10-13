@@ -1056,7 +1056,18 @@ html.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1
 html.dark .home-screen .home-intro { background: linear-gradient(145deg, var(--mg-surface-primary), var(--mg-surface-secondary)) !important; border-color: var(--mg-border-subtle) !important; box-shadow: none !important; }
 html.dark .home-screen .home-intro::after { background: rgba(23,137,244,.18) !important; }
 html.dark .home-screen .home-title { color: var(--mg-ink-primary) !important; }
+html.dark .home-screen .home-description { color: var(--mg-ink-secondary) !important; }
 html.dark .home-screen .home-greeting { color: #8CC4FF !important; }
+html.dark .home-screen .journey-search-card {
+  border-color: var(--mg-border-subtle) !important;
+  background: var(--mg-surface-primary) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .26) !important;
+}
+html.dark .home-screen .journey-search-card label { background-color: var(--mg-surface-secondary); }
+html.dark .home-screen .journey-search-card button:not([type="submit"]) {
+  background-color: var(--mg-surface-secondary);
+  color: var(--mg-ink-primary);
+}
 html.dark .search-screen .home-intro { border-color: #263648 !important; }
 html.dark .transport-mode-grid > button[aria-pressed="true"] {
   border-color: #1687FF !important;
@@ -1093,6 +1104,7 @@ html.dark .home-canonical-banner h1 { color: #eff6ff; }
 html.dark .home-canonical-banner p { color: #bfdbfe; }
 html.dark .home-trip-card > span:nth-child(2) > span:nth-child(2) { color: #eff6ff; }
 html.dark .home-hero--canonical .home-city-pill { background: #111820; color: #eff6ff; border-color: #263648 !important; }
+html.dark .home-screen .home-intro { border-radius: 1.4rem; }
 html.dark .home-action-card { border-color: #30465c; box-shadow: 0 8px 20px rgba(0,0,0,.22), inset 0 1px rgba(255,255,255,.04); }
 html.dark .home-action-card--navigation { background: linear-gradient(145deg,#1264ed,#0b54c5); }
 html.dark .home-action-card--transport { background: linear-gradient(145deg,#08775c,#065a48); }
