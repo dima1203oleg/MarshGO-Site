@@ -1,6 +1,6 @@
 # MARSHGO Navigation 3.0 — тест-звіт
 
-Дата: 2026-10-14. Локальні перевірки виконані на робочій копії після Site `f85e61c`; focus-mode зміни очікують окремого коміту й hosted CI.
+Дата: 2026-10-14. Локальні перевірки виконані на Site `517f2fa`; hosted CI на цьому SHA пройшов.
 
 | Перевірка | Результат |
 | --- | --- |
@@ -10,7 +10,7 @@
 | `npm run build` | PASS — Vite production build |
 | `npm run check:bundle` | PASS — 17 JavaScript chunks, кожен ≤ 350 KB gzip; найбільший MapLibre chunk 274.5 KB gzip |
 | `git diff --check` | PASS |
-| Site GitHub CI | PASS — два `verify` checks на code SHA `f85e61cb500ce628ee2f93cf8ba56e8fe2e9a49d`; focus-mode SHA ще очікує hosted CI |
+| Site GitHub CI | PASS — два `verify` checks на code SHA `517f2fa657976259413f26db69c81970188e0b47` |
 | `MarshGO-Server` `npm run typecheck` | PASS |
 | `MarshGO-Server` `npm run lint` | PASS |
 | `MarshGO-Server` `npm test` | PASS — 195 тестів, 194 пройшли, 1 opt-in integration test пропущено |

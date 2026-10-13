@@ -11,8 +11,8 @@
 - Навігаційний actions sheet: route overview, голос, завершення сесії та destination-only share link; дії без відповідного API відключені й позначені.
 - Згорнута картка ведення показує наступний маршрутний маневр із доступними ETA/відстанню/тривалістю; це browser UI, а не native lock-screen guidance.
 - Нижня navigation sheet має протестовані unit-функцією collapsed / partial / expanded snap transitions.
-- Поточний локальний Site baseline: 78/78 unit tests, typecheck, lint, build і gzip bundle check проходять.
-- Unit/lint/typecheck/build пройшли на локальному Site tree.
+- Site SHA `517f2fa657976259413f26db69c81970188e0b47`: 80/80 unit tests, typecheck, lint, Vite build і gzip bundle check проходять локально; обидва hosted verify checks проходять.
+- Фокус-режим зберігає вибір шарів, тимчасово приховує другорядні transport overlays, логотип та basemap preview. Перевірено unit tests; автоматична адаптація базових map labels і device usability ще не перевірені.
 
 ## Заблоковано або не підтверджено
 

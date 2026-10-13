@@ -2,13 +2,13 @@
 
 Дата: 2026-10-14  
 Репозиторій UI: `MarshGO-Site`, базовий коміт `68bae61bfbf3a3721ba11c4a7cc325f9d014a9ab`, гілка `codex/sync-journey-mobility-ui`.  
-Стан цього звіту: P0 аудит виконаний; P1 зміни в робочому дереві, ще не відправлені в PR.
+Стан цього звіту: P0 аудит виконаний; P1 зміни на гілці Site PR #3, поточний код проходить hosted CI. Точний актуальний SHA та локальні результати наведені у `NAVIGATION_TEST_REPORT.md`.
 
 ## Канонічні власники
 
 | Частина | Репозиторій | Поточний стан |
 | --- | --- | --- |
-| Web/PWA UI, MapLibre, клієнтські navigation state та GPS | MarshGO-Site | Основне джерело UI; P1 зміни локальні |
+| Web/PWA UI, MapLibre, клієнтські navigation state та GPS | MarshGO-Site | Основне джерело UI; P1 зміни у Site PR #3 |
 | Навігаційні API, PostGIS, маршрутизація, transport adapters | MarshGO-Server | Окремий PR #3, попередній CI успішний |
 | Capacitor та Xcode wrapper | MarshGO-iOS | Окремий PR #2; застосунок вбудовує Site bundle |
 | Umbrella acceptance / E2E | MarshGO | Окремий PR #1; CI на базовому SHA успішний |
@@ -49,6 +49,7 @@
 - Маневровий банер має контрастний синій стан, а згорнута картка над tabbar показує найближчий підтверджений маневр, тривалість, відстань і ETA, якщо він обчислений.
 - Context actions має клавіатурний focus trap; share link передає лише destination і не містить origin, GPS history чи session ID.
 - Активний NavigationMapScreen використовує спільний MapLibre TransportLayerManager; панель шарів тепер керує тим самим джерелом та видимістю, що й інші карти.
+- Фокус-режим зберігає вибір користувача, але приховує другорядні транспортні overlays, логотип і basemap preview; базові route та maneuver інформація лишаються. Автоматична зміна деталізації підкладки ще відсутня.
 
 ## Точність приймання
 
