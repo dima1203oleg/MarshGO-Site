@@ -10,7 +10,7 @@
 | `npm run build` | PASS — Vite production build |
 | `npm run check:bundle` | PASS — 17 JavaScript chunks, кожен ≤ 350 KB gzip; найбільший MapLibre chunk 274.5 KB gzip |
 | `git diff --check` | PASS |
-| GitHub CI для поточних незакомічених P1 змін | ЩЕ НЕ ЗАПУЩЕНО |
+| Site GitHub CI | PASS — два `verify` checks на code SHA `5eda6a24e0a1f9ee6d88dc177c0c9d50f3aafaed` |
 | `MarshGO-Server` `npm run typecheck` | PASS |
 | `MarshGO-Server` `npm run lint` | PASS |
 | `MarshGO-Server` `npm test` | PASS — 195 тестів, 194 пройшли, 1 opt-in integration test пропущено |
