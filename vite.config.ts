@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'node:url';
 import {defineConfig} from 'vite';
 
+// Only the local machine and the zrok tunnel may reach the dev/preview server (DNS-rebinding protection).
+const tunnelHosts = ['localhost', '127.0.0.1', '.zrok.io'];
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => {
@@ -26,6 +28,15 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      allowedHosts: tunnelHosts,
+      proxy: {
+        '/api': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
+        '/healthz': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
+        '/readyz': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
+      },
+    },
+    preview: {
+      allowedHosts: tunnelHosts,
       proxy: {
         '/api': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
         '/healthz': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },

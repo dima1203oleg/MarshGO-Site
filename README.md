@@ -24,3 +24,7 @@ The full two-account booking, negotiation, persisted chat and provider-fixture r
 ## Release status
 
 This is a PWA source repository, not a deployed website. An HTTPS site/API origin, map tile provider and attribution, SMS, geocoding/routing and object-storage provider setup remain required for the complete real-user journey.
+
+## Cross-repository audit
+
+The architecture and migration audit is maintained by the MarshGO documentation owner in the [`codex/marshgo-production` audit index](https://github.com/dima1203oleg/MarshGO/tree/codex/marshgo-production/docs/audit). The current Site CI does not by itself prove staging or production acceptance.
