@@ -1,13 +1,9 @@
 import { useState } from 'react';
-import { Bike, Bus, CarTaxiFront, KeyRound, SlidersHorizontal, TrainFront, TramFront, Users, Zap, Repeat, type LucideIcon } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import { choiceFor, hasJourneySearchProvider, isAllActive, isJourneySearchSupported, providersForJourneySearch, selectAll, toggleProvider, toggleType, transportTypes, type TransportSelection, type TransportTypeId } from '../domain/transportPreferences';
+import { TransportIcon } from '../design-system/transport/TransportIcon';
+import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import type { ApiTransportProviders } from '../services/productionApi';
-
-const tileIcons: Record<TransportTypeId, LucideIcon> = {
-  bus: Bus, marshrutka: Bus, trolleybus: Bus, tram: TramFront, metro: TrainFront,
-  carpool: Users, taxi: CarTaxiFront, train: TrainFront, bike: Bike, scooter: Zap,
-  carsharing: KeyRound, transfer: Repeat,
-};
 
 // This order follows the approved route-search screen, while the domain
 // catalogue remains ordered by the product's broader transport taxonomy.
@@ -15,31 +11,12 @@ const routeSearchOrder: readonly TransportTypeId[] = [
   'carpool', 'marshrutka', 'bus', 'taxi', 'trolleybus', 'metro', 'tram', 'train',
   'bike', 'scooter', 'carsharing', 'transfer',
 ];
-const routeSearchLabels: Partial<Record<TransportTypeId, string>> = {
-  carpool: 'Попутка', marshrutka: 'Маршрутка', bus: 'Автобус', taxi: 'Таксі',
-  trolleybus: 'Тролейбус', metro: 'Метро', tram: 'Трамвай', train: 'Поїзд',
-  bike: 'Велосипед', scooter: 'Самокат', carsharing: 'Каршеринг', transfer: 'Трансфер',
-};
-const iconTones: Record<TransportTypeId, string> = {
-  carpool: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300',
-  marshrutka: 'bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-300',
-  bus: 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300',
-  taxi: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
-  trolleybus: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-  metro: 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300',
-  tram: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300',
-  train: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300',
-  bike: 'bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-300',
-  scooter: 'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300',
-  carsharing: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300',
-  transfer: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-};
-
-function Tile({ label, visualLabel = label, Icon, selected, disabled, disabledReason, compact, type, onClick }: { label: string; visualLabel?: string; Icon: LucideIcon; selected: boolean; disabled: boolean; disabledReason?: string; compact?: boolean; type: TransportTypeId; onClick: () => void }) {
+function Tile({ label, visualLabel = label, selected, disabled, disabledReason, compact, type, onClick }: { label: string; visualLabel?: string; selected: boolean; disabled: boolean; disabledReason?: string; compact?: boolean; type: TransportTypeId; onClick: () => void }) {
   const description = disabled && disabledReason ? `${label}. ${disabledReason}` : label;
+  const visual = getTransportModeVisual(type);
   return <button type="button" aria-pressed={disabled ? false : selected} aria-label={description} disabled={disabled} title={disabledReason}
     onClick={onClick} className={`relative flex min-h-[5.8rem] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 py-3 text-center font-semibold leading-tight transition-colors ${compact ? 'min-h-[4.25rem] gap-1 rounded-xl py-1.5 text-[9px]' : 'text-[11px]'} ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-[#161f2a] dark:text-slate-500' : selected ? 'border-[#1789F4] bg-[#EAF3FF] text-[#1789F4] dark:border-[#1687FF] dark:bg-[#102746] dark:text-[#66B2FF]' : 'border-[#E5EDF7] bg-white text-[#475569] shadow-sm dark:border-[#263648] dark:bg-[#111820] dark:text-[#B6C2D0]'}`}>
-    <span className={`grid place-items-center ${compact ? 'h-7 w-7 rounded-lg' : 'h-9 w-9 rounded-xl'} ${disabled ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500' : iconTones[type]}`}><Icon size={compact ? 16 : 18}/></span>{visualLabel}
+    <span className={`grid place-items-center ${compact ? 'h-7 w-7 rounded-lg' : 'h-9 w-9 rounded-xl'} ${disabled ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500' : ''}`} style={disabled ? undefined : visual.badgeStyle}><TransportIcon mode={type} size={compact ? 16 : 18}/></span>{visualLabel}
     {disabled && <span className="sr-only">Недоступно для побудови маршруту в цьому районі</span>}
   </button>;
 }
@@ -66,7 +43,7 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
       </span>
     </div>
     {!compact && <p className="mb-3 text-xs leading-5 text-slate-500">Рівно 12 категорій у затвердженому порядку. Неактивні категорії залишаються видимими; «Пішки» додається автоматично до пересадок.</p>}
-    <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? routeSearchLabels[type.id] : type.label} Icon={tileIcons[type.id]} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>
+    <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>
     {!compact && allActive && <button type="button" onClick={() => setExpandedAll((value) => !value)} className="mt-3 text-xs font-bold text-[#1789F4]">{expandedAll ? 'Сховати провайдерів' : 'Налаштувати провайдерів'}</button>}
     {!compact && showProviders && <div className="mt-3 space-y-3" aria-label="Провайдери">
       <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Провайдери</h3>

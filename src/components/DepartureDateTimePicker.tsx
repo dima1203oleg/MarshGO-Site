@@ -61,7 +61,7 @@ function WheelColumn({ label, values, selected, onSelect, selectedIndex }: {
       className="h-full snap-y snap-mandatory overflow-y-auto overscroll-contain px-2 text-center text-2xl font-medium text-slate-400 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       <div aria-hidden="true" className="h-[88px]"/>
-      {values.map((value, index) => <button key={value} type="button" role="option" aria-selected={value === selected} onClick={() => { userScrolled.current = true; onSelect(value); ref.current?.scrollTo({ top: index * ITEM_HEIGHT, behavior: 'smooth' }); }} className={`block h-11 w-full snap-center ${value === selected ? 'font-bold text-white' : ''}`}>{pad(value)}</button>)}
+      {values.map((value, index) => <button key={value} type="button" role="option" aria-selected={value === selected} onClick={() => { userScrolled.current = true; onSelect(value); if (ref.current) ref.current.scrollTop = index * ITEM_HEIGHT; }} className={`block h-11 w-full snap-center ${value === selected ? 'font-bold text-white' : ''}`}>{pad(value)}</button>)}
       <div aria-hidden="true" className="h-[88px]"/>
     </div>
     <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-16 bg-gradient-to-b from-[#0d2340] to-transparent"/>

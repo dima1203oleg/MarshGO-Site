@@ -3,9 +3,9 @@ import type { Coordinate } from '../../shared/navigation/contracts';
 export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 'failed';
 export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK' | 'MARSHGO_3D_LIGHT' | 'MARSHGO_3D_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
-export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; modeColor: string };
+export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; modeColor: string; approximate?: boolean };
 export type LiveTransitPosition = { coordinates: Coordinate; color: string; label: string; updatedAt: string };
-export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number };
+export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number; bearing?: number };
 export interface MapAdapter {
   setRoute(points: Coordinate[]): void;
   setRouteSegments?(segments: ColoredRouteSegment[]): void;

@@ -2,17 +2,10 @@ import type { ApiJourney } from '../services/productionApi';
 import type { ColoredRouteSegment } from './MapAdapter';
 import type { Coordinate } from '../../shared/navigation/contracts';
 import { journeyLegLabel } from '../views/journeyLegLabel';
-
-const MODE_COLORS: Record<string, string> = {
-  BUS: '#1687FF', URBAN_BUS: '#1687FF', MINIBUS: '#FF9A32', MARSHRUTKA: '#FF9A32',
-  TROLLEYBUS: '#00C2A0', TRAM: '#F43F7B', METRO: '#5B5DF2', RAIL: '#5B5DF2',
-  COMMUNITY: '#A855F7', COMMUNITY_DEMAND: '#A855F7', TAXI: '#FFB020', TRANSFER: '#52B8FF',
-  CARSHARING: '#8CBF26', CAR_RENTAL: '#8CBF26', BIKE: '#20B86A', BICYCLE: '#20B86A',
-  SCOOTER: '#00C59A', FERRY: '#0891B2', FUNICULAR: '#64748B', WALK: '#91A6BB',
-};
+import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 
 export const journeyModeColor = (mode: string, transportType?: string) =>
-  MODE_COLORS[transportType?.toUpperCase() ?? ''] ?? MODE_COLORS[mode.toUpperCase()] ?? '#1687FF';
+  getTransportModeVisual(mode, transportType).color;
 
 export function formatTransferCount(value: number): string {
   const count = Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
@@ -34,26 +27,41 @@ export type JourneyRouteMapLeg = {
   label: string;
   color: string;
   coordinates: Coordinate[];
+  approximate?: boolean;
 };
+
+function validCoordinate(point: unknown): point is Coordinate {
+  return Array.isArray(point) && point.length === 2
+    && Number.isFinite(point[0]) && Number.isFinite(point[1])
+    && point[0] >= -180 && point[0] <= 180 && point[1] >= -90 && point[1] <= 90;
+}
 
 export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
   legs: JourneyRouteMapLeg[];
   routeSegments: ColoredRouteSegment[];
   routeWaypoints: Array<{ coordinate: Coordinate; kind: string }>;
   missingShapeCount: number;
+  approximateWalkCount: number;
 } {
-  const shapedLegs = legs.flatMap(leg => {
-    const coordinates = validGeometry(leg.routeGeometry);
+  const mappedLegs = legs.flatMap(leg => {
+    let coordinates = validGeometry(leg.routeGeometry);
+    let approximate = false;
+    if (coordinates.length < 2 && leg.mode === 'WALK'
+      && (leg.source === 'walking-estimate' || leg.source === 'straight-line-estimate')
+      && validCoordinate(leg.origin?.coordinates) && validCoordinate(leg.destination?.coordinates)
+      && (leg.origin.coordinates[0] !== leg.destination.coordinates[0] || leg.origin.coordinates[1] !== leg.destination.coordinates[1])) {
+      coordinates = [leg.origin.coordinates, leg.destination.coordinates];
+      approximate = true;
+    }
     return coordinates.length >= 2 ? [{
       id: leg.id,
       label: `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`,
       color: journeyModeColor(leg.mode, leg.transportType),
       coordinates,
+      ...(approximate ? { approximate: true } : {}),
     }] : [];
   });
-  const validPoint = (point: unknown): point is Coordinate => Array.isArray(point) && point.length === 2
-    && Number.isFinite(point[0]) && Number.isFinite(point[1])
-    && point[0] >= -180 && point[0] <= 180 && point[1] >= -90 && point[1] <= 90;
+  const validPoint = validCoordinate;
   const firstPoint = legs[0]?.origin?.coordinates;
   const lastPoint = legs.at(-1)?.destination?.coordinates;
   const waypointCandidates: Array<{ coordinate: Coordinate; kind: string }> = [];
@@ -73,11 +81,13 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     if (!previous || (kind === 'PICKUP' || kind === 'DROPOFF')) waypointsByCoordinate.set(key, waypoint);
   }
   const routeWaypoints = [...waypointsByCoordinate.values()];
-  const shapedLegIds = new Set(shapedLegs.map(leg => leg.id));
+  const mappedLegIds = new Set(mappedLegs.map(leg => leg.id));
   return {
-    legs: shapedLegs,
-    routeSegments: shapedLegs.map(({ id, coordinates, color }) => ({ id, coordinates, modeColor: color })),
+    legs: mappedLegs,
+    routeSegments: mappedLegs.map(({ id, coordinates, color, approximate }) => ({ id, coordinates, modeColor: color,
+      ...(approximate ? { approximate: true } : {}) })),
     routeWaypoints,
-    missingShapeCount: legs.filter(leg => leg.mode !== 'WALK' && !shapedLegIds.has(leg.id)).length,
+    missingShapeCount: legs.filter(leg => leg.mode !== 'WALK' && !mappedLegIds.has(leg.id)).length,
+    approximateWalkCount: mappedLegs.filter(leg => leg.approximate).length,
   };
 }

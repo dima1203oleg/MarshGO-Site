@@ -44,7 +44,17 @@ export class MapLibreAdapter implements MapAdapter {
     if (!pmtilesProtocolRegistered) { maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile); pmtilesProtocolRegistered = true; }
     maplibregl.setWorkerUrl(mapLibreWorkerUrl);
     container.dataset.marshgoMapRenderer = 'maplibre';
+    container.dataset.marshgoMapIdle = 'false';
     this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', center: [30.5234, 50.4501], zoom: 5, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false });
+    this.map.on('render', () => { container.dataset.marshgoMapIdle = 'false'; });
+    this.map.on('resize', () => { container.dataset.marshgoMapIdle = 'false'; });
+    this.map.on('idle', () => { container.dataset.marshgoMapIdle = 'true'; });
+    this.map.on('moveend', () => {
+      const center = this.map.getCenter();
+      container.dataset.marshgoCameraZoom = this.map.getZoom().toFixed(2);
+      container.dataset.marshgoCameraCenter = `${center.lng.toFixed(6)},${center.lat.toFixed(6)}`;
+      container.dataset.marshgoCameraBearing = this.map.getBearing().toFixed(2);
+    });
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: false, visualizePitch: true }), 'bottom-right');
     this.map.on('load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.basemapConfigured() ? 'available' : 'unconfigured'); });
     this.map.on('style.load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; if (this.basemapConfigured() && !this.map.getSource('marshgo-basemap') && this.status !== 'failed') this.publish('available'); });
@@ -95,17 +105,31 @@ export class MapLibreAdapter implements MapAdapter {
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['get', 'selected'], 18, 10], 15, ['case', ['get', 'selected'], 34, 22]], 'line-opacity': ['case', ['get', 'selected'], 0.78, ['get', 'dimmed'], 0.035, 0.2], 'line-blur': 7 } });
-    if (!this.map.getLayer('marshgo-route-casing')) this.map.addLayer({ id: 'marshgo-route-casing', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.routeCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['get', 'selected'], 8, 5], 15, ['case', ['get', 'selected'], 17, 13]], 'line-opacity': ['case', ['get', 'dimmed'], 0.34, 0.96] } });
-    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({ id: 'marshgo-route', type: 'line', source: 'marshgo-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['get', 'selected'], 5.5, 3], 15, ['case', ['get', 'selected'], 12, 8]], 'line-opacity': ['case', ['get', 'dimmed'], 0.38, 1] } });
+    const confirmedRouteFilter = ['!=', ['get', 'approximate'], true] as maplibregl.FilterSpecification;
+    if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', filter: confirmedRouteFilter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 18, 10], 15, ['case', ['==', ['get', 'selected'], true], 34, 22]], 'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.78, ['==', ['get', 'dimmed'], true], 0.035, 0.2], 'line-blur': 7 } });
+    if (!this.map.getLayer('marshgo-route-casing')) this.map.addLayer({ id: 'marshgo-route-casing', type: 'line', source: 'marshgo-route', filter: confirmedRouteFilter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.routeCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 8, 5], 15, ['case', ['==', ['get', 'selected'], true], 17, 13]], 'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.34, 0.96] } });
+    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({ id: 'marshgo-route', type: 'line', source: 'marshgo-route', filter: confirmedRouteFilter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 5.5, 3], 15, ['case', ['==', ['get', 'selected'], true], 12, 8]], 'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.38, 1] } });
+    if (!this.map.getLayer('marshgo-route-walking-estimate')) this.map.addLayer({
+      id: 'marshgo-route-walking-estimate', type: 'line', source: 'marshgo-route',
+      filter: ['==', ['get', 'approximate'], true],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['coalesce', ['get', 'modeColor'], '#91A6BB'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3, 15, 6],
+        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.38, 0.9],
+        'line-dasharray': [1.15, 1.8],
+      },
+    });
     if (!this.routeInteractionBound && this.map.getLayer('marshgo-route')) {
       this.routeInteractionBound = true;
-      this.map.on('click', 'marshgo-route', (event) => {
-        const id = event.features?.find(feature => typeof feature.properties?.segmentId === 'string')?.properties?.segmentId;
-        if (typeof id === 'string') this.onRouteSegmentSelect(id);
-      });
-      this.map.on('mouseenter', 'marshgo-route', () => { this.map.getCanvas().style.cursor = 'pointer'; });
-      this.map.on('mouseleave', 'marshgo-route', () => { this.map.getCanvas().style.cursor = ''; });
+      for (const layerId of ['marshgo-route', 'marshgo-route-walking-estimate']) {
+        this.map.on('click', layerId, (event) => {
+          const id = event.features?.find(feature => typeof feature.properties?.segmentId === 'string')?.properties?.segmentId;
+          if (typeof id === 'string') this.onRouteSegmentSelect(id);
+        });
+        this.map.on('mouseenter', layerId, () => { this.map.getCanvas().style.cursor = 'pointer'; });
+        this.map.on('mouseleave', layerId, () => { this.map.getCanvas().style.cursor = ''; });
+      }
     }
     if (!this.map.getLayer('marshgo-waypoints')) this.map.addLayer({ id: 'marshgo-waypoints', type: 'circle', source: 'marshgo-waypoints', paint: { 'circle-radius': ['match', ['get', 'kind'], 'STOP', 4, 'TRANSFER', 6, 8], 'circle-color': ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'STOP', '#D6E4F3', 'TRANSFER', '#FFFFFF', colors.route], 'circle-stroke-color': ['match', ['get', 'kind'], 'TRANSFER', '#1687FF', colors.routeCasing], 'circle-stroke-width': ['match', ['get', 'kind'], 'STOP', 1.5, 3] } });
     if (!this.map.getLayer('marshgo-vehicle-halo')) this.map.addLayer({ id: 'marshgo-vehicle-halo', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 13, 'circle-color': colors.vehicle, 'circle-opacity': 0.2 } });
@@ -187,6 +211,7 @@ export class MapLibreAdapter implements MapAdapter {
   setRoute(points: Coordinate[]) {
     this.route = points;
     this.routeSegments = null;
+    this.clearRouteSegmentDiagnostics();
     this.map.getContainer().dataset.marshgoRoutePointCount = String(points.length);
     this.map.getContainer().dataset.marshgoRouteSegmentCount = String(points.length >= 2 ? 1 : 0);
     this.updateRouteSource();
@@ -194,16 +219,46 @@ export class MapLibreAdapter implements MapAdapter {
   setRouteSegments(segments: ColoredRouteSegment[]) {
     this.routeSegments = segments.filter(segment => segment.coordinates.length >= 2);
     this.route = this.routeSegments.flatMap(segment => segment.coordinates);
+    this.updateRouteSegmentDiagnostics();
     this.map.getContainer().dataset.marshgoRoutePointCount = String(this.route.length);
     this.map.getContainer().dataset.marshgoRouteSegmentCount = String(this.routeSegments.length);
+    const activeColor = this.routeSegments.find(segment => segment.id === this.activeRouteSegmentId)?.modeColor;
+    if (activeColor) this.map.getContainer().dataset.marshgoActiveRouteSegmentColor = activeColor;
+    else delete this.map.getContainer().dataset.marshgoActiveRouteSegmentColor;
     this.updateRouteSource();
   }
   setActiveRouteSegment(id: string | null) {
     this.activeRouteSegmentId = id;
     const container = this.map.getContainer();
-    if (id) container.dataset.marshgoActiveRouteSegmentId = id;
-    else delete container.dataset.marshgoActiveRouteSegmentId;
+    const activeSegment = this.routeSegments?.find(segment => segment.id === id);
+    if (id) {
+      container.dataset.marshgoActiveRouteSegmentId = id;
+      if (activeSegment) container.dataset.marshgoActiveRouteSegmentColor = activeSegment.modeColor;
+      else delete container.dataset.marshgoActiveRouteSegmentColor;
+    } else {
+      delete container.dataset.marshgoActiveRouteSegmentId;
+      delete container.dataset.marshgoActiveRouteSegmentColor;
+    }
+    this.updateRouteSegmentDiagnostics();
     this.updateRouteSource();
+  }
+  private updateRouteSegmentDiagnostics() {
+    const segments = this.routeSegments;
+    if (!segments) {
+      this.clearRouteSegmentDiagnostics();
+      return;
+    }
+    const selectedCount = this.activeRouteSegmentId === null
+      ? segments.length
+      : segments.filter(segment => segment.id === this.activeRouteSegmentId).length;
+    const container = this.map.getContainer();
+    container.dataset.marshgoSelectedRouteSegmentCount = String(selectedCount);
+    container.dataset.marshgoDimmedRouteSegmentCount = String(segments.length - selectedCount);
+  }
+  private clearRouteSegmentDiagnostics() {
+    const container = this.map.getContainer();
+    delete container.dataset.marshgoSelectedRouteSegmentCount;
+    delete container.dataset.marshgoDimmedRouteSegmentCount;
   }
   focusRouteSegment(id: string, padding: RouteFitPadding = {}) {
     const segment = this.routeSegments?.find(item => item.id === id);
@@ -224,12 +279,14 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.routeSegments) {
       source.setData({ type: 'FeatureCollection', features: this.routeSegments.map(segment => ({
         type: 'Feature' as const,
-        properties: { modeColor: segment.modeColor, segmentId: segment.id ?? '', selected: this.activeRouteSegmentId === null || this.activeRouteSegmentId === segment.id, dimmed: this.activeRouteSegmentId !== null && this.activeRouteSegmentId !== segment.id },
+        properties: { modeColor: segment.modeColor, segmentId: segment.id ?? '', approximate: segment.approximate === true,
+          selected: this.activeRouteSegmentId === null || this.activeRouteSegmentId === segment.id,
+          dimmed: this.activeRouteSegmentId !== null && this.activeRouteSegmentId !== segment.id },
         geometry: { type: 'LineString' as const, coordinates: segment.coordinates },
       })) });
       return;
     }
-    source.setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: this.route } });
+    source.setData({ type: 'Feature', properties: { selected: true, dimmed: false }, geometry: { type: 'LineString', coordinates: this.route } });
   }
   setVehicle(point: Coordinate, heading?: number | null) {
     this.vehicle = point;
@@ -318,13 +375,22 @@ export class MapLibreAdapter implements MapAdapter {
     const lngs = points.map((point) => point[0]); const lats = points.map((point) => point[1]);
     // Full-screen navigation reserves room for its overlays; small previews must scale the padding down or MapLibre rejects the fit.
     const { clientWidth, clientHeight } = this.map.getContainer();
+    const top = Math.min(clientHeight * 0.25, overrides.top ?? Math.min(110, clientHeight * 0.2));
     const padding = {
-      top: Math.min(clientHeight * 0.25, overrides.top ?? Math.min(110, clientHeight * 0.2)),
+      top,
       right: Math.min(clientWidth * 0.15, overrides.right ?? Math.min(32, clientWidth * 0.1)),
-      bottom: Math.min(clientHeight * 0.52, overrides.bottom ?? Math.min(270, clientHeight * 0.2)),
+      // Overlay sheets can cover more than half of a route screen. Honor the
+      // requested safe-area while keeping MapLibre's combined vertical padding
+      // strictly smaller than the viewport.
+      bottom: Math.min(Math.max(0, clientHeight - top - 1), overrides.bottom ?? Math.min(270, clientHeight * 0.2)),
       left: Math.min(clientWidth * 0.15, overrides.left ?? Math.min(32, clientWidth * 0.1)),
     };
-    this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding, duration: 520, maxZoom });
+    this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
+      padding,
+      duration: 520,
+      maxZoom,
+      ...(typeof overrides.bearing === 'number' && Number.isFinite(overrides.bearing) ? { bearing: overrides.bearing } : {}),
+    });
   }
   recenter(point?: Coordinate) {
     if (point) this.vehicle = point;

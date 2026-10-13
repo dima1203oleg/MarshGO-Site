@@ -1,16 +1,19 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Activity, Pause, Plus, Power, RefreshCw, Trash2 } from 'lucide-react';
-import { productionApi, type ApiMobilityAudit, type ApiMobilityProvider } from '../services/productionApi';
+import { productionApi, type ApiMobilityAudit, type ApiMobilityOperator, type ApiMobilityProvider } from '../services/productionApi';
 
 const healthMeta = { healthy: ['🟢', 'Працює', 'bg-emerald-50 text-emerald-700'], degraded: ['🟡', 'Частково', 'bg-amber-50 text-amber-800'], offline: ['🔴', 'Недоступний', 'bg-rose-50 text-rose-700'], unknown: ['⚪', 'Не перевірено', 'bg-slate-100 text-slate-600'] } as const;
 const typeLabels: Record<string, string> = { public_transit: 'Громадський транспорт', bike: 'Велосипеди', ebike: 'E-bike', scooter: 'Самокати', moped: 'Мопеди', carsharing: 'Каршерінг', taxi: 'Таксі', carpool: 'Carpool', on_demand: 'On-demand', other: 'Інше' };
 const accessLabels: Record<string, string> = { open: 'Відкритий', requires_credentials: 'REQUIRES_CREDENTIALS', requires_partner_access: 'REQUIRES_PARTNER_ACCESS', insecure_endpoint: 'ЛИШЕ HTTP' };
 const actionLabels: Record<string, string> = { 'mobility.provider.deleted': 'видалив провайдера', 'mobility.provider.created': 'створив провайдера', 'mobility.provider.updated': 'змінив провайдера', 'mobility.provider.tested': 'перевірив підключення' };
+const operatorStatusLabels: Record<string, string> = { ACTIVE_LIVE: 'Живі дані', ACTIVE_STATIC: 'Статичні дані', CATALOG_ONLY: 'Каталог без live-підтвердження', AFFILIATE_LINK_ONLY: 'Лише партнерське посилання', SANDBOX_ONLY: 'Sandbox', AWAITING_CREDENTIALS: 'Очікує облікові дані', AWAITING_AGREEMENT: 'Очікує угоду', DISABLED: 'Вимкнений', ERROR: 'Помилка' };
+const operatorGroups: Record<string, string> = { TAXI: 'Таксі', TRANSFER: 'Трансфери', SCOOTER: 'Самокати', BICYCLE: 'Велосипеди', CARSHARING: 'Каршерінг', PUBLIC_TRANSPORT: 'Громадський транспорт' };
 const dateFormat = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Kyiv' });
 
 /** Mobility Control Center: connect, test, enable/disable and audit transport data sources without code changes. */
 export function MobilityAdminPanel() {
   const [providers, setProviders] = useState<ApiMobilityProvider[]>([]);
+  const [operators, setOperators] = useState<ApiMobilityOperator[]>([]);
   const [audit, setAudit] = useState<ApiMobilityAudit[]>([]);
   const [message, setMessage] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -19,7 +22,7 @@ export function MobilityAdminPanel() {
   const [form, setForm] = useState({ name: '', city: '', providerType: 'bike', sourceType: 'gbfs', feedUrl: '' });
 
   const load = useCallback(async () => {
-    try { const [list, log] = await Promise.all([productionApi.mobilityProviders(), productionApi.mobilityAudit()]); setProviders(list); setAudit(log); }
+    try { const [list, operatorList, log] = await Promise.all([productionApi.mobilityProviders(), productionApi.mobilityOperators(), productionApi.mobilityAudit()]); setProviders(list); setOperators(operatorList); setAudit(log); }
     catch (error) { setMessage(error instanceof Error ? error.message : 'Не вдалося завантажити провайдерів.'); }
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -41,6 +44,24 @@ export function MobilityAdminPanel() {
     <div className="mb-3 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-600">Адміністрування</p><h2 className="text-lg font-extrabold">Центр керування мобільністю</h2></div>
       <button type="button" onClick={() => setAdding((value) => !value)} className="inline-flex items-center gap-1.5 rounded-xl bg-[#1789F4] px-3 py-2 text-xs font-bold text-white"><Plus size={14}/>Додати</button></div>
     {message && <p role="status" className="mb-3 rounded-xl bg-blue-50 p-3 text-xs text-blue-800">{message}</p>}
+    <div className="mb-5 space-y-2">
+      <div><h3 className="text-sm font-extrabold">Оператори й дозволи</h3><p className="text-[11px] text-slate-500">Статус показує фактичний рівень джерела; ключі та партнерські значення не відображаються.</p></div>
+      {operators.map((operator) => {
+        const canEnable = ['ACTIVE_LIVE', 'ACTIVE_STATIC'].includes(operator.integration_status);
+        const dot = operator.integration_status === 'ACTIVE_LIVE' ? '🟢' : operator.integration_status === 'ACTIVE_STATIC' ? '🔵' : operator.integration_status === 'ERROR' ? '🔴' : '🟡';
+        const busyKey = `operator:${operator.provider_id}`;
+        return <article key={operator.provider_id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex items-start justify-between gap-2"><div className="min-w-0"><b className="block truncate text-sm text-[#0E1F35]">{operator.provider_name}</b><p className="text-[11px] text-slate-500">{operatorGroups[operator.provider_group] ?? operator.provider_group} · {operator.data_source} · {operator.location_count} точок · {operator.live_available_count} доступно зараз</p></div>
+            <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700">{dot} {operatorStatusLabels[operator.integration_status] ?? operator.integration_status}</span></div>
+          <p className="mt-1 text-[10px] text-slate-500">Бронювання: {operator.booking_method} · ціни: {operator.pricing_capability} · live: {operator.live_availability_capability ? 'підтримується джерелом' : 'не підтверджено'} · секрет заданий: {operator.api_key_configured ? 'так' : 'ні'}</p>
+          {operator.status_message && <p className="mt-1 text-[10px] text-slate-600">{operator.status_message}</p>}
+          {operator.attribution_requirements && <p className="mt-1 text-[10px] text-slate-400">Атрибуція/умови: {operator.attribution_requirements}</p>}
+          {operator.last_successful_sync && <p className="mt-1 text-[10px] text-slate-400">Остання успішна синхронізація: {dateFormat.format(new Date(operator.last_successful_sync))}</p>}
+          {operator.last_sync_error && <p className="mt-1 text-[10px] text-rose-600">{operator.last_sync_error}</p>}
+          <button type="button" disabled={busyId === busyKey || (!operator.enabled && !canEnable)} onClick={() => void run(busyKey, () => productionApi.updateMobilityOperator(operator.provider_id, !operator.enabled), operator.enabled ? 'Оператора вимкнено.' : 'Оператора увімкнено.')} className={`mt-2 rounded-xl px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-40 ${operator.enabled ? 'bg-rose-600' : 'bg-emerald-600'}`}>{operator.enabled ? 'Вимкнути' : 'Увімкнути'}</button>
+        </article>;
+      })}
+    </div>
     {adding && <form onSubmit={submit} className="mb-4 space-y-2 rounded-2xl bg-white p-4 shadow-sm">
       <input required minLength={2} placeholder="Назва провайдера" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full rounded-xl bg-[#f6f8fc] p-3 text-sm"/>
       <input required minLength={2} placeholder="Місто" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="w-full rounded-xl bg-[#f6f8fc] p-3 text-sm"/>

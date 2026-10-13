@@ -147,6 +147,34 @@ export type ApiTransportCity = {
 export type ApiNearbyAsset = { id: string; type: string; location: [number, number]; distanceM: number; providerName: string; batteryPercent?: number; rangeMeters?: number };
 export type ApiNearbyStation = { id: string; name: string; location: [number, number]; distanceM: number; providerName: string; availableAssets?: number; capacity?: number; returnAllowed?: boolean };
 export type ApiNearby = { mode: string; radiusM: number; providers: number; failedProviders: number; assets: ApiNearbyAsset[]; stations: ApiNearbyStation[]; totalAssets: number };
+export type ApiMobilityOperator = {
+  provider_id: string; provider_name: string; provider_group: string; data_source: string; source_url: string;
+  integration_status: string; data_freshness_seconds: number | null; booking_method: string; pricing_capability: string;
+  live_availability_capability: boolean; commercial_permissions: string; attribution_requirements: string | null;
+  enabled: boolean; last_successful_sync: string | null; last_sync_error: string | null; api_key_configured: boolean;
+  location_count: number; live_available_count: number; status_message?: string | null;
+};
+export type ApiRentalLocation = {
+  id: string; providerId: string; providerName: string; networkId: string | null; mode: 'BICYCLE' | 'SCOOTER';
+  rentalModel: string; source: string; externalId: string; name: string | null; operatorName: string | null;
+  networkName: string | null; city: string | null; address: string | null; openingHours: string | null;
+  pickupAllowed: boolean | null; dropoffAllowed: boolean | null; oneWayReturn: 'CONFIRMED' | 'NOT_ALLOWED' | 'UNKNOWN';
+  availability: 'AVAILABLE' | 'UNAVAILABLE' | 'UNKNOWN'; availableVehicles: number | null; availableDocks: number | null;
+  availabilityCheckedAt: string | null; sourceUpdatedAt: string | null; sourceImportedAt: string;
+  sourceQuality: string; sourceStatus: 'LIVE' | 'STATIC' | 'UNKNOWN'; lon: number; lat: number;
+};
+export type ApiRentalCompatibility = {
+  allowed: boolean; confirmationLevel: 'VERIFIED' | 'CONDITIONAL' | 'UNKNOWN'; reason: string;
+  pickupLocationId: string; dropoffLocationId: string; networkId: string | null; returnRule: string;
+  availabilityStatus: string; availabilityCheckedAt: string | null;
+};
+export type ApiTransferOffer = {
+  offerId: string; providerId: string; providerName: string; originCity: string | null; destinationCity: string | null;
+  vehicleClass: string | null; seats: number | null; luggage: number | null; priceMinor: number | null; currency: string | null;
+  priceStatus: string; quoteStatus: 'DYNAMIC' | 'CATALOG_ONLY' | 'UNKNOWN'; availabilityStatus: 'UNKNOWN';
+  bookingUrl: string | null; bookingAvailable: false; sourceUpdatedAt: string | null;
+};
+export type ApiTransferSearch = { data: ApiTransferOffer[]; providers: Array<{ providerId: string; status: string; catalogAvailable: boolean; bookingAvailable: boolean; affiliateAvailable: boolean; message: string }>; meta: { catalogOnly: true; liveQuotes: false; bookingAvailable: false; count: number } };
 
 export type ApiMessage = { id: string; sender_id: string; sender_name: string; body: string; created_at: string };
 export type ApiConversationUnread = { conversation_id: string; booking_id: string | null; unread_count: number };
@@ -211,7 +239,8 @@ export type ApiJourney = {
     priceStatus: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
     fareProductId?: string;
     fareIncludedByPreviousSegment?: boolean;
-    fareSource?: 'gtfs-v1';
+    fareSource?: 'gtfs-v1' | 'city-tariff-registry';
+    scheduleSemantics?: 'published_departures' | 'frequency_estimate';
     availabilityStatus: string;
     source: string;
     lastUpdatedAt: string;
@@ -239,6 +268,11 @@ export type ApiJourneyLive = {
     vehicle?: { coordinates: [number, number]; bearing: number | null; speed: number | null; route: string; updatedAt: string };
   }>;
 };
+export type ApiJourneySearchPartialReason =
+  | 'candidate_generation_truncated'
+  | 'provider_error'
+  | 'unsupported_preference'
+  | 'walking_routing_unavailable';
 export type ApiJourneySearchResult = {
   journeys: ApiJourney[];
   requestedStrategy?: ApiJourneyStrategy;
@@ -250,6 +284,7 @@ export type ApiJourneySearchResult = {
   resultsTruncated?: boolean;
   candidateGenerationTruncated?: boolean;
   partial: boolean;
+  partialReasons?: ApiJourneySearchPartialReason[];
   blockedProviders: string[];
   unsupportedPreferences: string[];
   providerErrors: string[];
@@ -427,6 +462,7 @@ export const productionApi = {
   transportStops(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/stops?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
   transportVehicles(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/vehicles?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
   transportMicromobility(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
+  transportMicromobilityGeofences(bbox: string, signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility/geofences?bbox=${bbox}`, { signal }); },
   setNavigationDestination(id: string, input: { destination: [number, number]; destinationName: string }) {
     return request<ApiNavigationSession>(`/navigation/sessions/${id}/destination`, { method: 'PUT', body: JSON.stringify(input) });
   },
@@ -602,6 +638,26 @@ export const productionApi = {
     return request<{ vehicleId: string; status: string }>(`/vehicles/${vehicleId}/verification`, { method: 'POST', body: JSON.stringify(input) });
   },
   providersByTransport(point?: { latitude: number; longitude: number }) { return request<ApiTransportProviders[]>(`/mobility/providers${point ? `?lat=${point.latitude}&lon=${point.longitude}` : ''}`); },
+  mobilityOperators() { return request<ApiMobilityOperator[]>('/mobility/operators'); },
+  updateMobilityOperator(id: string, enabled: boolean) {
+    return request<Pick<ApiMobilityOperator, 'provider_id' | 'provider_name' | 'integration_status' | 'enabled'>>(`/admin/mobility/operators/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
+  },
+  rentalLocations(input: { bbox: string; mode?: 'BICYCLE' | 'SCOOTER'; providerId?: string; networkId?: string; sourceStatus?: 'LIVE' | 'STATIC' | 'UNKNOWN'; limit?: number; offset?: number }, signal?: AbortSignal) {
+    const query = new URLSearchParams({ bbox: input.bbox });
+    if (input.mode) query.set('mode', input.mode);
+    if (input.providerId) query.set('provider_id', input.providerId);
+    if (input.networkId) query.set('network_id', input.networkId);
+    if (input.sourceStatus) query.set('source_status', input.sourceStatus);
+    if (input.limit !== undefined) query.set('limit', String(input.limit));
+    if (input.offset !== undefined) query.set('offset', String(input.offset));
+    return request<ApiRentalLocation[]>(`/mobility/rental-locations?${query}`, { signal });
+  },
+  rentalCompatibility(input: { pickupLocationId: string; dropoffLocationId: string; vehicleType: string; departureAt: string; arrivalAt: string; requireVerifiedReturn?: boolean }) {
+    return request<ApiRentalCompatibility>('/mobility/rental-compatibility', { method: 'POST', body: JSON.stringify(input) });
+  },
+  transferSearch(input: { originPlaceId: string; destinationPlaceId: string; passengerCount?: number; providerIds?: string[] }) {
+    return request<ApiTransferSearch>('/mobility/transfers/search', { method: 'POST', body: JSON.stringify(input) });
+  },
   mobilityAvailability() { return request<ApiMobilityAvailability>('/mobility/availability'); },
   nearbyRentals(mode: string, latitude: number, longitude: number, radiusM = 1000) {
     return request<ApiNearby>(`/mobility/nearby?mode=${encodeURIComponent(mode)}&lat=${latitude}&lon=${longitude}&radiusM=${radiusM}`);

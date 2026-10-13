@@ -4,7 +4,7 @@ import { microTypesFor, transportLayerList } from '../src/map/transportLayerConf
 
 describe('map transport layers', () => {
   it('shows carsharing separately and requests its live assets', () => {
-    assert.ok(transportLayerList.some((layer) => layer.id === 'CARSHARING' && layer.label === 'Каршерінг'));
+    assert.ok(transportLayerList.some((layer) => layer.id === 'CARSHARING' && layer.label === 'Каршеринг'));
     assert.deepEqual(microTypesFor(new Set(['CARSHARING'])), ['carsharing']);
   });
 

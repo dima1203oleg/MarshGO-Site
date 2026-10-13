@@ -16,6 +16,15 @@ export type JourneyResultSegment = {
 
 const validTime = (value?: string) => value && Number.isFinite(Date.parse(value)) ? Date.parse(value) : null;
 
+function formatMoneyMinor(amountMinor: number, currency: string): string {
+  if (currency.toUpperCase() === 'UAH') {
+    return `${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 0 }).format(amountMinor / 100)}\u00a0₴`;
+  }
+  return new Intl.NumberFormat('uk-UA', {
+    style: 'currency', currency, maximumFractionDigits: 0,
+  }).format(amountMinor / 100);
+}
+
 /** Keep transfer waits visible in both the time ribbon and the compact leg list. */
 export function buildJourneyResultSegments(journey: ApiJourney): JourneyResultSegment[] {
   const segments: JourneyResultSegment[] = [];
@@ -32,7 +41,7 @@ export function buildJourneyResultSegments(journey: ApiJourney): JourneyResultSe
           kind: 'WAIT',
           mode: 'WAIT',
           label: 'Очікування',
-          color: '#91A6BB',
+          color: journeyModeColor('WAIT'),
           durationSeconds: waitSeconds,
           departureAt: new Date(cursor).toISOString(),
           arrivalAt: new Date(departure).toISOString(),
@@ -49,7 +58,7 @@ export function buildJourneyResultSegments(journey: ApiJourney): JourneyResultSe
         id: `leg:${leg.id}`,
         kind: 'LEG',
         mode: leg.mode,
-        label: `${modeLabel}${leg.routeName && leg.mode !== 'COMMUNITY' ? ` ${leg.routeName}` : ''}`,
+        label: modeLabel,
         color: journeyModeColor(leg.mode, leg.transportType),
         durationSeconds,
         departureAt: leg.departureAt,
@@ -72,7 +81,7 @@ export function buildJourneyResultSegments(journey: ApiJourney): JourneyResultSe
           kind: 'WAIT',
           mode: 'WAIT',
           label: 'Час маршруту',
-          color: '#91A6BB',
+          color: journeyModeColor('WAIT'),
           durationSeconds: waitSeconds,
           departureAt: new Date(cursor).toISOString(),
           arrivalAt: new Date(journeyEnd).toISOString(),
@@ -84,16 +93,17 @@ export function buildJourneyResultSegments(journey: ApiJourney): JourneyResultSe
   return segments;
 }
 
-export function formatJourneySegmentPrice(segment: JourneyResultSegment, currency = 'UAH'): string {
-  if (segment.kind === 'WAIT' || segment.leg?.mode === 'WALK') return '0 ₴';
-  const leg = segment.leg;
-  if (!leg) return '—';
+export function formatJourneyLegPrice(leg: ApiJourney['legs'][number], currency = 'UAH'): string {
+  if (leg.mode === 'WALK') return '0 ₴';
   if (leg.fareIncludedByPreviousSegment) return 'у квитку';
   if (leg.priceMinor === null || !Number.isFinite(leg.priceMinor)) return '—';
-  const price = new Intl.NumberFormat('uk-UA', {
-    style: 'currency', currency: leg.currency ?? currency, maximumFractionDigits: 0,
-  }).format(leg.priceMinor / 100);
+  const price = formatMoneyMinor(leg.priceMinor, leg.currency ?? currency);
   return leg.priceStatus === 'LOCKED' ? price : `≈ ${price}`;
+}
+
+export function formatJourneySegmentPrice(segment: JourneyResultSegment, currency = 'UAH'): string {
+  if (segment.kind === 'WAIT') return '0 ₴';
+  return segment.leg ? formatJourneyLegPrice(segment.leg, currency) : '—';
 }
 
 export function formatJourneyTotalPrice(journey: ApiJourney): string {
@@ -101,9 +111,7 @@ export function formatJourneyTotalPrice(journey: ApiJourney): string {
     && !leg.fareIncludedByPreviousSegment && leg.priceMinor === null);
   const total = journey.confirmedPriceMinor ?? journey.totalPriceMinor;
   if (total === null || hasUnknownFare) return '—';
-  const label = new Intl.NumberFormat('uk-UA', {
-    style: 'currency', currency: journey.currency ?? 'UAH', maximumFractionDigits: 0,
-  }).format(total / 100);
+  const label = formatMoneyMinor(total, journey.currency ?? 'UAH');
   return journey.confirmedPriceMinor !== null || journey.priceStatus === 'LOCKED' ? label : `≈ ${label}`;
 }
 

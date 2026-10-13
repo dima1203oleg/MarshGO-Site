@@ -32,6 +32,41 @@ test('keeps real route shapes separate and uses each transport mode color', () =
   assert.equal(model.missingShapeCount, 1);
 });
 
+test('keeps every public-transit stop coordinate available to the route map across modes', () => {
+  const modes = [
+    { id: 'bus', mode: 'BUS', transportType: 'bus' },
+    { id: 'minibus', mode: 'MINIBUS', transportType: 'marshrutka' },
+    { id: 'trolleybus', mode: 'TROLLEYBUS', transportType: 'trolleybus' },
+    { id: 'tram', mode: 'TRAM', transportType: 'tram' },
+    { id: 'metro', mode: 'METRO', transportType: 'metro' },
+    { id: 'rail', mode: 'RAIL', transportType: 'train' },
+  ] as const;
+  const middleCoordinates = modes.map((_, index): [number, number] => [24 + index * 0.03 + 0.01, 49.8 + index * 0.03 + 0.01]);
+  const model = buildJourneyRouteMapModel(legs(modes.map((item, index) => {
+    const origin: [number, number] = [24 + index * 0.03, 49.8 + index * 0.03];
+    const middle = middleCoordinates[index]!;
+    const destination: [number, number] = [origin[0] + 0.02, origin[1] + 0.02];
+    const baseTime = Date.parse('2026-10-12T05:00:00Z') + index * 30 * 60_000;
+    const at = (minutes: number) => new Date(baseTime + minutes * 60_000).toISOString();
+    return {
+      id: item.id, mode: item.mode, transportType: item.transportType,
+      origin: { coordinates: origin }, destination: { coordinates: destination },
+      stops: [
+        { id: `${item.id}-start`, name: `${item.id} start`, coordinates: origin, arrivalAt: at(0), departureAt: at(0) },
+        { id: `${item.id}-middle`, name: `${item.id} middle`, coordinates: middle, arrivalAt: at(10), departureAt: at(10) },
+        { id: `${item.id}-end`, name: `${item.id} end`, coordinates: destination, arrivalAt: at(20), departureAt: at(20) },
+      ],
+      routeGeometry: [origin, middle, destination],
+    };
+  })));
+
+  for (const coordinate of middleCoordinates) {
+    assert.ok(model.routeWaypoints.some(point => point.coordinate[0] === coordinate[0] && point.coordinate[1] === coordinate[1]));
+  }
+  assert.equal(model.routeSegments.length, modes.length);
+  assert.deepEqual(model.routeSegments.map(segment => segment.modeColor), modes.map(item => journeyModeColor(item.mode, item.transportType)));
+});
+
 test('does not manufacture straight lines for legs without source geometry', () => {
   const model = buildJourneyRouteMapModel(legs([
     { id: 'bus', mode: 'BUS', origin: { coordinates: [24, 49.8] }, destination: { coordinates: [25, 50] } },
@@ -45,6 +80,20 @@ test('does not manufacture straight lines for legs without source geometry', () 
     { coordinate: [25.1, 50.1], kind: 'DROPOFF' },
   ]);
   assert.equal(model.missingShapeCount, 1);
+});
+
+test('renders estimated walking connectors as explicitly approximate dashed segments', () => {
+  const model = buildJourneyRouteMapModel(legs([
+    { id: 'estimated-walk', mode: 'WALK', source: 'walking-estimate',
+      origin: { coordinates: [24, 49.8] }, destination: { coordinates: [24.01, 49.81] } },
+  ]));
+
+  assert.equal(model.approximateWalkCount, 1);
+  assert.deepEqual(model.routeSegments, [{
+    id: 'estimated-walk', modeColor: '#91A6BB', approximate: true,
+    coordinates: [[24, 49.8], [24.01, 49.81]],
+  }]);
+  assert.equal(model.missingShapeCount, 0);
 });
 
 test('drops malformed coordinates before passing route geometry to the map', () => {
@@ -66,12 +115,12 @@ test('formats transfer counts with Ukrainian plural forms', () => {
 
 test('uses one stable canonical color for each supported transport category', () => {
   const cases: Array<[string, string | undefined, string]> = [
-    ['BUS', 'bus', '#1687FF'], ['MINIBUS', 'marshrutka', '#FF9A32'],
+    ['BUS', 'bus', '#1687FF'], ['MINIBUS', 'marshrutka', '#F02F79'],
     ['TROLLEYBUS', 'trolleybus', '#00C2A0'], ['TRAM', 'tram', '#F43F7B'],
-    ['METRO', 'metro', '#5B5DF2'], ['COMMUNITY', 'carpool', '#A855F7'],
-    ['TAXI', 'taxi', '#FFB020'], ['RAIL', 'train', '#5B5DF2'],
-    ['BIKE', 'bike', '#20B86A'], ['SCOOTER', 'scooter', '#00C59A'],
-    ['CARSHARING', 'carsharing', '#8CBF26'], ['TRANSFER', 'transfer', '#52B8FF'],
+    ['METRO', 'metro', '#E43F86'], ['COMMUNITY', 'carpool', '#A855F7'],
+    ['TAXI', 'taxi', '#F5B51B'], ['RAIL', 'train', '#914BF4'],
+    ['BIKE', 'bike', '#20B86A'], ['SCOOTER', 'scooter', '#8B5CF6'],
+    ['CARSHARING', 'carsharing', '#00A8D6'], ['TRANSFER', 'transfer', '#16B6A5'],
     ['WALK', 'walk', '#91A6BB'],
   ];
 

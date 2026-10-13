@@ -19,9 +19,19 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
   const routeSegmentSelect = useRef(onRouteSegmentSelect);
   const activeSegment = useRef(activeRouteSegmentId);
   const fitPadding = useRef(routeFitPadding);
+  const routeRef = useRef(route);
+  const routeSegmentsRef = useRef(routeSegments);
+  const waypointsRef = useRef(routeWaypoints);
+  const vehicleRef = useRef(vehicle);
+  const headingRef = useRef(heading);
   routeSegmentSelect.current = onRouteSegmentSelect;
   activeSegment.current = activeRouteSegmentId;
   fitPadding.current = routeFitPadding;
+  routeRef.current = route;
+  routeSegmentsRef.current = routeSegments;
+  waypointsRef.current = routeWaypoints;
+  vehicleRef.current = vehicle;
+  headingRef.current = heading;
   const [layer, setLayer] = useState<MapLayer>(getMapLayer());
   const [dark, setDark] = useState(themeService.isDark());
   const activeTheme = theme ?? themeForMapLayer(layer, dark);
@@ -42,7 +52,10 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
       adapter.current = instance; instance.onRouteSegmentSelect = (id) => routeSegmentSelect.current?.(id); onAdapter(instance);
       instance.onTransportHint = (message) => onTransportHint?.(message);
       syncOverlays.current();
-      if (routeSegments?.length) instance.setRouteSegments(routeSegments); else instance.setRoute(route); if (routeWaypoints) instance.setWaypoints(routeWaypoints); if (vehicle) instance.setVehicle(vehicle);
+      const latestRouteSegments = routeSegmentsRef.current;
+      if (latestRouteSegments?.length) instance.setRouteSegments(latestRouteSegments); else instance.setRoute(routeRef.current);
+      if (waypointsRef.current) instance.setWaypoints(waypointsRef.current);
+      if (vehicleRef.current) instance.setVehicle(vehicleRef.current, headingRef.current);
       const selectedSegmentId = activeSegment.current;
       instance.setActiveRouteSegment?.(selectedSegmentId);
       if (!selectedSegmentId || !instance.focusRouteSegment?.(selectedSegmentId, fitPadding.current)) instance.fitRoute(fitPadding.current);
@@ -52,7 +65,11 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
   useEffect(() => { if (routeSegments?.length) adapter.current?.setRouteSegments?.(routeSegments); else adapter.current?.setRoute(route); adapter.current?.setActiveRouteSegment?.(activeRouteSegmentId); }, [route, routeSegments]);
   useEffect(() => { adapter.current?.setActiveRouteSegment?.(activeRouteSegmentId); }, [activeRouteSegmentId]);
   useEffect(() => { if (routeWaypoints) adapter.current?.setWaypoints(routeWaypoints); }, [routeWaypoints]);
-  useEffect(() => { if (routeFitPadding) adapter.current?.fitRoute(routeFitPadding); }, [routeFitPadding]);
+  useEffect(() => {
+    if (!routeFitPadding) return;
+    if (activeRouteSegmentId && adapter.current?.focusRouteSegment?.(activeRouteSegmentId, routeFitPadding)) return;
+    adapter.current?.fitRoute(routeFitPadding);
+  }, [routeFitPadding, activeRouteSegmentId]);
   useEffect(() => { if (vehicle) adapter.current?.setVehicle(vehicle, heading); }, [vehicle?.[0], vehicle?.[1], heading]);
   useEffect(() => { adapter.current?.setTheme(activeTheme); }, [activeTheme]);
   useEffect(() => subscribeMapLayer((layer) => adapter.current?.setLayer(layer)), []);

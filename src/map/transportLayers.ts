@@ -1,6 +1,7 @@
 import type { GeoJSONSource, Map as MapLibreMap, MapMouseEvent } from 'maplibre-gl';
 import * as maplibregl from 'maplibre-gl';
 import { productionApi, type GeoJsonCollection } from '../services/productionApi';
+import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import { microTypesFor, type TransportLayerId } from './transportLayerConfig';
 export { microTypesFor, transportLayerList } from './transportLayerConfig';
 export type { TransportLayerId } from './transportLayerConfig';
@@ -15,6 +16,10 @@ const listeners = new Set<(layers: ReadonlySet<TransportLayerId>) => void>();
 export const getTransportLayers = (): ReadonlySet<TransportLayerId> => new Set(selected);
 export function toggleTransportLayer(id: TransportLayerId) {
   if (selected.has(id)) selected.delete(id); else selected.add(id);
+  listeners.forEach((listener) => listener(getTransportLayers()));
+}
+export function setTransportLayers(ids: readonly TransportLayerId[], enabled: boolean) {
+  ids.forEach((id) => enabled ? selected.add(id) : selected.delete(id));
   listeners.forEach((listener) => listener(getTransportLayers()));
 }
 export function clearTransportLayers() { selected.clear(); listeners.forEach((listener) => listener(getTransportLayers())); }
@@ -47,14 +52,23 @@ export function viewportBbox(bounds: { west: number; south: number; east: number
   return [west, south, east, north].map((value) => value.toFixed(5)).join(',');
 }
 
-const colors: Record<string, string> = { bus: '#1789F4', marshrutka: '#6366F1', trolleybus: '#16A34A', tram: '#E11D48', metro: '#7C3AED', city_train: '#0F766E', funicular: '#B45309', other: '#64748B' };
+const colors: Record<string, string> = {
+  bus: getTransportModeVisual('BUS').color,
+  marshrutka: getTransportModeVisual('MINIBUS').color,
+  trolleybus: getTransportModeVisual('TROLLEYBUS').color,
+  tram: getTransportModeVisual('TRAM').color,
+  metro: getTransportModeVisual('METRO').color,
+  city_train: getTransportModeVisual('TRAIN', 'city_train').color,
+  funicular: getTransportModeVisual('FUNICULAR').color,
+  other: getTransportModeVisual('UNKNOWN').color,
+};
 const empty: GeoJsonCollection = { type: 'FeatureCollection', features: [] };
-const SOURCES = { routes: 'mg-t-routes', stops: 'mg-t-stops', vehicles: 'mg-t-vehicles', micro: 'mg-t-micro' } as const;
+const SOURCES = { routes: 'mg-t-routes', stops: 'mg-t-stops', vehicles: 'mg-t-vehicles', micro: 'mg-t-micro', zones: 'mg-t-micro-zones' } as const;
 const lineColor = ['match', ['get', 'transport'], 'bus', colors.bus, 'marshrutka', colors.marshrutka, 'trolleybus', colors.trolleybus, 'tram', colors.tram, 'metro', colors.metro, 'city_train', colors.city_train, 'funicular', colors.funicular, colors.other] as never;
 
 export class TransportLayerController {
   private enabled: ReadonlySet<TransportLayerId> = new Set();
-  private data: Record<keyof typeof SOURCES, GeoJsonCollection> = { routes: empty, stops: empty, vehicles: empty, micro: empty };
+  private data: Record<keyof typeof SOURCES, GeoJsonCollection> = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
   private aborters = new Map<string, AbortController>();
   private moveTimer: ReturnType<typeof setTimeout> | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -85,15 +99,15 @@ export class TransportLayerController {
   private teardown() {
     this.map.off('moveend', this.onMove);
     this.map.off('click', 'mg-t-routes', this.onRouteClick);
-    for (const layer of ['mg-t-vehicles', 'mg-t-stops', 'mg-t-micro-points']) this.map.off('click', layer, this.onClick);
+    for (const layer of ['mg-t-vehicles', 'mg-t-stops', 'mg-t-micro-points', 'mg-t-micro-zones-fill']) this.map.off('click', layer, this.onClick);
     document.removeEventListener('visibilitychange', this.onVisibility);
     if (this.moveTimer) clearTimeout(this.moveTimer);
     if (this.pollTimer) clearInterval(this.pollTimer);
     this.pollTimer = null; this.moveTimer = null;
     this.aborters.forEach((controller) => controller.abort()); this.aborters.clear();
     this.popup?.remove(); this.popup = null;
-    this.data = { routes: empty, stops: empty, vehicles: empty, micro: empty };
-    for (const id of ['mg-t-micro-count', 'mg-t-micro-clusters', 'mg-t-micro-points', 'mg-t-vehicle-label', 'mg-t-vehicles', 'mg-t-stop-label', 'mg-t-stops', 'mg-t-route-label', 'mg-t-routes']) if (this.map.getLayer(id)) this.map.removeLayer(id);
+    this.data = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
+    for (const id of ['mg-t-micro-zones-outline', 'mg-t-micro-zones-fill', 'mg-t-micro-count', 'mg-t-micro-clusters', 'mg-t-micro-points', 'mg-t-vehicle-label', 'mg-t-vehicles', 'mg-t-stop-label', 'mg-t-stops', 'mg-t-route-label', 'mg-t-routes']) if (this.map.getLayer(id)) this.map.removeLayer(id);
     for (const id of Object.values(SOURCES)) if (this.map.getSource(id)) this.map.removeSource(id);
     this.map.getContainer().dataset.marshgoTransportLayers = '';
   }
@@ -105,7 +119,7 @@ export class TransportLayerController {
     if (!map.isStyleLoaded()) return; // reinstall() runs again on style.load
     map.getContainer().dataset.marshgoTransportLayers = [...this.enabled].join(',');
     const add = (id: string, cluster = false) => { if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: empty as never, ...(cluster ? { cluster: true, clusterRadius: 44, clusterMaxZoom: 15 } : {}) }); };
-    add(SOURCES.routes); add(SOURCES.stops); add(SOURCES.vehicles); add(SOURCES.micro, true);
+    add(SOURCES.routes); add(SOURCES.stops); add(SOURCES.vehicles); add(SOURCES.micro, true); add(SOURCES.zones);
     const glyphs = this.hasGlyphs();
     const before = map.getLayer('marshgo-route-casing') ? 'marshgo-route-casing' : undefined; // transport layers sit under the user's own route
     if (!map.getLayer('mg-t-routes')) map.addLayer({ id: 'mg-t-routes', type: 'line', source: SOURCES.routes, minzoom: minZoom.routes, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': lineColor, 'line-opacity': 0.85, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 15, 4] } }, before);
@@ -116,34 +130,72 @@ export class TransportLayerController {
     if (glyphs && !map.getLayer('mg-t-vehicle-label')) map.addLayer({ id: 'mg-t-vehicle-label', type: 'symbol', source: SOURCES.vehicles, minzoom: 14, layout: { 'text-field': ['get', 'route'], 'text-size': 10, 'text-offset': [0, -1.4], 'text-font': ['Noto Sans Bold'], 'text-allow-overlap': false }, paint: { 'text-color': '#0E1F35', 'text-halo-color': '#fff', 'text-halo-width': 2 } });
     if (!map.getLayer('mg-t-micro-clusters')) map.addLayer({ id: 'mg-t-micro-clusters', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['has', 'point_count'], paint: { 'circle-color': '#0EA5E9', 'circle-opacity': 0.85, 'circle-radius': ['step', ['get', 'point_count'], 14, 25, 18, 100, 24], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
     if (glyphs && !map.getLayer('mg-t-micro-count')) map.addLayer({ id: 'mg-t-micro-count', type: 'symbol', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#fff' } });
-    if (!map.getLayer('mg-t-micro-points')) map.addLayer({ id: 'mg-t-micro-points', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': 6, 'circle-color': ['match', ['get', 'kind'], 'scooter', '#F59E0B', 'carsharing', '#1789F4', 'station', '#64748B', '#16A34A'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
-    for (const layer of ['mg-t-vehicles', 'mg-t-stops', 'mg-t-micro-points']) { map.off('click', layer, this.onClick); map.on('click', layer, this.onClick); }
+    if (!map.getLayer('mg-t-micro-points')) map.addLayer({ id: 'mg-t-micro-points', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': 6, 'circle-color': ['match', ['get', 'kind'], 'scooter', getTransportModeVisual('SCOOTER').color, 'carsharing', getTransportModeVisual('CARSHARING').color, 'station', '#64748B', getTransportModeVisual('BIKE').color], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+    if (!map.getLayer('mg-t-micro-zones-fill')) map.addLayer({ id: 'mg-t-micro-zones-fill', type: 'fill', source: SOURCES.zones, minzoom: minZoom.micro, paint: { 'fill-color': ['case', ['==', ['get', 'rideEndAllowed'], false], '#F43F5E', ['==', ['get', 'rideEndAllowed'], true], '#10B981', '#64748B'], 'fill-opacity': 0.15 } });
+    if (!map.getLayer('mg-t-micro-zones-outline')) map.addLayer({ id: 'mg-t-micro-zones-outline', type: 'line', source: SOURCES.zones, minzoom: minZoom.micro, paint: { 'line-color': ['case', ['==', ['get', 'rideEndAllowed'], false], '#F43F5E', ['==', ['get', 'rideEndAllowed'], true], '#10B981', '#64748B'], 'line-width': 1.5, 'line-opacity': 0.8 } });
+    for (const layer of ['mg-t-vehicles', 'mg-t-stops', 'mg-t-micro-points', 'mg-t-micro-zones-fill']) { map.off('click', layer, this.onClick); map.on('click', layer, this.onClick); }
     map.off('click', 'mg-t-routes', this.onRouteClick); map.on('click', 'mg-t-routes', this.onRouteClick);
   }
 
   private readonly onClick = (event: MapMouseEvent & { features?: Array<{ properties: Record<string, unknown>; geometry: { type: string; coordinates?: unknown } }> }) => {
     const feature = event.features?.[0]; if (!feature) return;
     const properties = feature.properties; const node = document.createElement('div'); node.style.cssText = 'font:600 12px system-ui;color:#0E1F35;max-width:220px';
+    let providerLink: HTMLAnchorElement | null = null;
     const title = document.createElement('div');
     const detail = document.createElement('div'); detail.style.cssText = 'font-weight:500;color:#64748B;margin-top:2px';
-    const names: Record<string, string> = { bus: 'Автобус', marshrutka: 'Маршрутка', trolleybus: 'Тролейбус', tram: 'Трамвай', metro: 'Метро', city_train: 'Міська електричка', funicular: 'Фунікулер', scooter: 'Електросамокат', bike: 'Велосипед', carsharing: 'Каршерінг', station: 'Пункт прокату' };
+    const names: Record<string, string> = { city_train: 'Міська електричка', funicular: 'Фунікулер', station: 'Пункт прокату' };
+    const modeLabel = (mode: unknown) => {
+      const key = String(mode ?? '');
+      return names[key] ?? getTransportModeVisual(key, key).label;
+    };
     if (properties.route !== undefined) {
-      title.textContent = `${names[String(properties.transport)] ?? 'Транспорт'}${properties.route ? ` №${properties.route}` : ''}`;
+      title.textContent = `${modeLabel(properties.transport)}${properties.route ? ` №${properties.route}` : ''}`;
       const timestamp = typeof properties.updatedAt === 'string' ? Date.parse(properties.updatedAt) : NaN;
       const age = Number.isFinite(timestamp) ? Math.max(0, Math.round((Date.now() - timestamp) / 1000)) : null;
       const speed = typeof properties.speed === 'number' ? `${Math.round(properties.speed * 3.6)} км/год` : '';
       detail.textContent = [age === null ? '' : `оновлено ${age} с тому`, speed].filter(Boolean).join(' · ');
     }
-    else if (properties.kind) { title.textContent = String(properties.name ?? names[String(properties.kind)] ?? 'Мікромобільність'); detail.textContent = [properties.provider, properties.available !== null && properties.available !== undefined ? `доступно: ${properties.available}` : ''].filter(Boolean).join(' · '); }
+    else if (properties.kind) {
+      const kind = String(properties.kind);
+      title.textContent = String(properties.name ?? (kind === 'station' || kind === 'rental_location' ? names.station : kind === 'geofence' ? 'Зона руху самоката' : modeLabel(kind)));
+      const yesNoUnknown = (value: unknown, yes: string, no: string) => value === true ? yes : value === false ? no : 'не підтверджено';
+      const updatedAt = typeof properties.updatedAt === 'string' ? properties.updatedAt : typeof properties.sourceUpdatedAt === 'string' ? properties.sourceUpdatedAt : null;
+      const updated = updatedAt && Number.isFinite(Date.parse(updatedAt)) ? `дані ${Math.max(0, Math.round((Date.now() - Date.parse(updatedAt)) / 1000))} с тому` : properties.availabilityStatus === 'STATIC' ? 'статична точка' : 'свіжість невідома';
+      const price = properties.pricing && typeof properties.pricing === 'object' ? properties.pricing as Record<string, unknown> : null;
+      const currency = price && typeof price.currency === 'string' ? price.currency : 'валюта невідома';
+      const basePrice = price && typeof price.basePrice === 'number' ? `${price.basePrice} ${currency}` : '';
+      const minuteRates = price && Array.isArray(price.perMinutePricing) ? price.perMinutePricing.flatMap((raw) => {
+        if (!raw || typeof raw !== 'object') return [];
+        const rate = raw as Record<string, unknown>;
+        return typeof rate.rate === 'number' && typeof rate.interval === 'number' ? [`${rate.rate} ${currency}/${rate.interval} с`] : [];
+      }) : [];
+      const priceLabel = price ? `тариф ${[basePrice, ...minuteRates].filter(Boolean).join(' + ') || 'умови не деталізовані'}` : '';
+      const rules = kind === 'geofence'
+        ? `старт: ${yesNoUnknown(properties.rideStartAllowed, 'дозволено', 'заборонено')} · повернення: ${yesNoUnknown(properties.rideEndAllowed, 'дозволено', 'заборонено')} · рух: ${yesNoUnknown(properties.rideThroughAllowed, 'дозволено', 'заборонено')}`
+        : `взяття: ${yesNoUnknown(properties.pickupAllowed, 'дозволено', 'заборонено')} · повернення: ${yesNoUnknown(properties.dropoffAllowed, 'дозволено', 'заборонено')}`;
+      const availability = kind === 'geofence' ? '' : properties.availability === 'AVAILABLE' ? 'зараз доступний' : properties.availability === 'UNAVAILABLE' ? 'зараз недоступний' : 'наявність невідома';
+      detail.textContent = [properties.provider, properties.address, availability, properties.batteryPercent === null || properties.batteryPercent === undefined ? '' : `заряд ${properties.batteryPercent}%`, properties.available !== null && properties.available !== undefined ? `доступно: ${properties.available}` : '', properties.capacity ? `місткість ${properties.capacity}` : '', priceLabel, rules, updated].filter(Boolean).join(' · ');
+      const uris = properties.rentalUris && typeof properties.rentalUris === 'object' ? properties.rentalUris as Record<string, unknown> : null;
+      const urlValue = [uris?.web, uris?.ios, uris?.android].find((value) => typeof value === 'string' && value.startsWith('https://'));
+      if (urlValue) {
+        try {
+          const url = new URL(String(urlValue));
+          if (['zelectra.app.link', 'zelectra.rideatom.com'].includes(url.hostname)) {
+            providerLink = document.createElement('a'); providerLink.href = url.toString(); providerLink.target = '_blank'; providerLink.rel = 'noopener noreferrer'; providerLink.textContent = 'Відкрити сервіс оренди'; providerLink.style.cssText = 'display:inline-block;margin-top:6px;color:#2563EB;font-weight:700';
+          }
+        } catch { /* Ignore malformed provider links. */ }
+      }
+    }
     else {
       title.textContent = String(properties.name ?? 'Зупинка');
       const routes = properties.routes ? `Маршрути: ${String(properties.routes)}` : '';
-      const types = String(properties.transports ?? '').split(',').map((type) => names[type] ?? type).join(', ');
+      const types = String(properties.transports ?? '').split(',').map((type) => modeLabel(type)).join(', ');
       detail.textContent = [routes, types].filter(Boolean).join(' · ');
     }
     node.append(title, detail);
+    if (providerLink) node.append(providerLink);
     this.popup?.remove();
-    const coordinates = feature.geometry.coordinates as [number, number];
+    const coordinates = feature.geometry.type === 'Point' ? feature.geometry.coordinates as [number, number] : [event.lngLat.lng, event.lngLat.lat] as [number, number];
     this.popup = new maplibregl.Popup({ closeButton: true, offset: 12 }).setLngLat(coordinates).setDOMContent(node).addTo(this.map);
   };
 
@@ -193,9 +245,13 @@ export class TransportLayerController {
       else { this.clear('stops'); hints.push('зупинки'); }
     } else this.clear('stops');
     if (micro.length) {
-      if (zoom >= minZoom.micro) tasks.push(this.load('micro', (signal) => productionApi.transportMicromobility(viewportBbox(bounds, maxSpan.micro), micro, signal)));
-      else { this.clear('micro'); hints.push('велосипеди, самокати й каршерінг'); }
-    } else this.clear('micro');
+      if (zoom >= minZoom.micro) {
+        const bbox = viewportBbox(bounds, maxSpan.micro);
+        tasks.push(this.load('micro', (signal) => productionApi.transportMicromobility(bbox, micro, signal)));
+        if (micro.includes('scooter')) tasks.push(this.load('zones', (signal) => productionApi.transportMicromobilityGeofences(bbox, signal)));
+        else this.clear('zones');
+      } else { this.clear('micro'); this.clear('zones'); hints.push('велосипеди, самокати й каршерінг'); }
+    } else { this.clear('micro'); this.clear('zones'); }
     if (hints.length) this.onHint(`Наблизьте карту, щоб побачити: ${hints.join(', ')}.`);
     await Promise.all(tasks);
   }

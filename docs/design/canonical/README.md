@@ -18,6 +18,8 @@ The route-map and route-details interaction is refined by the dedicated [canonic
 
 The compact, three-strategy journey result cards are locked by the [latest canonical search-results references](./journey-search-results/README.md), which cover the light and dark themes and take precedence over the general boards for this screen.
 
+The owner-supplied image pack from 2026-10-13 is preserved with checksums and a screen-by-screen implementation matrix in [the task reference pack](./task-2026-10-13/README.md). It adds the precision-navigation overview and the expanded mode legend; repeated journey-result and route-map images match the references already locked above.
+
 ## Invariants
 
 - Keep the same screen order and information architecture in both themes.
