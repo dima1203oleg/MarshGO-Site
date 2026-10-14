@@ -7,6 +7,7 @@ import { buildJourneyRouteMapModel, journeyModeColor } from '../map/journeyRoute
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
 import { productionApi, type ApiJourney, type ApiJourneyLive, type ApiRendezvous } from '../services/productionApi';
+import { journeyLegCanBeBooked } from '../domain/journeyBooking';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
 import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
@@ -570,7 +571,7 @@ export function JourneyRouteMapScreen({
             const liveStatus = liveJourney?.segments.find(segment => segment.legId === leg.id)?.status === 'LIVE' ? 'LIVE' : leg.liveStatus;
             const expanded = expandedSegments.has(leg.id);
             const caveat = journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource);
-            const canBook = Boolean(leg.offerId) && leg.availabilityStatus !== 'UNAVAILABLE';
+            const canBook = journeyLegCanBeBooked(leg);
             const stops = leg.stops ?? [];
             return <li
               key={leg.id}
