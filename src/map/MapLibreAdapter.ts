@@ -3,8 +3,9 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import type { CameraMode, ColoredRouteSegment, LiveTransitPosition, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
+import type { CameraMode, ColoredRouteSegment, LiveRidesharePosition, LiveTransitPosition, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
 import { freshLiveTransitPositions, liveTransitFeatureCollection } from './liveTransitFeatures';
+import { freshRidesharePositions } from './liveRideshareFeatures';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
 import type { FillLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
@@ -38,6 +39,8 @@ export class MapLibreAdapter implements MapAdapter {
   private heading: number | null = null;
   private marker: maplibregl.Marker | null = null;
   private liveTransitPositions: LiveTransitPosition[] = [];
+  private liveRidesharePositions: LiveRidesharePosition[] = [];
+  private rideshareMarkers = new Map<string, maplibregl.Marker>();
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
   onRouteSegmentSelect: (id: string) => void = () => undefined;
@@ -344,6 +347,35 @@ export class MapLibreAdapter implements MapAdapter {
     else delete container.dataset.marshgoLiveTransitUpdatedAt;
   }
 
+  /** Render only the participant-authorized rendezvous marker; this never changes camera mode. */
+  setLiveRidesharePositions(positions: readonly LiveRidesharePosition[]) {
+    this.liveRidesharePositions = freshRidesharePositions(positions);
+    const visibleIds = new Set(this.liveRidesharePositions.map((position) => position.id));
+    for (const [id, marker] of this.rideshareMarkers) {
+      if (!visibleIds.has(id)) { marker.remove(); this.rideshareMarkers.delete(id); }
+    }
+    for (const position of this.liveRidesharePositions) {
+      let marker = this.rideshareMarkers.get(position.id);
+      if (!marker) {
+        const element = document.createElement('div');
+        element.className = 'marshgo-rideshare-marker';
+        element.setAttribute('role', 'img');
+        element.style.cssText = 'width:38px;height:38px;display:grid;place-items:center;border:2px solid #fff;border-radius:50%;box-shadow:0 3px 14px rgba(5,20,35,.4);transition:opacity 160ms ease,background-color 160ms ease;';
+        element.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.4-4.2A2 2 0 0 1 8.3 5.5h7.4a2 2 0 0 1 1.9 1.3L19 11v7H5z"/><path d="M5 12h14M7.5 15.5h.01M16.5 15.5h.01M7 18v1m10-1v1"/></svg>';
+        marker = new maplibregl.Marker({ element, anchor: 'center', offset: [0, -13] }).setLngLat(position.coordinates).addTo(this.map);
+        this.rideshareMarkers.set(position.id, marker);
+      } else marker.setLngLat(position.coordinates);
+      const element = marker.getElement();
+      const live = position.freshness === 'LIVE';
+      element.style.backgroundColor = live ? '#08AFC0' : '#728296';
+      element.style.opacity = live ? '1' : '0.62';
+      element.dataset.freshness = position.freshness.toLowerCase();
+      element.setAttribute('aria-label', live ? 'Попутка: актуальне GPS водія' : 'Попутка: остання відома позиція, GPS застаріло');
+      element.title = live ? 'Актуальне GPS водія' : 'Остання відома позиція · GPS застаріло';
+    }
+    this.map.getContainer().dataset.marshgoRideshareCount = String(this.liveRidesharePositions.length);
+  }
+
   /** The driver's puck: a blue arrow that points where the car is heading, lying flat on the (tilted) road like in Apple Maps. */
   private updateMarker(point: Coordinate) {
     if (!this.marker) {
@@ -488,6 +520,6 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);
   }
   retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
-  destroy() { this.marker?.remove(); this.transport?.destroy(); this.map.remove(); }
+  destroy() { this.marker?.remove(); for (const marker of this.rideshareMarkers.values()) marker.remove(); this.rideshareMarkers.clear(); this.transport?.destroy(); this.map.remove(); }
   getStatus() { return this.status; }
 }

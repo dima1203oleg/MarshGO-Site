@@ -86,6 +86,7 @@ export type ApiRendezvous = {
   pickup: { label: string; coordinates: [number, number] };
   plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
   locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
+  currentParticipant?: 'driver' | 'passenger';
   locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
 };
 export type ApiRescueAlternative = ApiOffer & {
@@ -228,6 +229,9 @@ export type ApiJourney = {
     id: string;
     mode: string;
     offerId: string | null;
+    /** Present when this leg is backed by a confirmed Community booking. */
+    bookingId?: string | null;
+    state?: string;
     origin: { name: string; coordinates: [number, number] };
     destination: { name: string; coordinates: [number, number] };
     departureAt: string;
@@ -293,13 +297,31 @@ export type ApiStoredJourney = {
   id: string;
   origin_name: string;
   destination_name: string;
+  origin_coordinates?: [number, number];
+  destination_coordinates?: [number, number];
   requested_departure_at: string;
+  requested_arrival_at?: string | null;
   strategy: ApiJourneyStrategy;
   state: string;
   passenger_count: number;
   total_price_minor: number | null;
   confirmed_price_minor: number | null;
-  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string; stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string }> }>;
+  estimated_price_min_minor?: number | null;
+  estimated_price_max_minor?: number | null;
+  total_duration_s?: number;
+  walking_distance_m?: number;
+  transfer_count?: number;
+  reliability_score?: number | null;
+  waitingSeconds?: number;
+  legs: Array<{
+    id: string; ordinal?: number; mode: string; originName: string; originCoordinates: [number, number];
+    destinationName: string; destinationCoordinates: [number, number]; departureAt: string; arrivalAt: string;
+    durationSeconds: number; distanceMeters: number | null; priceMinor: number | null; currency?: string;
+    priceStatus: string; availabilityStatus: string; providerType?: string | null; offerId: string | null;
+    bookingId: string | null; state: string; dataSource?: string | null; lastUpdatedAt?: string | null;
+    source?: string | null; metadata?: Record<string, unknown> | null; routeGeometry?: Array<[number, number]> | null;
+    stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string; pickupType?: number; dropOffType?: number; skipped?: boolean }>;
+  }>;
 };
 export type GeoJsonCollection = { type: 'FeatureCollection'; features: Array<{ type: 'Feature'; properties: Record<string, unknown>; geometry: { type: string; coordinates: unknown } }> };
 export type ApiNavigationSession = {
@@ -515,7 +537,7 @@ export const productionApi = {
     return request<{ id: string; status: string }>(`/demands/${demandId}/cancel`, { method: 'POST' });
   },
   bookings() { return request<ApiBooking[]>('/bookings'); },
-  bookingRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous`); },
+  bookingRendezvous(bookingId: string, signal?: AbortSignal) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous`, { signal }); },
   activateRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous/activate`, { method: 'POST' }); },
   sendRendezvousLocation(rendezvousId: string, location: { longitude: number; latitude: number; accuracyMeters: number; capturedAt: string }) {
     return request<{ rendezvousId: string; storedEphemerally: true; expiresInSeconds: number; nearPickup: boolean; arrivalRequiresUserConfirmation: true }>(

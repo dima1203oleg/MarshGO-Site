@@ -6,7 +6,7 @@ import { MarshGoMap } from '../map/MarshGoMap';
 import { buildJourneyRouteMapModel, journeyModeColor } from '../map/journeyRouteModel';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
-import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
+import { productionApi, type ApiJourney, type ApiJourneyLive, type ApiRendezvous } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
 import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
@@ -30,6 +30,9 @@ const formatTime = (value?: string) => {
   if (!value || !Number.isFinite(Date.parse(value))) return '—';
   return new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(new Date(value));
 };
+
+type RendezvousSnapshot = { status: 'loading' | 'unavailable' } | { status: 'available'; session: ApiRendezvous };
+const terminalRendezvousStates = new Set(['CANCELLED', 'EXPIRED', 'COMPLETED']);
 
 const formatDuration = (seconds: number) => {
   const minutes = Math.max(0, Math.round(seconds / 60));
@@ -74,6 +77,40 @@ function stopTime(stop: NonNullable<JourneyLeg['stops']>[number], index: number,
   return formatTime(index === 0 ? stop.departureAt : index === lastIndex ? stop.arrivalAt : stop.arrivalAt);
 }
 
+function RendezvousStatus({ snapshot, isSelected, isDark }: { snapshot?: RendezvousSnapshot; isSelected: boolean; isDark: boolean }) {
+  let message = 'Завантажуємо стан GPS бронювання…';
+  let detail = 'Позиція доступна лише учасникам підтвердженої поїздки.';
+  let stale = false;
+  if (snapshot?.status === 'unavailable') {
+    message = 'Онлайн-стан зустрічі тимчасово недоступний.';
+    detail = 'Збережений маршрут і бронювання залишаються доступними.';
+  } else if (snapshot?.status === 'available') {
+    const session = snapshot.session;
+    if (terminalRendezvousStates.has(session.state)) {
+      message = session.state === 'CANCELLED' ? 'Обмін місцем завершено.' : session.state === 'EXPIRED' ? 'Час онлайн-зустрічі минув.' : 'Зустріч завершена.';
+      detail = 'Поточне відстеження вимкнено.';
+    } else if (!session.locationSharingEnabled) {
+      message = 'Водій ще не ввімкнув короткочасний обмін місцем.';
+      detail = 'Точні координати не показуються.';
+    } else if (session.currentParticipant !== 'passenger') {
+      message = 'Позиція водія доступна пасажиру цього бронювання.';
+      detail = 'Ця сесія не показує власну позицію водія як окрему ціль.';
+    } else if (!session.locations.driver) {
+      message = 'Очікуємо перше GPS-оновлення водія.';
+      detail = 'ETA за дорожнім маршрутом недоступний.';
+    } else {
+      const driver = session.locations.driver;
+      stale = driver.freshness !== 'LIVE';
+      message = stale ? 'Остання відома позиція водія застаріла.' : 'GPS водія оновлено ' + formatTime(driver.capturedAt) + '.';
+      detail = `Точність GPS ±${Math.round(driver.accuracyMeters)} м · ETA за дорожнім маршрутом недоступний.${isSelected ? '' : ' Виберіть сегмент «Попутка», щоб показати позицію на карті.'}`;
+    }
+  }
+  return <div data-testid="journey-rendezvous-status" role="status" className={`border-t border-[var(--route-border)] px-3 py-2 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+    <b className={`block text-[10px] ${stale ? (isDark ? 'text-amber-200' : 'text-amber-800') : ''}`}>{message}</b>
+    <span className="mt-0.5 block text-[9px] leading-4 text-[var(--route-subtle)]">{detail}</span>
+  </div>;
+}
+
 export function JourneyRouteMapScreen({
   journey,
   onBack,
@@ -98,6 +135,7 @@ export function JourneyRouteMapScreen({
   const [dragging, setDragging] = useState(false);
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
+  const [rendezvousByLegId, setRendezvousByLegId] = useState<Record<string, RendezvousSnapshot>>({});
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
   const [expandedSegments, setExpandedSegments] = useState<Set<string>>(() => new Set());
   const [saved, setSaved] = useState(() => {
@@ -108,6 +146,7 @@ export function JourneyRouteMapScreen({
   const sheetElement = useRef<HTMLElement | null>(null);
   const sheetHeightRef = useRef(sheetHeight);
   const mapAdapter = useRef<MapAdapter | null>(null);
+  const lastRideshareFocusKey = useRef('');
   const segmentCards = useRef(new Map<string, HTMLElement>());
   const dragStart = useRef<{ y: number; height: number; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
   const suppressHandleClick = useRef(false);
@@ -147,6 +186,37 @@ export function JourneyRouteMapScreen({
   }, [journey.id, journey.legs, journey.state]);
 
   useEffect(() => {
+    const bookedCommunityLegs = journey.legs.filter((leg) => leg.mode === 'COMMUNITY' && leg.bookingId);
+    if (!bookedCommunityLegs.length) { setRendezvousByLegId({}); return; }
+    let stopped = false;
+    let timer: number | undefined;
+    let controller: AbortController | undefined;
+    const poll = async () => {
+      if (document.visibilityState === 'hidden') {
+        if (!stopped) timer = window.setTimeout(() => void poll(), 60_000);
+        return;
+      }
+      controller = new AbortController();
+      const bookings = [...new Set(bookedCommunityLegs.flatMap((leg) => leg.bookingId ? [leg.bookingId] : []))];
+      const snapshots: Array<[string, RendezvousSnapshot]> = await Promise.all(bookings.map(async (bookingId) => {
+        try { return [bookingId, { status: 'available', session: await productionApi.bookingRendezvous(bookingId, controller?.signal) } as RendezvousSnapshot]; }
+        catch { return [bookingId, { status: 'unavailable' } as RendezvousSnapshot]; }
+      }));
+      if (stopped) return;
+      const byBooking = new Map(snapshots);
+      const next = Object.fromEntries(bookedCommunityLegs.flatMap((leg) => {
+        const snapshot = leg.bookingId ? byBooking.get(leg.bookingId) : undefined;
+        return snapshot ? [[leg.id, snapshot]] : [];
+      }));
+      setRendezvousByLegId(next);
+      const hasOpenSession = snapshots.some(([, snapshot]) => snapshot.status !== 'available' || !terminalRendezvousStates.has(snapshot.session.state));
+      if (hasOpenSession && !stopped) timer = window.setTimeout(() => void poll(), 15_000);
+    };
+    void poll();
+    return () => { stopped = true; controller?.abort(); if (timer !== undefined) window.clearTimeout(timer); };
+  }, [journey.id, journey.legs]);
+
+  useEffect(() => {
     if (!mapAdapterReady) return;
     const positions = (liveJourney?.segments.filter(segment => segment.status === 'LIVE' && segment.vehicle) ?? [])
       .flatMap((segment, index) => {
@@ -164,6 +234,36 @@ export function JourneyRouteMapScreen({
     if (mapAdapter.current?.setLiveTransitPositions) mapAdapter.current.setLiveTransitPositions(positions);
     else mapAdapter.current?.setLiveTransitPosition?.(positions[0] ?? null);
   }, [activeSegmentId, journey.legs, liveJourney, mapAdapterReady]);
+
+  useEffect(() => {
+    if (!mapAdapterReady) return;
+    const selectedLeg = journey.legs.find((leg) => leg.id === activeSegmentId && leg.mode === 'COMMUNITY');
+    if (!selectedLeg) {
+      lastRideshareFocusKey.current = '';
+      mapAdapter.current?.setLiveRidesharePositions?.([]);
+      return;
+    }
+    const snapshot = rendezvousByLegId[selectedLeg.id];
+    if (snapshot?.status !== 'available') { mapAdapter.current?.setLiveRidesharePositions?.([]); return; }
+    const session = snapshot.session;
+    if (!session.locationSharingEnabled || session.currentParticipant !== 'passenger' || terminalRendezvousStates.has(session.state)) {
+      lastRideshareFocusKey.current = '';
+      mapAdapter.current?.setLiveRidesharePositions?.([]);
+      return;
+    }
+    const driver = session.locations.driver;
+    const positions = driver ? [{ id: session.id, coordinates: driver.coordinates, capturedAt: driver.capturedAt, freshness: driver.freshness }] : [];
+    mapAdapter.current?.setLiveRidesharePositions?.(positions);
+    if (driver) {
+      const focusKey = `${journey.id}:${selectedLeg.id}`;
+      if (lastRideshareFocusKey.current !== focusKey) {
+        lastRideshareFocusKey.current = focusKey;
+        mapAdapter.current?.focusCoordinates?.([driver.coordinates, session.pickup.coordinates], {
+          top: 84, right: 48, bottom: Math.max(180, sheetHeight + 28), left: 32,
+        }, 15);
+      }
+    } else lastRideshareFocusKey.current = '';
+  }, [activeSegmentId, journey.id, journey.legs, mapAdapterReady, rendezvousByLegId, sheetHeight]);
 
   const snapHeight = useCallback((snap: RouteSheetSnap, viewport = viewportHeight) => routeSheetHeights(viewport)[snap], [viewportHeight]);
 
@@ -517,9 +617,10 @@ export function JourneyRouteMapScreen({
               </div>}
 
               {leg.mode === 'COMMUNITY' && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--route-border)] px-3 py-2.5">
-                <span className="text-[10px] text-[var(--route-muted)]">{leg.availabilityStatus === 'AVAILABLE' ? 'Наявність перевірена під час пошуку' : 'Місця потрібно перевірити перед бронюванням'}</span>
+                <span className="text-[10px] text-[var(--route-muted)]">{leg.bookingId ? 'Бронювання прив’язане до цього маршруту' : leg.availabilityStatus === 'AVAILABLE' ? 'Наявність перевірена під час пошуку' : 'Місця потрібно перевірити перед бронюванням'}</span>
                 {canBook && leg.offerId && onBookOffer && <button type="button" onClick={() => onBookOffer(leg.offerId!, journey.id, leg.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#8845E8] px-4 text-xs font-extrabold text-white shadow-[0_0_18px_rgba(168,85,247,.28)] hover:bg-[#9958F2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Забронювати <span aria-hidden="true">→</span></button>}
               </div>}
+              {leg.mode === 'COMMUNITY' && leg.bookingId && <RendezvousStatus snapshot={rendezvousByLegId[leg.id]} isSelected={selected} isDark={isDark}/>}
             </li>;
           })}
         </ol>
