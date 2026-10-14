@@ -144,6 +144,20 @@ export function ProductionMarketplace() {
   const [navigationActive, setNavigationActive] = useState(false);
   useEffect(() => { if (tab === 'navigation') setNavigationMounted(true); }, [tab]);
   const onNavigationSessionActiveChange = useCallback((active: boolean) => setNavigationActive(active), []);
+  useEffect(() => {
+    if (!user || tab === 'navigation') {
+      if (!user) setNavigationActive(false);
+      return;
+    }
+    let current = true;
+    // Rehydrate the global return affordance without mounting the map or starting GPS in another section.
+    void productionApi.activeNavigation()
+      .then((active) => {
+        if (current) setNavigationActive(Boolean(active && active.state !== 'ended'));
+      })
+      .catch(() => undefined);
+    return () => { current = false; };
+  }, [user?.id, tab]);
   const [confirmDeletion, setConfirmDeletion] = useState(false);
   const [editingOffer, setEditingOffer] = useState<ApiOffer | null>(null);
   const [vehicleToDelete, setVehicleToDelete] = useState<ApiVehicle | null>(null);
