@@ -249,6 +249,9 @@ export type ApiJourney = {
     source: string;
     lastUpdatedAt: string;
     providerName?: string;
+    /** Provider-scoped GTFS identity; only present for feed-backed transit legs. */
+    providerId?: string;
+    routeId?: string;
     routeName?: string;
     headsign?: string;
     /** Concrete feed mode, such as suburban_train or marshrutka. */
@@ -271,6 +274,28 @@ export type ApiJourneyLive = {
     reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
     vehicle?: { coordinates: [number, number]; bearing: number | null; speed: number | null; route: string; updatedAt: string };
   }>;
+};
+export type ApiTransitStopArrival = {
+  stopId: string;
+  routeId: string;
+  routeName: string;
+  headsign: string;
+  mode: string;
+  tripId: string;
+  scheduledArrival: string;
+  predictedArrival: string;
+  arrivalSource: 'SCHEDULE' | 'TRIP_UPDATE';
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  realtimeUpdatedAt?: string;
+  isRealtime: boolean;
+  etaSeconds: number;
+  displayLabel: string;
+};
+export type ApiTransitStopArrivals = {
+  stopId: string;
+  lat: number;
+  lon: number;
+  arrivals: ApiTransitStopArrival[];
 };
 export type ApiJourneySearchPartialReason =
   | 'candidate_generation_truncated'
@@ -463,6 +488,18 @@ export const productionApi = {
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
   journeyLive(id: string, signal?: AbortSignal) { return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live`, { signal }); },
+  transitStopArrivals(input: {
+    providerId: string; stopId: string; latitude: number; longitude: number;
+    routeId: string; headsign?: string; limit?: number;
+  }, signal?: AbortSignal) {
+    const stopId = encodeURIComponent(`${input.providerId}:${input.stopId}`);
+    const query = new URLSearchParams({
+      lat: String(input.latitude), lon: String(input.longitude), routeId: input.routeId,
+      limit: String(input.limit ?? 3),
+    });
+    if (input.headsign) query.set('headsign', input.headsign);
+    return request<ApiTransitStopArrivals>(`/transit/stops/${stopId}/arrivals?${query.toString()}`, { signal });
+  },
   startNavigation(input: { origin: [number, number]; destination?: [number, number]; destinationName?: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },
