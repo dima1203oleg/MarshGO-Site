@@ -96,10 +96,10 @@ function maneuverIcon(maneuver: Maneuver): LucideIcon {
   return ArrowUp;
 }
 
-type Props = { onBack: () => void; onOpenDemand?: (demandId: string, candidateId: string) => void; onSessionActiveChange?: (active: boolean) => void; isPresented?: boolean; autoStart?: boolean; initialDestination?: ApiPlace | null; onAddVehicle?: () => void };
+type Props = { onBack: () => void; onOpenDemand?: (demandId: string, candidateId: string) => void; onSessionActiveChange?: (active: boolean) => void; isPresented?: boolean; autoStart?: boolean; autoStartRequestId?: number; initialDestination?: ApiPlace | null; onAddVehicle?: () => void };
 const AUTO_MATCHING_KEY = 'marshgo.navigation.autoMatching';
 const autoMatchingPreferred = () => { try { return localStorage.getItem(AUTO_MATCHING_KEY) !== 'off'; } catch { return true; } };
-export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChange, isPresented = true, autoStart = false, initialDestination = null, onAddVehicle }: Props) {
+export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChange, isPresented = true, autoStart = false, autoStartRequestId = 0, initialDestination = null, onAddVehicle }: Props) {
   const [destinationText, setDestinationText] = useState(() => initialDestination?.label ?? '');
   const [suggestions, setSuggestions] = useState<ApiPlace[]>([]);
   const [destination, setDestination] = useState<ApiPlace | null>(initialDestination);
@@ -116,7 +116,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   // Raw GPS position: the marker for a session without a route ("just drive"), where there is no route to match it to.
   const [liveFix, setLiveFix] = useState<[number, number] | null>(null);
-  const autoStartTried = useRef(false);
+  const autoStartStartedFor = useRef<number | null>(null);
+  const autoStartUpdatedFor = useRef<number | null>(null);
   const [sheetLevel, setSheetLevel] = useState<NavigationSheetLevel>('collapsed');
   const sheetOpen = sheetLevel !== 'collapsed';
   const [focusMode, setFocusMode] = useState(() => { try { return localStorage.getItem('marshgo.navigation.focusMode') === 'on'; } catch { return false; } });
@@ -442,18 +443,20 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   // A destination passed from a planned journey should be used by the real navigation session.
   // If a session is already active, update it after restore; otherwise start at the current GPS fix.
   useEffect(() => {
-    if (!autoStart || restoring || session || autoStartTried.current) return;
-    autoStartTried.current = true;
+    if (!autoStart || restoring || session || autoStartStartedFor.current === autoStartRequestId) return;
+    autoStartStartedFor.current = autoStartRequestId;
     if (initialDestination) {
       setDestination(initialDestination);
       setDestinationText(initialDestination.label);
     }
     void start(initialDestination);
-  }, [autoStart, restoring, session, initialDestination]);
+  }, [autoStart, autoStartRequestId, restoring, session, initialDestination]);
 
   useEffect(() => {
-    if (!autoStart || restoring || !session || !initialDestination || autoStartTried.current) return;
-    autoStartTried.current = true;
+    if (!autoStart || restoring || !session || !initialDestination
+      || autoStartStartedFor.current === autoStartRequestId
+      || autoStartUpdatedFor.current === autoStartRequestId) return;
+    autoStartUpdatedFor.current = autoStartRequestId;
     setDestination(initialDestination);
     setDestinationText(initialDestination.label);
     setBusy(true);
@@ -469,7 +472,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     }).catch((error: unknown) => {
       setGpsMessage(navigationErrorMessage(error, 'Не вдалося змінити пункт активної навігації.'));
     }).finally(() => setBusy(false));
-  }, [autoStart, restoring, session?.id, initialDestination, navigationStore]);
+  }, [autoStart, autoStartRequestId, restoring, session?.id, initialDestination, navigationStore]);
 
   const searchTopDestination = async () => {
     setBusy(true); setTopSuggestions([]);
@@ -559,7 +562,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     </div>}
   </section> : null;
 
-  if (!session) return <main className="min-h-[100svh] bg-[#f5f8fd] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe text-[#17243a]">
+  if (!session) return <main aria-hidden={!isPresented} className={isPresented ? 'min-h-[100svh] bg-[#f5f8fd] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe text-[#17243a]' : 'fixed inset-0 z-20 invisible pointer-events-none bg-[#f5f8fd] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe text-[#17243a]'}>
     <div className="mx-auto max-w-xl">
       <button onClick={onBack} className="mt-3 grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm" aria-label="Назад"><ArrowLeft size={19}/></button>
       <div className="mt-7"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-white"><Navigation size={24}/></span><p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-blue-600">MARSHGO Navigation</p><h1 className="mt-1 text-2xl font-extrabold">Куди прямуєте?</h1><p className="mt-2 text-sm leading-5 text-slate-500">Побудуємо реальний автомобільний маршрут від вашої GPS-позиції. Геолокація передаватиметься лише під час відкритого екрана.</p></div>

@@ -19,6 +19,11 @@ const strategies = new Set<SearchRouteState['strategy']>([
   'FASTEST', 'CHEAPEST', 'BALANCED', 'PREMIUM', 'RELIABLE', 'CUSTOM',
 ]);
 
+function queryNumber(query: URLSearchParams, key: string): number {
+  const raw = query.get(key);
+  return raw === null || raw.trim() === '' ? Number.NaN : Number(raw);
+}
+
 function validPlace(place: SearchRoutePlace): boolean {
   return place.label.length > 0 && place.label.length <= 240
     && place.providerId.length > 0 && place.providerId.length <= 256
@@ -68,14 +73,14 @@ export function parseSearchRoute(search: string): SearchRouteState | null {
   const passengers = Number(query.get('passengers'));
   const origin: SearchRoutePlace = {
     label: query.get('origin') ?? '',
-    latitude: Number(query.get('originLat')),
-    longitude: Number(query.get('originLon')),
+    latitude: queryNumber(query, 'originLat'),
+    longitude: queryNumber(query, 'originLon'),
     providerId: query.get('originProvider') ?? '',
   };
   const destination: SearchRoutePlace = {
     label: query.get('destination') ?? '',
-    latitude: Number(query.get('destinationLat')),
-    longitude: Number(query.get('destinationLon')),
+    latitude: queryNumber(query, 'destinationLat'),
+    longitude: queryNumber(query, 'destinationLon'),
     providerId: query.get('destinationProvider') ?? '',
   };
   const date = query.get('date') ?? '';
