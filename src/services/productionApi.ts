@@ -466,8 +466,8 @@ export const productionApi = {
   startNavigation(input: { origin: [number, number]; destination?: [number, number]; destinationName?: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },
-  async calculateRoute(input: RouteRequest): Promise<RouteResult> {
-    const result = await request<unknown>('/routing/calculate', { method: 'POST', body: JSON.stringify(input) });
+  async calculateRoute(input: RouteRequest, signal?: AbortSignal): Promise<RouteResult> {
+    const result = await request<unknown>('/routing/calculate', { method: 'POST', body: JSON.stringify(input), signal });
     const parsed = routeResultSchema.safeParse(result);
     if (!parsed.success) throw new NavigationProviderError('ROUTING_INVALID_RESPONSE', 'marshgo-api');
     return parsed.data;
