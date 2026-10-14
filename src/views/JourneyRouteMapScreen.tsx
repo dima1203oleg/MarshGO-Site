@@ -8,9 +8,9 @@ import { buildJourneyRouteMapModel, journeyModeColor } from '../map/journeyRoute
 import type { LiveRideshareApproachRoute, MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { freshRideshareApproachRoute } from '../map/liveRideshareFeatures';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
-import { productionApi, type ApiJourney, type ApiJourneyLive, type ApiRendezvous, type ApiTransitStopArrival } from '../services/productionApi';
+import { productionApi, type ApiJourney, type ApiJourneyLive, type ApiRendezvous, type ApiTransitStopArrival, type ApiTransitStopArrivalsMeta } from '../services/productionApi';
 import { journeyLegCanBeBooked } from '../domain/journeyBooking';
-import { matchingStopArrivals, stopArrivalEtaLabel } from '../domain/stopArrivals';
+import { matchingStopArrivals, stopArrivalEtaLabel, stopArrivalFreshnessNotice } from '../domain/stopArrivals';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
 import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
@@ -37,7 +37,7 @@ const formatTime = (value?: string) => {
 
 type RendezvousSnapshot = { status: 'loading' | 'unavailable' } | { status: 'available'; session: ApiRendezvous };
 type RideshareApproach = { status: 'calculating' | 'unavailable' } | { status: 'available'; route: LiveRideshareApproachRoute };
-type StopArrivalsSnapshot = { status: 'loading' } | { status: 'unavailable'; reason?: 'direction_missing' | 'request_failed' } | { status: 'available'; arrivals: ApiTransitStopArrival[] };
+type StopArrivalsSnapshot = { status: 'loading' } | { status: 'unavailable'; reason?: 'direction_missing' | 'request_failed' } | { status: 'available'; arrivals: ApiTransitStopArrival[]; meta?: ApiTransitStopArrivalsMeta };
 const terminalRendezvousStates = new Set(['CANCELLED', 'EXPIRED', 'COMPLETED']);
 
 const formatDuration = (seconds: number) => {
@@ -234,7 +234,7 @@ export function JourneyRouteMapScreen({
           routeId: leg.routeId!, headsign: leg.headsign, limit: 3,
         }, controller.signal);
         if (!stopped) setStopArrivalsByLegId(current => ({
-          ...current, [leg.id]: { status: 'available', arrivals: matchingStopArrivals(result.arrivals, leg.routeId!, leg.headsign) },
+          ...current, [leg.id]: { status: 'available', arrivals: matchingStopArrivals(result.data.arrivals, leg.routeId!, leg.headsign), meta: result.meta },
         }));
       } catch {
         if (!stopped) setStopArrivalsByLegId(current => ({ ...current, [leg.id]: { status: 'unavailable', reason: 'request_failed' } }));
@@ -689,6 +689,12 @@ export function JourneyRouteMapScreen({
             const canBook = journeyLegCanBeBooked(leg);
             const stops = leg.stops ?? [];
             const arrivalsSnapshot = stopArrivalsByLegId[leg.id];
+            const arrivalNotice = arrivalsSnapshot?.status === 'available' ? stopArrivalFreshnessNotice(arrivalsSnapshot.meta) : null;
+            const arrivalNoticeColor = arrivalNotice?.tone === 'live'
+              ? (isDark ? 'text-emerald-300' : 'text-emerald-800')
+              : arrivalNotice?.tone === 'warning'
+                ? (isDark ? 'text-amber-200' : 'text-amber-800')
+                : 'text-[var(--route-subtle)]';
             return <li
               key={leg.id}
               ref={node => setCardRef(leg.id, node)}
@@ -733,16 +739,19 @@ export function JourneyRouteMapScreen({
                 </ol> : <p className="text-[10px] text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
                 {leg.providerId && leg.routeId && stops[0] && <div className="mt-3 border-t border-[var(--route-border)] pt-2" aria-live="polite">
                   <p className="mb-2 text-[10px] font-bold text-[var(--route-muted)]">Найближчі рейси до {stops[0].name}</p>
-                  {arrivalsSnapshot?.status === 'loading' && <p className="text-[10px] text-[var(--route-subtle)]">Оновлюємо час прибуття…</p>}
-                  {arrivalsSnapshot?.status === 'unavailable' && <p className="text-[10px] text-[var(--route-subtle)]">{arrivalsSnapshot.reason === 'direction_missing' ? 'Напрямок у транспортному фіді не вказаний, ETA не показуємо.' : 'Час прибуття зараз недоступний.'}</p>}
-                  {arrivalsSnapshot?.status === 'available' && (arrivalsSnapshot.arrivals.length ? <ul className="flex flex-wrap gap-2">
+                {arrivalsSnapshot?.status === 'loading' && <p className="text-[10px] text-[var(--route-subtle)]">Оновлюємо час прибуття…</p>}
+                {arrivalsSnapshot?.status === 'unavailable' && <p className="text-[10px] text-[var(--route-subtle)]">{arrivalsSnapshot.reason === 'direction_missing' ? 'Напрямок у транспортному фіді не вказаний, ETA не показуємо.' : 'Час прибуття зараз недоступний.'}</p>}
+                {arrivalsSnapshot?.status === 'available' && <>
+                  {arrivalNotice && <p data-testid="stop-arrival-freshness" role="status" className={`mb-2 text-[10px] ${arrivalNoticeColor}`}>{arrivalNotice.label}</p>}
+                  {arrivalsSnapshot.arrivals.length ? <ul className="flex flex-wrap gap-2">
                     {arrivalsSnapshot.arrivals.map(arrival => <li key={`${arrival.tripId}:${arrival.predictedArrival}`} className="flex min-h-9 items-center gap-1.5 rounded-xl bg-[var(--route-card-alt)] px-2.5 text-[10px] font-bold">
                       <span className="text-[#1687FF]">{stopArrivalEtaLabel(arrival.etaSeconds)}</span>
                       <span className="max-w-20 truncate">{arrival.routeName}</span>
                       <span className="text-[9px] font-medium text-[var(--route-subtle)]">{arrival.isRealtime ? 'GTFS‑RT' : 'за розкладом'}</span>
                     </li>)}
-                  </ul> : <p className="text-[10px] text-[var(--route-subtle)]">Для цього напрямку найближчих рейсів не знайдено.</p>)}
-                </div>}
+                  </ul> : <p className="text-[10px] text-[var(--route-subtle)]">Для цього напрямку найближчих рейсів не знайдено.</p>}
+                </>}
+              </div>}
               </div>}
 
               {leg.mode === 'COMMUNITY' && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--route-border)] px-3 py-2.5">

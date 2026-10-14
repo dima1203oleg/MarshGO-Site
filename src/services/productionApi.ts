@@ -297,6 +297,15 @@ export type ApiTransitStopArrivals = {
   lon: number;
   arrivals: ApiTransitStopArrival[];
 };
+export type ApiTransitStopArrivalsMeta = {
+  availability: 'AVAILABLE' | 'STOP_NOT_IN_FEED' | 'SCHEDULE_UNSUPPORTED';
+  scheduleUpdatedAt?: string;
+  realtimeStatus: 'AVAILABLE' | 'STALE' | 'UNAVAILABLE' | 'NOT_CONFIGURED' | 'TEMPORARILY_UNAVAILABLE';
+  /** Timestamp of a current feed accepted for live predictions. */
+  realtimeUpdatedAt?: string;
+  /** Timestamp of the last feed snapshot, including a stale snapshot. */
+  realtimeFeedTimestamp?: string;
+};
 export type ApiJourneySearchPartialReason =
   | 'candidate_generation_truncated'
   | 'provider_error'
@@ -384,21 +393,21 @@ export type ApiProposalRevision = {
   departure_at: string; comment: string | null; created_at: string;
 };
 
-type ApiEnvelope<T> = { data: T };
-const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
+type ApiEnvelope<T, M = unknown> = { data: T; meta?: M };
+const apiBase = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL ?? '';
 let accessToken: string | null = null;
 
-async function request<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
+async function requestEnvelope<T, M = unknown>(path: string, init: RequestInit = {}, retryAuth = true): Promise<ApiEnvelope<T, M>> {
   const headers = new Headers(init.headers);
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   if (accessToken) headers.set('authorization', `Bearer ${accessToken}`);
   const response = await fetch(`${apiBase}/api/v1${path}`, { ...init, headers, credentials: 'include' });
-  const body = await response.json().catch(() => null) as { data?: T; error?: { code?: string; message?: string } } | null;
+  const body = await response.json().catch(() => null) as (ApiEnvelope<T, M> & { error?: { code?: string; message?: string } }) | null;
   if (response.status === 401 && retryAuth && accessToken && !path.startsWith('/auth/')) {
     try {
       const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false);
       accessToken = session.accessToken;
-      return request<T>(path, init, false);
+      return requestEnvelope<T, M>(path, init, false);
     } catch {
       accessToken = null;
     }
@@ -409,8 +418,12 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
     }
     throw new Error(body?.error?.message || `Request failed (${response.status})`);
   }
-  if (response.status === 204) return undefined as T;
-  return (body as ApiEnvelope<T>).data;
+  if (response.status === 204) return { data: undefined as T };
+  return { data: body?.data as T, ...(body?.meta === undefined ? {} : { meta: body.meta }) };
+}
+
+async function request<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
+  return (await requestEnvelope<T>(path, init, retryAuth)).data;
 }
 
 export const productionApi = {
@@ -498,7 +511,7 @@ export const productionApi = {
       limit: String(input.limit ?? 3),
     });
     if (input.headsign) query.set('headsign', input.headsign);
-    return request<ApiTransitStopArrivals>(`/transit/stops/${stopId}/arrivals?${query.toString()}`, { signal });
+    return requestEnvelope<ApiTransitStopArrivals, ApiTransitStopArrivalsMeta>(`/transit/stops/${stopId}/arrivals?${query.toString()}`, { signal });
   },
   startNavigation(input: { origin: [number, number]; destination?: [number, number]; destinationName?: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });

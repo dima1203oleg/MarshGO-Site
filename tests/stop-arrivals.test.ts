@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { matchingStopArrivals, stopArrivalEtaLabel } from '../src/domain/stopArrivals';
+import { matchingStopArrivals, stopArrivalEtaLabel, stopArrivalFreshnessNotice } from '../src/domain/stopArrivals';
 import type { ApiTransitStopArrival } from '../src/services/productionApi';
 
 function arrival(overrides: Partial<ApiTransitStopArrival> & Pick<ApiTransitStopArrival, 'routeId' | 'headsign' | 'tripId' | 'etaSeconds'>): ApiTransitStopArrival {
@@ -30,4 +30,24 @@ test('formats arrival seconds without claiming schedule estimates are live', () 
   assert.equal(stopArrivalEtaLabel(1), '1 хв');
   assert.equal(stopArrivalEtaLabel(61), '2 хв');
   assert.equal(stopArrivalEtaLabel(Number.NaN), 'Зараз');
+});
+
+test('labels stale realtime separately from the scheduled fallback and includes its source time', () => {
+  assert.deepEqual(stopArrivalFreshnessNotice({
+    availability: 'AVAILABLE', realtimeStatus: 'STALE', realtimeFeedTimestamp: '2026-10-14T05:00:00Z',
+  }), {
+    tone: 'warning', label: 'Онлайн-дані застаріли (станом на 08:00). Показано розклад.',
+  });
+});
+
+test('distinguishes fresh realtime, unavailable realtime, schedule-only feeds, and unsupported schedules', () => {
+  assert.deepEqual(stopArrivalFreshnessNotice({ availability: 'AVAILABLE', realtimeStatus: 'AVAILABLE', realtimeUpdatedAt: '2026-10-14T05:00:00Z' }), {
+    tone: 'live', label: 'Онлайн-дані оновлено о 08:00.',
+  });
+  assert.equal(stopArrivalFreshnessNotice({ availability: 'AVAILABLE', realtimeStatus: 'TEMPORARILY_UNAVAILABLE' }).label,
+    'Онлайн-дані тимчасово недоступні. Показано розклад.');
+  assert.equal(stopArrivalFreshnessNotice({ availability: 'AVAILABLE', realtimeStatus: 'NOT_CONFIGURED' }).tone, 'muted');
+  assert.equal(stopArrivalFreshnessNotice({ availability: 'SCHEDULE_UNSUPPORTED', realtimeStatus: 'NOT_CONFIGURED' }).label,
+    'Провайдер не підтримує розклад для цієї зупинки.');
+  assert.equal(stopArrivalFreshnessNotice(undefined).label, 'Стан онлайн-даних невідомий. ETA показано за розкладом.');
 });
