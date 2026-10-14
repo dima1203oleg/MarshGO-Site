@@ -1348,6 +1348,14 @@ export function ProductionMarketplace() {
           </form>
         </>}
         {statusMessage && <p role="status" className="mt-4 rounded-xl bg-white/10 p-3 text-sm text-white">{statusMessage}</p>}
+        {!authIntro && import.meta.env.DEV && <button type="button" onClick={() => {
+          const previewUser = productionApi.enterDevPreviewSession();
+          if (!previewUser) return;
+          setUser(previewUser);
+          setShowLogin(false);
+          setAuthIntro(false);
+          setOnboardingStep(0);
+        }} className="mt-4 w-full rounded-2xl border border-sky-300/50 bg-white/10 px-4 py-3 text-sm font-semibold text-white">Увійти без SMS · режим розробки</button>}
         {!authIntro && <p className="mt-5 flex gap-2 text-xs leading-5 text-blue-100/70"><ShieldCheck size={16} className="shrink-0"/>Реальна доставка SMS вмикається після налаштування провайдера.</p>}
         </>}
       </section>
@@ -1356,7 +1364,9 @@ export function ProductionMarketplace() {
 
   if (notFound) return <main className="grid min-h-[70svh] place-items-center px-5 text-center"><div className="max-w-md rounded-3xl bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">404</p><h1 className="mt-2 text-2xl font-extrabold">Сторінку не знайдено</h1><p className="mt-2 text-sm text-slate-500">Перевірте адресу або поверніться до головної сторінки MARSHGO.</p><button onClick={goHome} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">На головну</button></div></main>;
 
-  const status = statusMessage ? <div role="status" className="mx-auto mt-3 w-full max-w-xl rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{statusMessage}<button onClick={() => setStatusMessage('')} className="float-right"><X size={16}/></button></div> : null;
+  const status = productionApi.isDevPreviewSession()
+    ? <div role="status" className="mx-auto mt-3 w-full max-w-xl rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">Локальний режим розробки: вхід лише для перегляду. SMS, Server API, персональні дані та серверні дії вимкнені.</div>
+    : statusMessage ? <div role="status" className="mx-auto mt-3 w-full max-w-xl rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{statusMessage}<button onClick={() => setStatusMessage('')} className="float-right"><X size={16}/></button></div> : null;
   const unreadMessageCount = Object.values(unreadConversations).reduce((total, count) => total + count, 0);
   const header = <header className="app-header mx-auto flex w-full max-w-xl items-center justify-between px-5 pb-3 pt-[max(.8rem,env(safe-area-inset-top))]">
     <div className="flex items-center gap-2.5"><BrandMark size="sm"/><div><strong className="text-[18px] tracking-tight text-[#081b35]">MARSH<span className="text-blue-600">GO</span></strong>{navigationActive && tab !== 'navigation' ? <button type="button" onClick={() => setTab('navigation')} aria-label="Повернутися до активної навігації" className="-mt-1 block text-left text-[10px] font-bold text-blue-600 underline-offset-2 hover:underline">Навігація · повернутися</button> : <p className="-mt-1 text-[10px] text-slate-500">Усі поїздки в одному місці</p>}</div></div>

@@ -1,3 +1,4 @@
+import { devPreviewAuth } from '../dev/devPreviewAuth';
 import { routeResultSchema, type RouteRequest, type RouteResult } from '../../shared/navigation/contracts';
 import { NavigationProviderError } from '../../shared/navigation/errors';
 
@@ -364,6 +365,9 @@ const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
 let accessToken: string | null = null;
 
 async function request<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
+  if (devPreviewAuth.isActive()) {
+    throw new Error('API вимкнене в локальному режимі перегляду. Для серверних дій увійдіть звичайним способом.');
+  }
   const headers = new Headers(init.headers);
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   if (accessToken) headers.set('authorization', `Bearer ${accessToken}`);
@@ -389,6 +393,21 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
 }
 
 export const productionApi = {
+  enterDevPreviewSession(): ApiUser | null {
+    if (!devPreviewAuth.enter()) return null;
+    accessToken = null;
+    return {
+      id: 'dev-preview-user',
+      display_name: 'MARSHGO Dev Preview',
+      phone_e164: '+380000000000',
+      roles: ['passenger', 'driver'],
+      is_verified: false,
+      driver_photo_url: null,
+    };
+  },
+  isDevPreviewSession() {
+    return devPreviewAuth.isActive();
+  },
   async restoreSession() {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
@@ -416,9 +435,19 @@ export const productionApi = {
     return session.user;
   },
   async logout() {
+    if (devPreviewAuth.isActive()) {
+      accessToken = null;
+      devPreviewAuth.leave();
+      return;
+    }
     try { await request('/auth/logout', { method: 'POST' }); } finally { accessToken = null; }
   },
   async logoutAll() {
+    if (devPreviewAuth.isActive()) {
+      accessToken = null;
+      devPreviewAuth.leave();
+      return;
+    }
     try { await request('/auth/logout-all', { method: 'POST' }); } finally { accessToken = null; }
   },
   offers(params: { origin: string; destination: string; date: string; seats: number; originCoordinates?: [number, number]; destinationCoordinates?: [number, number] }) {

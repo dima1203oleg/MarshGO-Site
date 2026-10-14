@@ -11,6 +11,8 @@ VITE_API_BASE_URL=http://localhost:3002 npm run dev
 
 `VITE_API_BASE_URL` must identify a reachable MARSHGO Server. Local Vite proxies API calls to `http://127.0.0.1:3002` by default. Set `CAPACITOR_BUILD=true` only when building a relative-asset bundle for the native wrapper.
 
+In the Vite development server, choose **«Увійти без SMS · режим розробки»** on the login screen for a UI-only session. It creates no Server session and blocks API requests, personal data and server actions. This option is absent from production builds; use the regular OTP flow to exercise the API.
+
 ## Verification
 
 ```sh
