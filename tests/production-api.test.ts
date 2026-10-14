@@ -32,3 +32,13 @@ test('transit stop arrivals keeps realtime freshness metadata from the API envel
     globalThis.fetch = originalFetch;
   }
 });
+
+test('rejects successful API responses without a data envelope', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(null, { status: 200 });
+  try {
+    await assert.rejects(productionApi.myNavigationMatches(), /Сервер повернув некоректну відповідь/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

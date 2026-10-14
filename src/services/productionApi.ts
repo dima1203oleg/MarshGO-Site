@@ -419,6 +419,9 @@ async function requestEnvelope<T, M = unknown>(path: string, init: RequestInit =
     throw new Error(body?.error?.message || `Request failed (${response.status})`);
   }
   if (response.status === 204) return { data: undefined as T };
+  if (!body || !Object.prototype.hasOwnProperty.call(body, 'data')) {
+    throw new Error('Сервер повернув некоректну відповідь. Спробуйте оновити сторінку.');
+  }
   return { data: body?.data as T, ...(body?.meta === undefined ? {} : { meta: body.meta }) };
 }
 
