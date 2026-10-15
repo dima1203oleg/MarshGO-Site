@@ -33,9 +33,9 @@ export function JourneySegmentStrip({
   const scroller = useRef<HTMLDivElement>(null);
   const scrollerId = useId();
   const [scrollState, setScrollState] = useState({ overflow: false, atEnd: false });
-  // Horizontal icon + stacked name/metrics need a minimum tile width to keep
-  // the time and fare readable on narrow phone screens.
-  const usesHorizontalTiles = items.length > 2;
+  // Keep the four-leg canonical card fully visible; only longer chains need
+  // the wider, horizontally scrollable tiles.
+  const usesHorizontalTiles = items.length > 4;
 
   useEffect(() => {
     const element = scroller.current;
