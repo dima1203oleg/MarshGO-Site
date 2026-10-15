@@ -203,6 +203,9 @@ export type ApiJourneyStrategy = 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM'
 export type ApiJourney = {
   id: string;
   offerId: string | null;
+  /** Requested trip endpoints. Legs can start/end at nearby providers or stops. */
+  origin?: { name: string; coordinates: [number, number] };
+  destination?: { name: string; coordinates: [number, number] };
   source?: string;
   providerName?: string;
   routeName?: string;
@@ -365,10 +368,11 @@ const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
 let accessToken: string | null = null;
 
 async function request<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
-  if (devPreviewAuth.isActive()) {
-    throw new Error('API вимкнене в локальному режимі перегляду. Для серверних дій увійдіть звичайним способом.');
-  }
   const headers = new Headers(init.headers);
+  // The local preview session can call a development API without SMS. The
+  // server accepts this identity only with NODE_ENV=development and
+  // AUTH_DEV_BYPASS=true; production never trusts this header.
+  if (devPreviewAuth.isActive()) headers.set('x-dev-user-id', '00000000-0000-4000-8000-000000000001');
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   if (accessToken) headers.set('authorization', `Bearer ${accessToken}`);
   const response = await fetch(`${apiBase}/api/v1${path}`, { ...init, headers, credentials: 'include' });

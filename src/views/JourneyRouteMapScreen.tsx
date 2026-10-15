@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ChevronDown, ChevronUp, Clock3, Layers, Navigation, Share2, Star,
+  ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Clock3, Layers, Navigation, Share2, Star,
 } from 'lucide-react';
 import { decodePolyline6 } from '../../shared/navigation/geometry';
 import { MarshGoMap } from '../map/MarshGoMap';
@@ -46,6 +46,26 @@ const formatDuration = (seconds: number) => {
 
 function formatRoadDistance(meters: number) {
   return meters >= 1000 ? `${(meters / 1000).toFixed(1).replace('.', ',')} км` : `${Math.round(meters / 50) * 50} м`;
+}
+
+function routeEndpointPresentation(value: string | undefined, fallback: string) {
+  const full = value?.trim() || fallback;
+  const parts = full.split(',').map(part => part.trim()).filter(Boolean);
+  const streetIndex = parts.findIndex(part => /(вулиця|вул\.?|проспект|просп\.?|площа|пл\.?|провулок|пров\.?)/i.test(part));
+  const street = streetIndex >= 0
+    ? parts[streetIndex].replace(/\s+(?:вулиця|вул\.|проспект|просп\.|площа|пл\.|провулок|пров\.)$/i, '').trim()
+    : '';
+  const houseNumber = streetIndex >= 0
+    ? [parts[streetIndex - 1], parts[streetIndex + 1]].find(part => Boolean(part && /^(?:№\s*)?\d+[а-яa-z]?(?:[-/]\d+[а-яa-z]?)?$/i.test(part)))
+    : undefined;
+  const administrative = /(район|област|громад|україна|\b\d{5}\b)/i;
+  const context = parts.find((part, index) => index > Math.max(streetIndex, 0) && part !== houseNumber && !administrative.test(part));
+
+  return {
+    full,
+    primary: street ? `${street}${houseNumber ? `, ${houseNumber.replace(/^№\s*/, '')}` : ''}` : parts[0] || fallback,
+    context,
+  };
 }
 
 function timelineFor(journey: ApiJourney): TimelineItem[] {
@@ -145,6 +165,8 @@ export function JourneyRouteMapScreen({
   const timeline = useMemo(() => timelineFor(journey), [journey]);
   const firstLeg = journey.legs[0];
   const lastLeg = journey.legs.at(-1);
+  const originPresentation = routeEndpointPresentation(journey.origin?.name ?? firstLeg?.origin.name, 'Початок');
+  const destinationPresentation = routeEndpointPresentation(journey.destination?.name ?? lastLeg?.destination.name, 'Кінець');
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
   const [mapLayer, setCurrentMapLayer] = useState<MapLayer>(getMapLayer);
@@ -603,9 +625,25 @@ export function JourneyRouteMapScreen({
 
       <div className={`route-sheet-summary shrink-0 px-3 pb-2${sheetSnap === 'collapsed' ? ' route-sheet-summary--compact' : ''}`}>
         <div className="px-3 py-2">
-          <div className="route-summary-heading">
-            <p className="route-summary-eyebrow text-[9px] font-extrabold uppercase tracking-[.12em] text-[#1687FF]">Маршрут · MARSHGO</p>
-            <p className="route-summary-title min-w-0 text-[14px] font-extrabold">{firstLeg?.origin.name ?? 'Початок'} <span className="mx-1 text-[#1687FF]">→</span> {lastLeg?.destination.name ?? 'Кінець'}</p>
+          <p className="route-summary-eyebrow text-[9px] font-extrabold uppercase tracking-[.12em] text-[#1687FF]">Деталі маршруту</p>
+          <div className="route-endpoints mt-2" role="group" aria-label={`Звідки: ${originPresentation.full}. Куди: ${destinationPresentation.full}.`}>
+            <div className="route-endpoint" title={originPresentation.full}>
+              <span className="route-endpoint-marker route-endpoint-marker--origin" aria-hidden="true"/>
+              <span className="route-endpoint-copy">
+                <span className="route-endpoint-kicker">ЗВІДКИ</span>
+                <strong className="route-endpoint-name">{originPresentation.primary}</strong>
+                {originPresentation.context && <span className="route-endpoint-context">{originPresentation.context}</span>}
+              </span>
+            </div>
+            <ArrowRight className="route-endpoints-arrow" size={17} aria-hidden="true"/>
+            <div className="route-endpoint route-endpoint--destination" title={destinationPresentation.full}>
+              <span className="route-endpoint-marker route-endpoint-marker--destination" aria-hidden="true"/>
+              <span className="route-endpoint-copy">
+                <span className="route-endpoint-kicker">КУДИ</span>
+                <strong className="route-endpoint-name">{destinationPresentation.primary}</strong>
+                {destinationPresentation.context && <span className="route-endpoint-context">{destinationPresentation.context}</span>}
+              </span>
+            </div>
           </div>
           <CanonicalRouteLip
             journeyId={journey.id}

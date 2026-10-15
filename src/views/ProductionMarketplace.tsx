@@ -55,7 +55,6 @@ export function ProductionMarketplace() {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
-  const [devCode, setDevCode] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [authIntro, setAuthIntro] = useState(true);
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -527,8 +526,8 @@ export function ProductionMarketplace() {
     event.preventDefault(); setBusy(true); setStatusMessage('');
     try {
       const result = await productionApi.requestOtp(phone, name);
-      setOtpRequested(true); setDevCode(result.developmentCode ?? '');
-      setStatusMessage(result.delivery === 'development' ? 'Код тестового середовища показано нижче.' : 'Код надіслано SMS.');
+      setOtpRequested(true);
+      setStatusMessage(result.delivery === 'development' ? '' : 'Код підтвердження надіслано.');
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося запросити код.'); }
     finally { setBusy(false); }
   };
@@ -1342,7 +1341,6 @@ export function ProductionMarketplace() {
           <h1 className="text-3xl font-extrabold">Вхід за номером</h1><p className="mt-2 text-sm text-blue-100/80">Підтвердьте номер телефону, щоб продовжити.</p>
           <form onSubmit={verifyOtp} className="mt-6 space-y-3">
             <input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-4 text-center text-2xl tracking-[.4em] text-white outline-none focus:border-sky-300" placeholder="••••••" autoComplete="one-time-code" />
-            {devCode && <p className="rounded-xl bg-amber-100 p-3 text-sm text-amber-950">Тестовий OTP локального середовища: <b>{devCode}</b></p>}
             <button disabled={busy} className="w-full rounded-2xl bg-blue-600 px-5 py-4 font-bold disabled:opacity-60">{busy ? 'Перевіряємо…' : 'Підтвердити номер'}</button>
             <button type="button" onClick={() => { setOtpRequested(false); setCode(''); }} className="w-full py-2 text-sm text-blue-100">Змінити номер</button>
           </form>
@@ -1355,8 +1353,7 @@ export function ProductionMarketplace() {
           setShowLogin(false);
           setAuthIntro(false);
           setOnboardingStep(0);
-        }} className="mt-4 w-full rounded-2xl border border-sky-300/50 bg-white/10 px-4 py-3 text-sm font-semibold text-white">Увійти без SMS · режим розробки</button>}
-        {!authIntro && <p className="mt-5 flex gap-2 text-xs leading-5 text-blue-100/70"><ShieldCheck size={16} className="shrink-0"/>Реальна доставка SMS вмикається після налаштування провайдера.</p>}
+        }} className="mt-4 w-full rounded-2xl border border-sky-300/50 bg-white/10 px-4 py-3 text-sm font-semibold text-white">Увійти</button>}
         </>}
       </section>
     </main>
@@ -1364,9 +1361,7 @@ export function ProductionMarketplace() {
 
   if (notFound) return <main className="grid min-h-[70svh] place-items-center px-5 text-center"><div className="max-w-md rounded-3xl bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">404</p><h1 className="mt-2 text-2xl font-extrabold">Сторінку не знайдено</h1><p className="mt-2 text-sm text-slate-500">Перевірте адресу або поверніться до головної сторінки MARSHGO.</p><button onClick={goHome} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">На головну</button></div></main>;
 
-  const status = productionApi.isDevPreviewSession()
-    ? <div role="status" className="mx-auto mt-3 w-full max-w-xl rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">Локальний режим розробки: вхід лише для перегляду. SMS, Server API, персональні дані та серверні дії вимкнені.</div>
-    : statusMessage ? <div role="status" className="mx-auto mt-3 w-full max-w-xl rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{statusMessage}<button onClick={() => setStatusMessage('')} className="float-right"><X size={16}/></button></div> : null;
+  const status = statusMessage ? <div role="status" className="mx-auto mt-3 w-full max-w-xl rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{statusMessage}<button onClick={() => setStatusMessage('')} className="float-right"><X size={16}/></button></div> : null;
   const unreadMessageCount = Object.values(unreadConversations).reduce((total, count) => total + count, 0);
   const header = <header className="app-header mx-auto flex w-full max-w-xl items-center justify-between px-5 pb-3 pt-[max(.8rem,env(safe-area-inset-top))]">
     <div className="flex items-center gap-2.5"><BrandMark size="sm"/><div><strong className="text-[18px] tracking-tight text-[#081b35]">MARSH<span className="text-blue-600">GO</span></strong>{navigationActive && tab !== 'navigation' ? <button type="button" onClick={() => setTab('navigation')} aria-label="Повернутися до активної навігації" className="-mt-1 block text-left text-[10px] font-bold text-blue-600 underline-offset-2 hover:underline">Навігація · повернутися</button> : <p className="-mt-1 text-[10px] text-slate-500">Усі поїздки в одному місці</p>}</div></div>

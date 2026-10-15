@@ -7,13 +7,12 @@ export interface TransportTypeInfo { id: TransportTypeId; label: string; group: 
 export const transportTypes: TransportTypeInfo[] = transportModes.map(({ id, label, group }) => ({ id, label, group }));
 
 /**
- * The planner currently composes MARSHGO carpool offers and open GTFS schedules.
- * The remaining categories stay visible, but cannot be selected until their
- * real routing adapters are available. Static map layers and vehicle feeds are
- * deliberately not mistaken for an itinerary provider.
+ * These categories have supported journey adapters: scheduled public transit,
+ * MARSHGO carpool, provider-network bicycle estimates, and geofenced GBFS scooters.
+ * Static bike points remain explicitly estimated and do not imply live stock.
  */
 export const supportedJourneySearchTypes: readonly TransportTypeId[] = [
-  'bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'carpool', 'train',
+  'bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'carpool', 'train', 'bike', 'scooter',
 ];
 const supportedTypeSet = new Set<TransportTypeId>(supportedJourneySearchTypes);
 export const isJourneySearchSupported = (type: TransportTypeId): boolean => supportedTypeSet.has(type);
@@ -99,7 +98,11 @@ function groupsForCategory(type: TransportTypeId, groups: ApiTransportProviders[
   return groups.filter((group) => names.includes(group.transportType));
 }
 function providerCanRoute(type: TransportTypeId, provider: ApiTransportProviders['providers'][number]): boolean {
-  return type === 'carpool' ? provider.sources.includes('marshgo') : provider.sources.includes('gtfs');
+  if (type === 'carpool') return provider.sources.includes('marshgo');
+  if (type === 'bike') return provider.sources.includes('static-bike-network-estimate');
+  if (type === 'scooter') return provider.sources.includes('gbfs');
+  if (type === 'metro') return ['gtfs', 'rest', 'geojson'].some((source) => provider.sources.includes(source));
+  return provider.sources.includes('gtfs');
 }
 export function hasJourneySearchProvider(type: TransportTypeId, groups: ApiTransportProviders[] | null): boolean {
   if (!isJourneySearchSupported(type)) return false;
@@ -122,9 +125,12 @@ export function toJourneyPreferences(selection: TransportSelection, groups: ApiT
   const categoryHasProviders = (type: TransportTypeId) => type === 'carpool' || groups === null || effectiveProviders(selection, type, groups).length > 0;
   const withProviders = active.filter(categoryHasProviders);
   const allowedTransportTypes = [...withProviders];
-  const transit = withProviders.filter((type) => type !== 'carpool');
+  const transitTypes: readonly TransportTypeId[] = ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'train'];
+  const transit = withProviders.filter((type) => transitTypes.includes(type));
+  const micromobility = withProviders.filter((type) => type === 'bike' || type === 'scooter');
   const allowedTransitProvidersByType: Record<string, string[]> = {};
   const selectedTransitProviders: string[] = [];
+  const selectedMicromobilityProviders: string[] = [];
   if (groups !== null) for (const category of transit) {
     const selectedIds = new Set(effectiveProviders(selection, category, groups));
     for (const group of groupsForCategory(category, groups)) {
@@ -136,6 +142,10 @@ export function toJourneyPreferences(selection: TransportSelection, groups: ApiT
       }
     }
   }
+  if (groups !== null) for (const category of micromobility) {
+    selectedMicromobilityProviders.push(...effectiveProviders(selection, category, groups)
+      .map((providerId) => providerId.slice(providerId.indexOf(':') + 1)));
+  }
   return {
     allowCommunity: withProviders.includes('carpool'),
     allowTaxi: false,
@@ -144,9 +154,12 @@ export function toJourneyPreferences(selection: TransportSelection, groups: ApiT
     allowBus: withProviders.some((type) => type === 'bus' || type === 'trolleybus' || type === 'tram' || type === 'metro'),
     allowMinibus: withProviders.includes('marshrutka'),
     allowRail: withProviders.includes('train'),
+    allowBicycle: withProviders.includes('bike'),
+    allowScooter: withProviders.includes('scooter'),
     allowPublicTransport: transit.length > 0,
     allowedTransportTypes,
     allowedTransitProviders: [...new Set(selectedTransitProviders)],
     allowedTransitProvidersByType,
+    allowedProviderIds: [...new Set(selectedMicromobilityProviders)],
   };
 }
