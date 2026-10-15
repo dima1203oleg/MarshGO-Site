@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowLeftRight, ChevronDown, ChevronRight, ChevronUp, Clock3, Coins,
-  Heart, Layers, Navigation, Scale, Share2, Star, Timer,
+  ArrowLeft, ChevronDown, ChevronUp, Clock3, Layers, Navigation, Share2, Star,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
-import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from '../map/journeyRouteModel';
+import { buildJourneyRouteMapModel, journeyModeColor } from '../map/journeyRouteModel';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
 import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
-import { JourneySegmentStrip, type JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
+import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
+import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
 import { routeBearingForHorizontalFit } from '../map/routeOrientation';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
-import { formatJourneyLegPrice } from './journeyResultPresentation';
+import { formatJourneyLegPrice, formatJourneyTotalPrice } from './journeyResultPresentation';
 import { routeSheetHeights, settleRouteSheetSnap, type RouteSheetSnap } from './routeSheet';
 import { themeService } from '../services/theme';
 
@@ -36,10 +36,6 @@ const formatDuration = (seconds: number) => {
   const hours = Math.floor(minutes / 60);
   return hours ? `${hours} год ${minutes % 60} хв` : `${minutes} хв`;
 };
-
-const formatMoney = (minor: number, currency = 'UAH') => new Intl.NumberFormat('uk-UA', {
-  style: 'currency', currency, maximumFractionDigits: 0,
-}).format(minor / 100);
 
 function timelineFor(journey: ApiJourney): TimelineItem[] {
   const legs = journey.legs;
@@ -152,18 +148,21 @@ export function JourneyRouteMapScreen({
 
   useEffect(() => {
     if (!mapAdapterReady) return;
-    const positions = liveJourney?.segments.filter(segment => segment.status === 'LIVE' && segment.vehicle) ?? [];
-    const live = activeSegmentId
-      ? positions.find(segment => segment.legId === activeSegmentId)
-      : positions[0];
-    const leg = live && journey.legs.find(item => item.id === live.legId);
-    if (!live?.vehicle || !leg) { mapAdapter.current?.setLiveTransitPosition?.(null); return; }
-    mapAdapter.current?.setLiveTransitPosition?.({
-      coordinates: live.vehicle.coordinates,
-      color: journeyModeColor(leg.mode, leg.transportType),
-      label: live.vehicle.route || journeyLegLabel(leg.mode, leg.transportType),
-      updatedAt: live.vehicle.updatedAt,
-    });
+    const positions = (liveJourney?.segments.filter(segment => segment.status === 'LIVE' && segment.vehicle) ?? [])
+      .flatMap((segment, index) => {
+        const leg = journey.legs.find(item => item.id === segment.legId);
+        if (!segment.vehicle || !leg) return [];
+        return [{
+          id: segment.legId,
+          coordinates: segment.vehicle.coordinates,
+          color: journeyModeColor(leg.mode, leg.transportType),
+          label: segment.vehicle.route || journeyLegLabel(leg.mode, leg.transportType),
+          updatedAt: segment.vehicle.updatedAt,
+          selected: activeSegmentId ? activeSegmentId === segment.legId : index === 0,
+        }];
+      });
+    if (mapAdapter.current?.setLiveTransitPositions) mapAdapter.current.setLiveTransitPositions(positions);
+    else mapAdapter.current?.setLiveTransitPosition?.(positions[0] ?? null);
   }, [activeSegmentId, journey.legs, liveJourney, mapAdapterReady]);
 
   const snapHeight = useCallback((snap: RouteSheetSnap, viewport = viewportHeight) => routeSheetHeights(viewport)[snap], [viewportHeight]);
@@ -240,7 +239,6 @@ export function JourneyRouteMapScreen({
     if (sheetSnap === 'expanded') setExpandedSegments(new Set(journey.legs.filter(isScheduledRouteLeg).map(leg => leg.id)));
   }, [sheetSnap, journey.legs]);
 
-  const allDuration = journey.totalDurationSeconds;
   const hasMeasuredDistance = (leg: JourneyLeg): leg is JourneyLeg & { distanceMeters: number } => typeof leg.distanceMeters === 'number'
     && Number.isFinite(leg.distanceMeters) && leg.distanceMeters >= 0;
   const knownDistance = journey.legs.reduce((sum, leg) => sum + (hasMeasuredDistance(leg) ? leg.distanceMeters : 0), 0);
@@ -249,7 +247,6 @@ export function JourneyRouteMapScreen({
     ? `${(knownDistance / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 1 })} км`
     : knownDistance > 0 ? `Відомо ${(knownDistance / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 1 })} км`
       : 'Відстань не вказана';
-  const totalPrice = journey.confirmedPriceMinor ?? journey.totalPriceMinor;
   const stripItems: JourneySegmentStripItem[] = timeline.flatMap(item => {
     if (item.kind !== 'LEG' || !item.leg) return [];
     const leg = item.leg;
@@ -267,8 +264,6 @@ export function JourneyRouteMapScreen({
     }];
   });
   const waitingSeconds = timeline.filter(item => item.kind === 'WAIT').reduce((sum, item) => sum + item.durationSeconds, 0);
-  const priceSummary = totalPrice === null ? 'Ціна уточнюється'
-    : `${journey.confirmedPriceMinor === null ? '≈ ' : ''}${formatMoney(totalPrice, journey.currency ?? 'UAH')}`;
   const missingShapes = model.missingShapeCount;
   const approximateWalkCount = model.approximateWalkCount;
   const mapStatusText = mapStatus === 'failed' ? 'Карта недоступна' : mapStatus === 'degraded' ? 'Карта завантажена частково'
@@ -346,11 +341,10 @@ export function JourneyRouteMapScreen({
     return next;
   });
 
-  const toggleSaved = () => {
+  const toggleSaved = (nextSaved = !saved) => {
     try {
       const parsed = JSON.parse(window.localStorage.getItem('marshgo.saved-route-results.v1') ?? '[]') as unknown;
       const ids = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-      const nextSaved = !saved;
       const nextIds = nextSaved ? [...new Set([...ids, journey.id])] : ids.filter(id => id !== journey.id);
       window.localStorage.setItem('marshgo.saved-route-results.v1', JSON.stringify(nextIds));
       setSaved(nextSaved);
@@ -360,8 +354,6 @@ export function JourneyRouteMapScreen({
     }
   };
 
-  const StrategyIcon = journey.strategy === 'FASTEST' ? Timer : journey.strategy === 'CHEAPEST' ? Coins : Scale;
-  const strategyLabel = journey.strategy === 'FASTEST' ? 'Найшвидший' : journey.strategy === 'CHEAPEST' ? 'Найдешевший' : 'Оптимальний';
 
   const shareRoute = async () => {
     const url = `${window.location.origin}${window.location.pathname}${window.location.search}`;
@@ -438,28 +430,30 @@ export function JourneyRouteMapScreen({
           <div className="route-summary-heading">
             <p className="route-summary-eyebrow text-[9px] font-extrabold uppercase tracking-[.12em] text-[#1687FF]">Маршрут · MARSHGO</p>
             <p className="route-summary-title min-w-0 text-[14px] font-extrabold">{firstLeg?.origin.name ?? 'Початок'} <span className="mx-1 text-[#1687FF]">→</span> {lastLeg?.destination.name ?? 'Кінець'}</p>
-            <div className="route-summary-actions flex shrink-0 items-center gap-1">
-              <span aria-label={`Режим: ${strategyLabel}`} title={strategyLabel} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[#1687FF]"><StrategyIcon size={18}/></span>
-              <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-[var(--route-border)] px-2 text-[10px] font-extrabold tabular-nums"><ArrowLeftRight size={13}/>{journey.transfers}</span>
-              <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[var(--route-ink)] hover:bg-[var(--route-hover)]"><Heart size={17} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''}/></button>
-              <button type="button" aria-label={sheetSnap === 'expanded' ? 'Згорнути панель до карти' : sheetSnap === 'half' ? 'Розгорнути панель повністю' : 'Показати деталі маршруту'} onClick={cycleSheet} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[#1687FF] hover:bg-[var(--route-hover)]"><ChevronRight size={19} className={sheetSnap === 'expanded' ? 'rotate-90' : ''}/></button>
-            </div>
           </div>
-          <div className="mt-1 flex items-baseline justify-between gap-2">
-            <strong className="text-[21px] font-black leading-6 tabular-nums">{formatDuration(allDuration)}</strong>
-            <span className="flex shrink-0 flex-col items-end leading-tight"><strong className="text-[15px] font-extrabold tabular-nums">{priceSummary}</strong><span className="text-[9px] font-semibold text-[var(--route-muted)]">{distanceSummary}{waitingSeconds > 0 ? ' · очікування ' + formatDuration(waitingSeconds) : ''}</span></span>
-          </div>
+          <CanonicalRouteLip
+            journeyId={journey.id}
+            totalDurationSeconds={journey.totalDurationSeconds}
+            totalPriceMinor={journey.confirmedPriceMinor ?? journey.totalPriceMinor}
+            currency={journey.currency}
+            priceStatus={journey.confirmedPriceMinor !== null ? 'LOCKED' : journey.priceStatus}
+            hasUnknownPrice={formatJourneyTotalPrice(journey) === '—'}
+            transferCount={journey.transfers}
+            strategy={journey.strategy}
+            segments={stripItems}
+            selectedSegmentId={activeSegmentId}
+            favorite={saved}
+            availabilityStatus={journey.state}
+            actionLabel={sheetSnap === 'expanded' ? 'Згорнути панель до карти' : sheetSnap === 'half' ? 'Розгорнути панель повністю' : 'Показати деталі маршруту'}
+            actionExpanded={sheetSnap !== 'collapsed'}
+            onSegmentSelect={chooseSegment}
+            onOpenDetails={cycleSheet}
+            onFavoriteChange={toggleSaved}
+          />
+          <p className="mt-1 text-right text-[9px] font-semibold text-[var(--route-muted)]">{distanceSummary}{waitingSeconds > 0 ? ' · очікування ' + formatDuration(waitingSeconds) : ''}</p>
           {(mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured' || missingShapes > 0 || approximateWalkCount > 0) && <p role="status" className={`mt-1 text-[9px] font-semibold ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{mapStatusText}</p>}
-          {stripItems.length > 0 ? <>
-            <JourneySegmentStrip
-              items={stripItems}
-              ariaLabel="Етапи маршруту та їхня вартість"
-              activeItemId={activeSegmentId}
-              onSelect={chooseSegment}
-              className="mt-2"
-            />
-            <span className="sr-only">Загальна відстань: {distanceSummary}. Виїзд {firstLeg ? formatTime(firstLeg.departureAt) : '—'}, прибуття {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}. Кольорова шкала пропорційна часу руху кожним відрізком; очікування не змішується з транспортними сегментами.</span>
-          </> : <p className="mt-2 text-xs text-[var(--route-muted)]">Дані сегментів цього маршруту не надійшли.</p>}
+          {!stripItems.length && <p className="mt-2 text-xs text-[var(--route-muted)]">Дані сегментів цього маршруту не надійшли.</p>}
+          <span className="sr-only">Загальна відстань: {distanceSummary}. Виїзд {firstLeg ? formatTime(firstLeg.departureAt) : '—'}, прибуття {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}. Кольорова смуга пропорційна тривалості транспортних сегментів; очікування показане окремо.</span>
         </div>
       </div>
 
@@ -535,7 +529,7 @@ export function JourneyRouteMapScreen({
         </p>}
         {mapStatus === 'unconfigured' && <p className={`mt-2 rounded-xl px-3 py-2 text-[10px] ${isDark ? 'bg-amber-300/10 text-amber-100' : 'bg-amber-50 text-amber-900'}`}>Для цієї карти не налаштовано базові тайли. Маршрутні геометрії залишаються доступними, якщо їх надав перевізник.</p>}
         {sheetSnap === 'expanded' && <div className="grid grid-cols-3 gap-2 border-t border-[var(--route-border)] px-1 pt-2">
-          <button type="button" aria-pressed={saved} onClick={toggleSaved} className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-[10px] font-bold"><Star size={15} fill={saved ? 'currentColor' : 'none'}/>{saved ? 'Збережено' : 'Зберегти'}</button>
+          <button type="button" aria-pressed={saved} onClick={() => toggleSaved()} className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-[10px] font-bold"><Star size={15} fill={saved ? 'currentColor' : 'none'}/>{saved ? 'Збережено' : 'Зберегти'}</button>
           <button type="button" onClick={() => void shareRoute()} className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-[10px] font-bold"><Share2 size={15}/>Поділитися</button>
           <button type="button" disabled={!lastLeg || !onNavigate} onClick={() => lastLeg && onNavigate?.({ label: lastLeg.destination.name, latitude: lastLeg.destination.coordinates[1], longitude: lastLeg.destination.coordinates[0] })} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-[#0B6EF3] text-[10px] font-extrabold text-white disabled:opacity-45"><Navigation size={15}/>Навігація</button>
         </div>}

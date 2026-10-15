@@ -4,6 +4,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
 import type { CameraMode, ColoredRouteSegment, LiveTransitPosition, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
+import { freshLiveTransitPositions, liveTransitFeatureCollection } from './liveTransitFeatures';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
 import type { FillLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
@@ -36,8 +37,7 @@ export class MapLibreAdapter implements MapAdapter {
   private transportDisplayPreferences: MapDisplayPreferences = getMapDisplayPreferences();
   private heading: number | null = null;
   private marker: maplibregl.Marker | null = null;
-  private liveTransitMarker: maplibregl.Marker | null = null;
-  private liveTransitElement: HTMLDivElement | null = null;
+  private liveTransitPositions: LiveTransitPosition[] = [];
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
   onRouteSegmentSelect: (id: string) => void = () => undefined;
@@ -123,6 +123,7 @@ export class MapLibreAdapter implements MapAdapter {
     else this.remove3DBuildings();
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!this.map.getSource('marshgo-transit-live')) this.map.addSource('marshgo-transit-live', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     const confirmedRouteFilter = ['!=', ['get', 'approximate'], true] as maplibregl.FilterSpecification;
     if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', filter: confirmedRouteFilter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 18, 10], 15, ['case', ['==', ['get', 'selected'], true], 34, 22]], 'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.78, ['==', ['get', 'dimmed'], true], 0.035, 0.2], 'line-blur': 7 } });
@@ -153,6 +154,14 @@ export class MapLibreAdapter implements MapAdapter {
     if (!this.map.getLayer('marshgo-waypoints')) this.map.addLayer({ id: 'marshgo-waypoints', type: 'circle', source: 'marshgo-waypoints', paint: { 'circle-radius': ['match', ['get', 'kind'], 'STOP', 4, 'TRANSFER', 6, 8], 'circle-color': ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'STOP', '#D6E4F3', 'TRANSFER', '#FFFFFF', colors.route], 'circle-stroke-color': ['match', ['get', 'kind'], 'TRANSFER', '#1687FF', colors.routeCasing], 'circle-stroke-width': ['match', ['get', 'kind'], 'STOP', 1.5, 3] } });
     if (!this.map.getLayer('marshgo-vehicle-halo')) this.map.addLayer({ id: 'marshgo-vehicle-halo', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 13, 'circle-color': colors.vehicle, 'circle-opacity': 0.2 } });
     if (!this.map.getLayer('marshgo-vehicle')) this.map.addLayer({ id: 'marshgo-vehicle', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 8, 'circle-color': colors.vehicle, 'circle-stroke-color': colors.routeCasing, 'circle-stroke-width': 3 } });
+    if (!this.map.getLayer('marshgo-transit-live-halo')) this.map.addLayer({
+      id: 'marshgo-transit-live-halo', type: 'circle', source: 'marshgo-transit-live',
+      paint: { 'circle-radius': ['case', ['==', ['get', 'selected'], true], 15, 10], 'circle-color': ['get', 'color'], 'circle-opacity': ['case', ['==', ['get', 'selected'], true], 0.24, 0.1], 'circle-blur': 0.35 },
+    });
+    if (!this.map.getLayer('marshgo-transit-live-marker')) this.map.addLayer({
+      id: 'marshgo-transit-live-marker', type: 'circle', source: 'marshgo-transit-live',
+      paint: { 'circle-radius': ['case', ['==', ['get', 'selected'], true], 8, 6], 'circle-color': ['get', 'color'], 'circle-opacity': ['case', ['==', ['get', 'selected'], true], 1, 0.55], 'circle-stroke-color': colors.routeCasing, 'circle-stroke-width': 2.5 },
+    });
     // The DOM puck (rotating arrow) replaces the old circle dot; the source stays for consumers of its data.
     for (const id of ['marshgo-vehicle-halo', 'marshgo-vehicle']) if (this.map.getLayer(id)) this.map.setLayoutProperty(id, 'visibility', 'none');
     this.transport?.reinstall();
@@ -161,6 +170,7 @@ export class MapLibreAdapter implements MapAdapter {
     if (Math.abs(this.map.getPitch() - desiredPitch) > 1) this.map.easeTo({ pitch: desiredPitch, duration: 500, essential: true });
     this.updateRouteSource();
     if (this.vehicle) this.setVehicle(this.vehicle);
+    this.setLiveTransitPositions(this.liveTransitPositions);
     this.setWaypoints(this.waypoints);
   }
 
@@ -319,32 +329,19 @@ export class MapLibreAdapter implements MapAdapter {
 
   /** A separate marker for an exact, timestamp-verified public-transport journey position. */
   setLiveTransitPosition(position: LiveTransitPosition | null) {
-    if (!position) {
-      this.liveTransitMarker?.remove();
-      this.liveTransitMarker = null;
-      this.liveTransitElement = null;
-      delete this.map.getContainer().dataset.marshgoLiveTransitUpdatedAt;
-      return;
-    }
-    if (!this.liveTransitElement) {
-      this.liveTransitElement = document.createElement('div');
-      this.liveTransitElement.className = 'marshgo-transit-live-marker';
-      this.liveTransitElement.setAttribute('role', 'img');
-      const dot = document.createElement('span');
-      dot.setAttribute('aria-hidden', 'true');
-      this.liveTransitElement.append(dot);
-      this.liveTransitMarker = new maplibregl.Marker({ element: this.liveTransitElement, anchor: 'center' }).addTo(this.map);
-    }
-    this.liveTransitElement.setAttribute('aria-label', `${position.label}: GPS оновлено ${position.updatedAt}`);
-    this.liveTransitElement.title = `${position.label} · GPS ${position.updatedAt}`;
-    this.liveTransitElement.style.backgroundColor = position.color;
-    this.liveTransitElement.style.border = '3px solid white';
-    this.liveTransitElement.style.boxShadow = `0 0 0 3px ${position.color}66,0 0 20px ${position.color}cc`;
-    Object.assign(this.liveTransitElement.style, { width: '30px', height: '30px', borderRadius: '50%', display: 'grid', placeItems: 'center' });
-    const child = this.liveTransitElement.firstElementChild as HTMLElement | null;
-    if (child) Object.assign(child.style, { width: '8px', height: '8px', borderRadius: '50%', background: '#fff' });
-    this.liveTransitMarker?.setLngLat(position.coordinates);
-    this.map.getContainer().dataset.marshgoLiveTransitUpdatedAt = position.updatedAt;
+    this.setLiveTransitPositions(position ? [position] : []);
+  }
+
+  /** Batch exact, fresh positions from the authenticated journey snapshot into one GeoJSON source. */
+  setLiveTransitPositions(positions: readonly LiveTransitPosition[]) {
+    this.liveTransitPositions = freshLiveTransitPositions(positions);
+    const source = this.map.getSource('marshgo-transit-live') as maplibregl.GeoJSONSource | undefined;
+    source?.setData(liveTransitFeatureCollection(this.liveTransitPositions));
+    const container = this.map.getContainer();
+    container.dataset.marshgoLiveTransitCount = String(this.liveTransitPositions.length);
+    const newest = this.liveTransitPositions.map(position => position.updatedAt).sort().at(-1);
+    if (newest) container.dataset.marshgoLiveTransitUpdatedAt = newest;
+    else delete container.dataset.marshgoLiveTransitUpdatedAt;
   }
 
   /** The driver's puck: a blue arrow that points where the car is heading, lying flat on the (tilted) road like in Apple Maps. */
@@ -491,6 +488,6 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);
   }
   retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
-  destroy() { this.marker?.remove(); this.liveTransitMarker?.remove(); this.transport?.destroy(); this.map.remove(); }
+  destroy() { this.marker?.remove(); this.transport?.destroy(); this.map.remove(); }
   getStatus() { return this.status; }
 }

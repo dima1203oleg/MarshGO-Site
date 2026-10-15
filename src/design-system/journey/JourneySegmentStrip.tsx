@@ -21,16 +21,20 @@ export function JourneySegmentStrip({
   activeItemId,
   onSelect,
   className = '',
+  layout = 'stacked',
 }: {
   items: readonly JourneySegmentStripItem[];
   ariaLabel: string;
   activeItemId?: string | null;
   onSelect?: (id: string) => void;
   className?: string;
+  layout?: 'stacked' | 'horizontal';
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const scrollerId = useId();
   const [scrollState, setScrollState] = useState({ overflow: false, atEnd: false });
+  // Keep the four-leg canonical card fully visible; only longer chains need
+  // the wider, horizontally scrollable tiles.
   const usesHorizontalTiles = items.length > 4;
 
   useEffect(() => {
@@ -66,14 +70,28 @@ export function JourneySegmentStrip({
     });
   };
 
-  const renderContent = (item: JourneySegmentStripItem) => <>
-    <span className="journey-segment-tile-heading">
-      <span className="journey-segment-tile-icon" data-icon-mode={item.mode} style={{ color: item.mode === 'WALK' ? undefined : item.color }}>
-        {item.mode === 'METRO'
-          ? <span className="journey-metro-glyph" aria-hidden="true">М</span>
-          : <TransportIcon mode={item.mode} transportType={item.transportType} size={16} strokeWidth={2.3}/>
-        }
+  const renderIcon = (item: JourneySegmentStripItem) => <span className="journey-segment-tile-icon" data-icon-mode={item.mode} style={{ color: item.mode === 'WALK' ? undefined : item.color }}>
+    {item.mode === 'METRO'
+      ? <span className="journey-metro-glyph" aria-hidden="true">М</span>
+      : <TransportIcon mode={item.mode} transportType={item.transportType} size={16} strokeWidth={2.3}/>
+    }
+  </span>;
+
+  const renderContent = (item: JourneySegmentStripItem) => layout === 'horizontal'
+    ? <span className="journey-segment-tile-horizontal">
+      {renderIcon(item)}
+      <span className="journey-segment-tile-info">
+        <span className="journey-segment-tile-label" title={item.label}>{item.label}</span>
+        <span className="journey-segment-tile-meta" title={item.durationLabel + ' · ' + item.priceLabel}>
+          <strong className="journey-segment-tile-meta-value">{item.durationLabel}</strong>
+          <span aria-hidden="true"> · </span>
+          <strong className="journey-segment-tile-meta-value">{item.priceLabel}</strong>
+        </span>
       </span>
+    </span>
+    : <>
+    <span className="journey-segment-tile-heading">
+      {renderIcon(item)}
       <span className="journey-segment-tile-label" title={item.label}>{item.label}</span>
     </span>
     <span className="journey-segment-tile-meta" title={item.durationLabel + ' · ' + item.priceLabel}>
@@ -81,9 +99,9 @@ export function JourneySegmentStrip({
       <span aria-hidden="true"> · </span>
       <strong className="journey-segment-tile-meta-value">{item.priceLabel}</strong>
     </span>
-  </>;
+    </>;
 
-  return <div className={'journey-segment-strip ' + className}>
+  return <div className={'journey-segment-strip ' + className} data-layout={layout}>
     <div className="journey-segment-ribbon" role="img" aria-label={'Кольорова шкала: ' + items.map(item => item.label + ' ' + item.durationLabel).join(', ')}>
       {items.map(item => <span
         key={item.id}
@@ -97,7 +115,7 @@ export function JourneySegmentStrip({
         }}
       />)}
     </div>
-    <div className="journey-segment-tiles-viewport">
+    <div className={'journey-segment-tiles-viewport' + (scrollState.overflow ? ' has-overflow' : '')}>
       <div ref={scroller} id={scrollerId} className="journey-segment-tiles journey-result-segments no-scrollbar" role="list" aria-label={ariaLabel}>
         {items.map(item => {
           const selected = activeItemId === item.id;

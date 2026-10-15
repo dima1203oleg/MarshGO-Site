@@ -303,6 +303,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   border-radius: 999px;
   transition: filter .18s ease, opacity .18s ease;
 }
+.journey-segment-ribbon { height: 11px; }
 .journey-segment-tiles-viewport { position: relative; min-width: 0; margin-top: .25rem; }
 .journey-segment-tiles {
   display: flex;
@@ -340,6 +341,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
 .journey-segment-tile-button:hover { background: rgba(22,135,255,.07); }
 .journey-segment-tile-button:focus-visible { position: relative; z-index: 1; outline: 2px solid #1687ff; outline-offset: -2px; }
 .journey-segment-tile.is-active .journey-segment-tile-button { background: rgba(22,135,255,.1); }
+.journey-segment-tile.is-active { position: relative; z-index: 1; border-radius: .7rem; box-shadow: inset 0 0 0 1.5px #1687ff; }
 .journey-segment-tile-heading {
   display: flex;
   min-width: 0;
@@ -408,6 +410,66 @@ html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background
 .route-map-screen[data-theme="dark"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #f4f8fd !important; }
 .route-map-screen[data-theme="dark"] .journey-segment-tile-meta { color: #9aabbd !important; }
 .journey-result-card-content > .journey-segment-strip { margin-top: .25rem; }
+.canonical-route-lip { min-width: 0; color: #14243b; }
+.canonical-route-lip-heading,
+.canonical-route-lip-metrics,
+.canonical-route-lip-actions { display: flex; min-width: 0; align-items: center; }
+.canonical-route-lip-heading { justify-content: space-between; gap: .4rem; }
+.canonical-route-lip-metrics { flex: 1 1 auto; gap: .5rem; overflow: hidden; }
+.canonical-route-lip-duration,
+.canonical-route-lip-price { flex: 0 1 auto; font-size: clamp(1.2rem, 5.3vw, 1.65rem); font-weight: 900; line-height: 1.05; letter-spacing: -.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.canonical-route-lip-price.is-unknown { color: #74879a; }
+.canonical-route-lip-divider { width: 1px; height: 1.65rem; flex: 0 0 1px; background: #d8e2ed; }
+.canonical-route-lip-actions { flex: 0 0 auto; gap: .25rem; }
+.canonical-route-lip-badge,
+.canonical-route-lip-button { display: inline-flex; min-width: 2.75rem; height: 2.75rem; align-items: center; justify-content: center; gap: .25rem; border: 1px solid #d8e2ed; border-radius: 999px; background: rgba(241,245,249,.75); color: #172638; }
+.canonical-route-lip-strategy { min-width: 2.5rem; width: 2.5rem; height: 2.5rem; color: #1687ff; }
+.canonical-route-lip-strategy.strategy-fastest { color: #e88622; }
+.canonical-route-lip-strategy.strategy-cheapest { color: #159765; }
+.canonical-route-lip-transfers { min-width: 2.75rem; padding: 0 .5rem; font-size: .75rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.canonical-route-lip-button { width: 2.75rem; flex: 0 0 2.75rem; padding: 0; background: transparent; cursor: pointer; pointer-events: auto; }
+.canonical-route-lip-button:disabled { cursor: default; opacity: .55; }
+.canonical-route-lip-button:focus-visible { outline: 2px solid #1687ff; outline-offset: 2px; }
+.canonical-route-lip-open { color: #1687ff; background: rgba(22,135,255,.07); }
+.canonical-route-lip-strip { margin-top: .35rem; }
+.canonical-route-lip-strip .journey-segment-tiles-viewport.has-overflow { padding-right: 2.75rem; }
+.canonical-route-lip-strip .journey-segment-tile-button,
+.canonical-route-lip-strip .journey-segment-tile-content { min-height: 2.75rem; align-items: stretch; text-align: left; }
+.canonical-route-lip-strip .journey-segment-tile-horizontal { display: flex; width: 100%; min-width: 0; align-items: center; gap: .25rem; }
+.canonical-route-lip-strip .journey-segment-tile-info { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: .08rem; }
+.canonical-route-lip-strip .journey-segment-tile-label { font-size: 10px; font-weight: 700; }
+.canonical-route-lip-strip .journey-segment-tile-meta { padding-left: 0; text-align: left; font-size: 9px; }
+.canonical-route-lip-strip .journey-segment-tile-icon { flex-basis: 1.15rem; }
+.route-map-screen .canonical-route-lip { color: var(--route-ink); }
+.route-map-screen .canonical-route-lip-divider { background: var(--route-border); }
+.route-map-screen .canonical-route-lip-badge,
+.route-map-screen .canonical-route-lip-button { border-color: var(--route-border); color: var(--route-ink); background: var(--route-card-alt); }
+.route-map-screen .canonical-route-lip-open { color: #1687ff; }
+.route-map-screen[data-theme="light"] .canonical-route-lip { color: #14243b; }
+.route-map-screen[data-theme="light"] .canonical-route-lip-divider { background: #d8e2ed; }
+.route-map-screen[data-theme="light"] .canonical-route-lip-badge,
+.route-map-screen[data-theme="light"] .canonical-route-lip-button { border-color: #d8e2ed; color: #14243b; background: #f2f6fb; }
+.route-map-screen[data-theme="light"] .canonical-route-lip-open { color: #1687ff; }
+.route-map-screen[data-theme="dark"] .canonical-route-lip { color: #f5f9ff; }
+.route-map-screen[data-theme="dark"] .canonical-route-lip-divider { background: #294258; }
+.route-map-screen[data-theme="dark"] .canonical-route-lip-badge,
+.route-map-screen[data-theme="dark"] .canonical-route-lip-button { border-color: #294258; color: #f5f9ff; background: #15283a; }
+.route-map-screen[data-theme="dark"] .canonical-route-lip-open,
+.route-map-screen[data-theme="dark"] .canonical-route-lip-strategy { color: #63b1ff; }
+html.dark .canonical-route-lip { color: #f5f9ff; }
+html.dark .canonical-route-lip-divider { background: #294258; }
+html.dark .canonical-route-lip-badge,
+html.dark .canonical-route-lip-button { border-color: #294258; color: #f5f9ff; background: #15283a; }
+html.dark .canonical-route-lip-open { color: #63b1ff; }
+@media (max-width: 370px) {
+  .canonical-route-lip-heading { gap: .2rem; }
+  .canonical-route-lip-actions { gap: .12rem; }
+  .canonical-route-lip-badge,
+  .canonical-route-lip-button { min-width: 2.5rem; width: 2.5rem; height: 2.5rem; flex-basis: 2.5rem; }
+  .canonical-route-lip-transfers { min-width: 2.5rem; padding: 0 .3rem; }
+  .canonical-route-lip-duration,
+  .canonical-route-lip-price { font-size: 1.15rem; }
+}
 .journey-result-action-badge,
 .journey-result-transfer-badge,
 .journey-result-save-visual { border: 1px solid #D9E2EC; }
@@ -444,9 +506,9 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   .journey-segment-tile-heading { gap: .125rem; font-size: clamp(8.5px, 2.15vw, 9px); }
   .journey-segment-tile-icon { flex-basis: 1rem; }
   .journey-segment-tile:not(.journey-segment-tile--scroll) .journey-segment-tile-meta {
-    padding-left: 1.25rem;
-    text-align: left;
-    font-size: 8.5px;
+    padding-left: 0;
+    text-align: center;
+    font-size: 8px;
   }
 }
 @media (max-width: 379px) {
