@@ -506,9 +506,9 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   .journey-segment-tile-heading { gap: .125rem; font-size: clamp(8.5px, 2.15vw, 9px); }
   .journey-segment-tile-icon { flex-basis: 1rem; }
   .journey-segment-tile:not(.journey-segment-tile--scroll) .journey-segment-tile-meta {
-    padding-left: 1.25rem;
-    text-align: left;
-    font-size: 8.5px;
+    padding-left: 0;
+    text-align: center;
+    font-size: 8px;
   }
 }
 @media (max-width: 379px) {
