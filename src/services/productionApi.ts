@@ -328,6 +328,7 @@ export type ApiJourneySearchResult = {
   alternativeLimitPerStrategy?: number;
   resultsTruncated?: boolean;
   candidateGenerationTruncated?: boolean;
+  resultSamplingTruncated?: boolean;
   partial: boolean;
   partialReasons?: ApiJourneySearchPartialReason[];
   blockedProviders: string[];
