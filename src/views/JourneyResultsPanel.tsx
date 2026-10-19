@@ -4,7 +4,7 @@ import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
 import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
 import { journeyLegCaveat } from './journeyLegLabel';
-import { journeysForStrategy, journeyForSelectedStrategy } from './journeyStrategies';
+import { hasUnrankedJourney, journeysForStrategy, journeyForSelectedStrategy } from './journeyStrategies';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDuration,
   formatJourneySegmentPrice, formatJourneyTotalPrice,
@@ -174,6 +174,7 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
     </div>
 
     {result.partial && !result.partialReasons?.length && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.</p>}
+    {hasUnrankedJourney(result) && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Для частини маршрутів сервер не надав рейтинг. Їх порядок сформовано локально за базовими показниками й він може не враховувати повну багатокритеріальну оцінку.</p>}
     {result.partialReasons?.includes('walking_routing_unavailable') && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.</p>}
     {result.unsupportedPreferences.length > 0 && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Не всі умови можна врахувати: {result.unsupportedPreferences.map(value => preferenceMessages[value] ?? value).join('; ')}.</p>}
     {result.providerErrors.length > 0 && <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">Деякі розклади тимчасово недоступні: {result.providerErrors.join('; ')}.</p>}

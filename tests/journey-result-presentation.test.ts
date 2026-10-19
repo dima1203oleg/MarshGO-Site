@@ -4,7 +4,7 @@ import type { ApiJourney, ApiJourneySearchResult } from '../src/services/product
 import {
   buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneySegmentPrice, formatJourneyTotalPrice,
 } from '../src/views/journeyResultPresentation';
-import { journeyForSelectedStrategy, journeysForStrategy } from '../src/views/journeyStrategies';
+import { hasUnrankedJourney, journeyForSelectedStrategy, journeysForStrategy } from '../src/views/journeyStrategies';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
   id: 'leg', mode: 'BUS', offerId: null,
@@ -45,6 +45,13 @@ describe('journey result presentation data', () => {
     const representative = journey({ strategy: 'BALANCED', strategyRanks: { FASTEST: 1, BALANCED: 2 } });
     assert.equal(journeyForSelectedStrategy(representative, 'BALANCED').strategy, 'BALANCED');
     assert.equal(journeyForSelectedStrategy(representative, 'FASTEST').strategy, 'FASTEST');
+  });
+
+  it('marks local fallback ordering when the server omits strategy ranks', () => {
+    const rankedResult = { journeys: [journey({ strategyRanks: { BALANCED: 1 } })] } as ApiJourneySearchResult;
+    const fallbackResult = { journeys: [journey({ strategyRanks: undefined })] } as ApiJourneySearchResult;
+    assert.equal(hasUnrankedJourney(rankedResult), false);
+    assert.equal(hasUnrankedJourney(fallbackResult), true);
   });
 
   it('includes walking and scheduled waits and keeps ribbon widths time-proportional', () => {

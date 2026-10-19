@@ -32,3 +32,8 @@ export function journeysForStrategy(result: ApiJourneySearchResult, strategy: Ap
 export function journeyForSelectedStrategy(journey: ApiJourney, strategy: ApiJourneyStrategy): ApiJourney {
   return journey.strategy === strategy ? journey : { ...journey, strategy };
 }
+
+/** Tell the UI when any returned route needs the legacy local-ordering fallback. */
+export function hasUnrankedJourney(result: ApiJourneySearchResult): boolean {
+  return result.journeys.some(journey => !journey.strategyRanks || Object.keys(journey.strategyRanks).length === 0);
+}
