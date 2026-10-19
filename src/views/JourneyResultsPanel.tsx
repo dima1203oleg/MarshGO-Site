@@ -4,6 +4,7 @@ import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
 import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
 import { journeyLegCaveat } from './journeyLegLabel';
+import { journeysForStrategy, journeyForSelectedStrategy } from './journeyStrategies';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDuration,
   formatJourneySegmentPrice, formatJourneyTotalPrice,
@@ -16,32 +17,6 @@ const strategyConfig: Array<{ id: ApiJourneyStrategy; label: string; Icon: typeo
   { id: 'FASTEST', label: 'Найшвидший', Icon: Timer, tone: 'text-[#FF9A32]' },
   { id: 'CHEAPEST', label: 'Найдешевший', Icon: Coins, tone: 'text-[#1FCB78]' },
 ];
-
-function strategyJourneys(result: ApiJourneySearchResult, strategy: ApiJourneyStrategy): ApiJourney[] {
-  return result.journeys
-    .filter(journey => journey.strategyRanks
-      ? typeof journey.strategyRanks[strategy] === 'number'
-      : (journey.recommendedStrategies ?? [journey.strategy]).includes(strategy))
-    .filter(journey => strategy !== 'CHEAPEST' || formatJourneyTotalPrice(journey) !== '—')
-    .sort((a, b) => {
-      const rankA = a.strategyRanks?.[strategy];
-      const rankB = b.strategyRanks?.[strategy];
-      if (typeof rankA === 'number' || typeof rankB === 'number') {
-        return (rankA ?? Number.MAX_SAFE_INTEGER) - (rankB ?? Number.MAX_SAFE_INTEGER);
-      }
-      if (strategy === 'FASTEST') return a.totalDurationSeconds - b.totalDurationSeconds;
-      if (strategy === 'CHEAPEST') {
-        const priceA = a.confirmedPriceMinor ?? a.totalPriceMinor;
-        const priceB = b.confirmedPriceMinor ?? b.totalPriceMinor;
-        if (priceA === null) return priceB === null ? a.totalDurationSeconds - b.totalDurationSeconds : 1;
-        if (priceB === null) return -1;
-        return priceA - priceB || a.totalDurationSeconds - b.totalDurationSeconds;
-      }
-      return a.totalDurationSeconds - b.totalDurationSeconds
-        || (a.confirmedPriceMinor ?? a.totalPriceMinor ?? Number.MAX_SAFE_INTEGER)
-          - (b.confirmedPriceMinor ?? b.totalPriceMinor ?? Number.MAX_SAFE_INTEGER);
-    });
-}
 
 function formatRouteCount(count: number): string {
   const plural = new Intl.PluralRules('uk-UA').select(count);
@@ -87,8 +62,8 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
 
 
   if (!firstLeg || !lastLeg) return null;
-  const rankedStrategy = strategyConfig.find(item => journey.strategyRanks?.[item.id] === 1)?.id;
-  const strategyItem = strategyConfig.find(item => item.id === (rankedStrategy ?? strategy)) ?? strategyConfig[0];
+  const strategyItem = strategyConfig.find(item => item.id === strategy) ?? strategyConfig[0];
+  const openSelectedJourney = () => onOpen(journeyForSelectedStrategy(journey, strategy));
   const totalPrice = formatJourneyTotalPrice(journey);
   const stripItems: JourneySegmentStripItem[] = segments.map(segment => ({
     id: segment.id,
@@ -127,7 +102,7 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
     data-journey-id={journey.id}
     className={`journey-result-card relative isolate overflow-hidden rounded-[16px] border bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)] ${index === 0 ? 'border-blue-400 ring-1 ring-blue-100 dark:border-blue-600 dark:ring-blue-950' : 'border-slate-200 dark:border-[#20354A]'}`}
   >
-    <button type="button" aria-hidden="true" tabIndex={-1} aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+    <button type="button" aria-hidden="true" tabIndex={-1} aria-label={openLabel} onClick={openSelectedJourney} className="absolute inset-0 z-0 h-full w-full rounded-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
       <span className="sr-only">Переглянути карту й деталі маршруту</span>
     </button>
     <div className="journey-result-card-content pointer-events-none relative z-10 p-2">
@@ -144,7 +119,7 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
         favorite={saved}
         availabilityStatus={journey.state}
         actionLabel={openLabel}
-        onOpenDetails={() => onOpen(journey)}
+        onOpenDetails={openSelectedJourney}
         onFavoriteChange={toggleSaved}
         className="pointer-events-none"
       />
@@ -163,13 +138,13 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
 }) {
   const requestedStrategy = strategyConfig.some(strategy => strategy.id === result.requestedStrategy)
     ? result.requestedStrategy as ApiJourneyStrategy : undefined;
-  const defaultStrategy = requestedStrategy && strategyJourneys(result, requestedStrategy).length > 0
+  const defaultStrategy = requestedStrategy && journeysForStrategy(result, requestedStrategy).length > 0
     ? requestedStrategy
-    : strategyJourneys(result, 'BALANCED').length > 0 ? 'BALANCED'
-      : strategyConfig.find(strategy => strategyJourneys(result, strategy.id).length > 0)?.id ?? 'BALANCED';
+    : journeysForStrategy(result, 'BALANCED').length > 0 ? 'BALANCED'
+      : strategyConfig.find(strategy => journeysForStrategy(result, strategy.id).length > 0)?.id ?? 'BALANCED';
   const [activeStrategy, setActiveStrategy] = useState<ApiJourneyStrategy>(defaultStrategy);
   useEffect(() => setActiveStrategy(defaultStrategy), [result, defaultStrategy]);
-  const shownJourneys = strategyJourneys(result, activeStrategy);
+  const shownJourneys = journeysForStrategy(result, activeStrategy);
 
   const preferenceMessages: Record<string, string> = {
     preferredVehicleClass: 'клас автомобіля не застосовується до розкладів громадського транспорту',
@@ -190,7 +165,7 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   return <section aria-label="Результати мультимодального пошуку" className="mt-2">
     <div role="group" aria-label="Режим пошуку маршрутів" className="mb-2 grid grid-cols-3 gap-1.5">
       {strategyConfig.map(({ id, label, Icon, tone }) => {
-        const count = strategyJourneys(result, id).length;
+        const count = journeysForStrategy(result, id).length;
         const active = activeStrategy === id;
         return <button key={id} type="button" disabled={count === 0} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-[#1687FF] bg-gradient-to-b from-[#1687FF] to-[#0868DF] text-white shadow-[0_5px_14px_rgba(22,135,255,.25)]' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-[#20354A] dark:bg-[#0D1B28] dark:text-slate-200'}`}>
           <Icon size={18} className={`shrink-0 ${active ? 'text-white' : tone}`} aria-hidden="true"/><span className="whitespace-nowrap text-[10px] font-extrabold leading-tight sm:text-[11px]">{label}</span>
