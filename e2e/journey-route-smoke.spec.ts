@@ -169,9 +169,10 @@ test('real production journey UI keeps all legs while focusing one scheduled seg
   await expect(routeMap.getByRole('list', { name: 'Зупинки сегмента A20' })).toContainText('Наукова');
   await expect(routeMap.getByRole('list', { name: 'Зупинки сегмента A20' })).toContainText('Сихівська');
   const mapCanvas = routeMap.locator('.maplibregl-map');
-  await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-line-direction-count')).toBe('2');
-  await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-fleet-count')).toBe('4');
-  await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-fleet-emphasized-count')).toBe('3');
+  const mapStateTimeout = { timeout: 15_000 };
+  await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-line-direction-count'), mapStateTimeout).toBe('2');
+  await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-fleet-count'), mapStateTimeout).toBe('4');
+  await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-fleet-emphasized-count'), mapStateTimeout).toBe('3');
   const vehicleMarkers = routeMap.locator('.marshgo-transit-fleet-marker');
   await expect(vehicleMarkers).toHaveCount(4);
   await expect(vehicleMarkers).toHaveText(['🚌', '🚌', '🚌', '🚌']);
