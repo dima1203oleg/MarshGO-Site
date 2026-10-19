@@ -12,9 +12,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "npm run lint:all",
-    "lint:all": "eslint src scripts shared vite.config.ts eslint.config.js",
+    "lint:all": "eslint src scripts shared tests e2e playwright.config.ts vite.config.ts eslint.config.js",
     "check:bundle": "node scripts/check-bundle-size.mjs",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "typecheck:e2e": "tsc --noEmit --project tsconfig.e2e.json",
+    "check:production": "npm run typecheck && npm run typecheck:e2e && npm run lint && npm test && npm run build && npm run check:bundle && npm run test:e2e"
   },
   "dependencies": {
     "@capacitor/core": "8.5.2",
@@ -32,6 +35,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.14.0",
     "@types/qrcode": "^1.5.6",

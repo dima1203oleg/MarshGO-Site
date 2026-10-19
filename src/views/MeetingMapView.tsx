@@ -29,6 +29,7 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
   const iAmDriver = booking.current_user_is_driver;
   const mutualConsent = rendezvous.currentParticipantConsent === true && rendezvous.otherParticipantConsent === true;
   const sharing = rendezvous.locationSharingEnabled && mutualConsent;
+  const consentCanChange = !['BOARDING', 'COMPLETED', 'CANCELLED', 'EXPIRED'].includes(rendezvous.state);
   const pickup = rendezvous.pickup.coordinates as Point;
 
   useEffect(() => {
@@ -62,8 +63,15 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
 
   // My own position: shown at once from the device, and shared with the other person while sharing is on.
   useEffect(() => {
-    if (!('geolocation' in navigator)) { setMessage('Цей пристрій не надає геолокацію.'); return; }
-    const watch = navigator.geolocation.watchPosition((position) => {
+    const stopSharingIfUnavailable = (reason: string) => {
+      setMessage(reason);
+      if (sharing) void productionApi.setRendezvousConsent(rendezvous.id, false)
+        .then(setRendezvous)
+        .catch(() => setMessage(`${reason} Не вдалося автоматично зупинити обмін; відкличте згоду вручну.`));
+    };
+    if (!('geolocation' in navigator)) { stopSharingIfUnavailable('Цей пристрій не надає геолокацію.'); return; }
+    let watch: number | null = null;
+    watch = navigator.geolocation.watchPosition((position) => {
       const point: Point = [position.coords.longitude, position.coords.latitude];
       setMine(point);
       const now = Date.now();
@@ -76,8 +84,15 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
         lastSent.current = now;
         void productionApi.sendRendezvousLocation(rendezvous.id, { longitude: point[0], latitude: point[1], accuracyMeters: Math.min(1000, position.coords.accuracy || 50), capturedAt: new Date(position.timestamp).toISOString() }).catch(() => undefined);
       }
-    }, (error) => setMessage(error.code === 1 ? 'Дозвольте геолокацію, щоб друга людина бачила вас на карті.' : 'Не вдалося визначити ваше місце.'), { enableHighAccuracy: true, maximumAge: 2000, timeout: 20_000 });
-    return () => navigator.geolocation.clearWatch(watch);
+    }, (error) => {
+      const permissionDenied = error.code === 1;
+      if (permissionDenied) {
+        if (watch !== null) navigator.geolocation.clearWatch(watch);
+        stopSharingIfUnavailable('Дозвіл на геолокацію вимкнено.');
+      }
+      else setMessage('Не вдалося визначити ваше місце. Перевірте з’єднання або спробуйте ще раз.');
+    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20_000 });
+    return () => { if (watch !== null) navigator.geolocation.clearWatch(watch); };
   }, [sharing, rendezvous.id, iAmDriver]);
 
   const driverPoint = sharing ? (iAmDriver ? mine : other) : null;
@@ -104,6 +119,17 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
     catch (error) { setMessage(error instanceof Error ? error.message : 'Не вдалося увімкнути обмін місцем.'); }
     finally { setBusy(false); }
   };
+  const setConsent = async (enabled: boolean) => {
+    setBusy(true); setMessage('');
+    try {
+      const updated = await productionApi.setRendezvousConsent(rendezvous.id, enabled);
+      setRendezvous(updated);
+      setMessage(enabled
+        ? updated.locationSharingEnabled ? 'Обмін місцем увімкнено після згоди обох учасників.' : 'Вашу згоду збережено. Очікуємо окрему згоду другого учасника.'
+        : 'Вашу згоду відкликано. Обмін місцем зупинено.');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Не вдалося оновити згоду на GPS.'); }
+    finally { setBusy(false); }
+  };
   const notYet = Date.now() < Date.parse(rendezvous.activationAt);
   const who = iAmDriver ? booking.passenger_name : booking.driver_name;
 
@@ -127,9 +153,11 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
       <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[11px] text-slate-500"><Flag size={12} className="shrink-0 text-rose-600"/>Місце зустрічі — початок маршруту поїздки. Відстань і ETA орієнтовні, за прямою відстанню.</p>
       {sharing && <p className="mt-1 text-center text-[10px] text-slate-500">Позиції оновлюються кожні 5 с; показуємо лише свіжі координати до 90 с.</p>}
       {message && <p role="status" className="mt-2 rounded-xl bg-amber-50 p-2.5 text-xs text-amber-900">{message}</p>}
-      {!rendezvous.locationSharingEnabled ? <button type="button" disabled={busy || notYet} onClick={() => void activate()} className="mt-3 w-full rounded-2xl bg-[#1789F4] py-3.5 text-sm font-bold text-white disabled:opacity-50">{notYet ? `Обмін місцем стане доступним о ${new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(new Date(rendezvous.activationAt))}` : 'Увімкнути обмін місцем'}</button>
-        : !mutualConsent ? <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-center text-xs text-amber-900">Карта почне показувати обидві позиції після підтвердження згоди обома учасниками.</p>
-        : <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" disabled={busy} onClick={() => void act('arrived')} className="rounded-2xl bg-emerald-600 py-3.5 text-sm font-bold text-white disabled:opacity-50">Я на місці</button><button type="button" disabled={busy} onClick={() => void act('will_arrive')} className="rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-700 disabled:opacity-50">Буду через 2 хв</button></div>}
+      {!rendezvous.locationSharingEnabled && ['SCHEDULED', 'ACTIVATING'].includes(rendezvous.state) ? <button type="button" disabled={busy || notYet} onClick={() => void activate()} className="mt-3 w-full rounded-2xl bg-[#1789F4] py-3.5 text-sm font-bold text-white disabled:opacity-50">{notYet ? `Зустріч стане доступною о ${new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(new Date(rendezvous.activationAt))}` : 'Підготувати зустріч'}</button>
+        : !rendezvous.locationSharingEnabled && !rendezvous.currentParticipantConsent && consentCanChange ? <button type="button" disabled={busy} onClick={() => void setConsent(true)} className="mt-3 w-full rounded-2xl bg-[#1789F4] py-3.5 text-sm font-bold text-white disabled:opacity-50">Дозволити короткочасний обмін GPS</button>
+        : !rendezvous.locationSharingEnabled && rendezvous.currentParticipantConsent && consentCanChange ? <><p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-center text-xs text-amber-900">Вашу згоду збережено. Очікуємо окрему згоду другого учасника.</p><button type="button" disabled={busy} onClick={() => void setConsent(false)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white py-3 text-xs font-semibold text-slate-700 disabled:opacity-50">Скасувати мою згоду</button></>
+        : !rendezvous.locationSharingEnabled ? <p role="status" className="mt-3 rounded-xl bg-slate-100 p-3 text-center text-xs text-slate-600">Обмін місцем завершено.</p>
+        : <><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" disabled={busy} onClick={() => void act('arrived')} className="rounded-2xl bg-emerald-600 py-3.5 text-sm font-bold text-white disabled:opacity-50">Я на місці</button><button type="button" disabled={busy} onClick={() => void act('will_arrive')} className="rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-700 disabled:opacity-50">Буду через 2 хв</button></div>{consentCanChange&&<button type="button" disabled={busy} onClick={() => void setConsent(false)} className="mt-2 w-full rounded-2xl bg-white py-2.5 text-xs font-semibold text-slate-600 disabled:opacity-50">Зупинити й відкликати мою згоду</button>}</>}
     </section>
   </main>;
 }

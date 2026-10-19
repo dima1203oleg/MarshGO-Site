@@ -632,6 +632,9 @@ export const productionApi = {
   bookings() { return request<ApiBooking[]>('/bookings'); },
   bookingRendezvous(bookingId: string, signal?: AbortSignal) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous`, { signal }); },
   activateRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous/activate`, { method: 'POST' }); },
+  setRendezvousConsent(rendezvousId: string, enabled: boolean) {
+    return request<ApiRendezvous>(`/rendezvous/${encodeURIComponent(rendezvousId)}/consent`, { method: 'POST', body: JSON.stringify({ enabled }) });
+  },
   sendRendezvousLocation(rendezvousId: string, location: { longitude: number; latitude: number; accuracyMeters: number; capturedAt: string }) {
     return request<{ rendezvousId: string; storedEphemerally: true; expiresInSeconds: number; nearPickup: boolean; arrivalRequiresUserConfirmation: true }>(
       `/rendezvous/${encodeURIComponent(rendezvousId)}/location`, { method: 'POST', body: JSON.stringify(location) },
