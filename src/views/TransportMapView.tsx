@@ -4,7 +4,7 @@ import { productionApi, type ApiTransportCity } from '../services/productionApi'
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
-import { clearTransportLayers, getTransportLayers, subscribeTransportLayers, toggleTransportLayer, type TransportLayerId } from '../map/transportLayers';
+import { getTransportLayers, subscribeTransportLayers, toggleTransportLayer, type TransportLayerId } from '../map/transportLayers';
 
 const chips: Array<{ label: string; id: TransportLayerId; Icon: typeof Bus }> = [
   { label: 'Метро', id: 'METRO', Icon: TrainFront }, { label: 'Транспорт', id: 'PUBLIC_TRANSPORT', Icon: Bus }, { label: 'Велосипеди', id: 'BICYCLE', Icon: Bike },
@@ -29,7 +29,6 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
     }).catch(() => { if (!controller.signal.aborted) setHint('Не вдалося завантажити список міст.'); });
     return () => controller.abort();
   }, []);
-  useEffect(() => () => clearTransportLayers(), []);
   const located = useRef(false);
   const onAdapter = (next: MapAdapter | null) => {
     adapter.current = next;

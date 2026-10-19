@@ -1,3 +1,4 @@
+import { devPreviewAuth } from '../dev/devPreviewAuth';
 import { routeResultSchema, type RouteRequest, type RouteResult } from '../../shared/navigation/contracts';
 import { NavigationProviderError } from '../../shared/navigation/errors';
 
@@ -86,6 +87,7 @@ export type ApiRendezvous = {
   pickup: { label: string; coordinates: [number, number] };
   plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
   locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
+  currentParticipant?: 'driver' | 'passenger';
   locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
 };
 export type ApiRescueAlternative = ApiOffer & {
@@ -201,6 +203,9 @@ export type ApiJourneyStrategy = 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM'
 export type ApiJourney = {
   id: string;
   offerId: string | null;
+  /** Requested trip endpoints. Legs can start/end at nearby providers or stops. */
+  origin?: { name: string; coordinates: [number, number] };
+  destination?: { name: string; coordinates: [number, number] };
   source?: string;
   providerName?: string;
   routeName?: string;
@@ -228,6 +233,9 @@ export type ApiJourney = {
     id: string;
     mode: string;
     offerId: string | null;
+    /** Present when this leg is backed by a confirmed Community booking. */
+    bookingId?: string | null;
+    state?: string;
     origin: { name: string; coordinates: [number, number] };
     destination: { name: string; coordinates: [number, number] };
     departureAt: string;
@@ -293,13 +301,31 @@ export type ApiStoredJourney = {
   id: string;
   origin_name: string;
   destination_name: string;
+  origin_coordinates?: [number, number];
+  destination_coordinates?: [number, number];
   requested_departure_at: string;
+  requested_arrival_at?: string | null;
   strategy: ApiJourneyStrategy;
   state: string;
   passenger_count: number;
   total_price_minor: number | null;
   confirmed_price_minor: number | null;
-  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string; stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string }> }>;
+  estimated_price_min_minor?: number | null;
+  estimated_price_max_minor?: number | null;
+  total_duration_s?: number;
+  walking_distance_m?: number;
+  transfer_count?: number;
+  reliability_score?: number | null;
+  waitingSeconds?: number;
+  legs: Array<{
+    id: string; ordinal?: number; mode: string; originName: string; originCoordinates: [number, number];
+    destinationName: string; destinationCoordinates: [number, number]; departureAt: string; arrivalAt: string;
+    durationSeconds: number; distanceMeters: number | null; priceMinor: number | null; currency?: string;
+    priceStatus: string; availabilityStatus: string; providerType?: string | null; offerId: string | null;
+    bookingId: string | null; state: string; dataSource?: string | null; lastUpdatedAt?: string | null;
+    source?: string | null; metadata?: Record<string, unknown> | null; routeGeometry?: Array<[number, number]> | null;
+    stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string; pickupType?: number; dropOffType?: number; skipped?: boolean }>;
+  }>;
 };
 export type GeoJsonCollection = { type: 'FeatureCollection'; features: Array<{ type: 'Feature'; properties: Record<string, unknown>; geometry: { type: string; coordinates: unknown } }> };
 export type ApiNavigationSession = {
@@ -343,6 +369,10 @@ let accessToken: string | null = null;
 
 async function request<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
   const headers = new Headers(init.headers);
+  // The local preview session can call a development API without SMS. The
+  // server accepts this identity only with NODE_ENV=development and
+  // AUTH_DEV_BYPASS=true; production never trusts this header.
+  if (devPreviewAuth.isActive()) headers.set('x-dev-user-id', '00000000-0000-4000-8000-000000000001');
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   if (accessToken) headers.set('authorization', `Bearer ${accessToken}`);
   const response = await fetch(`${apiBase}/api/v1${path}`, { ...init, headers, credentials: 'include' });
@@ -367,6 +397,21 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
 }
 
 export const productionApi = {
+  enterDevPreviewSession(): ApiUser | null {
+    if (!devPreviewAuth.enter()) return null;
+    accessToken = null;
+    return {
+      id: 'dev-preview-user',
+      display_name: 'MARSHGO Dev Preview',
+      phone_e164: '+380000000000',
+      roles: ['passenger', 'driver'],
+      is_verified: false,
+      driver_photo_url: null,
+    };
+  },
+  isDevPreviewSession() {
+    return devPreviewAuth.isActive();
+  },
   async restoreSession() {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
@@ -394,9 +439,19 @@ export const productionApi = {
     return session.user;
   },
   async logout() {
+    if (devPreviewAuth.isActive()) {
+      accessToken = null;
+      devPreviewAuth.leave();
+      return;
+    }
     try { await request('/auth/logout', { method: 'POST' }); } finally { accessToken = null; }
   },
   async logoutAll() {
+    if (devPreviewAuth.isActive()) {
+      accessToken = null;
+      devPreviewAuth.leave();
+      return;
+    }
     try { await request('/auth/logout-all', { method: 'POST' }); } finally { accessToken = null; }
   },
   offers(params: { origin: string; destination: string; date: string; seats: number; originCoordinates?: [number, number]; destinationCoordinates?: [number, number] }) {
@@ -444,8 +499,8 @@ export const productionApi = {
   startNavigation(input: { origin: [number, number]; destination?: [number, number]; destinationName?: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },
-  async calculateRoute(input: RouteRequest): Promise<RouteResult> {
-    const result = await request<unknown>('/routing/calculate', { method: 'POST', body: JSON.stringify(input) });
+  async calculateRoute(input: RouteRequest, signal?: AbortSignal): Promise<RouteResult> {
+    const result = await request<unknown>('/routing/calculate', { method: 'POST', body: JSON.stringify(input), signal });
     const parsed = routeResultSchema.safeParse(result);
     if (!parsed.success) throw new NavigationProviderError('ROUTING_INVALID_RESPONSE', 'marshgo-api');
     return parsed.data;
@@ -515,7 +570,7 @@ export const productionApi = {
     return request<{ id: string; status: string }>(`/demands/${demandId}/cancel`, { method: 'POST' });
   },
   bookings() { return request<ApiBooking[]>('/bookings'); },
-  bookingRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous`); },
+  bookingRendezvous(bookingId: string, signal?: AbortSignal) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous`, { signal }); },
   activateRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous/activate`, { method: 'POST' }); },
   sendRendezvousLocation(rendezvousId: string, location: { longitude: number; latitude: number; accuracyMeters: number; capturedAt: string }) {
     return request<{ rendezvousId: string; storedEphemerally: true; expiresInSeconds: number; nearPickup: boolean; arrivalRequiresUserConfirmation: true }>(

@@ -6,6 +6,11 @@ export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
 export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; modeColor: string; approximate?: boolean };
 export type LiveTransitPosition = { id: string; coordinates: Coordinate; color: string; label: string; updatedAt: string; selected?: boolean };
+export type LiveRidesharePosition = { id: string; coordinates: Coordinate; capturedAt: string; freshness: 'LIVE' | 'STALE' };
+export type LiveRideshareApproachRoute = {
+  id: string; coordinates: Coordinate[]; vehicleCapturedAt: string; calculatedAt: string;
+  distanceMeters: number; durationSeconds: number; provider: string;
+};
 export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number; bearing?: number };
 export interface MapAdapter {
   setRoute(points: Coordinate[]): void;
@@ -13,6 +18,8 @@ export interface MapAdapter {
   setActiveRouteSegment?(id: string | null): void;
   setLiveTransitPosition?(position: LiveTransitPosition | null): void;
   setLiveTransitPositions?(positions: readonly LiveTransitPosition[]): void;
+  setLiveRidesharePositions?(positions: readonly LiveRidesharePosition[]): void;
+  setLiveRideshareApproachRoute?(route: LiveRideshareApproachRoute | null): void;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
   focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;
   onRouteSegmentSelect: (id: string) => void;

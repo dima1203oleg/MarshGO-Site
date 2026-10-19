@@ -3,8 +3,9 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import type { CameraMode, ColoredRouteSegment, LiveTransitPosition, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
+import type { CameraMode, ColoredRouteSegment, LiveRideshareApproachRoute, LiveRidesharePosition, LiveTransitPosition, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
 import { freshLiveTransitPositions, liveTransitFeatureCollection } from './liveTransitFeatures';
+import { freshRideshareApproachRoute, freshRidesharePositions } from './liveRideshareFeatures';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
 import type { FillLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
@@ -38,6 +39,9 @@ export class MapLibreAdapter implements MapAdapter {
   private heading: number | null = null;
   private marker: maplibregl.Marker | null = null;
   private liveTransitPositions: LiveTransitPosition[] = [];
+  private liveRidesharePositions: LiveRidesharePosition[] = [];
+  private liveRideshareApproachRoute: LiveRideshareApproachRoute | null = null;
+  private rideshareMarkers = new Map<string, maplibregl.Marker>();
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
   onRouteSegmentSelect: (id: string) => void = () => undefined;
@@ -124,6 +128,7 @@ export class MapLibreAdapter implements MapAdapter {
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-transit-live')) this.map.addSource('marshgo-transit-live', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!this.map.getSource('marshgo-rideshare-approach')) this.map.addSource('marshgo-rideshare-approach', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     const confirmedRouteFilter = ['!=', ['get', 'approximate'], true] as maplibregl.FilterSpecification;
     if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', filter: confirmedRouteFilter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 18, 10], 15, ['case', ['==', ['get', 'selected'], true], 34, 22]], 'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.78, ['==', ['get', 'dimmed'], true], 0.035, 0.2], 'line-blur': 7 } });
@@ -139,6 +144,21 @@ export class MapLibreAdapter implements MapAdapter {
         'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.38, 0.9],
         'line-dasharray': [1.15, 1.8],
       },
+    });
+    if (!this.map.getLayer('marshgo-rideshare-approach-glow')) this.map.addLayer({
+      id: 'marshgo-rideshare-approach-glow', type: 'line', source: 'marshgo-rideshare-approach',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#08C5D3', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 9, 15, 18], 'line-opacity': 0.28, 'line-blur': 5 },
+    });
+    if (!this.map.getLayer('marshgo-rideshare-approach-casing')) this.map.addLayer({
+      id: 'marshgo-rideshare-approach-casing', type: 'line', source: 'marshgo-rideshare-approach',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': colors.routeCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3, 15, 7], 'line-opacity': 0.92 },
+    });
+    if (!this.map.getLayer('marshgo-rideshare-approach')) this.map.addLayer({
+      id: 'marshgo-rideshare-approach', type: 'line', source: 'marshgo-rideshare-approach',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#08C5D3', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 2, 15, 5], 'line-opacity': 1 },
     });
     if (!this.routeInteractionBound && this.map.getLayer('marshgo-route')) {
       this.routeInteractionBound = true;
@@ -169,6 +189,7 @@ export class MapLibreAdapter implements MapAdapter {
     const desiredPitch = this.perspective === '3d' ? PERSPECTIVE_PITCH : 0;
     if (Math.abs(this.map.getPitch() - desiredPitch) > 1) this.map.easeTo({ pitch: desiredPitch, duration: 500, essential: true });
     this.updateRouteSource();
+    this.updateLiveRideshareApproachSource();
     if (this.vehicle) this.setVehicle(this.vehicle);
     this.setLiveTransitPositions(this.liveTransitPositions);
     this.setWaypoints(this.waypoints);
@@ -318,6 +339,26 @@ export class MapLibreAdapter implements MapAdapter {
     }
     source.setData({ type: 'Feature', properties: { selected: true, dimmed: false }, geometry: { type: 'LineString', coordinates: this.route } });
   }
+  private updateLiveRideshareApproachSource() {
+    const source = this.map.getSource('marshgo-rideshare-approach') as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+    const route = this.liveRideshareApproachRoute;
+    source.setData(route ? {
+      type: 'Feature', properties: { id: route.id, provider: route.provider, calculatedAt: route.calculatedAt },
+      geometry: { type: 'LineString', coordinates: route.coordinates },
+    } : { type: 'FeatureCollection', features: [] });
+    const container = this.map.getContainer();
+    container.dataset.marshgoRideshareApproachRouteCount = route ? '1' : '0';
+    if (route) {
+      container.dataset.marshgoRideshareApproachProvider = route.provider;
+      container.dataset.marshgoRideshareApproachDistanceMeters = String(Math.round(route.distanceMeters));
+      container.dataset.marshgoRideshareApproachDurationSeconds = String(Math.round(route.durationSeconds));
+    } else {
+      delete container.dataset.marshgoRideshareApproachProvider;
+      delete container.dataset.marshgoRideshareApproachDistanceMeters;
+      delete container.dataset.marshgoRideshareApproachDurationSeconds;
+    }
+  }
   setVehicle(point: Coordinate, heading?: number | null) {
     this.vehicle = point;
     if (typeof heading === 'number' && Number.isFinite(heading)) this.heading = heading;
@@ -342,6 +383,40 @@ export class MapLibreAdapter implements MapAdapter {
     const newest = this.liveTransitPositions.map(position => position.updatedAt).sort().at(-1);
     if (newest) container.dataset.marshgoLiveTransitUpdatedAt = newest;
     else delete container.dataset.marshgoLiveTransitUpdatedAt;
+  }
+
+  /** Render only the participant-authorized rendezvous marker; this never changes camera mode. */
+  setLiveRidesharePositions(positions: readonly LiveRidesharePosition[]) {
+    this.liveRidesharePositions = freshRidesharePositions(positions);
+    const visibleIds = new Set(this.liveRidesharePositions.map((position) => position.id));
+    for (const [id, marker] of this.rideshareMarkers) {
+      if (!visibleIds.has(id)) { marker.remove(); this.rideshareMarkers.delete(id); }
+    }
+    for (const position of this.liveRidesharePositions) {
+      let marker = this.rideshareMarkers.get(position.id);
+      if (!marker) {
+        const element = document.createElement('div');
+        element.className = 'marshgo-rideshare-marker';
+        element.setAttribute('role', 'img');
+        element.style.cssText = 'width:38px;height:38px;display:grid;place-items:center;border:2px solid #fff;border-radius:50%;box-shadow:0 3px 14px rgba(5,20,35,.4);transition:opacity 160ms ease,background-color 160ms ease;';
+        element.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.4-4.2A2 2 0 0 1 8.3 5.5h7.4a2 2 0 0 1 1.9 1.3L19 11v7H5z"/><path d="M5 12h14M7.5 15.5h.01M16.5 15.5h.01M7 18v1m10-1v1"/></svg>';
+        marker = new maplibregl.Marker({ element, anchor: 'center', offset: [0, -13] }).setLngLat(position.coordinates).addTo(this.map);
+        this.rideshareMarkers.set(position.id, marker);
+      } else marker.setLngLat(position.coordinates);
+      const element = marker.getElement();
+      const live = position.freshness === 'LIVE';
+      element.style.backgroundColor = live ? '#08AFC0' : '#728296';
+      element.style.opacity = live ? '1' : '0.62';
+      element.dataset.freshness = position.freshness.toLowerCase();
+      element.setAttribute('aria-label', live ? 'Попутка: актуальне GPS водія' : 'Попутка: остання відома позиція, GPS застаріло');
+      element.title = live ? 'Актуальне GPS водія' : 'Остання відома позиція · GPS застаріло';
+    }
+    this.map.getContainer().dataset.marshgoRideshareCount = String(this.liveRidesharePositions.length);
+  }
+
+  setLiveRideshareApproachRoute(route: LiveRideshareApproachRoute | null) {
+    this.liveRideshareApproachRoute = freshRideshareApproachRoute(route);
+    this.updateLiveRideshareApproachSource();
   }
 
   /** The driver's puck: a blue arrow that points where the car is heading, lying flat on the (tilted) road like in Apple Maps. */
@@ -488,6 +563,6 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);
   }
   retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
-  destroy() { this.marker?.remove(); this.transport?.destroy(); this.map.remove(); }
+  destroy() { this.marker?.remove(); for (const marker of this.rideshareMarkers.values()) marker.remove(); this.rideshareMarkers.clear(); this.transport?.destroy(); this.map.remove(); }
   getStatus() { return this.status; }
 }

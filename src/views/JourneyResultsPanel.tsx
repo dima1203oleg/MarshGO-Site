@@ -104,7 +104,7 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
   }));
   const startAt = journey.requestedDepartureAt ?? firstLeg.departureAt;
   const caveats = [...new Set(journey.legs.map(leg => journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource)).filter(Boolean))];
-  const openLabel = `Відкрити маршрут: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`;
+  const openLabel = `Відкрити маршрут: ${journey.origin?.name ?? firstLeg.origin.name} — ${journey.destination?.name ?? lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`;
 
   const toggleSaved = (nextSaved = !saved) => {
     let ids: string[] = [];
