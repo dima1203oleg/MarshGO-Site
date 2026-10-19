@@ -3,7 +3,7 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import type { CameraMode, ColoredRouteSegment, LiveRideshareApproachRoute, LiveRidesharePosition, LiveTransitPosition, MapAdapter, MapStatus, MapTheme, RouteFitPadding, RouteWaypoint, ScreenPoint, TransitLineOverlay } from './MapAdapter';
+import type { CameraMode, ColoredRouteSegment, LiveRideshareApproachRoute, LiveRidesharePosition, LiveTransitPosition, MapAdapter, MapStatus, MapTheme, MeetingMapPoints, RouteFitPadding, RouteWaypoint, ScreenPoint, TransitLineOverlay } from './MapAdapter';
 import { freshLiveTransitPositions, liveTransitFeatureCollection } from './liveTransitFeatures';
 import { freshRideshareApproachRoute, freshRidesharePositions } from './liveRideshareFeatures';
 import { nearestRouteHitIds } from './routeHitTesting';
@@ -21,6 +21,7 @@ let pmtilesProtocolRegistered = false;
 
 export class MapLibreAdapter implements MapAdapter {
   private map: MapLibreMap;
+  private mapStyleReady = false;
   private status: MapStatus = 'loading';
   private route: Coordinate[] = [];
   private routeSegments: ColoredRouteSegment[] | null = null;
@@ -46,6 +47,10 @@ export class MapLibreAdapter implements MapAdapter {
   private rideshareMarkers = new Map<string, maplibregl.Marker>();
   private transitLineOverlay: TransitLineOverlay | null = null;
   private transitFleetMarkers = new Map<string, maplibregl.Marker>();
+  private meetingPoints: MeetingMapPoints | null = null;
+  private meetingMarkers = new Map<'pickup' | 'driver' | 'passenger', maplibregl.Marker>();
+  private meetingFitted = false;
+  private meetingFitRequested = false;
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
   onRouteSegmentSelect: (id: string) => void = () => undefined;
@@ -77,8 +82,8 @@ export class MapLibreAdapter implements MapAdapter {
       container.dataset.marshgoCameraSettledId = String(this.cameraRequestSequence);
       container.dataset.marshgoCameraMoving = 'false';
     });
-    this.map.on('load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.basemapConfigured() ? 'available' : 'unconfigured'); });
-    this.map.on('style.load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; if (this.basemapConfigured() && !this.map.getSource('marshgo-basemap') && this.status !== 'failed') this.publish('available'); });
+    this.map.on('load', () => { this.mapStyleReady = true; this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.basemapConfigured() ? 'available' : 'unconfigured'); });
+    this.map.on('style.load', () => { this.mapStyleReady = true; this.installLayers(); container.dataset.marshgoMapReady = 'true'; if (this.basemapConfigured() && !this.map.getSource('marshgo-basemap') && this.status !== 'failed') this.publish('available'); });
     this.map.on('error', (event) => {
       const mapError = event as typeof event & {
         sourceId?: string;
@@ -219,6 +224,7 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.vehicle) this.setVehicle(this.vehicle);
     this.setLiveTransitPositions(this.liveTransitPositions);
     this.setWaypoints(this.waypoints);
+    this.updateMeetingPoints();
   }
 
   /** Keep vector roads and labels above the imagery; dim land/building fills to reveal the satellite base. */
@@ -292,6 +298,70 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.getContainer().dataset.marshgoRoutePointCount = String(points.length);
     this.map.getContainer().dataset.marshgoRouteSegmentCount = String(points.length >= 2 ? 1 : 0);
     this.updateRouteSource();
+    this.updateMeetingPoints();
+  }
+
+  /** Displays the consented pickup and participant positions as one batched map layer. */
+  setMeetingPoints(points: MeetingMapPoints | null, fit = true) {
+    this.meetingPoints = points;
+    this.meetingFitRequested ||= fit;
+    if (!points) {
+      for (const marker of this.meetingMarkers.values()) marker.remove();
+      this.meetingMarkers.clear();
+      this.meetingFitted = false;
+      const source = this.map.getSource('marshgo-meeting') as maplibregl.GeoJSONSource | undefined;
+      source?.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
+    this.updateMeetingPoints(fit);
+  }
+
+  private updateMeetingPoints(fit = this.meetingFitRequested) {
+    if (!this.meetingPoints) return;
+    const styleLoaded = this.mapStyleReady;
+    if (!styleLoaded) this.map.once('style.load', () => this.updateMeetingPoints(fit));
+    if (styleLoaded && !this.map.getSource('marshgo-meeting')) this.map.addSource('marshgo-meeting', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (styleLoaded && !this.map.getLayer('marshgo-meeting-approach')) this.map.addLayer({
+      id: 'marshgo-meeting-approach', type: 'line', source: 'marshgo-meeting',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1.3, 1.6], 'line-opacity': 0.9 },
+    });
+    const points = this.meetingPoints;
+    const visual = {
+      pickup: { label: 'Точка посадки', glyph: '●', color: '#E5484D' },
+      driver: { label: 'Водій', glyph: '🚗', color: '#1789F4' },
+      passenger: { label: 'Пасажир', glyph: '●', color: '#05A777' },
+    } as const;
+    const features = (['driver', 'passenger'] as const).flatMap((key) =>
+      points[key] && points.pickup ? [{ type: 'Feature' as const, properties: { color: visual[key].color }, geometry: { type: 'LineString' as const, coordinates: [points[key]!, points.pickup] } }] : []);
+    if (styleLoaded) {
+      (this.map.getSource('marshgo-meeting') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features });
+      this.map.getContainer().dataset.marshgoMeetingApproachCount = String(features.length);
+    }
+    for (const key of ['pickup', 'driver', 'passenger'] as const) {
+      const coordinate = points[key];
+      let marker = this.meetingMarkers.get(key);
+      if (!coordinate) { marker?.remove(); this.meetingMarkers.delete(key); continue; }
+      if (!marker) {
+        const element = document.createElement('div');
+        element.dataset.testid = `meeting-${key}`;
+        element.setAttribute('role', 'img');
+        element.setAttribute('aria-label', visual[key].label);
+        element.style.cssText = `width:34px;height:34px;border-radius:9999px;background:${visual[key].color};border:3px solid #fff;box-shadow:0 2px 8px rgba(15,23,42,.35);display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff;line-height:1`;
+        element.textContent = visual[key].glyph;
+        marker = new maplibregl.Marker({ element, anchor: 'center' }).setLngLat(coordinate).addTo(this.map);
+        this.meetingMarkers.set(key, marker);
+      } else marker.setLngLat(coordinate);
+    }
+    const all = (['pickup', 'driver', 'passenger'] as const).flatMap(key => points[key] ? [points[key]!] : []);
+    this.map.getContainer().dataset.marshgoMeetingPoints = String(all.length);
+    if (fit && all.length >= 2 && !this.meetingFitted) {
+      const bounds = all.reduce((result, point) => result.extend(point as [number, number]), new maplibregl.LngLatBounds(all[0] as [number, number], all[0] as [number, number]));
+      const panelClearance = Math.min(460, Math.max(340, window.innerHeight * 0.58));
+      this.map.fitBounds(bounds, { padding: { top: 128, right: 36, bottom: panelClearance, left: 36 }, maxZoom: 14.5, duration: 500 });
+      this.meetingFitted = true;
+      this.meetingFitRequested = false;
+    }
   }
   setRouteSegments(segments: ColoredRouteSegment[]) {
     this.routeSegments = segments.filter(segment => segment.coordinates.length >= 2);
@@ -594,6 +664,7 @@ export class MapLibreAdapter implements MapAdapter {
   setLayer(layer: MapLayer) {
     if (layer === this.layer) return;
     this.layer = layer;
+    this.mapStyleReady = false;
     this.theme = this.themeForLayer(layer);
     const style = this.styleUrls?.[this.theme] ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) ?? this.baseStyle;
     this.baseStyle = style;
@@ -643,7 +714,7 @@ export class MapLibreAdapter implements MapAdapter {
     const changed = this.theme !== nextTheme;
     this.theme = nextTheme;
     const style = this.styleUrls?.[this.theme] ?? (configuredMapStyleUrl ? styleForLayer(this.layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) : null);
-    if (changed && style) { this.baseStyle = style; this.map.setStyle(style); return; }
+    if (changed && style) { this.mapStyleReady = false; this.baseStyle = style; this.map.setStyle(style); return; }
     this.applySatellitePalette();
     const colors = mapStyleTokens[this.theme];
     if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);
@@ -659,7 +730,7 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.map.getLayer('marshgo-buildings-3d')) this.map.setPaintProperty('marshgo-buildings-3d', 'fill-extrusion-color', this.theme.endsWith('_DARK') ? '#29415E' : '#D5E2EE');
     if (this.map.getLayer('marshgo-background')) this.map.setPaintProperty('marshgo-background', 'background-color', colors.background);
   }
-  retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
+  retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) { this.mapStyleReady = false; this.map.setStyle(this.map.getStyle(), { diff: false }); } else this.map.triggerRepaint(); }
   destroy() { this.marker?.remove(); for (const marker of this.rideshareMarkers.values()) marker.remove(); this.rideshareMarkers.clear(); for (const marker of this.transitFleetMarkers.values()) marker.remove(); this.transitFleetMarkers.clear(); this.transport?.destroy(); this.map.remove(); }
   getStatus() { return this.status; }
 }

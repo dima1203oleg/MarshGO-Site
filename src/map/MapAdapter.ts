@@ -19,6 +19,7 @@ export type TransitLineOverlay = {
   lines: Array<{ id: string; direction: string; coordinates: Coordinate[] }>;
   vehicles: Array<{ id: string; coordinates: Coordinate; updatedAt: string; emphasized: boolean }>;
 };
+export type MeetingMapPoints = { pickup?: Coordinate | null; driver?: Coordinate | null; passenger?: Coordinate | null };
 export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number; bearing?: number };
 export interface MapAdapter {
   setRoute(points: Coordinate[]): void;
@@ -28,6 +29,7 @@ export interface MapAdapter {
   setLiveTransitPositions?(positions: readonly LiveTransitPosition[]): void;
   setLiveRidesharePositions?(positions: readonly LiveRidesharePosition[]): void;
   setLiveRideshareApproachRoute?(route: LiveRideshareApproachRoute | null): void;
+  setMeetingPoints?(points: MeetingMapPoints | null, fit?: boolean): void;
   setTransitLineOverlay?(overlay: TransitLineOverlay | null): void;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
   focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;
