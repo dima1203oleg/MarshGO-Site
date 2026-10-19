@@ -182,6 +182,8 @@ test('real production journey UI keeps all legs while focusing one scheduled seg
 });
 
 test('a failed lazy screen import shows a recoverable error instead of a blank view', async ({ page }) => {
+  let mainFrameNavigations = 0;
+  page.on('framenavigated', frame => { if (frame === page.mainFrame()) mainFrameNavigations++; });
   await installJourneyApiFixture(page);
   await page.route('**/assets/ProductionNavigation-*.js', route => route.abort());
   await page.goto('/');
@@ -199,4 +201,9 @@ test('a failed lazy screen import shows a recoverable error instead of a blank v
   await page.getByRole('button', { name: /Навігація/ }).click();
   await expect(page.getByRole('alert')).toContainText('Не вдалося відкрити цей екран');
   await expect(page.getByRole('button', { name: 'Спробувати ще раз' })).toBeVisible();
+  const beforeManualRetry = mainFrameNavigations;
+  await page.waitForTimeout(500);
+  expect(mainFrameNavigations).toBe(beforeManualRetry);
+  await page.getByRole('button', { name: 'Спробувати ще раз' }).click();
+  await expect.poll(() => mainFrameNavigations).toBeGreaterThan(beforeManualRetry);
 });
