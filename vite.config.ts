@@ -10,6 +10,9 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => {
   return {
+    // This workspace keeps shared, explicitly VITE_-prefixed map settings in
+    // the workspace root .env while the Site remains its own repository.
+    envDir: path.resolve(rootDir, '..'),
     // Capacitor serves bundled files from its own scheme; relative assets keep
     // the packaged entry point independent of an HTTP origin.
     base: process.env.CAPACITOR_BUILD === 'true' ? './' : '/',

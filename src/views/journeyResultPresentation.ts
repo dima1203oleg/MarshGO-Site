@@ -116,9 +116,31 @@ export function formatJourneyTotalPrice(journey: ApiJourney): string {
 }
 
 export function formatJourneyDuration(seconds: number): string {
+  if (seconds > 0 && seconds < 60) return 'менше хвилини';
   const minutes = Math.max(0, Math.round(seconds / 60));
   const hours = Math.floor(minutes / 60);
   return hours ? `${hours} год ${minutes % 60} хв` : `${minutes} хв`;
+}
+
+export function formatJourneyDistance(meters: number | null | undefined): string {
+  if (meters === null || meters === undefined || !Number.isFinite(meters) || meters < 0) return 'відстань невідома';
+  if (meters > 0 && meters < 1) return '<1 м';
+  return meters >= 1000
+    ? `${(meters / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 1 })} км`
+    : `${Math.round(meters)} м`;
+}
+
+export function formatJourneyDistanceSummary(legs: ApiJourney['legs']): string {
+  const measured = legs.filter(leg => typeof leg.distanceMeters === 'number'
+    && Number.isFinite(leg.distanceMeters) && leg.distanceMeters >= 0);
+  if (measured.length === 0) return 'Відстань не вказана';
+
+  const meters = measured.reduce((sum, leg) => sum + leg.distanceMeters!, 0);
+  const complete = legs.length > 0 && measured.length === legs.length;
+  const approximate = measured.some(leg => /estimate|straight-line/i.test(leg.source));
+  const label = formatJourneyDistance(meters);
+  if (complete) return approximate ? `≈ ${label}` : label;
+  return approximate ? `Частково ≈ ${label}` : `Відомо ${label}`;
 }
 
 export function formatJourneyClock(value: string): string {

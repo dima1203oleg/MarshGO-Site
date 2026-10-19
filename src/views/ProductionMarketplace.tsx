@@ -10,6 +10,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { BrandMark } from '../components/BrandMark';
 import { VehiclePhoto } from '../components/VehiclePhoto';
 import { passengersLabel } from '../domain/plural';
+import { shouldWatchRendezvousLocation } from '../domain/rendezvousLocationTracking';
 import { TransportTypesPanel } from '../components/TransportTypesPanel';
 import { DepartureDateTimePicker } from '../components/DepartureDateTimePicker';
 import { HomeHero } from './HomeHero';
@@ -29,6 +30,7 @@ import { buildSearchRoute, parseSearchRoute } from '../routing/searchRouteState'
 import { parseSharedNavigationDestination } from '../routing/navigationShare';
 import { JourneyResultsPanel } from './JourneyResultsPanel';
 import { JourneyRouteMapScreen } from './JourneyRouteMapScreen';
+import { RendezvousLocationMap } from '../components/RendezvousLocationMap';
 const MobilityAdminPanel = lazy(() => import('./MobilityAdminPanel').then((module) => ({ default: module.MobilityAdminPanel })));
 const ProfileSections = lazy(() => import('./ProfileSections').then((module) => ({ default: module.ProfileSections })));
 const MapPointPicker = lazy(() => import('../components/MapPointPicker').then((module) => ({ default: module.MapPointPicker })));
@@ -84,7 +86,9 @@ export function ProductionMarketplace() {
   const [myOffers, setMyOffers] = useState<ApiOffer[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
   const [rendezvousSessions, setRendezvousSessions] = useState<Record<string, ApiRendezvous>>({});
+  const [rendezvousPageVisible, setRendezvousPageVisible] = useState(() => typeof document === 'undefined' || document.visibilityState === 'visible');
   const rendezvousSessionsRef = useRef<Record<string, ApiRendezvous>>({});
+  const rendezvousWatchRef = useRef(new Map<string, { watchId: number; lastSentAt: number; lastCoordinates: [number, number] | null; sending: boolean }>());
   const [rendezvousBusyId, setRendezvousBusy] = useState<string | null>(null);
   const [bookingRescues, setBookingRescues] = useState<Record<string, { loading: boolean; failed: boolean; result?: ApiRescueResult }>>({});
   const [blockedUsers, setBlockedUsers] = useState<ApiBlockedUser[]>([]);
@@ -142,8 +146,22 @@ export function ProductionMarketplace() {
   const [navInitialDestination, setNavInitialDestination] = useState<ApiPlace | null>(() => route?.tab === 'navigation' ? parseSharedNavigationDestination(window.location.search) : null);
   const [navigationMounted, setNavigationMounted] = useState(tab === 'navigation');
   const [navigationActive, setNavigationActive] = useState(false);
+  const navigationStateReported = useRef(false);
   useEffect(() => { if (tab === 'navigation') setNavigationMounted(true); }, [tab]);
-  const onNavigationSessionActiveChange = useCallback((active: boolean) => setNavigationActive(active), []);
+  const onNavigationSessionActiveChange = useCallback((active: boolean) => {
+    navigationStateReported.current = true;
+    setNavigationActive(active);
+  }, []);
+  useEffect(() => {
+    if (loading || !user) return;
+    let current = true;
+    void productionApi.activeNavigation().then((active) => {
+      if (current && !navigationStateReported.current) setNavigationActive(Boolean(active));
+    }).catch(() => {
+      if (current && !navigationStateReported.current) setNavigationActive(false);
+    });
+    return () => { current = false; };
+  }, [loading, user?.id]);
   const [confirmDeletion, setConfirmDeletion] = useState(false);
   const [editingOffer, setEditingOffer] = useState<ApiOffer | null>(null);
   const [vehicleToDelete, setVehicleToDelete] = useState<ApiVehicle | null>(null);
@@ -209,6 +227,63 @@ export function ProductionMarketplace() {
     await refreshUnreadConversations().catch(() => undefined);
   }, [refreshUnreadConversations]);
   useEffect(() => { rendezvousSessionsRef.current = rendezvousSessions; }, [rendezvousSessions]);
+  useEffect(() => {
+    const updateVisibility = () => setRendezvousPageVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => document.removeEventListener('visibilitychange', updateVisibility);
+  }, []);
+  useEffect(() => {
+    const desired = new Map(Object.entries(rendezvousSessions).filter(([, session]) =>
+      shouldWatchRendezvousLocation(session, Boolean(user), rendezvousPageVisible),
+    ));
+    for (const [bookingId, watch] of rendezvousWatchRef.current) {
+      if (!desired.has(bookingId)) {
+        navigator.geolocation?.clearWatch(watch.watchId);
+        rendezvousWatchRef.current.delete(bookingId);
+      }
+    }
+    if (!user || !navigator.geolocation) return;
+    for (const [bookingId, session] of desired) {
+      if (rendezvousWatchRef.current.has(bookingId)) continue;
+      const watchState = { watchId: -1, lastSentAt: 0, lastCoordinates: null as [number, number] | null, sending: false };
+      watchState.watchId = navigator.geolocation.watchPosition((position) => {
+        const longitude = position.coords.longitude;
+        const latitude = position.coords.latitude;
+        const accuracyMeters = position.coords.accuracy;
+        if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || !Number.isFinite(accuracyMeters) || accuracyMeters > 100 || watchState.sending) return;
+        const now = Date.now();
+        const previous = watchState.lastCoordinates;
+        const deltaLat = (latitude - (previous?.[1] ?? latitude)) * Math.PI / 180;
+        const deltaLon = (longitude - (previous?.[0] ?? longitude)) * Math.PI / 180;
+        const a = Math.sin(deltaLat / 2) ** 2 + Math.cos(latitude * Math.PI / 180) * Math.cos((previous?.[1] ?? latitude) * Math.PI / 180) * Math.sin(deltaLon / 2) ** 2;
+        const movedMeters = 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        if (previous && now - watchState.lastSentAt < 10_000 && movedMeters < 20) return;
+        watchState.sending = true;
+        void productionApi.sendRendezvousLocation(session.id, {
+          longitude, latitude, accuracyMeters, capturedAt: new Date(position.timestamp).toISOString(),
+        }).then(() => {
+          watchState.lastSentAt = now;
+          watchState.lastCoordinates = [longitude, latitude];
+        }).catch(() => {
+          setStatusMessage('Не вдалося оновити місце зустрічі. Перевірте мережу; остання точка може застаріти.');
+        }).finally(() => { watchState.sending = false; });
+      }, (error) => {
+        navigator.geolocation?.clearWatch(watchState.watchId);
+        rendezvousWatchRef.current.delete(bookingId);
+        void productionApi.setRendezvousConsent(session.id, false)
+          .then((next) => setRendezvousSessions((current) => ({ ...current, [bookingId]: next })))
+          .catch(() => undefined);
+        setStatusMessage(error.code === error.PERMISSION_DENIED
+          ? 'Дозвіл на геолокацію вимкнено. Обмін місцем зупинено.'
+          : 'Геолокація тимчасово недоступна. Обмін місцем зупинено.');
+      }, { enableHighAccuracy: true, maximumAge: 5_000, timeout: 20_000 });
+      rendezvousWatchRef.current.set(bookingId, watchState);
+    }
+  }, [rendezvousSessions, rendezvousPageVisible, user]);
+  useEffect(() => () => {
+    for (const watch of rendezvousWatchRef.current.values()) navigator.geolocation?.clearWatch(watch.watchId);
+    rendezvousWatchRef.current.clear();
+  }, []);
   const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
   const refreshNotifications = useCallback(async () => setNotificationPage(await productionApi.notifications()), []);
   const refreshBlockedUsers = useCallback(async () => setBlockedUsers(await productionApi.blockedUsers()), []);
@@ -706,22 +781,22 @@ export function ProductionMarketplace() {
 
   const activateRendezvous = async (booking: ApiBooking) => {
     setRendezvousBusy(booking.id); setStatusMessage('');
-    try { const session = await productionApi.activateRendezvous(booking.id); setRendezvousSessions((current) => ({ ...current, [booking.id]: session })); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося активувати обмін місцем.'); }
+    try { const session = await productionApi.activateRendezvous(booking.id); setRendezvousSessions((current) => ({ ...current, [booking.id]: session })); setStatusMessage('Зустріч підготовлена. Кожен учасник окремо вирішує, чи ділитися GPS.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підготувати зустріч.'); }
     finally { setRendezvousBusy(null); }
   };
 
-  const sendRendezvousLocation = async (booking: ApiBooking) => {
+  const setRendezvousConsent = async (booking: ApiBooking, enabled: boolean) => {
     const session = rendezvousSessions[booking.id];
-    if (!session || !navigator.geolocation) { setStatusMessage('Геолокація недоступна на цьому пристрої.'); return; }
+    if (!session) return;
     setRendezvousBusy(booking.id); setStatusMessage('');
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 }));
-      await productionApi.sendRendezvousLocation(session.id, { longitude: position.coords.longitude, latitude: position.coords.latitude, accuracyMeters: position.coords.accuracy, capturedAt: new Date(position.timestamp).toISOString() });
-      const next = await productionApi.bookingRendezvous(booking.id);
+      const next = await productionApi.setRendezvousConsent(session.id, enabled);
       setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
-      setStatusMessage('Поточне місце надіслано учаснику бронювання. Воно автоматично зникне за 5 хвилин.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося отримати геолокацію. Перевірте дозвіл пристрою.'); }
+      setStatusMessage(enabled
+        ? next.locationSharingEnabled ? 'Обмін GPS активний, поки обидва учасники не відкличуть згоду або не завершать зустріч.' : 'Згоду збережено. Обмін GPS почнеться після згоди другого учасника.'
+        : 'Обмін GPS зупинено; точку місця очищено.');
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити згоду на GPS.'); }
     finally { setRendezvousBusy(null); }
   };
 
@@ -1476,7 +1551,7 @@ export function ProductionMarketplace() {
         <div className="flex items-center justify-between"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${booking.status==='confirmed'?'bg-emerald-50 text-emerald-700':booking.status==='completed'?'bg-blue-50 text-blue-700':'bg-slate-100 text-slate-600'}`}>{statusLabel[booking.status] ?? booking.status}</span><span className="text-[10px] text-slate-400">{formatDate(booking.departure_at,{day:'numeric',month:'short'})}</span></div>
         <h2 className="mt-3 text-lg font-extrabold">{booking.origin_name} <span className="text-blue-600">→</span> {booking.destination_name}</h2><p className="mt-1 text-xs text-slate-500">{formatDate(booking.departure_at)} · {booking.seat_count} місця · {formatMoney(booking.total_price_minor,booking.currency)}</p>
         {booking.pending_change&&booking.status==='confirmed'&&!booking.current_user_is_driver&&<PendingChangeCard change={booking.pending_change} currency={booking.currency} onDecided={(message)=>{setStatusMessage(message);void refreshBookings();}}/>}
-        {['confirmed','boarding','in_progress'].includes(booking.status)&&<section className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><div><b className="block text-xs">Зустріч із {booking.current_user_is_driver?booking.passenger_name:booking.driver_name}</b><small className="text-[10px] text-slate-500">Точка посадки · {rendezvous?.pickup.label??booking.origin_name}</small></div>{rendezvous&&<span className="rounded-full bg-white px-2 py-1 text-[9px] font-bold text-blue-700">{rendezvousStatus[rendezvous.state]??rendezvous.state}</span>}</div>{!rendezvous?<button disabled={rendezvousBusyId===booking.id} onClick={()=>void loadRendezvous(booking)} className="mt-2 w-full rounded-xl bg-white py-2.5 text-xs font-bold text-blue-700 disabled:opacity-50">{rendezvousBusyId===booking.id?'Завантажуємо…':'Відкрити зустріч'}</button>:<><p className="mt-2 text-[10px] text-slate-600">За планом · {formatDate(rendezvous.plannedPickupAt)}{rendezvous.driverArrivedAt&&' · водій на місці'}{rendezvous.passengerArrivedAt&&' · ви на місці'}</p>{rendezvous.locationSharingEnabled&&<p className="mt-1 text-[10px] text-slate-500">Останнє місце: {rendezvous.locations[booking.current_user_is_driver?'passenger':'driver']?.freshness==='LIVE'?'оновлено, доступне учаснику бронювання':rendezvous.locations[booking.current_user_is_driver?'passenger':'driver']?.freshness==='STALE'?'застаріло':'ще не надіслано'}. Точні координати не зберігаються.</p>}{!rendezvous.locationSharingEnabled&&['SCHEDULED','ACTIVATING'].includes(rendezvous.state)&&<button disabled={rendezvousBusyId===booking.id||Date.now()<Date.parse(rendezvous.activationAt)} onClick={()=>void activateRendezvous(booking)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">{Date.now()<Date.parse(rendezvous.activationAt)?`Обмін місцем доступний ${formatDate(rendezvous.activationAt,{hour:'2-digit',minute:'2-digit'})}`:'Увімкнути короткочасний обмін місцем'}</button>}{rendezvous.locationSharingEnabled&&<><div className="mt-2 grid grid-cols-2 gap-2"><button disabled={rendezvousBusyId===booking.id} onClick={()=>void sendRendezvousLocation(booking)} className="rounded-xl bg-white py-2.5 text-[10px] font-bold text-blue-700 disabled:opacity-50">Надіслати моє місце</button><button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousAction(booking,'arrived')} className="rounded-xl bg-emerald-600 py-2.5 text-[10px] font-bold text-white disabled:opacity-50">Я на місці</button></div><button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousAction(booking,'approaching')} className="mt-2 w-full rounded-xl bg-white py-2 text-[10px] font-semibold text-slate-700">Я пряму до точки посадки</button>{rendezvous.state==='BOTH_NEARBY'&&<button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousBoarding(booking)} className="mt-2 w-full rounded-xl bg-emerald-700 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити зустріч і посадку</button>}<button disabled={rendezvousBusyId===booking.id} onClick={()=>void endRendezvous(booking)} className="mt-2 w-full py-1 text-[10px] font-semibold text-slate-500">Завершити обмін місцем</button></>}</>}</section>}
+        {['confirmed','boarding','in_progress'].includes(booking.status)&&<section className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-3"><div className="flex items-center justify-between gap-2"><div><b className="block text-xs">Зустріч із {booking.current_user_is_driver?booking.passenger_name:booking.driver_name}</b><small className="text-[10px] text-slate-500">Точка посадки · {rendezvous?.pickup.label??booking.origin_name}</small></div>{rendezvous&&<span className="rounded-full bg-white px-2 py-1 text-[9px] font-bold text-blue-700">{rendezvousStatus[rendezvous.state]??rendezvous.state}</span>}</div>{!rendezvous?<button disabled={rendezvousBusyId===booking.id} onClick={()=>void loadRendezvous(booking)} className="mt-2 w-full rounded-xl bg-white py-2.5 text-xs font-bold text-blue-700 disabled:opacity-50">{rendezvousBusyId===booking.id?'Завантажуємо…':'Відкрити зустріч'}</button>:<>{rendezvous.locationSharingEnabled&&<RendezvousLocationMap session={rendezvous} currentUserIsDriver={booking.current_user_is_driver}/>}<p className="mt-2 text-[10px] text-slate-600">За планом · {formatDate(rendezvous.plannedPickupAt)}{rendezvous.driverArrivedAt&&' · водій на місці'}{rendezvous.passengerArrivedAt&&' · ви на місці'}</p>{rendezvous.locationSharingEnabled&&<p className="mt-1 text-[10px] text-slate-500">Останнє місце: {rendezvous.locations[booking.current_user_is_driver?'passenger':'driver']?.freshness==='LIVE'?'оновлено, доступне учаснику бронювання':rendezvous.locations[booking.current_user_is_driver?'passenger':'driver']?.freshness==='STALE'?'застаріло':'ще не надіслано'}. Точні координати не зберігаються.</p>}{['SCHEDULED','ACTIVATING'].includes(rendezvous.state)&&!rendezvous.locationSharingEnabled&&<button disabled={rendezvousBusyId===booking.id||Date.now()<Date.parse(rendezvous.activationAt)} onClick={()=>void activateRendezvous(booking)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">{Date.now()<Date.parse(rendezvous.activationAt)?`Зустріч можна підготувати ${formatDate(rendezvous.activationAt,{hour:'2-digit',minute:'2-digit'})}`:'Підготувати зустріч'}</button>}{['ACTIVE','DRIVER_APPROACHING','PASSENGER_APPROACHING','DRIVER_WAITING','PASSENGER_WAITING'].includes(rendezvous.state)&&!rendezvous.currentParticipantConsent&&<button disabled={rendezvousBusyId===booking.id} onClick={()=>void setRendezvousConsent(booking,true)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Дозволити короткочасний обмін GPS</button>}{rendezvous.currentParticipantConsent&&!rendezvous.locationSharingEnabled&&<><p className="mt-2 text-[10px] text-slate-600">Вашу згоду збережено. Очікуємо окрему згоду другого учасника.</p><button disabled={rendezvousBusyId===booking.id} onClick={()=>void setRendezvousConsent(booking,false)} className="mt-2 w-full rounded-xl bg-white py-2 text-[10px] font-semibold text-slate-700">Скасувати мою згоду</button></>}{rendezvous.locationSharingEnabled&&<><div className="mt-2 grid grid-cols-2 gap-2"><span className="rounded-xl bg-white px-2 py-2.5 text-center text-[10px] font-semibold text-blue-700">GPS оновлюється автоматично лише у відкритому екрані</span><button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousAction(booking,'arrived')} className="rounded-xl bg-emerald-600 py-2.5 text-[10px] font-bold text-white disabled:opacity-50">Я на місці</button></div><button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousAction(booking,'approaching')} className="mt-2 w-full rounded-xl bg-white py-2 text-[10px] font-semibold text-slate-700">Я пряму до точки посадки</button>{rendezvous.state==='BOTH_NEARBY'&&<button disabled={rendezvousBusyId===booking.id} onClick={()=>void rendezvousBoarding(booking)} className="mt-2 w-full rounded-xl bg-emerald-700 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити зустріч і посадку</button>}<button disabled={rendezvousBusyId===booking.id} onClick={()=>void setRendezvousConsent(booking,false)} className="mt-2 w-full py-1 text-[10px] font-semibold text-slate-500">Зупинити й відкликати мою згоду</button><button disabled={rendezvousBusyId===booking.id} onClick={()=>void endRendezvous(booking)} className="mt-2 w-full py-1 text-[10px] font-semibold text-slate-500">Завершити зустріч</button></>}</>}</section>}
         {booking.status==='confirmed'&&!booking.current_user_is_driver&&<div className="mt-3 rounded-xl bg-blue-50 p-3"><button disabled={busy} onClick={()=>void showBookingTicket(booking)} className="text-xs font-bold text-blue-700">{visibleBookingTicket?.bookingId===booking.id?'Оновити квиток':'Показати квиток для посадки'}</button>{visibleBookingTicket?.bookingId===booking.id&&<div className="mt-2 rounded-lg bg-white p-2"><p className="text-[10px] font-semibold text-slate-500">Передайте цей підписаний токен водієві для підтвердження посадки</p><TicketQr token={visibleBookingTicket.token}/><code data-testid="booking-ticket-token" className="mt-1 block max-h-20 overflow-auto break-all text-[9px] text-slate-700">{visibleBookingTicket.token}</code></div>}</div>}
         {booking.status==='confirmed'&&booking.current_user_is_driver&&<div className="mt-3 rounded-xl bg-slate-50 p-3"><label className="block text-[10px] font-bold text-slate-600">Токен квитка пасажира<textarea value={boardingTicketInput[booking.id]??''} onChange={(event)=>setBoardingTicketInput((current)=>({...current,[booking.id]:event.target.value}))} className="mt-1.5 min-h-16 w-full rounded-lg border border-slate-200 bg-white p-2 text-[10px] font-normal" placeholder="Вставте підписаний токен квитка" /></label><button disabled={busy||!boardingTicketInput[booking.id]?.trim()} onClick={()=>void confirmBoarding(booking)} className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити посадку</button></div>}
         {booking.status==='boarding'&&booking.current_user_is_driver&&<button disabled={busy} onClick={()=>void startTrip(booking)} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-50">Почати поїздку</button>}
