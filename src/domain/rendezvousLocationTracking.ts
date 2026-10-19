@@ -11,7 +11,7 @@ export function shouldWatchRendezvousLocation(
   return authenticated
     && pageVisible
     && session.locationSharingEnabled
-    && session.currentParticipantConsent
-    && session.otherParticipantConsent
+    && session.currentParticipantConsent === true
+    && session.otherParticipantConsent === true
     && !terminalRendezvousStates.has(session.state);
 }

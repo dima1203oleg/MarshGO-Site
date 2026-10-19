@@ -11,6 +11,14 @@ export type LiveRideshareApproachRoute = {
   id: string; coordinates: Coordinate[]; vehicleCapturedAt: string; calculatedAt: string;
   distanceMeters: number; durationSeconds: number; provider: string;
 };
+export type RouteWaypoint = { coordinate: Coordinate; kind: string; segmentIds?: string[] };
+export type ScreenPoint = { x: number; y: number };
+export type TransitLineOverlay = {
+  modeColor: string;
+  transportType: string;
+  lines: Array<{ id: string; direction: string; coordinates: Coordinate[] }>;
+  vehicles: Array<{ id: string; coordinates: Coordinate; updatedAt: string; emphasized: boolean }>;
+};
 export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number; bearing?: number };
 export interface MapAdapter {
   setRoute(points: Coordinate[]): void;
@@ -20,12 +28,14 @@ export interface MapAdapter {
   setLiveTransitPositions?(positions: readonly LiveTransitPosition[]): void;
   setLiveRidesharePositions?(positions: readonly LiveRidesharePosition[]): void;
   setLiveRideshareApproachRoute?(route: LiveRideshareApproachRoute | null): void;
+  setTransitLineOverlay?(overlay: TransitLineOverlay | null): void;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
   focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;
   onRouteSegmentSelect: (id: string) => void;
+  onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void;
   setVehicle(point: Coordinate, heading?: number | null): void;
   onCameraModeChange: (mode: CameraMode) => void;
-  setWaypoints(points: Array<{ coordinate: Coordinate; kind: string }>): void;
+  setWaypoints(points: RouteWaypoint[]): void;
   fitRoute(padding?: RouteFitPadding): void;
   recenter(point?: Coordinate): void;
   setCameraMode(mode: CameraMode): void;

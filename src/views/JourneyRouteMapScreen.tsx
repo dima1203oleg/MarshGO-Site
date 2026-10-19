@@ -201,6 +201,7 @@ export function JourneyRouteMapScreen({
 
   useEffect(() => {
     if (!journey.legs.some(isScheduledRouteLeg)) { setLiveJourney(null); return; }
+    const selectedTransitLeg = journey.legs.find(leg => leg.id === activeSegmentId && isScheduledRouteLeg(leg));
     let stopped = false;
     let timer: number | undefined;
     let controller: AbortController | undefined;
@@ -212,14 +213,14 @@ export function JourneyRouteMapScreen({
         const arrival = Date.parse(leg.arrivalAt);
         return Number.isFinite(departure) && Number.isFinite(arrival) && now >= departure - 5 * 60_000 && now <= arrival + 10 * 60_000;
       });
-      if (!inGpsWindow && !['ACTIVE', 'TRANSFER'].includes(journey.state)) {
+      if (!inGpsWindow && !selectedTransitLeg && !['ACTIVE', 'TRANSFER'].includes(journey.state)) {
         setLiveJourney(null);
         if (!stopped) timer = window.setTimeout(() => void poll(), 60_000);
         return;
       }
       controller = new AbortController();
       try {
-        const live = await productionApi.journeyLive(journey.id, controller.signal);
+        const live = await productionApi.journeyLive(journey.id, controller.signal, selectedTransitLeg?.id);
         if (!stopped) setLiveJourney(live);
       } catch {
         if (!stopped) setLiveJourney(null);
@@ -229,7 +230,7 @@ export function JourneyRouteMapScreen({
     };
     void poll();
     return () => { stopped = true; controller?.abort(); if (timer !== undefined) window.clearTimeout(timer); };
-  }, [journey.id, journey.legs, journey.state]);
+  }, [activeSegmentId, journey.id, journey.legs, journey.state]);
 
   useEffect(() => {
     const leg = journey.legs.find(item => item.id === activeSegmentId && isScheduledRouteLeg(item));
@@ -301,7 +302,7 @@ export function JourneyRouteMapScreen({
 
   useEffect(() => {
     if (!mapAdapterReady) return;
-    const positions = (liveJourney?.segments.filter(segment => segment.status === 'LIVE' && segment.vehicle) ?? [])
+    const positions = (activeSegmentId ? [] : liveJourney?.segments.filter(segment => segment.status === 'LIVE' && segment.vehicle) ?? [])
       .flatMap((segment, index) => {
         const leg = journey.legs.find(item => item.id === segment.legId);
         if (!segment.vehicle || !leg) return [];
@@ -316,6 +317,33 @@ export function JourneyRouteMapScreen({
       });
     if (mapAdapter.current?.setLiveTransitPositions) mapAdapter.current.setLiveTransitPositions(positions);
     else mapAdapter.current?.setLiveTransitPosition?.(positions[0] ?? null);
+  }, [activeSegmentId, journey.legs, liveJourney, mapAdapterReady]);
+
+  useEffect(() => {
+    if (!mapAdapterReady) return;
+    const leg = journey.legs.find(item => item.id === activeSegmentId && isScheduledRouteLeg(item));
+    const segment = liveJourney?.segments.find(item => item.legId === activeSegmentId);
+    if (!leg || !segment) {
+      mapAdapter.current?.setTransitLineOverlay?.(null);
+      return;
+    }
+    const lines = (segment.lineRoutes ?? []).flatMap(line => line.coordinates.length >= 2 ? [{
+      id: line.id,
+      direction: line.direction,
+      coordinates: line.coordinates,
+    }] : []);
+    const vehicles = (segment.vehicles ?? []).map(vehicle => ({
+      id: vehicle.id,
+      coordinates: vehicle.coordinates,
+      updatedAt: vehicle.updatedAt,
+      emphasized: vehicle.emphasized,
+    }));
+    mapAdapter.current?.setTransitLineOverlay?.({
+      modeColor: journeyModeColor(leg.mode, leg.transportType),
+      transportType: leg.transportType ?? leg.mode.toLowerCase(),
+      lines,
+      vehicles,
+    });
   }, [activeSegmentId, journey.legs, liveJourney, mapAdapterReady]);
 
   useEffect(() => {

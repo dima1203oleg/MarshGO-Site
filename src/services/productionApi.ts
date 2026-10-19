@@ -88,6 +88,7 @@ export type ApiRendezvous = {
   plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
   locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
   currentParticipant?: 'driver' | 'passenger';
+  currentParticipantConsent?: boolean; otherParticipantConsent?: boolean;
   locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
 };
 export type ApiRescueAlternative = ApiOffer & {
@@ -277,6 +278,8 @@ export type ApiJourneyLive = {
     status: 'LIVE' | 'SCHEDULED' | 'UNVERIFIED';
     reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
     vehicle?: { coordinates: [number, number]; bearing: number | null; speed: number | null; route: string; updatedAt: string };
+    lineRoutes?: Array<{ id: string; providerId: string; routeId: string; name: string; direction: string; directionId: string | null; geometrySource: 'gtfs_shape' | 'official_geojson'; coordinates: [number, number][] }>;
+    vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean }>;
   }>;
 };
 export type ApiTransitStopArrival = {
@@ -536,7 +539,10 @@ export const productionApi = {
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
-  journeyLive(id: string, signal?: AbortSignal) { return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live`, { signal }); },
+  journeyLive(id: string, signal?: AbortSignal, legId?: string) {
+    const suffix = legId ? `?legId=${encodeURIComponent(legId)}` : '';
+    return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live${suffix}`, { signal });
+  },
   transitStopArrivals(input: {
     providerId: string; stopId: string; latitude: number; longitude: number;
     routeId: string; headsign?: string; limit?: number;
