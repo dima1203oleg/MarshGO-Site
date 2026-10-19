@@ -180,3 +180,23 @@ test('real production journey UI keeps all legs while focusing one scheduled seg
   }
   expect(pageErrors).toEqual([]);
 });
+
+test('a failed lazy screen import shows a recoverable error instead of a blank view', async ({ page }) => {
+  await installJourneyApiFixture(page);
+  await page.route('**/assets/ProductionNavigation-*.js', route => route.abort());
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => Reflect.get(window, '__MARSHGO_BOOTED__'))).toBe(true);
+  await page.getByRole('button', { name: 'Почати', exact: true }).click();
+  await page.getByRole('button', { name: 'Пропустити' }).click();
+  await page.getByPlaceholder('Ваше ім’я').fill(passenger.display_name);
+  await page.getByPlaceholder('+380 номер телефону').fill(passenger.phone_e164);
+  await page.getByRole('button', { name: 'Почати', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Вхід за номером' })).toBeVisible();
+  await page.getByPlaceholder('••••••').fill('123456');
+  await page.getByRole('button', { name: 'Підтвердити номер' }).click();
+
+  await expect(page.getByRole('navigation', { name: 'Основна навігація' })).toBeVisible();
+  await page.getByRole('button', { name: /Навігація/ }).click();
+  await expect(page.getByRole('alert')).toContainText('Не вдалося відкрити цей екран');
+  await expect(page.getByRole('button', { name: 'Спробувати ще раз' })).toBeVisible();
+});
