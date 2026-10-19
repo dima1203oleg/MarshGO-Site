@@ -6,6 +6,7 @@ import { getMapLayer, setMapLayer } from '../map/mapMode';
 import { productionApi, type ApiBooking, type ApiRendezvous } from '../services/productionApi';
 import { meetingSnapshot, formatEta, formatMeters, stageText } from '../navigation/meeting';
 import { distanceBetween } from '../navigation/guidance';
+import { isFreshRendezvousSample, shouldWatchRendezvousLocation } from '../domain/rendezvousLocationTracking';
 
 type Point = [number, number];
 const SEND_EVERY_MS = 5_000;
@@ -22,15 +23,26 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
   const [other, setOther] = useState<Point | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pageVisible, setPageVisible] = useState(() => typeof document !== 'undefined' && document.visibilityState === 'visible');
   const adapter = useRef<MapAdapter | null>(null);
+  const latestSession = useRef(initial);
   const lastSent = useRef(0);
   const driverTrail = useRef<{ point: Point; at: number } | null>(null);
   const [driverSpeed, setDriverSpeed] = useState<number | null>(null);
   const iAmDriver = booking.current_user_is_driver;
   const mutualConsent = rendezvous.currentParticipantConsent === true && rendezvous.otherParticipantConsent === true;
   const sharing = rendezvous.locationSharingEnabled && mutualConsent;
+  const canTrack = shouldWatchRendezvousLocation(rendezvous, true, pageVisible);
   const consentCanChange = !['BOARDING', 'COMPLETED', 'CANCELLED', 'EXPIRED'].includes(rendezvous.state);
   const pickup = rendezvous.pickup.coordinates as Point;
+
+  useEffect(() => {
+    const updateVisibility = () => setPageVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => document.removeEventListener('visibilitychange', updateVisibility);
+  }, []);
+
+  useEffect(() => { latestSession.current = rendezvous; }, [rendezvous]);
 
   useEffect(() => {
     const previous = getMapLayer();
@@ -42,9 +54,10 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
   useEffect(() => {
     let alive = true;
     const apply = (session: ApiRendezvous) => {
+      latestSession.current = session;
       setRendezvous(session);
       const location = session.locations[iAmDriver ? 'passenger' : 'driver'];
-      setOther(session.currentParticipantConsent === true && session.otherParticipantConsent === true
+      setOther(shouldWatchRendezvousLocation(session, true, document.visibilityState === 'visible')
         && location && location.freshness === 'LIVE' ? location.coordinates as Point : null);
     };
     apply(initial);
@@ -55,11 +68,13 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
       if (!event.type.startsWith('rendezvous.')) return;
       const data = (event as { data: { rendezvous_id?: string; participant?: 'driver' | 'passenger'; coordinates?: [number, number] } }).data;
       if (data.rendezvous_id !== initial.id) return;
-      if (event.type === 'rendezvous.location.updated' && data.coordinates && data.participant === (iAmDriver ? 'passenger' : 'driver')) setOther(data.coordinates as Point);
+      const sample = data as typeof data & { capturedAt?: string };
+      if (event.type === 'rendezvous.location.updated' && shouldWatchRendezvousLocation(latestSession.current, true, document.visibilityState === 'visible')
+        && isFreshRendezvousSample(data.coordinates, sample.capturedAt) && data.participant === (iAmDriver ? 'passenger' : 'driver')) setOther(data.coordinates);
       else poll();
     }, () => undefined);
     return () => { alive = false; window.clearInterval(timer); unsubscribe(); };
-  }, [booking.id, initial.id, iAmDriver]);
+  }, [booking.id, initial.id, iAmDriver, pageVisible]);
 
   // My own position: shown at once from the device, and shared with the other person while sharing is on.
   useEffect(() => {
@@ -69,6 +84,7 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
         .then(setRendezvous)
         .catch(() => setMessage(`${reason} Не вдалося автоматично зупинити обмін; відкличте згоду вручну.`));
     };
+    if (!canTrack) { setMine(null); return; }
     if (!('geolocation' in navigator)) { stopSharingIfUnavailable('Цей пристрій не надає геолокацію.'); return; }
     let watch: number | null = null;
     watch = navigator.geolocation.watchPosition((position) => {
@@ -80,7 +96,7 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
         if (previous && now - previous.at > 1500) setDriverSpeed(distanceBetween(previous.point, point) / ((now - previous.at) / 1000));
         if (!previous || now - previous.at > 1500) driverTrail.current = { point, at: now };
       }
-      if (sharing && now - lastSent.current >= SEND_EVERY_MS) {
+      if (canTrack && now - lastSent.current >= SEND_EVERY_MS) {
         lastSent.current = now;
         void productionApi.sendRendezvousLocation(rendezvous.id, { longitude: point[0], latitude: point[1], accuracyMeters: Math.min(1000, position.coords.accuracy || 50), capturedAt: new Date(position.timestamp).toISOString() }).catch(() => undefined);
       }
@@ -93,10 +109,10 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
       else setMessage('Не вдалося визначити ваше місце. Перевірте з’єднання або спробуйте ще раз.');
     }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20_000 });
     return () => { if (watch !== null) navigator.geolocation.clearWatch(watch); };
-  }, [sharing, rendezvous.id, iAmDriver]);
+  }, [canTrack, rendezvous.id, iAmDriver]);
 
-  const driverPoint = sharing ? (iAmDriver ? mine : other) : null;
-  const passengerPoint = sharing ? (iAmDriver ? other : mine) : null;
+  const driverPoint = canTrack ? (iAmDriver ? mine : other) : null;
+  const passengerPoint = canTrack ? (iAmDriver ? other : mine) : null;
   const meetingPoints = { pickup, driver: driverPoint, passenger: passengerPoint };
   const latestMeetingPoints = useRef(meetingPoints);
   latestMeetingPoints.current = meetingPoints;
