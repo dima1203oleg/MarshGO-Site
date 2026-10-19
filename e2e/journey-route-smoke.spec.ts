@@ -74,6 +74,24 @@ async function installJourneyApiFixture(page: Page) {
       },
     ],
   };
+  const liveJourney = {
+    journeyId: journey.id,
+    checkedAt: at(0),
+    segments: [{
+      legId: 'e2e-bus-leg',
+      status: 'LIVE',
+      lineRoutes: [
+        { id: 'a20-outbound', providerId: 'e2e-lviv-feed', routeId: 'A20', name: 'A20', direction: 'До Сихівської', directionId: 'outbound', geometrySource: 'gtfs_shape', coordinates: [[24.031, 49.807], [24.044, 49.8], [24.0576, 49.7941]] },
+        { id: 'a20-inbound', providerId: 'e2e-lviv-feed', routeId: 'A20', name: 'A20', direction: 'До Наукової', directionId: 'inbound', geometrySource: 'gtfs_shape', coordinates: [[24.0576, 49.7941], [24.044, 49.8], [24.031, 49.807]] },
+      ],
+      vehicles: [
+        { id: 'a20-vehicle-1', providerId: 'e2e-lviv-feed', coordinates: [24.035, 49.804], bearing: 90, speed: 8, updatedAt: at(0), tripId: 'a20-trip-1', routeId: 'A20', directionId: 'outbound', approachingBoarding: true, remainingStops: 2, emphasized: true },
+        { id: 'a20-vehicle-2', providerId: 'e2e-lviv-feed', coordinates: [24.033, 49.805], bearing: 90, speed: 7, updatedAt: at(0), tripId: 'a20-trip-2', routeId: 'A20', directionId: 'outbound', approachingBoarding: true, remainingStops: 3, emphasized: true },
+        { id: 'a20-vehicle-3', providerId: 'e2e-lviv-feed', coordinates: [24.031, 49.806], bearing: 90, speed: 6, updatedAt: at(0), tripId: 'a20-trip-3', routeId: 'A20', directionId: 'outbound', approachingBoarding: true, remainingStops: 4, emphasized: true },
+        { id: 'a20-vehicle-4', providerId: 'e2e-lviv-feed', coordinates: [24.052, 49.797], bearing: 270, speed: 9, updatedAt: at(0), tripId: 'a20-trip-4', routeId: 'A20', directionId: 'inbound', approachingBoarding: false, remainingStops: null, emphasized: false },
+      ],
+    }],
+  };
   const pageErrors: string[] = [];
   page.on('pageerror', error => pageErrors.push(error.stack ?? error.message));
   page.on('console', message => { if (message.type() === 'error') console.log(`[browser console] ${message.text()}`); });
@@ -96,7 +114,7 @@ async function installJourneyApiFixture(page: Page) {
       return json({ journeys: [journey], requestedStrategy: 'BALANCED', availableStrategies: ['BALANCED', 'FASTEST', 'CHEAPEST'],
         candidateCount: 1, paretoCount: 1, returnedCount: 1, partial: false, blockedProviders: [], unsupportedPreferences: [], providerErrors: [] });
     }
-    if (path === `/journeys/${journey.id}/live`) return json({ journeyId: journey.id, checkedAt: at(0), segments: [] });
+    if (path === `/journeys/${journey.id}/live`) return json(liveJourney);
     if (path === '/mobility/providers') return json([]);
     return json([]);
   });
@@ -150,5 +168,12 @@ test('real production journey UI keeps all legs while focusing one scheduled seg
   await expect(bus.getByRole('button', { name: /Згорнути зупинки: Автобус/ })).toHaveAttribute('aria-expanded', 'true');
   await expect(routeMap.getByRole('list', { name: 'Зупинки сегмента A20' })).toContainText('Наукова');
   await expect(routeMap.getByRole('list', { name: 'Зупинки сегмента A20' })).toContainText('Сихівська');
+  const mapCanvas = routeMap.locator('.maplibregl-map');
+  await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-line-direction-count')).toBe('2');
+  await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-fleet-count')).toBe('4');
+  await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-fleet-emphasized-count')).toBe('3');
+  const vehicleMarkers = routeMap.locator('.marshgo-transit-fleet-marker');
+  await expect(vehicleMarkers).toHaveCount(4);
+  await expect(vehicleMarkers).toHaveText(['🚌', '🚌', '🚌', '🚌']);
   expect(pageErrors).toEqual([]);
 });
