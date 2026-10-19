@@ -30,10 +30,18 @@ export function journeyLegCaveat(
   fareSource?: 'gtfs-v1' | 'city-tariff-registry' | null,
 ): string | null {
   const caveats: string[] = [];
+  const normalizedMode = normalizeTransportMode(mode);
   if (scheduleSemantics === 'frequency_estimate') caveats.push('Час поїзда оцінений за оприлюдненим інтервалом; live-даних немає.');
   if (fareSource === 'city-tariff-registry') caveats.push('Ціна розрахована за оприлюдненим міським тарифом; спосіб оплати може змінити суму.');
-  if (mode === 'WALK' && (source === 'walking-estimate' || source === 'straight-line-estimate')) {
+  const estimatedGeometry = /estimate|straight-line/i.test(source ?? '');
+  if (normalizedMode === 'WALK' && (estimatedGeometry || source === 'walking-estimate')) {
     caveats.push('Пішохідну відстань оцінено по прямій; реальний шлях може бути довшим.');
+  }
+  if (normalizedMode === 'bike' && estimatedGeometry) {
+    caveats.push('Відрізок між точками провайдера орієнтовний; дорожня велотраєкторія, наявність велосипеда та бронювання не підтверджені.');
+  }
+  if (normalizedMode === 'scooter' && estimatedGeometry) {
+    caveats.push('Траєкторія між зонами провайдера орієнтовна; наявність самоката й тариф не підтверджені.');
   }
   return caveats.length ? caveats.join(' ') : null;
 }

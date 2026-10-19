@@ -22,10 +22,10 @@ export interface TransportModeVisual {
 type CanonicalVisual = Omit<TransportModeVisual, 'badgeStyle' | 'accessibilityLabel'>;
 
 const Scooter = createLucideIcon('Scooter', [
-  ['circle', { cx: '6', cy: '19', r: '2' }],
-  ['circle', { cx: '18', cy: '19', r: '2' }],
-  ['path', { d: 'M8 19h6l2-11h4' }],
-  ['path', { d: 'M16 8l-1-4h-2' }],
+  ['circle', { cx: '6', cy: '19', r: '2', key: 'scooter-wheel-rear' }],
+  ['circle', { cx: '18', cy: '19', r: '2', key: 'scooter-wheel-front' }],
+  ['path', { d: 'M8 19h6l2-11h4', key: 'scooter-deck-and-stem' }],
+  ['path', { d: 'M16 8l-1-4h-2', key: 'scooter-handlebar' }],
 ]);
 
 function visual(
