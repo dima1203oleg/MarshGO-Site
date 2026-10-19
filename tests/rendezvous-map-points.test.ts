@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ApiRendezvous } from '../src/services/productionApi';
-import { rendezvousDistanceToPickup, rendezvousMapPoints } from '../src/domain/rendezvousMapPoints';
+import { rendezvousApproachRoutes, rendezvousDistanceToPickup, rendezvousMapPoints } from '../src/domain/rendezvousMapPoints';
+import type { ApiRendezvousApproaches } from '../src/services/productionApi';
 
 const session = (patch: Partial<ApiRendezvous> = {}): ApiRendezvous => ({
   id: 'rendezvous', bookingId: 'booking', journeyLegId: null, state: 'ACTIVE',
@@ -57,4 +58,31 @@ test('pickup distance is a separately labeled straight-line estimate and require
   assert.deepEqual(stale, { state: 'STALE' });
   assert.deepEqual(rendezvousDistanceToPickup(session({ otherParticipantConsent: false }), 'driver'), { state: 'UNAVAILABLE' });
   assert.deepEqual(rendezvousDistanceToPickup(session({ state: 'COMPLETED' }), 'passenger'), { state: 'UNAVAILABLE' });
+});
+
+
+test('rendezvous map draws only valid provider-routed approaches with distinct participant colors', () => {
+  const approaches: ApiRendezvousApproaches = {
+    rendezvousId: 'rendezvous', pickup: { label: 'Pickup', coordinates: [30.52, 50.45] },
+    driver: { location: session().locations.driver, approach: { status: 'ROUTED', geometry: [[30.51, 50.44], [30.52, 50.45]], distanceMeters: 1400, durationSeconds: 240 } },
+    passenger: { location: session().locations.passenger, approach: { status: 'ROUTED', geometry: [[30.50, 50.43], [30.52, 50.45]], distanceMeters: 2800, durationSeconds: 480 } },
+    updatedAt: '2026-10-18T07:59:00Z',
+  };
+  assert.deepEqual(rendezvousApproachRoutes(approaches).map((route) => ({ id: route.id, color: route.modeColor, coordinates: route.coordinates })), [
+    { id: 'driver-approach', color: '#2563eb', coordinates: [[30.51, 50.44], [30.52, 50.45]] },
+    { id: 'passenger-approach', color: '#7c3aed', coordinates: [[30.50, 50.43], [30.52, 50.45]] },
+  ]);
+  assert.deepEqual(rendezvousApproachRoutes(null), []);
+});
+
+test('rendezvous map rejects missing, non-routed, short and malformed approach geometry', () => {
+  const approaches: ApiRendezvousApproaches = {
+    rendezvousId: 'rendezvous', pickup: { label: 'Pickup', coordinates: [30.52, 50.45] },
+    driver: { location: null, approach: { status: 'ROUTING_UNAVAILABLE', geometry: null, distanceMeters: null, durationSeconds: null } },
+    passenger: { location: null, approach: { status: 'ROUTED', geometry: [[30.5, 50.4], [181, 50.5]], distanceMeters: 2, durationSeconds: 2 } },
+    updatedAt: '2026-10-18T07:59:00Z',
+  };
+  assert.deepEqual(rendezvousApproachRoutes(approaches), []);
+  approaches.passenger.approach.geometry = [[30.5, 50.4]];
+  assert.deepEqual(rendezvousApproachRoutes(approaches), []);
 });
