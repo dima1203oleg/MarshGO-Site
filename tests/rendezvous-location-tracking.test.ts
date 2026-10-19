@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ApiRendezvous } from '../src/services/productionApi';
-import { shouldWatchRendezvousLocation } from '../src/domain/rendezvousLocationTracking';
+import { isFreshRendezvousSample, shouldWatchRendezvousLocation } from '../src/domain/rendezvousLocationTracking';
 
 const session = (patch: Partial<ApiRendezvous> = {}): ApiRendezvous => ({
   id: 'rendezvous', bookingId: 'booking', journeyLegId: null, state: 'ACTIVE',
@@ -21,4 +21,14 @@ test('rendezvous GPS watch requires authentication, foreground visibility, both 
   for (const state of ['BOARDING', 'COMPLETED', 'CANCELLED', 'EXPIRED']) {
     assert.equal(shouldWatchRendezvousLocation(session({ state }), true, true), false, state);
   }
+});
+
+test('rendezvous live updates reject invalid coordinates, stale samples, and implausibly future timestamps', () => {
+  const now = Date.parse('2026-10-20T08:00:00.000Z');
+  assert.equal(isFreshRendezvousSample([24.03, 49.84], '2026-10-20T07:59:30.000Z', now), true);
+  assert.equal(isFreshRendezvousSample([24.03, 49.84], '2026-10-20T07:58:29.999Z', now), false);
+  assert.equal(isFreshRendezvousSample([181, 49.84], '2026-10-20T08:00:00.000Z', now), false);
+  assert.equal(isFreshRendezvousSample([24.03, 91], '2026-10-20T08:00:00.000Z', now), false);
+  assert.equal(isFreshRendezvousSample([24.03, 49.84], '2026-10-20T08:00:30.001Z', now), false);
+  assert.equal(isFreshRendezvousSample(null, '2026-10-20T08:00:00.000Z', now), false);
 });
