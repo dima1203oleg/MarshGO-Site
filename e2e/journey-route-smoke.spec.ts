@@ -171,6 +171,9 @@ test('real production journey UI keeps all legs while focusing one scheduled seg
   if (testInfo.project.name === 'chromium') {
     const mapCanvas = routeMap.locator('.maplibregl-map');
     const mapStateTimeout = { timeout: 15_000 };
+    await expect.poll(() => mapCanvas.getAttribute('data-marshgo-selected-route-segment-count'), mapStateTimeout).toBe('1');
+    await expect.poll(() => mapCanvas.getAttribute('data-marshgo-dimmed-route-segment-count'), mapStateTimeout).toBe('2');
+    await expect.poll(() => mapCanvas.getAttribute('data-marshgo-hidden-route-segment-count'), mapStateTimeout).toBe('0');
     await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-line-direction-count'), mapStateTimeout).toBe('2');
     await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-fleet-count'), mapStateTimeout).toBe('4');
     await expect.poll(() => mapCanvas.getAttribute('data-marshgo-transit-fleet-emphasized-count'), mapStateTimeout).toBe('3');
