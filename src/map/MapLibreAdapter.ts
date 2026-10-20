@@ -399,13 +399,12 @@ export class MapLibreAdapter implements MapAdapter {
     const selectedCount = this.activeRouteSegmentId === null
       ? segments.length
       : segments.filter(segment => segment.id === this.activeRouteSegmentId).length;
-    const dimmedCount = this.activeRouteSegmentId === null ? 0 : Math.max(0, segments.length - selectedCount);
+    const dimmedCount = 0;
     const container = this.map.getContainer();
     container.dataset.marshgoSelectedRouteSegmentCount = String(selectedCount);
-    // Keep the route's spatial context visible while the selected leg remains prominent.
     container.dataset.marshgoDimmedRouteSegmentCount = String(dimmedCount);
-    container.dataset.marshgoHiddenRouteSegmentCount = String(this.activeRouteSegmentId && selectedCount === 0
-      ? segments.length : 0);
+    container.dataset.marshgoHiddenRouteSegmentCount = String(this.activeRouteSegmentId === null
+      ? 0 : Math.max(0, segments.length - selectedCount));
   }
   private clearRouteSegmentDiagnostics() {
     const container = this.map.getContainer();
