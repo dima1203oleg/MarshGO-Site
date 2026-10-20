@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { ApiJourney } from '../src/services/productionApi';
+import type { ApiJourney, ApiJourneySearchResult } from '../src/services/productionApi';
 import {
   buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneySegmentPrice, formatJourneyTotalPrice,
 } from '../src/views/journeyResultPresentation';
+import { hasUnrankedJourney, journeyForSelectedStrategy, journeysForStrategy } from '../src/views/journeyStrategies';
+import { journeyPreferenceMessage } from '../src/views/journeyPreferenceMessages';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
   id: 'leg', mode: 'BUS', offerId: null,
@@ -30,6 +32,36 @@ const journey = (overrides: Partial<ApiJourney> = {}): ApiJourney => ({
 });
 
 describe('journey result presentation data', () => {
+  it('explains the current and legacy server keys for unavailable cheapest fares in Ukrainian', () => {
+    const message = 'найдешевший варіант серед маршрутів без відомих тарифів визначити неможливо';
+    assert.equal(journeyPreferenceMessage('CHEAPEST:unpriced-route-segments-unavailable'), message);
+    assert.equal(journeyPreferenceMessage('CHEAPEST:public-transit-fares-unavailable'), message);
+    assert.equal(journeyPreferenceMessage('unknown-server-key'), null);
+  });
+
+  it('uses the active strategy rank and excludes journeys with unknown fares from cheapest', () => {
+    const fastest = journey({ id: 'fast', totalDurationSeconds: 600, strategyRanks: { FASTEST: 1, BALANCED: 2 } });
+    const cheap = journey({ id: 'cheap', totalDurationSeconds: 1200, totalPriceMinor: 500, strategyRanks: { CHEAPEST: 1, BALANCED: 1 } });
+    const unknown = journey({ id: 'unknown', totalPriceMinor: null, legs: [leg({ id: 'unknown-fare', priceMinor: null, priceStatus: 'UNKNOWN' })], strategyRanks: { CHEAPEST: 2 } });
+    const result = { journeys: [fastest, cheap, unknown] } as ApiJourneySearchResult;
+    assert.deepEqual(journeysForStrategy(result, 'FASTEST').map(item => item.id), ['fast']);
+    assert.deepEqual(journeysForStrategy(result, 'CHEAPEST').map(item => item.id), ['cheap']);
+    assert.deepEqual(journeysForStrategy(result, 'BALANCED').map(item => item.id), ['cheap', 'fast']);
+  });
+
+  it('carries the active strategy into map details rather than the journey representative rank', () => {
+    const representative = journey({ strategy: 'BALANCED', strategyRanks: { FASTEST: 1, BALANCED: 2 } });
+    assert.equal(journeyForSelectedStrategy(representative, 'BALANCED').strategy, 'BALANCED');
+    assert.equal(journeyForSelectedStrategy(representative, 'FASTEST').strategy, 'FASTEST');
+  });
+
+  it('marks local fallback ordering when the server omits strategy ranks', () => {
+    const rankedResult = { journeys: [journey({ strategyRanks: { BALANCED: 1 } })] } as ApiJourneySearchResult;
+    const fallbackResult = { journeys: [journey({ strategyRanks: undefined })] } as ApiJourneySearchResult;
+    assert.equal(hasUnrankedJourney(rankedResult), false);
+    assert.equal(hasUnrankedJourney(fallbackResult), true);
+  });
+
   it('includes walking and scheduled waits and keeps ribbon widths time-proportional', () => {
     const segments = buildJourneyResultSegments(journey());
     assert.deepEqual(segments.map(segment => [segment.kind, segment.durationSeconds]), [

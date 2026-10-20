@@ -13,7 +13,7 @@ test('normal navigation renders exactly the selected map layers', () => {
   assert.deepEqual(visibleTransportLayers(saved, false), saved);
 });
 
-test('segment focus leaves only the selected leg on the map base layer', () => {
+test('segment focus hides other journey legs while retaining the selected leg', () => {
   const itinerary = [
     { id: 'walk', coordinates: [[24, 49], [24.01, 49.01]] as [number, number][], modeColor: '#91A6BB' },
     { id: 'minibus', coordinates: [[24.01, 49.01], [24.2, 49.2]] as [number, number][], modeColor: '#F43F7B' },

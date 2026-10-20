@@ -1,5 +1,5 @@
-import type { ApiRendezvous } from '../services/productionApi';
-import type { RouteWaypoint } from '../map/MapAdapter';
+import type { ApiRendezvous, ApiRendezvousApproaches } from '../services/productionApi';
+import type { ColoredRouteSegment, RouteWaypoint } from '../map/MapAdapter';
 
 const terminalStates = new Set(['BOARDING', 'COMPLETED', 'CANCELLED', 'EXPIRED']);
 
@@ -46,4 +46,23 @@ export function rendezvousMapPoints(session: ApiRendezvous, currentUserIsDriver:
     });
   }
   return points;
+}
+
+
+/** Show only validated, provider-routed approaches returned by the server. */
+export function rendezvousApproachRoutes(value: ApiRendezvousApproaches | null): ColoredRouteSegment[] {
+  if (!value) return [];
+  const routes: ColoredRouteSegment[] = [];
+  const candidates = [
+    { id: 'driver-approach', approach: value.driver.approach, modeColor: '#2563eb' },
+    { id: 'passenger-approach', approach: value.passenger.approach, modeColor: '#7c3aed' },
+  ];
+  for (const { id, approach, modeColor } of candidates) {
+    if (approach.status !== 'ROUTED' || !Array.isArray(approach.geometry) || approach.geometry.length < 2) continue;
+    const valid = approach.geometry.every((point) => Array.isArray(point) && point.length === 2
+      && Number.isFinite(point[0]) && Math.abs(point[0]) <= 180
+      && Number.isFinite(point[1]) && Math.abs(point[1]) <= 90);
+    if (valid) routes.push({ id, coordinates: approach.geometry, modeColor });
+  }
+  return routes;
 }
