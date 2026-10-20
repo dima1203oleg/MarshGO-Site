@@ -5,6 +5,7 @@ import {
   buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneySegmentPrice, formatJourneyTotalPrice,
 } from '../src/views/journeyResultPresentation';
 import { hasUnrankedJourney, journeyForSelectedStrategy, journeysForStrategy } from '../src/views/journeyStrategies';
+import { journeyPreferenceMessage } from '../src/views/journeyPreferenceMessages';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
   id: 'leg', mode: 'BUS', offerId: null,
@@ -31,6 +32,13 @@ const journey = (overrides: Partial<ApiJourney> = {}): ApiJourney => ({
 });
 
 describe('journey result presentation data', () => {
+  it('explains the current and legacy server keys for unavailable cheapest fares in Ukrainian', () => {
+    const message = 'найдешевший варіант серед маршрутів без відомих тарифів визначити неможливо';
+    assert.equal(journeyPreferenceMessage('CHEAPEST:unpriced-route-segments-unavailable'), message);
+    assert.equal(journeyPreferenceMessage('CHEAPEST:public-transit-fares-unavailable'), message);
+    assert.equal(journeyPreferenceMessage('unknown-server-key'), null);
+  });
+
   it('uses the active strategy rank and excludes journeys with unknown fares from cheapest', () => {
     const fastest = journey({ id: 'fast', totalDurationSeconds: 600, strategyRanks: { FASTEST: 1, BALANCED: 2 } });
     const cheap = journey({ id: 'cheap', totalDurationSeconds: 1200, totalPriceMinor: 500, strategyRanks: { CHEAPEST: 1, BALANCED: 1 } });
