@@ -520,9 +520,9 @@ export class MapLibreAdapter implements MapAdapter {
       element.style.width = emphasized ? '36px' : '30px';
       element.style.height = emphasized ? '36px' : '30px';
       element.style.background = overlay?.modeColor ?? '#1687FF';
-      element.style.opacity = emphasized ? '1' : '0.42';
       marker.setLngLat(vehicle.coordinates);
       if (!this.map.getContainer().contains(element)) marker.addTo(this.map);
+      marker.setOpacity(emphasized ? 1 : 0.42);
     }
   }
   setVehicle(point: Coordinate, heading?: number | null) {
