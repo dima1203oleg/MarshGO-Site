@@ -810,8 +810,8 @@ export function JourneyRouteMapScreen({
                 {leg.providerId && leg.routeId && stops[0] && <div className="mt-3 border-t border-[var(--route-border)] pt-2" aria-live="polite">
                   <p className="mb-2 text-[10px] font-bold text-[var(--route-muted)]">Найближчі рейси до {stops[0].name}</p>
                 {selected && liveSegment && <p data-testid="selected-line-live-status" role="status" className="mb-2 text-[10px] text-[var(--route-muted)]">
-                  {liveSegment.vehiclePositionStatus === 'OBSERVED'
-                    ? `На карті ${liveSegment.vehicles?.length ?? 0} машин із живими GPS-позиціями; виділено ${liveSegment.vehicles?.filter(vehicle => vehicle.emphasized && vehicle.approachEvidence?.remainingStops !== 0).length ?? 0} на під’їзді та ${liveSegment.vehicles?.filter(vehicle => vehicle.emphasized && vehicle.approachEvidence?.remainingStops === 0).length ?? 0} на точці посадки.`
+                  {(liveSegment.vehicles?.length ?? 0) > 0
+                    ? `На карті ${liveSegment.vehicles?.length ?? 0} машин зі свіжими GPS-позиціями; виділено ${liveSegment.vehicles?.filter(vehicle => vehicle.emphasized && vehicle.approachEvidence?.remainingStops !== 0).length ?? 0} на під’їзді та ${liveSegment.vehicles?.filter(vehicle => vehicle.emphasized && vehicle.approachEvidence?.remainingStops === 0).length ?? 0} на точці посадки.`
                     : 'Живі GPS-позиції цієї лінії зараз недоступні.'}
                   {liveSegment.boardingStopArrival?.status === 'PREDICTED' && liveSegment.boardingStopArrival.predictedAt
                     ? ` Прогноз вибраного рейсу: ${formatTime(liveSegment.boardingStopArrival.predictedAt)}; це прогноз фіда, не GPS-позиція.`

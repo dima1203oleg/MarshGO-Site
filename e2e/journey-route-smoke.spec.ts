@@ -80,7 +80,7 @@ async function installJourneyApiFixture(page: Page) {
     segments: [{
       legId: 'e2e-bus-leg',
       status: 'LIVE',
-      vehiclePositionStatus: 'OBSERVED',
+      vehiclePositionStatus: 'UNAVAILABLE',
       boardingStopArrival: { status: 'PREDICTED', scheduledAt: at(85), predictedAt: at(87), realtimeUpdatedAt: at(0) },
       lineRoutes: [
         { id: 'a20-outbound', providerId: 'e2e-lviv-feed', routeId: 'A20', name: 'A20', direction: 'До Сихівської', directionId: 'outbound', geometrySource: 'gtfs_shape', coordinates: [[24.031, 49.807], [24.044, 49.8], [24.0576, 49.7941]] },
@@ -171,7 +171,7 @@ test('real production transit focus hides other journey legs and retains the sel
   await expect(bus.getByRole('button', { name: /Згорнути зупинки: Автобус/ })).toHaveAttribute('aria-expanded', 'true');
   await expect(routeMap.getByRole('list', { name: 'Зупинки сегмента A20' })).toContainText('Наукова');
   await expect(routeMap.getByRole('list', { name: 'Зупинки сегмента A20' })).toContainText('Сихівська');
-  await expect(bus.getByTestId('selected-line-live-status')).toContainText('На карті 5 машин із живими GPS-позиціями; виділено 2 на під’їзді та 1 на точці посадки.');
+  await expect(bus.getByTestId('selected-line-live-status')).toContainText('На карті 5 машин зі свіжими GPS-позиціями; виділено 2 на під’їзді та 1 на точці посадки.');
   await expect(bus.getByTestId('selected-line-live-status')).toContainText('прогноз фіда, не GPS-позиція');
   if (testInfo.project.name === 'chromium') {
     const mapCanvas = routeMap.locator('.maplibregl-map');
