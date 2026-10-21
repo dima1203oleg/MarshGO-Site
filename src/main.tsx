@@ -1,5 +1,7 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import {createRoot} from 'react-dom/client';
+import { Capacitor } from '@capacitor/core';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { ProductionErrorBoundary } from './components/ProductionErrorBoundary';
 import './index.css';
 import './services/theme';
@@ -28,6 +30,36 @@ function AppStartupFallback() {
   );
 }
 
+function NativeSplashHandoff({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let cancelled = false;
+    let hideRequested = false;
+    let secondFrame = 0;
+    const hideAfterShellPaint = () => {
+      if (cancelled || hideRequested) return;
+      hideRequested = true;
+      window.clearTimeout(watchdog);
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      void SplashScreen.hide({ fadeOutDuration: reducedMotion ? 0 : 180 }).catch(() => undefined);
+    };
+    const watchdog = window.setTimeout(hideAfterShellPaint, 12_000);
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(hideAfterShellPaint);
+    });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(watchdog);
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, []);
+
+  return children;
+}
+
 const rootElement = document.getElementById('root')!;
 rootElement.replaceChildren();
 const root = createRoot(rootElement);
@@ -42,9 +74,11 @@ if (isDesignStudio) {
   // localStorage prototype in App.tsx is intentionally not in this module graph.
   root.render(
     <ProductionErrorBoundary>
-      <Suspense fallback={<AppStartupFallback />}>
-        <ProductionMarketplace />
-      </Suspense>
+      <NativeSplashHandoff>
+        <Suspense fallback={<AppStartupFallback />}>
+          <ProductionMarketplace />
+        </Suspense>
+      </NativeSplashHandoff>
     </ProductionErrorBoundary>,
   );
 }
