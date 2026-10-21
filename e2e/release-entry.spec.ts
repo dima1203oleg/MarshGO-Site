@@ -40,6 +40,18 @@ test('production entry, onboarding and phone sign-in fit mobile and desktop view
   expect(pageErrors, 'production entry should not raise uncaught browser errors').toEqual([]);
 });
 
+test('production entry paints a useful shell while the authenticated app chunk loads', async ({ page }) => {
+  await page.route('**/assets/ProductionMarketplace-*.js', async route => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    await route.continue();
+  });
+
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => Reflect.get(window, '__MARSHGO_BOOTED__'))).toBe(true);
+  await expect(page.getByTestId('app-startup-fallback')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Усі способи доїхати — в одному застосунку/ })).toBeVisible();
+});
+
 test('production entry deep links return the Ukrainian app shell', async ({ page }) => {
   await page.goto('/journeys/search?from=lviv-origin&to=lviv-destination');
   await expect.poll(() => page.evaluate(() => Reflect.get(window, '__MARSHGO_BOOTED__'))).toBe(true);
