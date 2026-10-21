@@ -115,7 +115,8 @@ async function installJourneyApiFixture(page: Page) {
     if (path === '/journeys/search') {
       journeySearchBodies.push(route.request().postDataJSON());
       return json({ journeys: [journey], requestedStrategy: 'BALANCED', availableStrategies: ['BALANCED', 'FASTEST', 'CHEAPEST'],
-        candidateCount: 1, paretoCount: 1, returnedCount: 1, partial: true, partialReasons: ['candidate_generation_truncated'],
+        candidateCount: 48, paretoCount: 24, returnedCount: 1, alternativeLimitPerStrategy: 12,
+        resultsTruncated: true, resultSamplingTruncated: true, partial: true, partialReasons: ['candidate_generation_truncated'],
         candidateGenerationTruncated: true, blockedProviders: [], unsupportedPreferences: [], providerErrors: [] });
     }
     if (path === `/journeys/${journey.id}/live`) return json(liveJourney);
@@ -149,6 +150,9 @@ test('real production transit focus hides other journey legs and retains the sel
 
   await expect(page.locator('p[role="status"]').filter({ hasText: 'Пошук неповний:' }))
     .toContainText('частина маршрутів могла не потрапити до результатів.');
+  await expect(page.getByText(/Показано до 12 різних варіантів на режим із 24 Pareto-варіантів/)).toContainText(
+    'Частина альтернатив не увійшла до списку; це обмеження вибірки, а не помилка джерела.',
+  );
   await expect(page.getByTestId('journey-result-card')).toHaveCount(1);
   await expect(page.getByTestId('journey-result-card').getByText('Попутка')).toBeVisible();
   await expect(page.getByTestId('journey-result-card').getByText('Пішки')).toBeVisible();
