@@ -17,7 +17,8 @@ export type TransitLineOverlay = {
   modeColor: string;
   transportType: string;
   lines: Array<{ id: string; direction: string; coordinates: Coordinate[] }>;
-  vehicles: Array<{ id: string; coordinates: Coordinate; updatedAt: string; emphasized: boolean }>;
+  vehicles: Array<{ id: string; coordinates: Coordinate; updatedAt: string; emphasized: boolean;
+    approachEvidence?: 'OBSERVED_PROGRESS' | 'TRIP_UPDATE_PREDICTION' | null; etaSeconds?: number | null; remainingStops?: number | null }>;
 };
 export type MeetingMapPoints = { pickup?: Coordinate | null; driver?: Coordinate | null; passenger?: Coordinate | null };
 export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number; bearing?: number };
