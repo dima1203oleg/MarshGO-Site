@@ -46,3 +46,19 @@ test('production entry deep links return the Ukrainian app shell', async ({ page
   await expect(page).toHaveTitle(/MARSHGO/);
   await expect(page.getByRole('heading', { name: /Усі способи доїхати — в одному застосунку/ })).toBeVisible();
 });
+
+test('a failed initial app chunk offers a manual retry without an automatic reload loop', async ({ page }) => {
+  let mainFrameNavigations = 0;
+  page.on('framenavigated', frame => { if (frame === page.mainFrame()) mainFrameNavigations++; });
+  await page.route('**/assets/index-*.js', route => route.abort());
+  await page.goto('/');
+
+  await expect(page.getByRole('alert')).toContainText('Не вдалося завантажити MARSHGO');
+  const beforeManualRetry = mainFrameNavigations;
+  await page.waitForTimeout(500);
+  expect(mainFrameNavigations).toBe(beforeManualRetry);
+
+  await page.getByRole('button', { name: 'Спробувати ще раз' }).click();
+  await expect.poll(() => mainFrameNavigations).toBeGreaterThan(beforeManualRetry);
+  await expect(page.getByRole('alert')).toContainText('Не вдалося завантажити MARSHGO');
+});
