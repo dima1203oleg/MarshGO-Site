@@ -291,9 +291,16 @@ export type ApiJourneyLive = {
     legId: string;
     status: 'LIVE' | 'SCHEDULED' | 'UNVERIFIED';
     reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
+    vehiclePositionStatus?: 'OBSERVED' | 'UNAVAILABLE';
+    boardingStopArrival?: {
+      status: 'PREDICTED' | 'SCHEDULED' | 'UNAVAILABLE';
+      scheduledAt?: string;
+      predictedAt?: string;
+      realtimeUpdatedAt?: string;
+    };
     vehicle?: { coordinates: [number, number]; bearing: number | null; speed: number | null; route: string; updatedAt: string };
     lineRoutes?: Array<{ id: string; providerId: string; routeId: string; name: string; direction: string; directionId: string | null; geometrySource: 'gtfs_shape' | 'official_geojson'; coordinates: [number, number][] }>;
-    vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean }>;
+    vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean; etaSeconds?: number | null; approachEvidence?: null | { source: 'OBSERVED_PROGRESS' | 'TRIP_UPDATE_PREDICTION'; predictedArrivalAt?: string; realtimeUpdatedAt?: string; remainingStops?: number; currentStopSequence?: number; currentStopId?: string } }>;
   }>;
 };
 export type ApiTransitStopArrival = {

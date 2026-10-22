@@ -337,6 +337,9 @@ export function JourneyRouteMapScreen({
       coordinates: vehicle.coordinates,
       updatedAt: vehicle.updatedAt,
       emphasized: vehicle.emphasized,
+      approachEvidence: vehicle.approachEvidence?.source ?? null,
+      etaSeconds: vehicle.etaSeconds ?? null,
+      remainingStops: vehicle.approachEvidence?.remainingStops ?? null,
     }));
     mapAdapter.current?.setTransitLineOverlay?.({
       modeColor: journeyModeColor(leg.mode, leg.transportType),
@@ -749,7 +752,8 @@ export function JourneyRouteMapScreen({
             const color = item.color;
             const selected = activeSegmentId === leg.id;
             const scheduled = isScheduledRouteLeg(leg);
-            const liveStatus = liveJourney?.segments.find(segment => segment.legId === leg.id)?.status === 'LIVE' ? 'LIVE' : leg.liveStatus;
+            const liveSegment = liveJourney?.segments.find(segment => segment.legId === leg.id);
+            const liveStatus = liveSegment?.status === 'LIVE' ? 'LIVE' : leg.liveStatus;
             const expanded = expandedSegments.has(leg.id);
             const caveat = journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource);
             const canBook = journeyLegCanBeBooked(leg);
@@ -805,6 +809,14 @@ export function JourneyRouteMapScreen({
                 </ol> : <p className="text-[10px] text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
                 {leg.providerId && leg.routeId && stops[0] && <div className="mt-3 border-t border-[var(--route-border)] pt-2" aria-live="polite">
                   <p className="mb-2 text-[10px] font-bold text-[var(--route-muted)]">Найближчі рейси до {stops[0].name}</p>
+                {selected && liveSegment && <p data-testid="selected-line-live-status" role="status" className="mb-2 text-[10px] text-[var(--route-muted)]">
+                  {(liveSegment.vehicles?.length ?? 0) > 0
+                    ? `На карті ${liveSegment.vehicles?.length ?? 0} машин зі свіжими GPS-позиціями; виділено ${liveSegment.vehicles?.filter(vehicle => vehicle.emphasized && vehicle.approachEvidence?.remainingStops !== 0).length ?? 0} на під’їзді та ${liveSegment.vehicles?.filter(vehicle => vehicle.emphasized && vehicle.approachEvidence?.remainingStops === 0).length ?? 0} на точці посадки.`
+                    : 'Живі GPS-позиції цієї лінії зараз недоступні.'}
+                  {liveSegment.boardingStopArrival?.status === 'PREDICTED' && liveSegment.boardingStopArrival.predictedAt
+                    ? ` Прогноз вибраного рейсу: ${formatTime(liveSegment.boardingStopArrival.predictedAt)}; це прогноз фіда, не GPS-позиція.`
+                    : ''}
+                </p>}
                 {arrivalsSnapshot?.status === 'loading' && <p className="text-[10px] text-[var(--route-subtle)]">Оновлюємо час прибуття…</p>}
                 {arrivalsSnapshot?.status === 'unavailable' && <p className="text-[10px] text-[var(--route-subtle)]">{arrivalsSnapshot.reason === 'direction_missing' ? 'Напрямок у транспортному фіді не вказаний, ETA не показуємо.' : 'Час прибуття зараз недоступний.'}</p>}
                 {arrivalsSnapshot?.status === 'available' && <>

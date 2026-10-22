@@ -516,13 +516,18 @@ export class MapLibreAdapter implements MapAdapter {
       const element = marker.getElement();
       const emphasized = vehicle.emphasized;
       element.textContent = glyph;
-      element.title = `${emphasized ? 'Наближається до посадки' : 'Транспорт на вибраній лінії'} · ${new Date(vehicle.updatedAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}`;
+      const approachLabel = vehicle.approachEvidence === 'TRIP_UPDATE_PREDICTION'
+        ? `Прогноз прибуття до посадки${vehicle.etaSeconds && vehicle.etaSeconds > 0 ? ` · ${Math.ceil(vehicle.etaSeconds / 60)} хв` : ''}`
+        : vehicle.approachEvidence === 'OBSERVED_PROGRESS'
+          ? `${vehicle.remainingStops === 0 ? 'Живий GPS і зупинки: на точці посадки' : 'Живий GPS і послідовність зупинок: прямує до посадки'}${vehicle.etaSeconds && vehicle.etaSeconds > 0 ? ` · прогноз ${Math.ceil(vehicle.etaSeconds / 60)} хв` : ''}`
+          : 'Транспорт на вибраній лінії';
+      element.title = `${emphasized ? approachLabel : 'Транспорт на вибраній лінії'} · ${new Date(vehicle.updatedAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}`;
       element.style.width = emphasized ? '36px' : '30px';
       element.style.height = emphasized ? '36px' : '30px';
       element.style.background = overlay?.modeColor ?? '#1687FF';
-      element.style.opacity = emphasized ? '1' : '0.42';
       marker.setLngLat(vehicle.coordinates);
       if (!this.map.getContainer().contains(element)) marker.addTo(this.map);
+      marker.setOpacity(emphasized ? 1 : 0.42);
     }
   }
   setVehicle(point: Coordinate, heading?: number | null) {
