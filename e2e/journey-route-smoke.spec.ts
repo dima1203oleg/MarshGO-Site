@@ -142,6 +142,12 @@ test('real production transit focus hides other journey legs and retains the sel
   const navigation = page.getByRole('navigation', { name: 'Основна навігація' });
   await expect(navigation).toBeVisible();
   await navigation.getByRole('button', { name: 'Пошук', exact: true }).click();
+  const transportModes = page.locator('.transport-mode-grid > button[aria-label]');
+  await expect(transportModes).toHaveCount(12);
+  expect(await transportModes.evaluateAll(elements => elements.map(element => element.getAttribute('aria-label')))).toEqual([
+    'Попутки', 'Маршрутки', 'Автобуси', 'Таксі', 'Трамваї', 'Тролейбуси',
+    'Метро', 'Поїзди', 'Велосипеди', 'Самокати', 'Каршеринг', 'Трансфери',
+  ]);
   await page.getByPlaceholder('Місто відправлення').fill('Площа Ринок');
   await page.getByRole('button', { name: origin.label, exact: true }).click();
   await page.getByPlaceholder('Місто призначення').fill('Сихівська');
@@ -180,9 +186,14 @@ test('real production transit focus hides other journey legs and retains the sel
   await expect(routeMap.getByRole('list', { name: 'Зупинки сегмента A20' })).toContainText('Сихівська');
   await expect(bus.getByTestId('selected-line-live-status')).toContainText('На карті 5 машин зі свіжими GPS-позиціями; виділено 2 на під’їзді та 1 на точці посадки.');
   await expect(bus.getByTestId('selected-line-live-status')).toContainText('прогноз фіда, не GPS-позиція');
+  await page.getByRole('button', { name: 'Показати весь маршрут' }).click();
+  await expect(bus.getByRole('button', { name: 'Вибрати сегмент: Автобус A20' })).toHaveAttribute('aria-pressed', 'false');
   if (testInfo.project.name === 'chromium') {
     const mapCanvas = routeMap.locator('.maplibregl-map');
     const mapStateTimeout = { timeout: 15_000 };
+    await expect.poll(() => mapCanvas.getAttribute('data-marshgo-selected-route-segment-count'), mapStateTimeout).toBe('3');
+    await expect.poll(() => mapCanvas.getAttribute('data-marshgo-hidden-route-segment-count'), mapStateTimeout).toBe('0');
+    await bus.getByRole('button', { name: 'Вибрати сегмент: Автобус A20', exact: true }).click();
     await expect.poll(() => mapCanvas.getAttribute('data-marshgo-selected-route-segment-count'), mapStateTimeout).toBe('1');
     await expect.poll(() => mapCanvas.getAttribute('data-marshgo-dimmed-route-segment-count'), mapStateTimeout).toBe('0');
     await expect.poll(() => mapCanvas.getAttribute('data-marshgo-hidden-route-segment-count'), mapStateTimeout).toBe('2');

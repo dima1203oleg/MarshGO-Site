@@ -491,6 +491,7 @@ export function JourneyRouteMapScreen({
   useEffect(() => {
     if (dragging) return;
     if (!activeSegmentId) {
+      mapAdapter.current?.setActiveRouteSegment?.(null);
       mapAdapter.current?.fitRoute(mapPadding);
       return;
     }
@@ -735,7 +736,10 @@ export function JourneyRouteMapScreen({
             onOpenDetails={cycleSheet}
             onFavoriteChange={toggleSaved}
           />
-          <p className="mt-1 text-right text-[9px] font-semibold text-[var(--route-muted)]">{distanceSummary}{waitingSeconds > 0 ? ' · очікування ' + formatDuration(waitingSeconds) : ''}</p>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <p className="text-[9px] font-semibold text-[var(--route-muted)]">{distanceSummary}{waitingSeconds > 0 ? ' · очікування ' + formatDuration(waitingSeconds) : ''}</p>
+            {activeSegmentId && <button type="button" onClick={() => setActiveSegmentId(null)} className="min-h-9 rounded-full border border-[var(--route-border)] px-3 text-[10px] font-bold text-[#1687FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1687FF]">Показати весь маршрут</button>}
+          </div>
           {(mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured' || missingShapes > 0 || approximateWalkCount > 0) && <p role="status" className={`mt-1 text-[9px] font-semibold ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{mapStatusText}</p>}
           {!stripItems.length && <p className="mt-2 text-xs text-[var(--route-muted)]">Дані сегментів цього маршруту не надійшли.</p>}
           <span className="sr-only">Загальна відстань: {distanceSummary}. Виїзд {firstLeg ? formatTime(firstLeg.departureAt) : '—'}, прибуття {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}. Кольорова смуга пропорційна тривалості транспортних сегментів; очікування показане окремо.</span>
