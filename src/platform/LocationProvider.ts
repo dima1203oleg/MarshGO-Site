@@ -20,6 +20,32 @@ export function geolocationTimestampToIso(timestamp: number): string | null {
   return new Date(timestampMs).toISOString();
 }
 
+/**
+ * Browsers can report unavailable optional GPS measurements as NaN. Preserve
+ * the valid coordinates and omit only those optional measurements, so one
+ * unsupported heading/speed value cannot discard an otherwise good GPS fix.
+ */
+export function geolocationPositionToFix(position: GeolocationPosition) {
+  const { coords } = position;
+  const optionalNumber = (value: number | null, isValid: (candidate: number) => boolean) =>
+    value !== null && Number.isFinite(value) && isValid(value) ? value : undefined;
+  const altitudeMeters = optionalNumber(coords.altitude, () => true);
+  const altitudeAccuracyMeters = optionalNumber(coords.altitudeAccuracy, value => value >= 0);
+  const headingDegrees = optionalNumber(coords.heading, value => value >= 0 && value <= 360);
+  const speedMps = optionalNumber(coords.speed, value => value >= 0 && value <= 150);
+  return locationFixSchema.safeParse({
+    longitude: coords.longitude,
+    latitude: coords.latitude,
+    accuracyMeters: coords.accuracy,
+    ...(altitudeMeters === undefined ? {} : { altitudeMeters }),
+    ...(altitudeAccuracyMeters === undefined ? {} : { altitudeAccuracyMeters }),
+    ...(headingDegrees === undefined ? {} : { headingDegrees }),
+    ...(speedMps === undefined ? {} : { speedMps }),
+    capturedAtClient: geolocationTimestampToIso(position.timestamp),
+    source: 'gps',
+  });
+}
+
 /** Foreground Web Geolocation adapter, also used by Capacitor WKWebView. */
 export class WebGeolocationProvider implements LocationProvider {
   private watchId: number | null = null;
@@ -46,12 +72,7 @@ export class WebGeolocationProvider implements LocationProvider {
     }));
   }
   private toFix(position: GeolocationPosition) {
-    const capturedAtClient = geolocationTimestampToIso(position.timestamp);
-    return locationFixSchema.safeParse({ longitude: position.coords.longitude, latitude: position.coords.latitude,
-      accuracyMeters: position.coords.accuracy, altitudeMeters: position.coords.altitude ?? undefined,
-      altitudeAccuracyMeters: position.coords.altitudeAccuracy ?? undefined,
-      headingDegrees: position.coords.heading ?? undefined, speedMps: position.coords.speed ?? undefined,
-      capturedAtClient, source: 'gps' });
+    return geolocationPositionToFix(position);
   }
   async stop() { if (this.watchId !== null) navigator.geolocation.clearWatch(this.watchId); this.watchId = null; this.state = 'IDLE'; }
   subscribe(listener: (fix: LocationFix) => void) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
