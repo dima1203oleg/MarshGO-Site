@@ -30,7 +30,7 @@ export interface MapAdapter {
   setLiveTransitPositions?(positions: readonly LiveTransitPosition[]): void;
   setLiveRidesharePositions?(positions: readonly LiveRidesharePosition[]): void;
   setLiveRideshareApproachRoute?(route: LiveRideshareApproachRoute | null): void;
-  setMeetingPoints?(points: MeetingMapPoints | null, fit?: boolean): void;
+  setMeetingPoints?(points: MeetingMapPoints | null, fit?: boolean, drawStraightLineApproaches?: boolean): void;
   setTransitLineOverlay?(overlay: TransitLineOverlay | null): void;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
   focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;

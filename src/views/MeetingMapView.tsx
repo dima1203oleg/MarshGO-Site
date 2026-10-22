@@ -3,10 +3,12 @@ import { ArrowLeft, CarFront, Flag, UserRound } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import type { MapAdapter } from '../map/MapAdapter';
 import { getMapLayer, setMapLayer } from '../map/mapMode';
-import { productionApi, type ApiBooking, type ApiRendezvous } from '../services/productionApi';
-import { meetingSnapshot, formatEta, formatMeters, stageText } from '../navigation/meeting';
+import { productionApi, type ApiBooking, type ApiRendezvous, type ApiRendezvousApproaches } from '../services/productionApi';
+import { approachStage, formatMeters, stageText } from '../navigation/meeting';
 import { distanceBetween } from '../navigation/guidance';
 import { isFreshRendezvousSample, shouldWatchRendezvousLocation } from '../domain/rendezvousLocationTracking';
+import { rendezvousApproachRoutes } from '../domain/rendezvousMapPoints';
+import type { MapStatus } from '../map/MapAdapter';
 
 type Point = [number, number];
 const SEND_EVERY_MS = 5_000;
@@ -19,22 +21,25 @@ const POLL_EVERY_MS = 5_000;
  */
 export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBooking; initial: ApiRendezvous; onClose: () => void }) {
   const [rendezvous, setRendezvous] = useState(initial);
+  const [approaches, setApproaches] = useState<ApiRendezvousApproaches | null>(null);
   const [mine, setMine] = useState<Point | null>(null);
   const [other, setOther] = useState<Point | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [pageVisible, setPageVisible] = useState(() => typeof document !== 'undefined' && document.visibilityState === 'visible');
+  const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const adapter = useRef<MapAdapter | null>(null);
   const latestSession = useRef(initial);
   const lastSent = useRef(0);
-  const driverTrail = useRef<{ point: Point; at: number } | null>(null);
-  const [driverSpeed, setDriverSpeed] = useState<number | null>(null);
+  const fittedApproach = useRef(false);
   const iAmDriver = booking.current_user_is_driver;
   const mutualConsent = rendezvous.currentParticipantConsent === true && rendezvous.otherParticipantConsent === true;
   const sharing = rendezvous.locationSharingEnabled && mutualConsent;
   const canTrack = shouldWatchRendezvousLocation(rendezvous, true, pageVisible);
   const consentCanChange = !['BOARDING', 'COMPLETED', 'CANCELLED', 'EXPIRED'].includes(rendezvous.state);
   const pickup = rendezvous.pickup.coordinates as Point;
+  const routeSegments = useMemo(() => rendezvousApproachRoutes(approaches), [approaches]);
+  useEffect(() => { if (!sharing || !canTrack) fittedApproach.current = false; }, [sharing, canTrack]);
 
   useEffect(() => {
     const updateVisibility = () => setPageVisible(document.visibilityState === 'visible');
@@ -76,6 +81,24 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
     return () => { alive = false; window.clearInterval(timer); unsubscribe(); };
   }, [booking.id, initial.id, iAmDriver, pageVisible]);
 
+  // Fetch only server-routed approaches while both participants actively share GPS.
+  // If routing is unavailable, show that state instead of drawing a guessed road or ETA.
+  useEffect(() => {
+    if (!sharing || !canTrack) { setApproaches(null); return; }
+    let alive = true;
+    let pending = false;
+    const refresh = async () => {
+      if (pending || !alive) return;
+      pending = true;
+      try { const value = await productionApi.rendezvousApproaches(rendezvous.id); if (alive) setApproaches(value); }
+      catch { if (alive) setApproaches(null); }
+      finally { pending = false; }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 15_000);
+    return () => { alive = false; window.clearInterval(timer); };
+  }, [sharing, canTrack, rendezvous.id]);
+
   // My own position: shown at once from the device, and shared with the other person while sharing is on.
   useEffect(() => {
     const stopSharingIfUnavailable = (reason: string) => {
@@ -91,11 +114,6 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
       const point: Point = [position.coords.longitude, position.coords.latitude];
       setMine(point);
       const now = Date.now();
-      if (iAmDriver) {
-        const previous = driverTrail.current;
-        if (previous && now - previous.at > 1500) setDriverSpeed(distanceBetween(previous.point, point) / ((now - previous.at) / 1000));
-        if (!previous || now - previous.at > 1500) driverTrail.current = { point, at: now };
-      }
       if (canTrack && now - lastSent.current >= SEND_EVERY_MS) {
         lastSent.current = now;
         void productionApi.sendRendezvousLocation(rendezvous.id, { longitude: point[0], latitude: point[1], accuracyMeters: Math.min(1000, position.coords.accuracy || 50), capturedAt: new Date(position.timestamp).toISOString() }).catch(() => undefined);
@@ -116,9 +134,24 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
   const meetingPoints = { pickup, driver: driverPoint, passenger: passengerPoint };
   const latestMeetingPoints = useRef(meetingPoints);
   latestMeetingPoints.current = meetingPoints;
-  useEffect(() => { adapter.current?.setMeetingPoints?.(meetingPoints); }, [pickup[0], pickup[1], driverPoint?.[0], driverPoint?.[1], passengerPoint?.[0], passengerPoint?.[1]]);
-  const snapshot = useMemo(() => meetingSnapshot({ pickup, driver: driverPoint, passenger: passengerPoint, driverSpeedMps: iAmDriver ? driverSpeed : null }),
-    [pickup[0], pickup[1], driverPoint?.[0], driverPoint?.[1], passengerPoint?.[0], passengerPoint?.[1], driverSpeed, iAmDriver]);
+  useEffect(() => { adapter.current?.setMeetingPoints?.(meetingPoints, false, false); }, [pickup[0], pickup[1], driverPoint?.[0], driverPoint?.[1], passengerPoint?.[0], passengerPoint?.[1]]);
+  const routedCoordinates = useMemo(() => routeSegments.flatMap((segment) => segment.coordinates), [routeSegments]);
+  useEffect(() => {
+    if (!adapter.current || mapStatus !== 'available' || routeSegments.length === 0 || fittedApproach.current) return;
+    adapter.current.focusCoordinates?.([pickup, ...routedCoordinates, ...(driverPoint ? [driverPoint] : []), ...(passengerPoint ? [passengerPoint] : [])],
+      { top: 96, right: 28, bottom: 240, left: 28 }, 16);
+    fittedApproach.current = true;
+  }, [mapStatus, routeSegments, routedCoordinates, pickup[0], pickup[1], driverPoint?.[0], driverPoint?.[1], passengerPoint?.[0], passengerPoint?.[1]]);
+  const snapshot = useMemo(() => {
+    const betweenM = driverPoint && passengerPoint ? distanceBetween(driverPoint, passengerPoint) : null;
+    return { betweenM, stage: approachStage(betweenM) };
+  }, [driverPoint?.[0], driverPoint?.[1], passengerPoint?.[0], passengerPoint?.[1]]);
+  const approachSummary = (participant: 'driver' | 'passenger') => {
+    const approach = approaches?.[participant].approach;
+    if (!approach || approach.status !== 'ROUTED' || approach.distanceMeters === null) return 'Маршрут до точки недоступний';
+    const eta = approach.durationSeconds === null ? 'ETA недоступний' : `≈ ${Math.max(1, Math.ceil(approach.durationSeconds / 60))} хв`;
+    return `${formatMeters(approach.distanceMeters)} до точки · ${eta}`;
+  };
 
   const act = async (action: 'arrived' | 'will_arrive') => {
     setBusy(true); setMessage('');
@@ -150,7 +183,7 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
   const who = iAmDriver ? booking.passenger_name : booking.driver_name;
 
   return <main className="fixed inset-0 z-[80] overflow-hidden bg-[#dbeafe] text-[#17243a]" aria-label="Карта зустрічі">
-    <MarshGoMap route={[]} theme="MARSHGO_LIGHT" onStatus={() => undefined} onAdapter={(next) => { adapter.current = next; next?.setMeetingPoints?.(latestMeetingPoints.current); }}/>
+    <MarshGoMap route={[]} routeSegments={routeSegments} theme="MARSHGO_LIGHT" onStatus={setMapStatus} onAdapter={(next) => { adapter.current = next; next?.setMeetingPoints?.(latestMeetingPoints.current, true, false); }}/>
     <div className="pointer-events-none absolute inset-x-4 top-[max(3.5rem,calc(env(safe-area-inset-top)+0.85rem))] z-[500] space-y-2">
       <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white p-2 shadow-xl">
         <button type="button" onClick={onClose} aria-label="Назад" className="grid h-10 w-10 place-items-center rounded-full bg-slate-100"><ArrowLeft size={18}/></button>
@@ -159,14 +192,14 @@ export function MeetingMapView({ booking, initial, onClose }: { booking: ApiBook
     </div>
     <section aria-label="Стан зустрічі" className="absolute inset-x-0 bottom-0 z-[500] rounded-t-[1.8rem] bg-white px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_35px_rgba(14,37,70,.18)]">
       <p data-testid="meeting-stage" className="text-center text-sm font-extrabold">{snapshot.stage ? stageText[snapshot.stage] : sharing ? `Чекаємо, поки ${iAmDriver ? 'пасажир' : 'водій'} поділиться місцем…` : mutualConsent ? 'Обмін місцем ще не увімкнено' : 'Очікуємо взаємне підтвердження обміну місцем'}</p>
-      {snapshot.betweenM !== null && <p data-testid="meeting-between" className="mt-0.5 text-center text-xs text-slate-500">Між вами {formatMeters(snapshot.betweenM)}</p>}
+      {snapshot.betweenM !== null && <p data-testid="meeting-between" className="mt-0.5 text-center text-xs text-slate-500">Між вами по прямій {formatMeters(snapshot.betweenM)}</p>}
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className="rounded-2xl bg-[#EAF3FF] p-3" data-testid="meeting-driver-card"><p className="flex items-center gap-1.5 text-[11px] font-bold text-[#1789F4]"><CarFront size={14}/>{iAmDriver ? 'Ви (водій)' : 'Водій'}</p>
-          <p className="mt-1 text-xl font-extrabold">{formatEta(snapshot.driverEtaMin)}</p><p className="text-[11px] text-slate-500">{driverPoint ? `прямо до точки ${formatMeters(snapshot.driverToPickupM)}` : 'немає свіжої позиції'}</p></div>
+          <p className="mt-1 text-xl font-extrabold">{driverPoint ? (approaches?.driver.approach.status === 'ROUTED' && approaches.driver.approach.durationSeconds !== null ? `≈ ${Math.max(1, Math.ceil(approaches.driver.approach.durationSeconds / 60))} хв` : 'ETA —') : '—'}</p><p className="text-[11px] text-slate-500">{driverPoint ? approachSummary('driver') : 'немає свіжої позиції'}</p></div>
         <div className="rounded-2xl bg-emerald-50 p-3" data-testid="meeting-passenger-card"><p className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700"><UserRound size={14}/>{iAmDriver ? 'Пасажир' : 'Ви (пасажир)'}</p>
-          <p className="mt-1 text-xl font-extrabold">{formatEta(snapshot.passengerEtaMin)}</p><p className="text-[11px] text-slate-500">{passengerPoint ? `прямо до точки ${formatMeters(snapshot.passengerToPickupM)}` : 'немає свіжої позиції'}</p></div>
+          <p className="mt-1 text-xl font-extrabold">{passengerPoint ? (approaches?.passenger.approach.status === 'ROUTED' && approaches.passenger.approach.durationSeconds !== null ? `≈ ${Math.max(1, Math.ceil(approaches.passenger.approach.durationSeconds / 60))} хв` : 'ETA —') : '—'}</p><p className="text-[11px] text-slate-500">{passengerPoint ? approachSummary('passenger') : 'немає свіжої позиції'}</p></div>
       </div>
-      <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[11px] text-slate-500"><Flag size={12} className="shrink-0 text-rose-600"/>Місце зустрічі — початок маршруту поїздки. Відстань і ETA орієнтовні, за прямою відстанню.</p>
+      <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[11px] text-slate-500"><Flag size={12} className="shrink-0 text-rose-600"/>Місце зустрічі — початок маршруту поїздки. ETA залежить від актуальності даних маршрутизатора.</p>
       {sharing && <p className="mt-1 text-center text-[10px] text-slate-500">Позиції оновлюються кожні 5 с; показуємо лише свіжі координати до 90 с.</p>}
       {message && <p role="status" className="mt-2 rounded-xl bg-amber-50 p-2.5 text-xs text-amber-900">{message}</p>}
       {!rendezvous.locationSharingEnabled && ['SCHEDULED', 'ACTIVATING'].includes(rendezvous.state) ? <button type="button" disabled={busy || notYet} onClick={() => void activate()} className="mt-3 w-full rounded-2xl bg-[#1789F4] py-3.5 text-sm font-bold text-white disabled:opacity-50">{notYet ? `Зустріч стане доступною о ${new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(new Date(rendezvous.activationAt))}` : 'Підготувати зустріч'}</button>

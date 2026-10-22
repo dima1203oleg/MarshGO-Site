@@ -1377,7 +1377,7 @@ export function ProductionMarketplace() {
     </div>
   </header>;
 
-  const searchForm = <form onSubmit={(event) => { event.preventDefault(); void searchJourney(); }} className="journey-search-card rounded-[1.7rem] border border-white bg-white p-3 shadow-[0_10px_28px_rgba(31,67,114,.08)]">
+  const searchForm = <form onSubmit={(event) => { event.preventDefault(); void searchJourney(); }} className="journey-search-card rounded-[1.7rem] border border-white bg-white p-3 shadow-[0_10px_28px_rgba(31,67,114,.08)] dark:border-[#263648] dark:bg-[#111820]">
     <div className="relative">
       <div role="group" aria-label="Початкова точка" className="flex items-center gap-2 rounded-t-2xl bg-[#f6f8fc] px-3 py-3"><MapPin size={19} className="shrink-0 text-blue-600"/><label className="min-w-0 flex-1"><small className="block text-[10px] text-slate-400">Звідки</small><input required value={origin} onFocus={() => setRoutePlaceField('origin')} onChange={(event) => {setOrigin(event.target.value);setSearchOriginPlace(null);setRoutePlaceField('origin');}} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void searchRoutePlace('origin'); } }} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто відправлення" aria-autocomplete="list" aria-expanded={routePlaceField === 'origin' && routePlaceSuggestions.length > 0} /></label><button type="button" aria-label="Обрати на мапі" title="Обрати на мапі" onClick={()=>{setRoutePlaceField(null);setRoutePlaceSuggestions([]);setPicker({form:'search',field:'origin'});}} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[#1789F4]"><MapPin size={16}/></button><button type="button" aria-label="Моя локація" title="Моя локація" onClick={()=>void useMyLocationAsOrigin()} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-emerald-600"><Navigation size={16}/></button></div>
       {routePlaceField==='origin'&&routePlaceSuggestions.length>0&&<div aria-label="Варіанти місць відправлення" className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-white">{routePlaceSuggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseSearchPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs hover:bg-blue-50">{place.label}</button>)}</div>}
@@ -1407,7 +1407,7 @@ export function ProductionMarketplace() {
   </button>; };
 
   const searchScreen = <div className="home-screen search-screen mx-auto w-full max-w-xl px-5 pb-8">
-    <section className="home-intro"><p className="home-greeting relative z-[1] text-xs font-semibold text-[#1789F4]">Пошук</p><h1 className="home-title relative z-[1] mt-0.5 text-[1.35rem] font-extrabold leading-tight tracking-tight text-[#0E1F35]">Куди їдемо?</h1><p className="home-description relative z-[1] mt-1 text-xs text-slate-500">Усі види транспорту в одному пошуку.</p></section>
+    <section className="home-intro search-route-form-header border-b border-transparent pb-2 dark:border-[#263648]"><p className="home-greeting relative z-[1] text-xs font-semibold text-[#1789F4]">Пошук</p><h1 className="home-title relative z-[1] mt-0.5 text-[1.35rem] font-extrabold leading-tight tracking-tight text-[#0E1F35] dark:text-white">Куди їдемо?</h1><p className="home-description relative z-[1] mt-1 text-xs text-slate-500 dark:text-slate-400">Усі види транспорту в одному пошуку.</p></section>
     <div className="home-search-panel mt-4">{searchForm}</div>
   </div>;
 

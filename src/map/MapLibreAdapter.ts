@@ -51,6 +51,7 @@ export class MapLibreAdapter implements MapAdapter {
   private meetingMarkers = new Map<'pickup' | 'driver' | 'passenger', maplibregl.Marker>();
   private meetingFitted = false;
   private meetingFitRequested = false;
+  private meetingDrawStraightLineApproaches = true;
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
   onRouteSegmentSelect: (id: string) => void = () => undefined;
@@ -302,9 +303,10 @@ export class MapLibreAdapter implements MapAdapter {
   }
 
   /** Displays the consented pickup and participant positions as one batched map layer. */
-  setMeetingPoints(points: MeetingMapPoints | null, fit = true) {
+  setMeetingPoints(points: MeetingMapPoints | null, fit = true, drawStraightLineApproaches = true) {
     this.meetingPoints = points;
     this.meetingFitRequested ||= fit;
+    this.meetingDrawStraightLineApproaches = drawStraightLineApproaches;
     if (!points) {
       for (const marker of this.meetingMarkers.values()) marker.remove();
       this.meetingMarkers.clear();
@@ -332,8 +334,8 @@ export class MapLibreAdapter implements MapAdapter {
       driver: { label: 'Водій', glyph: '🚗', color: '#1789F4' },
       passenger: { label: 'Пасажир', glyph: '●', color: '#05A777' },
     } as const;
-    const features = (['driver', 'passenger'] as const).flatMap((key) =>
-      points[key] && points.pickup ? [{ type: 'Feature' as const, properties: { color: visual[key].color }, geometry: { type: 'LineString' as const, coordinates: [points[key]!, points.pickup] } }] : []);
+    const features = this.meetingDrawStraightLineApproaches ? (['driver', 'passenger'] as const).flatMap((key) =>
+      points[key] && points.pickup ? [{ type: 'Feature' as const, properties: { color: visual[key].color }, geometry: { type: 'LineString' as const, coordinates: [points[key]!, points.pickup] } }] : []) : [];
     if (styleLoaded) {
       (this.map.getSource('marshgo-meeting') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features });
       this.map.getContainer().dataset.marshgoMeetingApproachCount = String(features.length);
