@@ -16,7 +16,7 @@ test('normal navigation renders exactly the selected map layers', () => {
 test('segment focus hides other journey legs while retaining the selected leg', () => {
   const itinerary = [
     { id: 'walk', coordinates: [[24, 49], [24.01, 49.01]] as [number, number][], modeColor: '#91A6BB' },
-    { id: 'minibus', coordinates: [[24.01, 49.01], [24.2, 49.2]] as [number, number][], modeColor: '#F43F7B' },
+    { id: 'minibus', coordinates: [[24.01, 49.01], [24.2, 49.2]] as [number, number][], modeColor: '#F59E0B' },
     { id: 'carpool', coordinates: [[24.2, 49.2], [24.3, 49.3]] as [number, number][], modeColor: '#A855F7' },
   ];
 
