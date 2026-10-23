@@ -1,5 +1,5 @@
 import type { ApiRendezvous, ApiRendezvousApproaches } from '../services/productionApi';
-import type { ColoredRouteSegment, RouteWaypoint } from '../map/MapAdapter';
+import type { ColoredRouteSegment, LiveRidesharePosition, RouteWaypoint } from '../map/MapAdapter';
 
 const terminalStates = new Set(['BOARDING', 'COMPLETED', 'CANCELLED', 'EXPIRED']);
 
@@ -65,4 +65,45 @@ export function rendezvousApproachRoutes(value: ApiRendezvousApproaches | null):
     if (valid) routes.push({ id, coordinates: approach.geometry, modeColor });
   }
   return routes;
+}
+
+export type LiveRendezvousOverlay = { positions: LiveRidesharePosition[]; routes: ColoredRouteSegment[] };
+
+function distanceMeters(a: [number, number], b: [number, number]) {
+  const radians = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * radians;
+  const dLon = (b[0] - a[0]) * radians;
+  const lat1 = a[1] * radians;
+  const lat2 = b[1] * radians;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 6_371_000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
+}
+
+/** Validate the server's consent-gated routes against each exact GPS fix before drawing either side. */
+export function liveRendezvousOverlay(value: ApiRendezvousApproaches | null, now = Date.now()): LiveRendezvousOverlay {
+  if (!value || !validPoint(value.pickup.coordinates)) return { positions: [], routes: [] };
+  const positions: LiveRidesharePosition[] = [];
+  const routes: ColoredRouteSegment[] = [];
+  const candidates = [
+    { participant: 'driver' as const, id: `${value.rendezvousId}:driver`, color: '#2563eb', side: value.driver },
+    { participant: 'passenger' as const, id: `${value.rendezvousId}:passenger`, color: '#7c3aed', side: value.passenger },
+  ];
+  for (const { participant, id, color, side } of candidates) {
+    const location = side.location;
+    if (!location || location.freshness !== 'LIVE' || !validPoint(location.coordinates) || !Number.isFinite(location.accuracyMeters) || location.accuracyMeters > 100) continue;
+    const locationAge = now - Date.parse(location.capturedAt);
+    if (!Number.isFinite(locationAge) || locationAge < -30_000 || locationAge > 90_000) continue;
+    positions.push({ id, participant, coordinates: location.coordinates, capturedAt: location.capturedAt, freshness: 'LIVE' });
+
+    const approach = side.approach;
+    const routeAge = approach.calculatedAt ? now - Date.parse(approach.calculatedAt) : NaN;
+    if (approach.status !== 'ROUTED' || !approach.calculatedAt || !Number.isFinite(routeAge) || routeAge < -30_000 || routeAge > 60_000
+      || !Array.isArray(approach.geometry) || approach.geometry.length < 2
+      || !approach.geometry.every(validPoint)) continue;
+    const first = approach.geometry[0]!;
+    const last = approach.geometry.at(-1)!;
+    if (distanceMeters(first, location.coordinates) > 200 || distanceMeters(last, value.pickup.coordinates) > 200) continue;
+    routes.push({ id: `${participant}-approach`, coordinates: approach.geometry, modeColor: color });
+  }
+  return { positions, routes };
 }

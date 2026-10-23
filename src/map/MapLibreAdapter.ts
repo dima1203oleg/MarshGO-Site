@@ -44,6 +44,7 @@ export class MapLibreAdapter implements MapAdapter {
   private liveTransitPositions: LiveTransitPosition[] = [];
   private liveRidesharePositions: LiveRidesharePosition[] = [];
   private liveRideshareApproachRoute: LiveRideshareApproachRoute | null = null;
+  private liveRendezvousApproachRoutes: ColoredRouteSegment[] = [];
   private rideshareMarkers = new Map<string, maplibregl.Marker>();
   private transitLineOverlay: TransitLineOverlay | null = null;
   private transitFleetMarkers = new Map<string, maplibregl.Marker>();
@@ -172,7 +173,7 @@ export class MapLibreAdapter implements MapAdapter {
     if (!this.map.getLayer('marshgo-rideshare-approach-glow')) this.map.addLayer({
       id: 'marshgo-rideshare-approach-glow', type: 'line', source: 'marshgo-rideshare-approach',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#08C5D3', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 9, 15, 18], 'line-opacity': 0.28, 'line-blur': 5 },
+      paint: { 'line-color': ['coalesce', ['get', 'modeColor'], '#08C5D3'], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 9, 15, 18], 'line-opacity': 0.28, 'line-blur': 5 },
     });
     if (!this.map.getLayer('marshgo-rideshare-approach-casing')) this.map.addLayer({
       id: 'marshgo-rideshare-approach-casing', type: 'line', source: 'marshgo-rideshare-approach',
@@ -182,7 +183,7 @@ export class MapLibreAdapter implements MapAdapter {
     if (!this.map.getLayer('marshgo-rideshare-approach')) this.map.addLayer({
       id: 'marshgo-rideshare-approach', type: 'line', source: 'marshgo-rideshare-approach',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#08C5D3', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 2, 15, 5], 'line-opacity': 1 },
+      paint: { 'line-color': ['coalesce', ['get', 'modeColor'], '#08C5D3'], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 2, 15, 5], 'line-opacity': 1 },
     });
     if (!this.routeInteractionBound && this.map.getLayer('marshgo-route-hit-target')) {
       this.routeInteractionBound = true;
@@ -446,12 +447,17 @@ export class MapLibreAdapter implements MapAdapter {
     const source = this.map.getSource('marshgo-rideshare-approach') as maplibregl.GeoJSONSource | undefined;
     if (!source) return;
     const route = this.liveRideshareApproachRoute;
-    source.setData(route ? {
-      type: 'Feature', properties: { id: route.id, provider: route.provider, calculatedAt: route.calculatedAt },
-      geometry: { type: 'LineString', coordinates: route.coordinates },
-    } : { type: 'FeatureCollection', features: [] });
+    const features = [
+      ...(route ? [{ type: 'Feature' as const, properties: { id: route.id, provider: route.provider, calculatedAt: route.calculatedAt },
+        geometry: { type: 'LineString' as const, coordinates: route.coordinates } }] : []),
+      ...this.liveRendezvousApproachRoutes.filter((item) => item.coordinates.length >= 2).map((item) => ({
+        type: 'Feature' as const, properties: { id: item.id, modeColor: item.modeColor, calculatedAt: null },
+        geometry: { type: 'LineString' as const, coordinates: item.coordinates },
+      })),
+    ];
+    source.setData({ type: 'FeatureCollection', features });
     const container = this.map.getContainer();
-    container.dataset.marshgoRideshareApproachRouteCount = route ? '1' : '0';
+    container.dataset.marshgoRideshareApproachRouteCount = String(features.length);
     if (route) {
       container.dataset.marshgoRideshareApproachProvider = route.provider;
       container.dataset.marshgoRideshareApproachDistanceMeters = String(Math.round(route.distanceMeters));
@@ -572,23 +578,41 @@ export class MapLibreAdapter implements MapAdapter {
         element.className = 'marshgo-rideshare-marker';
         element.setAttribute('role', 'img');
         element.style.cssText = 'width:38px;height:38px;display:grid;place-items:center;border:2px solid #fff;border-radius:50%;box-shadow:0 3px 14px rgba(5,20,35,.4);transition:opacity 160ms ease,background-color 160ms ease;';
-        element.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.4-4.2A2 2 0 0 1 8.3 5.5h7.4a2 2 0 0 1 1.9 1.3L19 11v7H5z"/><path d="M5 12h14M7.5 15.5h.01M16.5 15.5h.01M7 18v1m10-1v1"/></svg>';
+        element.dataset.participant = position.participant ?? 'driver';
+        element.innerHTML = position.participant === 'passenger'
+          ? '<svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3"/><path d="M5.5 20v-1.5a6.5 6.5 0 0 1 13 0V20z"/></svg>'
+          : '<svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.4-4.2A2 2 0 0 1 8.3 5.5h7.4a2 2 0 0 1 1.9 1.3L19 11v7H5z"/><path d="M5 12h14M7.5 15.5h.01M16.5 15.5h.01M7 18v1m10-1v1"/></svg>';
         marker = new maplibregl.Marker({ element, anchor: 'center', offset: [0, -13] }).setLngLat(position.coordinates).addTo(this.map);
         this.rideshareMarkers.set(position.id, marker);
       } else marker.setLngLat(position.coordinates);
       const element = marker.getElement();
+      if (element.dataset.participant !== (position.participant ?? 'driver')) {
+        element.dataset.participant = position.participant ?? 'driver';
+        element.innerHTML = position.participant === 'passenger'
+          ? '<svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3"/><path d="M5.5 20v-1.5a6.5 6.5 0 0 1 13 0V20z"/></svg>'
+          : '<svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.4-4.2A2 2 0 0 1 8.3 5.5h7.4a2 2 0 0 1 1.9 1.3L19 11v7H5z"/><path d="M5 12h14M7.5 15.5h.01M16.5 15.5h.01M7 18v1m10-1v1"/></svg>';
+      }
       const live = position.freshness === 'LIVE';
-      element.style.backgroundColor = live ? '#08AFC0' : '#728296';
+      element.style.backgroundColor = live ? (position.participant === 'passenger' ? '#7C3AED' : '#08AFC0') : '#728296';
       element.style.opacity = live ? '1' : '0.62';
       element.dataset.freshness = position.freshness.toLowerCase();
-      element.setAttribute('aria-label', live ? 'Попутка: актуальне GPS водія' : 'Попутка: остання відома позиція, GPS застаріло');
-      element.title = live ? 'Актуальне GPS водія' : 'Остання відома позиція · GPS застаріло';
+      const label = position.participant === 'passenger' ? 'пасажира' : 'водія';
+      element.setAttribute('aria-label', live ? `Зустріч: актуальне GPS ${label}` : `Зустріч: остання відома позиція ${label}, GPS застаріло`);
+      element.title = live ? `Актуальне GPS ${label}` : `Остання відома позиція ${label} · GPS застаріло`;
     }
     this.map.getContainer().dataset.marshgoRideshareCount = String(this.liveRidesharePositions.length);
   }
 
   setLiveRideshareApproachRoute(route: LiveRideshareApproachRoute | null) {
     this.liveRideshareApproachRoute = freshRideshareApproachRoute(route);
+    this.updateLiveRideshareApproachSource();
+  }
+
+  /** Render only already-validated, consented server routes to the rendezvous point. */
+  setLiveRendezvousApproachRoutes(routes: readonly ColoredRouteSegment[]) {
+    this.liveRendezvousApproachRoutes = routes.filter((route) => route.coordinates.length >= 2
+      && route.coordinates.every(([longitude, latitude]) => Number.isFinite(longitude) && Math.abs(longitude) <= 180
+        && Number.isFinite(latitude) && Math.abs(latitude) <= 90));
     this.updateLiveRideshareApproachSource();
   }
 

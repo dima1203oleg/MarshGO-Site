@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ApiRendezvous } from '../src/services/productionApi';
-import { rendezvousApproachRoutes, rendezvousDistanceToPickup, rendezvousMapPoints } from '../src/domain/rendezvousMapPoints';
+import { liveRendezvousOverlay, rendezvousApproachRoutes, rendezvousDistanceToPickup, rendezvousMapPoints } from '../src/domain/rendezvousMapPoints';
 import type { ApiRendezvousApproaches } from '../src/services/productionApi';
 
 const session = (patch: Partial<ApiRendezvous> = {}): ApiRendezvous => ({
@@ -85,4 +85,50 @@ test('rendezvous map rejects missing, non-routed, short and malformed approach g
   assert.deepEqual(rendezvousApproachRoutes(approaches), []);
   approaches.passenger.approach.geometry = [[30.5, 50.4]];
   assert.deepEqual(rendezvousApproachRoutes(approaches), []);
+});
+
+test('journey rendezvous overlay shows both participants and their current server-routed approaches', () => {
+  const now = Date.now();
+  const capturedAt = new Date(now - 5_000).toISOString();
+  const approaches: ApiRendezvousApproaches = {
+    rendezvousId: 'rendezvous', pickup: { label: 'Pickup', coordinates: [30.52, 50.45] },
+    driver: {
+      location: { coordinates: [30.51, 50.44], accuracyMeters: 12, capturedAt, freshness: 'LIVE' },
+      approach: { status: 'ROUTED', geometry: [[30.51, 50.44], [30.52, 50.45]], distanceMeters: 1400, durationSeconds: 240, calculatedAt: capturedAt },
+    },
+    passenger: {
+      location: { coordinates: [30.50, 50.43], accuracyMeters: 20, capturedAt, freshness: 'LIVE' },
+      approach: { status: 'ROUTED', geometry: [[30.50, 50.43], [30.52, 50.45]], distanceMeters: 2800, durationSeconds: 480, calculatedAt: capturedAt },
+    },
+    updatedAt: capturedAt,
+  };
+  const overlay = liveRendezvousOverlay(approaches, now);
+  assert.deepEqual(overlay.positions.map(({ participant }) => participant), ['driver', 'passenger']);
+  assert.deepEqual(overlay.routes.map(({ id, modeColor }) => ({ id, modeColor })), [
+    { id: 'driver-approach', modeColor: '#2563eb' },
+    { id: 'passenger-approach', modeColor: '#7c3aed' },
+  ]);
+});
+
+test('journey rendezvous overlay suppresses stale GPS, inaccurate fixes, old routes and mismatched route endpoints', () => {
+  const now = Date.now();
+  const recent = new Date(now - 5_000).toISOString();
+  const approaches: ApiRendezvousApproaches = {
+    rendezvousId: 'rendezvous', pickup: { label: 'Pickup', coordinates: [30.52, 50.45] },
+    driver: {
+      location: { coordinates: [30.51, 50.44], accuracyMeters: 12, capturedAt: new Date(now - 91_000).toISOString(), freshness: 'LIVE' },
+      approach: { status: 'ROUTED', geometry: [[30.51, 50.44], [30.52, 50.45]], distanceMeters: 1400, durationSeconds: 240, calculatedAt: recent },
+    },
+    passenger: {
+      location: { coordinates: [30.50, 50.43], accuracyMeters: 101, capturedAt: recent, freshness: 'LIVE' },
+      approach: { status: 'ROUTED', geometry: [[30.50, 50.43], [30.52, 50.45]], distanceMeters: 2800, durationSeconds: 480, calculatedAt: new Date(now - 61_000).toISOString() },
+    },
+    updatedAt: recent,
+  };
+  assert.deepEqual(liveRendezvousOverlay(approaches, now), { positions: [], routes: [] });
+  approaches.driver.location = { coordinates: [30.51, 50.44], accuracyMeters: 12, capturedAt: recent, freshness: 'LIVE' };
+  approaches.driver.approach.geometry = [[30.48, 50.40], [30.52, 50.45]];
+  const overlay = liveRendezvousOverlay(approaches, now);
+  assert.deepEqual(overlay.positions.map(({ participant }) => participant), ['driver']);
+  assert.deepEqual(overlay.routes, []);
 });

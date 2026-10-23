@@ -6,7 +6,7 @@ export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
 export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; modeColor: string; approximate?: boolean };
 export type LiveTransitPosition = { id: string; coordinates: Coordinate; color: string; label: string; updatedAt: string; selected?: boolean };
-export type LiveRidesharePosition = { id: string; coordinates: Coordinate; capturedAt: string; freshness: 'LIVE' | 'STALE' };
+export type LiveRidesharePosition = { id: string; coordinates: Coordinate; capturedAt: string; freshness: 'LIVE' | 'STALE'; participant?: 'driver' | 'passenger' };
 export type LiveRideshareApproachRoute = {
   id: string; coordinates: Coordinate[]; vehicleCapturedAt: string; calculatedAt: string;
   distanceMeters: number; durationSeconds: number; provider: string;
@@ -30,6 +30,7 @@ export interface MapAdapter {
   setLiveTransitPositions?(positions: readonly LiveTransitPosition[]): void;
   setLiveRidesharePositions?(positions: readonly LiveRidesharePosition[]): void;
   setLiveRideshareApproachRoute?(route: LiveRideshareApproachRoute | null): void;
+  setLiveRendezvousApproachRoutes?(routes: readonly ColoredRouteSegment[]): void;
   setMeetingPoints?(points: MeetingMapPoints | null, fit?: boolean, drawStraightLineApproaches?: boolean): void;
   setTransitLineOverlay?(overlay: TransitLineOverlay | null): void;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
