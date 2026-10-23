@@ -15,7 +15,7 @@
     "lint:all": "eslint src scripts shared tests e2e playwright.config.ts vite.config.ts eslint.config.js",
     "check:bundle": "node scripts/check-bundle-size.mjs",
     "test": "tsx --test tests/*.test.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/run-e2e.mjs",
     "typecheck:e2e": "tsc --noEmit --project tsconfig.e2e.json",
     "check:production": "npm run typecheck && npm run typecheck:e2e && npm run lint && npm test && npm run build && npm run check:bundle && npm run test:e2e"
   },
