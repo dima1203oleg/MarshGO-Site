@@ -110,6 +110,12 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
   const navigationMode = variant === 'navigation';
   const toggleGroup = (ids: TransportLayerId[], enabled: boolean) => setTransportLayers(ids, enabled);
   const togglePreference = (id: MapDisplayPreferenceId, enabled: boolean) => setMapDisplayPreference(id, enabled);
+  const toggleSection = (section: string) => setExpandedSections((current) => {
+    const next = new Set(current);
+    if (next.has(section)) next.delete(section); else next.add(section);
+    return next;
+  });
+  const sectionHeading = (title: string) => <SectionHeading title={title} open={expandedSections.has(title)} onClick={() => toggleSection(title)}/>;
   const allLayerIds: TransportLayerId[] = [...transportLayerList.map((item) => item.id), 'PUBLIC_TRANSPORT', 'CITY_TRAIN', 'FUNICULAR', 'STOPS', 'RENTAL_POINTS'];
   const applyPreset = (preset: 'clean' | 'city' | 'route') => {
     if (preset === 'city') {
@@ -125,12 +131,6 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
     setMapDisplayPreference('liveVehicles', false);
     setMapDisplayPreference('routeNumbers', false);
   };
-  const toggleSection = (section: string) => setExpandedSections((current) => {
-    const next = new Set(current);
-    if (next.has(section)) next.delete(section); else next.add(section);
-    return next;
-  });
-  const sectionHeading = (title: string) => <SectionHeading title={title} open={expandedSections.has(title)} onClick={() => toggleSection(title)}/>;
 
   return <>
     <div className="relative">
@@ -142,16 +142,11 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
     {open && visible && typeof document !== 'undefined' && createPortal(<div id="marshgo-map-layers" role="dialog" aria-label="Шари карти" style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))', maxHeight: 'calc(100dvh - max(.75rem, env(safe-area-inset-top)) - 5.3rem - env(safe-area-inset-bottom))' }} className="fixed inset-x-0 z-[1000] max-h-[74svh] overflow-y-auto rounded-t-[1.75rem] border border-slate-200 bg-white px-4 pb-3 pt-2 text-slate-900 shadow-[0_-12px_40px_rgba(8,27,53,.2)] dark:border-[#263648] dark:bg-[#0A1D2D] dark:text-slate-100 dark:shadow-[0_-12px_40px_rgba(0,0,0,.45)] sm:fixed sm:inset-x-auto sm:bottom-auto sm:right-16 sm:top-1/2 sm:max-h-[70svh] sm:w-[20rem] sm:-translate-y-1/2 sm:rounded-2xl sm:p-3 sm:shadow-xl">
       <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600 sm:hidden" aria-hidden="true"/>
       <header className="mb-2 flex items-center justify-between gap-3">
-        <div><h2 className="font-extrabold">Шари карти</h2><p className="text-[10px] text-slate-500 dark:text-slate-400">Дані від доступних провайдерів</p></div>
+        <h2 className="font-extrabold">Шари карти</h2>
         <button type="button" onClick={() => setOpen(false)} aria-label="Закрити шари карти" className="grid h-11 w-11 place-items-center rounded-full hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:hover:bg-white/10"><X size={18}/></button>
       </header>
       {showLayers ? <>
         {availabilityError && <p role="status" className="mb-2 rounded-xl bg-amber-50 p-2 text-[11px] leading-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Не вдалося перевірити джерела шарів. Вони тимчасово вимкнені.<button type="button" className="ml-1 font-bold underline" onClick={() => { availabilityCache = null; setAvailable(null); setAvailabilityError(false); setRetryKey((key) => key + 1); }}>Повторити</button></p>}
-        <div className="mb-2 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 text-[10px] dark:bg-[#10283B]">
-          <button type="button" onClick={() => applyPreset('clean')} className="min-h-8 rounded-lg px-1 font-semibold hover:bg-white dark:hover:bg-white/10">Чиста карта</button>
-          <button type="button" onClick={() => applyPreset('city')} disabled={available === null} className="min-h-8 rounded-lg px-1 font-semibold hover:bg-white disabled:opacity-45 dark:hover:bg-white/10">Міський транспорт</button>
-          <button type="button" onClick={() => applyPreset('route')} className="min-h-8 rounded-lg px-1 font-semibold hover:bg-white dark:hover:bg-white/10">Мій маршрут</button>
-        </div>
         <section className="mb-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-1 dark:border-slate-700 dark:bg-[#0D2233]">
           {sectionHeading('Транспорт')}
           {expandedSections.has('Транспорт') && <div className="grid grid-cols-2 gap-x-1 border-t border-slate-200/70 px-1 pt-1 dark:border-slate-700/70">{[
@@ -181,6 +176,14 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
             <UnavailableRow label="Зарядні станції" icon={BatteryCharging}/>
           </div>}
         </section>
+        <details className="mt-2 px-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <summary className="min-h-11 cursor-pointer py-3 font-semibold">Швидкі налаштування карти</summary>
+          <div className="grid grid-cols-3 gap-1 pb-2">
+            <button type="button" onClick={() => applyPreset('clean')} className="min-h-10 rounded-lg bg-slate-100 px-2 font-semibold text-slate-700 hover:bg-slate-200 dark:bg-[#10283B] dark:text-slate-200 dark:hover:bg-white/10">Чиста карта</button>
+            <button type="button" onClick={() => applyPreset('city')} disabled={available === null} className="min-h-10 rounded-lg bg-slate-100 px-2 font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-45 dark:bg-[#10283B] dark:text-slate-200 dark:hover:bg-white/10">Міський транспорт</button>
+            <button type="button" onClick={() => applyPreset('route')} className="min-h-10 rounded-lg bg-slate-100 px-2 font-semibold text-slate-700 hover:bg-slate-200 dark:bg-[#10283B] dark:text-slate-200 dark:hover:bg-white/10">Мій маршрут</button>
+          </div>
+        </details>
       </> : <p className="rounded-xl bg-slate-50 p-3 text-[11px] leading-4 text-slate-500 dark:bg-[#10283B] dark:text-slate-400">Додаткові транспортні шари доступні на транспортній карті.</p>}
     </div>, document.body)}
   </>;

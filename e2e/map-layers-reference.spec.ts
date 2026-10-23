@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('transport layers match the grouped reference and only enable available data', async ({ page }) => {
+test('transport layers match the grouped reference and only enable available data', async ({ page }, testInfo) => {
   const user = { id: 'map-layers-user', display_name: 'Тестовий пасажир', phone_e164: '+380991234567', roles: ['passenger'], is_verified: true, driver_photo_url: null };
   await page.route('**/api/v1/**', async (route) => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
@@ -34,6 +34,7 @@ test('transport layers match the grouped reference and only enable available dat
   await page.getByRole('button', { name: 'Шари карти' }).click();
   const dialog = page.getByRole('dialog', { name: 'Шари карти' });
   await expect(dialog).toBeVisible();
+  await testInfo.attach('transport-layers-sheet', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
   for (const heading of ['Транспорт', 'Відображення', 'Інфраструктура']) await expect(dialog.getByRole('button', { name: heading, exact: true })).toHaveAttribute('aria-expanded', 'true');
   for (const category of ['Автобуси', 'Маршрутки', 'Тролейбуси', 'Поїзди', 'Трамваї', 'Велосипеди', 'Метро', 'Самокати', 'Попутки', 'Каршеринг', 'Таксі', 'Трансфери']) {
     await expect(dialog.getByText(category, { exact: true })).toBeVisible();
@@ -51,6 +52,12 @@ test('transport layers match the grouped reference and only enable available dat
   await expect(dialog.getByRole('switch', { name: 'Лінії маршрутів' })).toHaveCount(0);
   await display.click();
   await expect(dialog.getByRole('switch', { name: 'Лінії маршрутів' })).toBeVisible();
+  const quickSettings = dialog.locator('details');
+  await expect(quickSettings.locator('summary')).toHaveText('Швидкі налаштування карти');
+  await quickSettings.locator('summary').click();
+  await quickSettings.getByRole('button', { name: 'Чиста карта' }).click();
+  await expect(buses).not.toBeChecked();
+  await expect(dialog.getByRole('switch', { name: 'Лінії маршрутів' })).not.toBeChecked();
   await dialog.getByRole('button', { name: 'Закрити шари карти' }).click();
   await expect(dialog).toHaveCount(0);
 });
