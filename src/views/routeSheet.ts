@@ -4,7 +4,9 @@ export type RouteSheetHeights = Record<RouteSheetSnap, number>;
 /** Heights leave a stable map window at the top and keep the compact summary usable. */
 export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
   const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
-  const expanded = Math.min(840, viewport * 0.88, Math.max(0, viewport - 112));
+  // Preserve a useful map window even while route details are expanded. The
+  // segment list scrolls inside the sheet, so long itineraries remain reachable.
+  const expanded = Math.min(840, viewport * 0.78, Math.max(0, viewport - 112));
   const half = Math.min(660, Math.max(224, viewport * 0.66), Math.max(160, expanded - 48));
   const collapsed = Math.min(246, Math.max(200, viewport * 0.29), Math.max(112, half - 48));
   return { collapsed, half, expanded };
