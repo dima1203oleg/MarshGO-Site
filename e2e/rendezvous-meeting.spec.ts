@@ -152,10 +152,10 @@ test('driver and passenger see the same consented live meeting with both positio
       await expect(page.getByRole('region', { name: 'Стан зустрічі' }).getByRole('button', { name: 'Зупинити й відкликати мою згоду' })).toBeVisible();
     }
 
-    await expect(driverPage.getByTestId('meeting-driver-card')).toContainText('прямо до точки');
-    await expect(driverPage.getByTestId('meeting-passenger-card')).toContainText('прямо до точки');
-    await expect(passengerPage.getByTestId('meeting-driver-card')).toContainText('прямо до точки');
-    await expect(passengerPage.getByTestId('meeting-passenger-card')).toContainText('прямо до точки');
+    for (const page of [driverPage, passengerPage]) {
+      await expect(page.getByTestId('meeting-driver-card')).toContainText('150 м до точки · ≈ 2 хв');
+      await expect(page.getByTestId('meeting-passenger-card')).toContainText('240 м до точки · ≈ 3 хв');
+    }
     await expect.poll(() => [...sentLocations].sort()).toEqual(['driver', 'passenger']);
     await expect.poll(() => {
       const driverView = observedLocations.get('driver');

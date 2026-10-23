@@ -41,6 +41,7 @@ async function installJourneyApiFixture(page: Page) {
     legs: [
       {
         id: 'e2e-carpool-leg', mode: 'COMMUNITY', transportType: 'carpool', offerId: 'e2e-offer',
+        bookingId: 'e2e-confirmed-booking',
         origin: { name: 'Площа Ринок', coordinates: [24.0315, 49.8419] },
         destination: { name: 'вул. Наукова, 7', coordinates: [24.025, 49.812] },
         departureAt: at(60), arrivalAt: at(80), durationSeconds: 20 * 60, distanceMeters: 4200,
@@ -120,6 +121,28 @@ async function installJourneyApiFixture(page: Page) {
         candidateGenerationTruncated: true, blockedProviders: [], unsupportedPreferences: [], providerErrors: [] });
     }
     if (path === `/journeys/${journey.id}/live`) return json(liveJourney);
+    if (path === '/bookings/e2e-confirmed-booking/rendezvous') return json({
+      id: 'e2e-rendezvous', bookingId: 'e2e-confirmed-booking', journeyLegId: 'e2e-carpool-leg', state: 'ACTIVE',
+      pickup: { label: 'вул. Городоцька, 55', coordinates: [24.025, 49.812] }, plannedPickupAt: at(60), predictedPickupAt: null,
+      activationAt: at(45), locationSharingEnabled: true, driverArrivedAt: null, passengerArrivedAt: null,
+      currentParticipant: 'passenger', currentParticipantConsent: true, otherParticipantConsent: true,
+      locations: {
+        driver: { coordinates: [24.022, 49.814], accuracyMeters: 12, capturedAt: at(0), freshness: 'LIVE' },
+        passenger: { coordinates: [24.021, 49.813], accuracyMeters: 18, capturedAt: at(0), freshness: 'LIVE' },
+      },
+    });
+    if (path === '/rendezvous/e2e-rendezvous/approaches') return json({
+      rendezvousId: 'e2e-rendezvous', pickup: { label: 'вул. Городоцька, 55', coordinates: [24.025, 49.812] },
+      driver: {
+        location: { coordinates: [24.022, 49.814], accuracyMeters: 12, capturedAt: at(0), freshness: 'LIVE' },
+        approach: { status: 'ROUTED', geometry: [[24.022, 49.814], [24.023, 49.813], [24.025, 49.812]], distanceMeters: 430, durationSeconds: 110, calculatedAt: at(0) },
+      },
+      passenger: {
+        location: { coordinates: [24.021, 49.813], accuracyMeters: 18, capturedAt: at(0), freshness: 'LIVE' },
+        approach: { status: 'ROUTED', geometry: [[24.021, 49.813], [24.023, 49.812], [24.025, 49.812]], distanceMeters: 330, durationSeconds: 270, calculatedAt: at(0) },
+      },
+      updatedAt: at(0),
+    });
     if (path === '/mobility/providers') return json([]);
     return json([]);
   });
@@ -142,6 +165,12 @@ test('real production transit focus hides other journey legs and retains the sel
   const navigation = page.getByRole('navigation', { name: 'Основна навігація' });
   await expect(navigation).toBeVisible();
   await navigation.getByRole('button', { name: 'Пошук', exact: true }).click();
+  const transportModes = page.locator('.transport-mode-grid > button[aria-label]');
+  await expect(transportModes).toHaveCount(12);
+  expect(await transportModes.evaluateAll(elements => elements.map(element => element.getAttribute('aria-label')))).toEqual([
+    'Попутки', 'Маршрутки', 'Автобуси', 'Таксі', 'Трамваї', 'Тролейбуси',
+    'Метро', 'Поїзди', 'Велосипеди', 'Самокати', 'Каршеринг', 'Трансфери',
+  ]);
   await page.getByPlaceholder('Місто відправлення').fill('Площа Ринок');
   await page.getByRole('button', { name: origin.label, exact: true }).click();
   await page.getByPlaceholder('Місто призначення').fill('Сихівська');
@@ -171,6 +200,15 @@ test('real production transit focus hides other journey legs and retains the sel
   await expect(walking).toBeVisible();
   await expect(bus).toBeVisible();
   await expect(bus.getByText('—', { exact: true })).toBeVisible();
+  await carpool.getByRole('button', { name: /Вибрати сегмент: Попутка/ }).click();
+  if (testInfo.project.name === 'chromium') {
+    const mapCanvas = routeMap.locator('.maplibregl-map');
+    await expect.poll(() => mapCanvas.getAttribute('data-marshgo-rideshare-count')).toBe('2');
+    await expect.poll(() => mapCanvas.getAttribute('data-marshgo-rideshare-approach-route-count')).toBe('2');
+    await expect(routeMap.locator('.marshgo-rideshare-marker')).toHaveCount(2);
+    await expect(routeMap.locator('.marshgo-rideshare-marker[data-participant="driver"]')).toHaveAttribute('aria-label', 'Зустріч: актуальне GPS водія');
+    await expect(routeMap.locator('.marshgo-rideshare-marker[data-participant="passenger"]')).toHaveAttribute('aria-label', 'Зустріч: актуальне GPS пасажира');
+  }
   await bus.getByRole('button', { name: /Вибрати сегмент: Автобус A20/ }).click();
   await expect(bus).toHaveAttribute('data-active', 'true');
   await expect(carpool).toHaveAttribute('data-active', 'false');
@@ -180,9 +218,14 @@ test('real production transit focus hides other journey legs and retains the sel
   await expect(routeMap.getByRole('list', { name: 'Зупинки сегмента A20' })).toContainText('Сихівська');
   await expect(bus.getByTestId('selected-line-live-status')).toContainText('На карті 5 машин зі свіжими GPS-позиціями; виділено 2 на під’їзді та 1 на точці посадки.');
   await expect(bus.getByTestId('selected-line-live-status')).toContainText('прогноз фіда, не GPS-позиція');
+  await page.getByRole('button', { name: 'Показати весь маршрут' }).click();
+  await expect(bus.getByRole('button', { name: 'Вибрати сегмент: Автобус A20' })).toHaveAttribute('aria-pressed', 'false');
   if (testInfo.project.name === 'chromium') {
     const mapCanvas = routeMap.locator('.maplibregl-map');
     const mapStateTimeout = { timeout: 15_000 };
+    await expect.poll(() => mapCanvas.getAttribute('data-marshgo-selected-route-segment-count'), mapStateTimeout).toBe('3');
+    await expect.poll(() => mapCanvas.getAttribute('data-marshgo-hidden-route-segment-count'), mapStateTimeout).toBe('0');
+    await bus.getByRole('button', { name: 'Вибрати сегмент: Автобус A20', exact: true }).click();
     await expect.poll(() => mapCanvas.getAttribute('data-marshgo-selected-route-segment-count'), mapStateTimeout).toBe('1');
     await expect.poll(() => mapCanvas.getAttribute('data-marshgo-dimmed-route-segment-count'), mapStateTimeout).toBe('0');
     await expect.poll(() => mapCanvas.getAttribute('data-marshgo-hidden-route-segment-count'), mapStateTimeout).toBe('2');

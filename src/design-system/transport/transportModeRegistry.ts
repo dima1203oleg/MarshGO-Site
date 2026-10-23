@@ -50,14 +50,14 @@ function visual(
  * exist only so journey segments render consistently.
  */
 export const transportModeRegistry: Record<TransportModeId, CanonicalVisual> = {
-  bus: visual('bus', 'Автобус', 'Автобуси', 'Bus', BusFront, '#1687FF', 'Громадський транспорт'),
-  marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', BusFront, '#F02F79', 'Громадський транспорт'),
-  trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', BusFront, '#00C2A0', 'Громадський транспорт'),
-  tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#F43F7B', 'Громадський транспорт'),
-  metro: visual('metro', 'Метро', 'Метро', 'Metro', TrainTrack, '#E43F86', 'Громадський транспорт'),
+  bus: visual('bus', 'Автобус', 'Автобуси', 'Bus', BusFront, '#0284C7', 'Громадський транспорт'),
+  marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', BusFront, '#F59E0B', 'Громадський транспорт'),
+  trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', BusFront, '#10B981', 'Громадський транспорт'),
+  tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#EF4444', 'Громадський транспорт'),
+  metro: visual('metro', 'Метро', 'Метро', 'Metro', TrainTrack, '#8B5CF6', 'Громадський транспорт'),
   carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#A855F7', 'Спільні поїздки'),
   taxi: visual('taxi', 'Таксі', 'Таксі', 'Taxi', CarTaxiFront, '#F5B51B', 'Спільні поїздки'),
-  train: visual('train', 'Поїзд', 'Поїзди', 'Train', TrainFront, '#914BF4', 'Залізниця'),
+  train: visual('train', 'Поїзд', 'Поїзди', 'Train', TrainFront, '#8B5CF6', 'Залізниця'),
   bike: visual('bike', 'Велосипед', 'Велосипеди', 'Bicycle', Bike, '#20B86A', 'Мікромобільність'),
   scooter: visual('scooter', 'Самокат', 'Самокати', 'Scooter', Scooter, '#8B5CF6', 'Мікромобільність'),
   carsharing: visual('carsharing', 'Каршеринг', 'Каршеринг', 'Car sharing', Car, '#00A8D6', 'Спільні поїздки'),
@@ -69,13 +69,14 @@ const specialVisuals: Record<string, CanonicalVisual> = {
   WAIT: visual('wait', 'Очікування', 'Очікування', 'Waiting', Clock3, '#91A6BB'),
   FERRY: visual('ferry', 'Пором', 'Пороми', 'Ferry', Waypoints, '#0891B2'),
   FUNICULAR: visual('funicular', 'Фунікулер', 'Фунікулери', 'Funicular', TrainFront, '#64748B'),
+  CITY_TRAIN: visual('city-train', 'Міська електричка', 'Міська електричка', 'City train', TrainFront, '#0D9488'),
 };
 
 const aliases: Record<string, TransportModeId | keyof typeof specialVisuals> = {
   BUS: 'bus', URBAN_BUS: 'bus', CITY_BUS: 'bus', INTERCITY_BUS: 'bus',
   MINIBUS: 'marshrutka', MARSHRUTKA: 'marshrutka',
   TROLLEYBUS: 'trolleybus', TRAM: 'tram', METRO: 'metro',
-  RAIL: 'train', TRAIN: 'train', CITY_TRAIN: 'train', SUBURBAN_TRAIN: 'train',
+  RAIL: 'train', TRAIN: 'train', CITY_TRAIN: 'CITY_TRAIN', SUBURBAN_TRAIN: 'train',
   COMMUNITY: 'carpool', COMMUNITY_DEMAND: 'carpool', CARPOOL: 'carpool', CARPOOL_OFFER: 'carpool',
   TAXI: 'taxi', BIKE: 'bike', BICYCLE: 'bike', SCOOTER: 'scooter', E_SCOOTER: 'scooter',
   CARSHARING: 'carsharing', CAR_SHARE: 'carsharing', CAR_RENTAL: 'carsharing',

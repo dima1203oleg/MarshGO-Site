@@ -656,8 +656,8 @@ export const productionApi = {
   setRendezvousConsent(rendezvousId: string, enabled: boolean) {
     return request<ApiRendezvous>(`/rendezvous/${encodeURIComponent(rendezvousId)}/consent`, { method: 'POST', body: JSON.stringify({ enabled }) });
   },
-  rendezvousApproaches(rendezvousId: string) {
-    return request<ApiRendezvousApproaches>(`/rendezvous/${encodeURIComponent(rendezvousId)}/approaches`);
+  rendezvousApproaches(rendezvousId: string, signal?: AbortSignal) {
+    return request<ApiRendezvousApproaches>(`/rendezvous/${encodeURIComponent(rendezvousId)}/approaches`, { signal });
   },
   sendRendezvousLocation(rendezvousId: string, location: { longitude: number; latitude: number; accuracyMeters: number; capturedAt: string }) {
     return request<{ rendezvousId: string; storedEphemerally: true; expiresInSeconds: number; nearPickup: boolean; arrivalRequiresUserConfirmation: true }>(

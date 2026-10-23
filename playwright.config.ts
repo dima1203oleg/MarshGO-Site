@@ -23,10 +23,19 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  webServer: externalBaseURL ? undefined : {
-    command: 'npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
-  },
+  webServer: externalBaseURL ? undefined : [
+    {
+      command: 'node tests/fixtures/map-tile-server.mjs',
+      url: 'http://127.0.0.1:3306/health',
+      reuseExistingServer: false,
+      timeout: 10_000,
+      env: { MAP_TILE_STUB_PORT: '3306' },
+    },
+    {
+      command: 'node scripts/e2e-preview.mjs',
+      url: baseURL,
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+  ],
 });
