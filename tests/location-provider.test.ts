@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { geolocationTimestampToIso, validateLocationFix } from '../src/platform/LocationProvider';
+import { geolocationTimestampToIso, isDuplicateLocationFix, validateLocationFix } from '../src/platform/LocationProvider';
 
 const fix = (longitude: number, capturedAtClient: string, accuracyMeters = 5) => ({ longitude, latitude: 50, accuracyMeters, capturedAtClient, source: 'gps' as const });
 test('location pipeline accepts fresh valid fixes and rejects accuracy, stale time and impossible jumps', () => {
@@ -18,4 +18,11 @@ test('normalizes WebKit microsecond geolocation timestamps to epoch milliseconds
   assert.equal(geolocationTimestampToIso(epochMilliseconds * 1000), '2026-10-13T16:24:35.239Z');
   assert.equal(geolocationTimestampToIso(Number.NaN), null);
   assert.equal(geolocationTimestampToIso(Number.POSITIVE_INFINITY), null);
+});
+
+test('ignores an identical cached GPS callback while preserving distinct same-time coordinates for stale validation', () => {
+  const previous = fix(24, '2026-09-30T11:59:59Z');
+  assert.equal(isDuplicateLocationFix({ ...previous }, previous), true);
+  assert.equal(isDuplicateLocationFix(fix(24.001, previous.capturedAtClient), previous), false);
+  assert.equal(isDuplicateLocationFix(fix(24, previous.capturedAtClient, 10), previous), false);
 });

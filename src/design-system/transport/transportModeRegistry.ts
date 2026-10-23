@@ -22,10 +22,10 @@ export interface TransportModeVisual {
 type CanonicalVisual = Omit<TransportModeVisual, 'badgeStyle' | 'accessibilityLabel'>;
 
 const Scooter = createLucideIcon('Scooter', [
-  ['circle', { cx: '6', cy: '19', r: '2' }],
-  ['circle', { cx: '18', cy: '19', r: '2' }],
-  ['path', { d: 'M8 19h6l2-11h4' }],
-  ['path', { d: 'M16 8l-1-4h-2' }],
+  ['circle', { cx: '6', cy: '19', r: '2', key: 'scooter-wheel-rear' }],
+  ['circle', { cx: '18', cy: '19', r: '2', key: 'scooter-wheel-front' }],
+  ['path', { d: 'M8 19h6l2-11h4', key: 'scooter-deck-and-stem' }],
+  ['path', { d: 'M16 8l-1-4h-2', key: 'scooter-handlebar' }],
 ]);
 
 function visual(
@@ -53,7 +53,7 @@ export const transportModeRegistry: Record<TransportModeId, CanonicalVisual> = {
   bus: visual('bus', 'Автобус', 'Автобуси', 'Bus', BusFront, '#1687FF', 'Громадський транспорт'),
   marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', BusFront, '#F02F79', 'Громадський транспорт'),
   trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', BusFront, '#00C2A0', 'Громадський транспорт'),
-  tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#F43F7B', 'Громадський транспорт'),
+  tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#8B3CE6', 'Громадський транспорт'),
   metro: visual('metro', 'Метро', 'Метро', 'Metro', TrainTrack, '#E43F86', 'Громадський транспорт'),
   carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#A855F7', 'Спільні поїздки'),
   taxi: visual('taxi', 'Таксі', 'Таксі', 'Taxi', CarTaxiFront, '#F5B51B', 'Спільні поїздки'),

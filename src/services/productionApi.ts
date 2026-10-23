@@ -81,11 +81,26 @@ export type ApiBookingChange = { id: string; summary: ApiChangeSummary; new_unit
 export type ApiOfferChange = { id: string; field: 'price' | 'departure' | 'seats' | 'vehicle' | 'status'; old_value: string | null; new_value: string | null; significant: boolean; reason: string | null; created_at: string };
 export type ApiReview = { id: string; booking_id: string; author_id: string; target_id: string; rating: number; comment: string | null; created_at: string };
 export type ApiRendezvousLocation = { coordinates: [number, number]; accuracyMeters: number; capturedAt: string; freshness: 'LIVE' | 'STALE' } | null;
+export type ApiRendezvousApproach = {
+  status: 'ROUTED' | 'LOCATION_UNAVAILABLE' | 'ROUTING_UNAVAILABLE';
+  geometry: [number, number][] | null;
+  distanceMeters: number | null;
+  durationSeconds: number | null;
+  calculatedAt?: string;
+};
+export type ApiRendezvousApproaches = {
+  rendezvousId: string;
+  pickup: { label: string; coordinates: [number, number] };
+  driver: { location: ApiRendezvousLocation; approach: ApiRendezvousApproach };
+  passenger: { location: ApiRendezvousLocation; approach: ApiRendezvousApproach };
+  updatedAt: string;
+};
 export type ApiRendezvous = {
   id: string; bookingId: string; journeyLegId: string | null; state: string;
   pickup: { label: string; coordinates: [number, number] };
   plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
   locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
+  currentParticipant: 'driver' | 'passenger'; currentParticipantConsent: boolean; otherParticipantConsent: boolean;
   locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
 };
 export type ApiRescueAlternative = ApiOffer & {
@@ -266,6 +281,23 @@ export type ApiJourneyLive = {
     status: 'LIVE' | 'SCHEDULED' | 'UNVERIFIED';
     reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
     vehicle?: { coordinates: [number, number]; bearing: number | null; speed: number | null; route: string; updatedAt: string };
+    /** Full, provider-published shapes for the selected line's actual directions. */
+    lineRoutes?: Array<{ id: string; providerId: string; routeId: string; name: string; direction: string; directionId: string | null; geometrySource: 'gtfs_shape' | 'official_geojson'; coordinates: [number, number][] }>;
+    /** Every fresh position on this exact provider + route; only verified approaches are emphasized. */
+    vehicles?: Array<{
+      id: string;
+      providerId: string;
+      coordinates: [number, number];
+      bearing: number | null;
+      speed: number | null;
+      updatedAt: string;
+      tripId: string | null;
+      routeId: string | null;
+      directionId: string | null;
+      approachingBoarding: boolean;
+      remainingStops: number | null;
+      emphasized: boolean;
+    }>;
   }>;
 };
 export type ApiJourneySearchPartialReason =
@@ -440,7 +472,10 @@ export const productionApi = {
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
-  journeyLive(id: string, signal?: AbortSignal) { return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live`, { signal }); },
+  journeyLive(id: string, legId?: string, signal?: AbortSignal) {
+    const suffix = legId ? `?legId=${encodeURIComponent(legId)}` : '';
+    return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live${suffix}`, { signal });
+  },
   startNavigation(input: { origin: [number, number]; destination?: [number, number]; destinationName?: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },
@@ -517,10 +552,16 @@ export const productionApi = {
   bookings() { return request<ApiBooking[]>('/bookings'); },
   bookingRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous`); },
   activateRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous/activate`, { method: 'POST' }); },
+  setRendezvousConsent(rendezvousId: string, enabled: boolean) {
+    return request<ApiRendezvous>(`/rendezvous/${encodeURIComponent(rendezvousId)}/consent`, { method: 'POST', body: JSON.stringify({ enabled }) });
+  },
   sendRendezvousLocation(rendezvousId: string, location: { longitude: number; latitude: number; accuracyMeters: number; capturedAt: string }) {
     return request<{ rendezvousId: string; storedEphemerally: true; expiresInSeconds: number; nearPickup: boolean; arrivalRequiresUserConfirmation: true }>(
       `/rendezvous/${encodeURIComponent(rendezvousId)}/location`, { method: 'POST', body: JSON.stringify(location) },
     );
+  },
+  rendezvousApproaches(rendezvousId: string) {
+    return request<ApiRendezvousApproaches>(`/rendezvous/${encodeURIComponent(rendezvousId)}/approaches`);
   },
   rendezvousStatus(rendezvousId: string, action: 'approaching' | 'arrived' | 'delayed' | 'will_arrive' | 'cannot_make_it', minutes?: number) {
     return request<{ id: string; state: string; locationSharingEnabled: boolean }>(
