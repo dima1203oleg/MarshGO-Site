@@ -1,4 +1,5 @@
 import type { Coordinate, Maneuver } from '../../shared/navigation/contracts';
+import { projectOnRoute } from '../../shared/navigation/geometry';
 
 /** Turn-by-turn guidance on the client: where the next manoeuvre is along the route and how to say it (Ukrainian). */
 const EARTH_RADIUS_M = 6_371_000;
@@ -35,15 +36,16 @@ export interface GuidanceState { next: Maneuver | null; distanceMeters: number; 
 export function nextGuidance(prepared: PreparedGuidance, position: Coordinate): GuidanceState | null {
   const { route, cumulative, steps } = prepared;
   if (route.length < 2) return null;
-  const current = nearestVertex(route, position);
-  const offset = distanceBetween(position, route[current]);
-  const along = cumulative[current];
   const total = cumulative[cumulative.length - 1];
+  // GPS progress must advance continuously along a road segment. Snapping to the nearest
+  // vertex made distance-to-turn and remaining distance stay frozen for half of each edge.
+  const along = Math.max(0, Math.min(total, projectOnRoute(position, route).along));
   let previousStreet: string | null = null;
   for (const step of steps) {
     if (step.type === 'DEPART') { previousStreet = step.streetName ?? previousStreet; continue; }
-    if (step.vertex > current || (step.type === 'ARRIVE' && step.vertex >= current)) {
-      return { next: step, distanceMeters: Math.max(0, cumulative[step.vertex] - along - (step.vertex > current ? 0 : offset)), currentStreet: previousStreet, remainingMeters: Math.max(0, total - along) };
+    const stepDistance = cumulative[step.vertex];
+    if (stepDistance >= along) {
+      return { next: step, distanceMeters: Math.max(0, stepDistance - along), currentStreet: previousStreet, remainingMeters: Math.max(0, total - along) };
     }
     previousStreet = step.streetName ?? previousStreet;
   }

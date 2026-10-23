@@ -30,7 +30,8 @@ test('transport layers match the grouped reference and only enable available dat
   await page.getByPlaceholder('••••••').fill('123456');
   await page.getByRole('button', { name: 'Підтвердити номер' }).click();
   await page.getByRole('button', { name: /Карта транспорту/ }).click();
-  await expect(page.getByRole('heading', { name: 'MARSHGO' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Карта транспорту' })).toBeVisible();
+  await expect(page.getByText('MARSHGO', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Повернутися до активної навігації' })).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Основна навігація' })).toBeVisible();
 

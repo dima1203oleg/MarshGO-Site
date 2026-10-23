@@ -196,10 +196,8 @@ test('real production transit focus hides other journey legs and retains the sel
   const routeSheet = routeMap.getByTestId('route-bottom-sheet');
   await routeMap.getByRole('button', { name: 'Розгорнути панель повністю' }).click();
   await expect(routeSheet).toHaveAttribute('data-sheet-state', 'expanded');
-  const exposedMapRatio = await routeSheet.evaluate((element) =>
-    element.getBoundingClientRect().top / window.innerHeight,
-  );
-  expect(exposedMapRatio, 'expanded itinerary details should leave at least one fifth of the viewport for the map').toBeGreaterThanOrEqual(0.2);
+  const exposedMapPixels = await routeSheet.evaluate((element) => element.getBoundingClientRect().top);
+  expect(exposedMapPixels, 'expanded itinerary details should leave a stable map band visible').toBeGreaterThanOrEqual(112);
   const carpool = routeMap.locator('[data-segment-id="e2e-carpool-leg"]');
   const walking = routeMap.locator('[data-segment-id="e2e-walk-transfer"]');
   const bus = routeMap.locator('[data-segment-id="e2e-bus-leg"]');

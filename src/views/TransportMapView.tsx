@@ -46,7 +46,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
     <div className="pointer-events-none absolute inset-x-4 top-[max(.8rem,env(safe-area-inset-top))] z-[500] flex flex-col gap-2">
       <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white p-2 shadow-xl">
         <button type="button" onClick={onBack} aria-label="Назад" className="grid h-10 w-10 place-items-center rounded-full bg-slate-100"><ArrowLeft size={18}/></button>
-        <div className="min-w-0 flex-1 px-1"><h1 className="truncate text-base font-extrabold tracking-tight">MARSHGO</h1><p className="text-[10px] font-semibold text-slate-500">Карта транспорту</p></div>
+        <div className="min-w-0 flex-1 px-1"><h1 className="sr-only">Карта транспорту</h1><div aria-hidden="true"><div className="truncate text-base font-extrabold tracking-tight">MARSHGO</div><p className="text-[10px] font-semibold text-slate-500">Карта транспорту</p></div></div>
         {cities.length > 0 && <label className="sr-only" htmlFor="transport-city">Місто</label>}
         {cities.length > 0 && <select id="transport-city" aria-label="Місто на транспортній карті" value={cityId} onChange={(event) => chooseCity(event.target.value)} className="max-w-28 rounded-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700">
           {cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}

@@ -16,6 +16,17 @@ describe('turn-by-turn guidance', () => {
     assert.ok(Math.abs(state.distanceMeters - 287) < 5, `≈4 segments of ~72 m, got ${state.distanceMeters}`);
     assert.equal(state.currentStreet, 'проспект Свободи');
   });
+  it('updates turn and remaining distances continuously within a route segment', () => {
+    const before = nextGuidance(prepared, route[2])!;
+    const position: [number, number] = [
+      route[2][0] + (route[3][0] - route[2][0]) * 0.25,
+      route[2][1] + (route[3][1] - route[2][1]) * 0.25,
+    ];
+    const after = nextGuidance(prepared, position)!;
+    assert.equal(after.next?.id, before.next?.id);
+    assert.ok(after.distanceMeters < before.distanceMeters - 10, 'distance to the next turn should move continuously before the next vertex');
+    assert.ok(after.remainingMeters < before.remainingMeters - 10, 'remaining route distance should move continuously before the next vertex');
+  });
   it('moves on to the arrival once the turn is behind', () => {
     const state = nextGuidance(prepared, route[8])!;
     assert.equal(state.next?.type, 'ARRIVE');
