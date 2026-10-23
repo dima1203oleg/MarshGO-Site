@@ -187,7 +187,7 @@ export function JourneyRouteMapScreen({
   const mapAdapter = useRef<MapAdapter | null>(null);
   const lastRideshareFocusKey = useRef('');
   const segmentCards = useRef(new Map<string, HTMLElement>());
-  const dragStart = useRef<{ y: number; height: number; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
+  const dragStart = useRef<{ y: number; height: number; snap: RouteSheetSnap; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
   const suppressHandleClick = useRef(false);
 
   useEffect(() => themeService.subscribe((_theme, dark) => setIsDark(dark)), []);
@@ -549,7 +549,7 @@ export function JourneyRouteMapScreen({
       sheetElement.current.style.transition = 'none';
       sheetElement.current.style.height = `${renderedHeight}px`;
     }
-    dragStart.current = { y: event.clientY, height: renderedHeight, pointerId: event.pointerId, moved: false, lastY: event.clientY, lastAt: now, velocity: 0 };
+    dragStart.current = { y: event.clientY, height: renderedHeight, snap: sheetSnap, pointerId: event.pointerId, moved: false, lastY: event.clientY, lastAt: now, velocity: 0 };
     event.currentTarget.setPointerCapture(event.pointerId);
     setDragging(true);
   };
@@ -581,7 +581,7 @@ export function JourneyRouteMapScreen({
     if (!start || start.pointerId !== event.pointerId) return;
     if (start.moved) {
       const heights = routeSheetHeights(viewportHeight);
-      const next = settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights);
+      const next = settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, start.snap);
       moveToSnap(next);
     }
     dragStart.current = null;
