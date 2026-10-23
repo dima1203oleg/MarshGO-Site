@@ -8,7 +8,7 @@ test('route sheet snap points leave a visible map strip and keep an ordered rang
     const heights = routeSheetHeights(viewport);
     assert.ok(heights.collapsed < heights.half);
     assert.ok(heights.half < heights.expanded);
-    assert.ok(viewport - heights.expanded >= 96);
+    assert.ok(viewport - heights.expanded >= 112);
     assert.ok(heights.collapsed >= 200);
   }
 });
