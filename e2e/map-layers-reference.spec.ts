@@ -30,11 +30,17 @@ test('transport layers match the grouped reference and only enable available dat
   await page.getByPlaceholder('••••••').fill('123456');
   await page.getByRole('button', { name: 'Підтвердити номер' }).click();
   await page.getByRole('button', { name: /Карта транспорту/ }).click();
+  await expect(page.getByRole('heading', { name: 'MARSHGO' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Повернутися до активної навігації' })).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Основна навігація' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Шари карти' }).click();
   const dialog = page.getByRole('dialog', { name: 'Шари карти' });
   await expect(dialog).toBeVisible();
-  await testInfo.attach('transport-layers-sheet', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
+  const viewportHeight = page.viewportSize()?.height;
+  const dialogTop = (await dialog.boundingBox())?.y;
+  expect(viewportHeight && dialogTop !== undefined ? dialogTop / viewportHeight : 0).toBeGreaterThanOrEqual(0.2);
+  await page.screenshot({ path: testInfo.outputPath('transport-layers-sheet.png'), animations: 'disabled' });
   for (const heading of ['Транспорт', 'Відображення', 'Інфраструктура']) await expect(dialog.getByRole('button', { name: heading, exact: true })).toHaveAttribute('aria-expanded', 'true');
   for (const category of ['Автобуси', 'Маршрутки', 'Тролейбуси', 'Поїзди', 'Трамваї', 'Велосипеди', 'Метро', 'Самокати', 'Попутки', 'Каршеринг', 'Таксі', 'Трансфери']) {
     await expect(dialog.getByText(category, { exact: true })).toBeVisible();

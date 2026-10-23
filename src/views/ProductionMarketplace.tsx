@@ -1679,12 +1679,12 @@ export function ProductionMarketplace() {
 
   const navigationOverlay = navigationMounted ? <Suspense fallback={null}><ProductionNavigation isPresented={tab === 'navigation'} onSessionActiveChange={onNavigationSessionActiveChange} autoStart={navAutoStart} autoStartRequestId={navAutoStartRequestId} initialDestination={navInitialDestination} onAddVehicle={() => { setNavAutoStart(false); setNavInitialDestination(null); setTab('profile'); }} onBack={() => { setNavAutoStart(false); setNavInitialDestination(null); setTab('home'); }} onOpenDemand={(demandId, candidateId) => void openNavigationDemand(demandId, candidateId)}/></Suspense> : null;
 
-  const hideSharedHeader = tab === 'navigation' || Boolean(selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
+  const hideSharedHeader = tab === 'navigation' || tab === 'map' || Boolean(selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
 
   const immersiveRouteView = Boolean(selectedRouteMap || (showResults && (tab === 'search' || tab === 'home')));
   return <main className={`production-app min-h-[100svh] bg-[#f5f8fd] text-[#17243a] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[calc(5.3rem+env(safe-area-inset-bottom))]'}`}>
     {!hideSharedHeader && header}
-    {hideSharedHeader && navigationActive && tab !== 'navigation' && <div className="sticky top-0 z-40 mx-auto flex w-full max-w-xl justify-end px-5 py-1"><button type="button" onClick={() => setTab('navigation')} aria-label="Повернутися до активної навігації" className="rounded-full border border-blue-200 bg-white/95 px-3 py-1.5 text-[10px] font-bold text-blue-700 shadow-sm backdrop-blur">Навігація · повернутися</button></div>}
+    {hideSharedHeader && navigationActive && tab !== 'navigation' && tab !== 'map' && <div className="sticky top-0 z-40 mx-auto flex w-full max-w-xl justify-end px-5 py-1"><button type="button" onClick={() => setTab('navigation')} aria-label="Повернутися до активної навігації" className="rounded-full border border-blue-200 bg-white/95 px-3 py-1.5 text-[10px] font-bold text-blue-700 shadow-sm backdrop-blur">Навігація · повернутися</button></div>}
     {!immersiveRouteView && status}
     <div className={immersiveRouteView ? '' : 'pt-1'}>{screen}</div>
     {navigationOverlay}
