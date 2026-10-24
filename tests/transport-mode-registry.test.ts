@@ -4,7 +4,11 @@ import { transportModes } from '../src/domain/transportCatalog';
 import { getTransportModeVisual, normalizeTransportMode, transportModeRegistry } from '../src/design-system/transport/transportModeRegistry';
 
 test('visual registry covers exactly the twelve canonical user-facing transport modes', () => {
-  assert.deepEqual(Object.keys(transportModeRegistry), transportModes.map(({ id }) => id));
+  assert.deepEqual(Object.keys(transportModeRegistry).sort(), transportModes.map(({ id }) => id).sort());
+  assert.deepEqual(transportModes.map(({ label }) => label), [
+    'Попутка', 'Маршрутка', 'Автобус', 'Таксі', 'Трамвай', 'Тролейбус',
+    'Метро', 'Поїзд', 'Велосипед', 'Самокат', 'Каршеринг', 'Трансфер',
+  ]);
   for (const mode of transportModes) {
     const visual = getTransportModeVisual(mode.id);
     assert.equal(visual.group, mode.group, `${mode.id} group`);

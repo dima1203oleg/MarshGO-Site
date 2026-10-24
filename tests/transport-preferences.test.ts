@@ -22,7 +22,7 @@ const groups = [
 
 describe('transport types and providers', () => {
   it('uses the exact twelve approved categories in order and keeps walking internal', () => {
-    assert.deepEqual(transportTypes.map((type) => type.id), ['bus','marshrutka','trolleybus','tram','metro','carpool','taxi','train','bike','scooter','carsharing','transfer']);
+    assert.deepEqual(transportTypes.map((type) => type.id), ['carpool','marshrutka','bus','taxi','tram','trolleybus','metro','train','bike','scooter','carsharing','transfer']);
     assert.equal(new Set(transportTypes.map((type) => type.id)).size, 12);
     assert.equal(supportedJourneySearchTypes.length, 9);
     assert.deepEqual(journeyTypesForCategory.train, ['train','suburban_train','city_train']);

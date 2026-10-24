@@ -13,7 +13,12 @@ function metersBetween(a: [number, number], b: [number, number]) {
   return 6_371_000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-export function RendezvousLocationMap({ session, currentUserIsDriver }: { session: ApiRendezvous; currentUserIsDriver: boolean }) {
+export function RendezvousLocationMap({ session, currentUserIsDriver, onArrived }: {
+  session: ApiRendezvous;
+  currentUserIsDriver: boolean;
+  onArrived?: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
   const [approaches, setApproaches] = useState<ApiRendezvousApproaches | null>(null);
   const displaySession = useMemo(() => approaches ? ({
     ...session,
@@ -97,14 +102,24 @@ export function RendezvousLocationMap({ session, currentUserIsDriver }: { sessio
   const driverApproach = approaches?.driver.approach;
   const passengerApproach = approaches?.passenger.approach;
 
-  return <div data-testid="rendezvous-location-map" className="mt-3 overflow-hidden rounded-2xl border border-blue-100 bg-white">
-    <div className="relative h-40" role="group" aria-label="Карта точки зустрічі">
+  return <div data-testid="rendezvous-location-map" data-expanded={expanded} className={expanded
+    ? 'fixed inset-0 z-[100] flex flex-col overflow-hidden bg-white dark:bg-slate-950'
+    : 'relative mt-3 overflow-hidden rounded-2xl border border-blue-100 bg-white dark:border-slate-700 dark:bg-slate-950'}>
+    {expanded && <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))] dark:border-slate-700 dark:bg-slate-950">
+      <div><h2 className="text-sm font-extrabold text-slate-900 dark:text-white">Зустріч із попутником</h2><p className="text-xs text-slate-500">Живі позиції доступні лише учасникам підтвердженого бронювання</p></div>
+      <button type="button" aria-label="Згорнути карту зустрічі" onClick={() => setExpanded(false)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 text-xl text-slate-700 dark:border-slate-700 dark:text-slate-100">×</button>
+    </header>}
+    <div className={`relative ${expanded ? 'min-h-0 flex-1' : 'h-40'}`} role="group" aria-label="Карта точки зустрічі">
       <MarshGoMap route={[]} routeSegments={routeSegments} routeWaypoints={points} onStatus={setStatus} onAdapter={(next) => { adapter.current = next; }} />
+      {!expanded && <button type="button" aria-label="Розгорнути карту зустрічі" onClick={() => setExpanded(true)} className="absolute right-3 top-3 z-20 grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white/95 text-slate-800 shadow-md dark:border-slate-700 dark:bg-slate-900/95 dark:text-white"><span aria-hidden="true">⛶</span></button>}
       {status !== 'available' && <div className="absolute inset-x-3 top-3 z-10 rounded-xl bg-white/95 px-3 py-2 text-center text-[10px] font-semibold text-slate-600 shadow-sm" role="status">
         {status === 'loading' ? 'Завантажуємо карту зустрічі…' : status === 'degraded' ? 'Карта завантажилась не повністю.' : 'Карта тимчасово недоступна; статус точок доступний нижче.'}
       </div>}
     </div>
-    <div className="grid grid-cols-3 gap-1 border-t border-slate-100 px-2 py-2 text-center text-[9px] font-semibold text-slate-600">
+    {expanded && onArrived && <button type="button" onClick={onArrived} className="mx-4 mt-3 min-h-12 shrink-0 rounded-xl bg-emerald-600 px-4 text-sm font-extrabold text-white shadow-lg">
+      Я на місці
+    </button>}
+    <div className="grid shrink-0 grid-cols-3 gap-1 border-t border-slate-100 px-2 py-2 text-center text-[9px] font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
       <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-emerald-600"/>Точка посадки</span>
       <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-blue-600"/>{ownLive ? 'Ви · наживо' : 'Ви · очікуємо GPS'}</span>
       <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-violet-600"/>{otherLive ? 'Учасник · наживо' : 'Учасник · очікуємо GPS'}</span>
