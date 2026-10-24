@@ -13,7 +13,7 @@ test('normal navigation renders exactly the selected map layers', () => {
   assert.deepEqual(visibleTransportLayers(saved, false), saved);
 });
 
-test('segment focus emphasizes the selected leg and dims the other itinerary legs', () => {
+test('segment focus emphasizes the selected leg and dims the rest of the itinerary', () => {
   const itinerary = [
     { id: 'walk', coordinates: [[24, 49], [24.01, 49.01]] as [number, number][], modeColor: '#91A6BB' },
     { id: 'minibus', coordinates: [[24.01, 49.01], [24.2, 49.2]] as [number, number][], modeColor: '#F43F7B' },
@@ -34,7 +34,7 @@ test('segment focus emphasizes the selected leg and dims the other itinerary leg
   assert.deepEqual(itinerary.map(segment => segment.id), ['walk', 'minibus', 'carpool']);
 });
 
-test('segment focus hides waypoints for other legs and keeps shared transfer points', () => {
+test('segment focus keeps only waypoints for the selected leg and shared transfer points', () => {
   const points = [
     { coordinate: [24, 49] as [number, number], kind: 'PICKUP', segmentIds: ['walk'] },
     { coordinate: [24.1, 49.1] as [number, number], kind: 'TRANSFER', segmentIds: ['walk', 'metro'] },
