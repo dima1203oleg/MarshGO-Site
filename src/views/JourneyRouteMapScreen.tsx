@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowLeftRight, ArrowRight, ChevronDown, ChevronRight, ChevronUp, Clock3, Coins,
+  ArrowLeft, ArrowLeftRight, ArrowRight, CarFront, ChevronDown, ChevronRight, ChevronUp, Clock3, Coins,
   Heart, Layers, Navigation, Scale, Share2, Star, Timer,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from '../map/journeyRouteModel';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
-import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
+import { productionApi, type ApiJourney, type ApiJourneyLive, type ApiOffer } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { JourneySegmentStrip, type JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
 import { routeBearingForHorizontalFit } from '../map/routeOrientation';
@@ -112,6 +112,7 @@ export function JourneyRouteMapScreen({
   const [mapSegmentChoices, setMapSegmentChoices] = useState<{ ids: string[]; x: number; y: number } | null>(null);
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
   const [liveJourneyRequestState, setLiveJourneyRequestState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+  const [offerDetail, setOfferDetail] = useState<{ offerId: string; state: 'loading' | 'ready' | 'failed'; offer?: ApiOffer } | null>(null);
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
   const [expandedSegments, setExpandedSegments] = useState<Set<string>>(() => new Set());
   const [saved, setSaved] = useState(() => {
@@ -160,6 +161,22 @@ export function JourneyRouteMapScreen({
     void poll();
     return () => { stopped = true; controller?.abort(); if (timer !== undefined) window.clearTimeout(timer); };
   }, [activeSegmentId, journey.id, journey.legs]);
+
+  useEffect(() => {
+    const selectedLeg = journey.legs.find(leg => leg.id === activeSegmentId);
+    if (selectedLeg?.mode !== 'COMMUNITY' || !selectedLeg.offerId) {
+      setOfferDetail(null);
+      return;
+    }
+    let current = true;
+    setOfferDetail({ offerId: selectedLeg.offerId, state: 'loading' });
+    void productionApi.offer(selectedLeg.offerId).then(offer => {
+      if (current) setOfferDetail({ offerId: selectedLeg.offerId!, state: 'ready', offer });
+    }).catch(() => {
+      if (current) setOfferDetail({ offerId: selectedLeg.offerId!, state: 'failed' });
+    });
+    return () => { current = false; };
+  }, [activeSegmentId, journey.legs]);
 
   useEffect(() => {
     if (!mapAdapterReady) return;
@@ -619,9 +636,29 @@ export function JourneyRouteMapScreen({
                 </ol> : <p className="text-[10px] text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
               </div>}
 
-              {leg.mode === 'COMMUNITY' && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--route-border)] px-3 py-2.5">
-                <span className="text-[10px] text-[var(--route-muted)]">{leg.availabilityStatus === 'AVAILABLE' ? 'Наявність перевірена під час пошуку' : 'Місця потрібно перевірити перед бронюванням'}</span>
-                {canBook && leg.offerId && onBookOffer && <button type="button" onClick={() => onBookOffer(leg.offerId!, journey.id, leg.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#8845E8] px-4 text-xs font-extrabold text-white shadow-[0_0_18px_rgba(168,85,247,.28)] hover:bg-[#9958F2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Забронювати <span aria-hidden="true">→</span></button>}
+              {leg.mode === 'COMMUNITY' && <div className="space-y-2 border-t border-[var(--route-border)] px-3 py-2.5">
+                {activeSegmentId === leg.id && leg.offerId && <div aria-label="Деталі пропозиції попутки" className="flex items-center gap-3 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] p-2.5">
+                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-200"><CarFront size={22} aria-hidden="true"/></div>
+                  <div className="min-w-0 flex-1">
+                    {offerDetail?.offerId === leg.offerId && offerDetail.state === 'loading'
+                      ? <p role="status" className="text-xs font-bold text-[var(--route-muted)]">Завантажуємо деталі попутки…</p>
+                      : offerDetail?.offerId === leg.offerId && offerDetail.state === 'ready' && offerDetail.offer
+                        ? <>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <b className="truncate text-sm font-extrabold">{offerDetail.offer.driver_name}</b>
+                            {offerDetail.offer.average_rating !== null && <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-300"><Star size={12} fill="currentColor" aria-hidden="true"/>{offerDetail.offer.average_rating.toFixed(1)}{offerDetail.offer.review_count > 0 ? ` · ${offerDetail.offer.review_count} відгуків` : ''}</span>}
+                          </div>
+                          <p className="mt-0.5 truncate text-[11px] text-[var(--route-muted)]">{leg.vehicle ? `${leg.vehicle.make} ${leg.vehicle.model}` : 'Приватний автомобіль'}{offerDetail.offer.available_seats > 0 ? ` · ${offerDetail.offer.available_seats} вільн. ${offerDetail.offer.available_seats === 1 ? 'місце' : 'місця'}` : ''}</p>
+                          <p className="mt-1 text-[10px] leading-4 text-[var(--route-subtle)]">Живе наближення буде доступне після підтвердження бронювання та дозволу на обмін геопозицією.</p>
+                        </>
+                        : <p role="status" className="text-[11px] leading-4 text-[var(--route-muted)]">{offerDetail?.offerId === leg.offerId && offerDetail.state === 'failed' ? 'Деталі пропозиції тимчасово недоступні. Перевірте її перед бронюванням.' : (leg.driver?.name ?? 'Водій попутки')}{leg.driver?.averageRating !== null && leg.driver?.averageRating !== undefined ? ` · ${leg.driver.averageRating.toFixed(1)}` : ''}</p>}
+                  </div>
+                  {offerDetail?.offerId === leg.offerId && offerDetail.state === 'ready' && offerDetail.offer?.vehicle_photo_url && <img src={offerDetail.offer.vehicle_photo_url} alt="" loading="lazy" className="hidden h-12 w-20 shrink-0 rounded-lg object-cover sm:block"/>}
+                </div>}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] text-[var(--route-muted)]">{leg.availabilityStatus === 'AVAILABLE' ? 'Наявність перевірена під час пошуку' : 'Місця потрібно перевірити перед бронюванням'}</span>
+                  {canBook && leg.offerId && onBookOffer && <button type="button" onClick={() => onBookOffer(leg.offerId!, journey.id, leg.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#8845E8] px-4 text-xs font-extrabold text-white shadow-[0_0_18px_rgba(168,85,247,.28)] hover:bg-[#9958F2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Забронювати <span aria-hidden="true">→</span></button>}
+                </div>
               </div>}
             </li>;
           })}
