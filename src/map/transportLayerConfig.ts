@@ -20,6 +20,12 @@ export const transportLayerList: Array<{ id: TransportLayerId; label: string; gr
   { id: 'CARSHARING', label: getTransportModeVisual('CARSHARING').pluralLabel, group: 'Мікромобільність' },
 ];
 
+/** Paired row order used by the two-column map layer sheet, matching the approved mobile mockup. */
+export const mapLayerDisplayOrder: TransportLayerId[] = [
+  'BUS', 'MINIBUS', 'TROLLEYBUS', 'TRAIN', 'TRAM', 'BICYCLE',
+  'METRO', 'SCOOTER', 'CARPOOL', 'CARSHARING', 'TAXI', 'TRANSFER',
+];
+
 export function lineTypesFor(layers: ReadonlySet<TransportLayerId>): string[] {
   const types = new Set<string>();
   if (layers.has('PUBLIC_TRANSPORT')) ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'train', 'suburban', 'city_train', 'funicular'].forEach((type) => types.add(type));
