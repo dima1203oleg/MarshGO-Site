@@ -74,12 +74,12 @@ function previewTileUrl(layer: MapLayer, center: [number, number] | null) {
   return template.replaceAll('{z}', String(zoom)).replaceAll('{x}', String(x)).replaceAll('{y}', String(y)).replaceAll('{-y}', String(count - 1 - y));
 }
 
-function NavigationBasemapPreview({ center, aboveSummary = false }: { center: [number, number] | null; aboveSummary?: boolean }) {
+function NavigationBasemapPreview({ center, aboveSummary = false, sheetOpen = false }: { center: [number, number] | null; aboveSummary?: boolean; sheetOpen?: boolean }) {
   const [layer, setLayer] = useState<MapLayer>(getMapLayer());
   useEffect(() => subscribeMapLayer(setLayer), []);
   const next: MapLayer = layer === 'simple' ? 'satellite' : 'simple';
   const tile = previewTileUrl(next, center);
-  return <button type="button" data-testid="navigation-basemap-preview" aria-label={`Перемкнути карту на ${mapLayers[next].label}`} title={`Перемкнути карту на ${mapLayers[next].label}`} onClick={() => setMapLayer(next)} className="absolute right-3 z-[500] h-[4.7rem] w-[4.7rem] overflow-hidden rounded-xl border border-slate-200 bg-white text-[#0B1730] shadow-xl dark:border-white/80 dark:bg-[#0A1D2D] dark:text-white" style={{ bottom: aboveSummary ? 'calc(10.2rem + env(safe-area-inset-bottom))' : 'calc(8rem + env(safe-area-inset-bottom))' }}>
+  return <button type="button" data-testid="navigation-basemap-preview" aria-label={`Перемкнути карту на ${mapLayers[next].label}`} title={`Перемкнути карту на ${mapLayers[next].label}`} onClick={() => setMapLayer(next)} className="absolute right-3 z-[520] h-[4.7rem] w-[4.7rem] overflow-hidden rounded-xl border border-slate-200 bg-white text-[#0B1730] shadow-xl dark:border-white/80 dark:bg-[#0A1D2D] dark:text-white" style={{ bottom: sheetOpen ? 'calc(min(42dvh, 360px) + 6rem + env(safe-area-inset-bottom))' : aboveSummary ? 'calc(10.2rem + env(safe-area-inset-bottom))' : 'calc(8rem + env(safe-area-inset-bottom))' }}>
     <span className="absolute inset-0 block overflow-hidden">
       {tile ? <img src={tile} alt="" loading="lazy" className="h-full w-full object-cover"/> : <span aria-hidden="true" className="grid h-full w-full place-items-center bg-slate-100 dark:bg-[#112438]"><Layers size={23} className="text-slate-500 dark:text-slate-300"/></span>}
     </span>
@@ -654,7 +654,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
         </div>
       </section>
     </div>}
-    {!focusMode && sheetLevel !== 'expanded' && <NavigationBasemapPreview center={previewCenter} aboveSummary={!sheetOpen}/>}
+    {!focusMode && sheetLevel !== 'expanded' && <NavigationBasemapPreview center={previewCenter} aboveSummary={!sheetOpen} sheetOpen={sheetOpen}/>}
     <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `calc(${sheetHeight}px + 4.6rem + env(safe-area-inset-bottom))` } : !sheetOpen ? { bottom: 'calc(10.2rem + env(safe-area-inset-bottom))' } : undefined} className={`absolute left-4 z-[500] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-300 dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen && !sheetHeight ? 'bottom-[20rem]' : ''}`}>
       <span><b data-testid="navigation-speed" className="block text-2xl font-extrabold leading-none">{liveSpeed === null ? '—' : Math.round(liveSpeed * 3.6)}</b><small className="text-[10px] font-bold text-slate-600 dark:text-slate-300">км/год</small></span>
     </div>
