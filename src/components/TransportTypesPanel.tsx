@@ -16,7 +16,8 @@ function Tile({ label, visualLabel = label, selected, disabled, disabledReason, 
   const visual = getTransportModeVisual(type);
   return <button type="button" aria-pressed={disabled ? false : selected} aria-label={description} disabled={disabled} title={disabledReason}
     onClick={onClick} className={`relative flex min-h-[5.8rem] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 py-3 text-center font-semibold leading-tight transition-colors ${compact ? 'min-h-[4.25rem] gap-1 rounded-xl py-1.5 text-[9px]' : 'text-[11px]'} ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-[#161f2a] dark:text-slate-500' : selected ? 'border-[#1789F4] bg-[#EAF3FF] text-[#1789F4] dark:border-[#1687FF] dark:bg-[#102746] dark:text-[#66B2FF]' : 'border-[#E5EDF7] bg-white text-[#475569] shadow-sm dark:border-[#263648] dark:bg-[#111820] dark:text-[#B6C2D0]'}`}>
-    <span className={`grid place-items-center ${compact ? 'h-7 w-7 rounded-lg' : 'h-9 w-9 rounded-xl'} ${disabled ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500' : ''}`} style={disabled ? undefined : visual.badgeStyle}><TransportIcon mode={type} size={compact ? 16 : 18}/></span>{visualLabel}
+    <span className={`grid place-items-center ${compact ? 'h-7 w-7 rounded-lg' : 'h-9 w-9 rounded-xl'} ${disabled ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500' : ''}`} style={disabled ? undefined : visual.badgeStyle}><TransportIcon mode={type} size={compact ? 16 : 18}/></span>
+    <span className={`transport-mode-label min-w-0 max-w-full whitespace-normal leading-tight ${compact ? 'break-words text-[8px]' : 'break-words'}`}>{visualLabel}</span>
     {disabled && <span className="sr-only">Недоступно для побудови маршруту в цьому районі</span>}
   </button>;
 }
@@ -43,7 +44,7 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
       </span>
     </div>
     {!compact && <p className="mb-3 text-xs leading-5 text-slate-500">Рівно 12 категорій у затвердженому порядку. Неактивні категорії залишаються видимими; «Пішки» додається автоматично до пересадок.</p>}
-    <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>
+    <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={getTransportModeVisual(type.id).label} visualLabel={getTransportModeVisual(type.id).label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>
     {!compact && allActive && <button type="button" onClick={() => setExpandedAll((value) => !value)} className="mt-3 text-xs font-bold text-[#1789F4]">{expandedAll ? 'Сховати провайдерів' : 'Налаштувати провайдерів'}</button>}
     {!compact && showProviders && <div className="mt-3 space-y-3" aria-label="Провайдери">
       <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Провайдери</h3>
