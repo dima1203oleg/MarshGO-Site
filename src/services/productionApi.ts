@@ -280,6 +280,13 @@ export type ApiJourneyLive = {
     legId: string;
     status: 'LIVE' | 'SCHEDULED' | 'UNVERIFIED';
     reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
+    vehiclePositionStatus: 'OBSERVED' | 'UNAVAILABLE';
+    boardingStopArrival: {
+      status: 'PREDICTED' | 'SCHEDULED' | 'UNAVAILABLE';
+      scheduledAt?: string;
+      predictedAt?: string;
+      realtimeUpdatedAt?: string;
+    };
     vehicle?: { coordinates: [number, number]; bearing: number | null; speed: number | null; route: string; updatedAt: string };
     /** Full, provider-published shapes for the selected line's actual directions. */
     lineRoutes?: Array<{ id: string; providerId: string; routeId: string; name: string; direction: string; directionId: string | null; geometrySource: 'gtfs_shape' | 'official_geojson'; coordinates: [number, number][] }>;
@@ -297,6 +304,15 @@ export type ApiJourneyLive = {
       approachingBoarding: boolean;
       remainingStops: number | null;
       emphasized: boolean;
+      approachEvidence: null | {
+        source: 'OBSERVED_PROGRESS' | 'TRIP_UPDATE_PREDICTION';
+        predictedArrivalAt?: string;
+        realtimeUpdatedAt?: string;
+        remainingStops?: number;
+        currentStopSequence?: number;
+        currentStopId?: string;
+      };
+      etaSeconds: number | null;
     }>;
   }>;
 };

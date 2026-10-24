@@ -20,6 +20,7 @@ import {
   formatJourneyTotalPrice,
 } from './journeyResultPresentation';
 import { routeSheetHeights, settleRouteSheetSnap, type RouteSheetSnap } from './routeSheet';
+import { journeyLiveArrivalMessage } from './journeyLiveArrival';
 import { themeService } from '../services/theme';
 
 type JourneyLeg = ApiJourney['legs'][number];
@@ -548,6 +549,14 @@ export function JourneyRouteMapScreen({
             />
             <span className="sr-only">Загальна відстань: {distanceSummary}. Виїзд {firstLeg ? formatTime(firstLeg.departureAt) : '—'}, прибуття {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}. Кольорова шкала пропорційна часу руху кожним відрізком; очікування не змішується з транспортними сегментами.</span>
           </> : <p className="mt-2 text-xs text-[var(--route-muted)]">Дані сегментів цього маршруту не надійшли.</p>}
+          {liveJourneyRequestState === 'ready' && selectedLiveSegment && <p
+            role="status"
+            aria-live="polite"
+            data-testid="journey-live-arrival-status"
+            className={`mt-2 rounded-xl border px-3 py-2 text-[11px] font-semibold leading-4 ${isDark ? 'border-[#24455F] bg-[#102638] text-sky-100' : 'border-sky-200 bg-sky-50 text-sky-950'}`}
+          >
+            {journeyLiveArrivalMessage(selectedLiveSegment)}
+          </p>}
         </div>
       </div>
 
