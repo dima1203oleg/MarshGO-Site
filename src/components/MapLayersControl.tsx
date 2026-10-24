@@ -110,7 +110,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
     </div>
     {open && visible && typeof document !== 'undefined' && createPortal(<div id="marshgo-map-layers" role="dialog" aria-label="Шари карти" aria-describedby="marshgo-map-layers-description" style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))', maxHeight: 'calc(100dvh - max(.75rem, env(safe-area-inset-top)) - 5.3rem - env(safe-area-inset-bottom))' }} className="fixed inset-x-0 z-[1000] max-h-[74svh] overflow-y-auto rounded-t-[1.75rem] border border-slate-200 bg-white px-4 pb-2 pt-1.5 text-slate-900 shadow-[0_-12px_40px_rgba(8,27,53,.2)] dark:border-[#263648] dark:bg-[#0A1D2D] dark:text-slate-100 dark:shadow-[0_-12px_40px_rgba(0,0,0,.45)] sm:fixed sm:inset-x-auto sm:bottom-auto sm:right-16 sm:top-1/2 sm:max-h-[70svh] sm:w-[20rem] sm:-translate-y-1/2 sm:rounded-2xl sm:p-3 sm:shadow-xl">
       <p id="marshgo-map-layers-description" className="sr-only">Шари залежать від підключених джерел. Недоступні шари вимкнені.</p>
-      <div className="mx-auto mb-1 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600 sm:hidden" aria-hidden="true"/>
+      <div className="mx-auto h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600 sm:hidden" aria-hidden="true"/>
       <header className="flex items-center justify-between gap-3">
         <h2 className="font-extrabold">Шари</h2>
         <button type="button" onClick={() => setOpen(false)} aria-label="Закрити шари карти" className="grid h-11 w-11 place-items-center rounded-full hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:hover:bg-white/10"><X size={18}/></button>
