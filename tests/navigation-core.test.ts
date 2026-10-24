@@ -32,6 +32,19 @@ test('authoritative session snapshots hydrate the core and keep raw fixes out of
   assert.equal(progressed.remainingDurationSeconds, 88);
   assert.equal(progressed.eta?.source, 'LIVE_PROGRESS');
 });
+test('reconciling a new route clears a position matched to the previous route geometry', () => {
+  const active = transition(initialNavigationState(), { type: 'NAVIGATION_SESSION_RECONCILED', sessionId: 'session-1', route, paused: false }).state;
+  const fix = { longitude: 24.2, latitude: 50.2, accuracyMeters: 5, capturedAtClient: '2026-09-30T12:00:00Z', source: 'gps' as const };
+  const matched = { ...fix, confidence: 0.9, distanceFromRouteMeters: 4, distanceAlongRouteMeters: 710, matchingProvider: 'route-projection-v1' };
+  const progressed = transition(active, { type: 'LOCATION_MATCHED', location: matched }).state;
+  assert.equal(progressed.currentLocation?.distanceAlongRouteMeters, 710);
+  const replacementRoute = { ...route, routeVersion: 2, distanceMeters: 1200 };
+  const reconciled = transition(progressed, { type: 'NAVIGATION_SESSION_RECONCILED', sessionId: 'session-1', route: replacementRoute, paused: false }).state;
+  assert.equal(reconciled.currentLocation, null);
+  assert.equal(reconciled.currentManeuverIndex, 0);
+  assert.equal(reconciled.matching.status, 'IDLE');
+  assert.equal(reconciled.remainingDistanceMeters, 1200);
+});
 test('arrival requires a confident matched fix at the routed destination', () => {
   const active = transition(initialNavigationState(), { type: 'NAVIGATION_SESSION_RECONCILED', sessionId: 'session-1', route, paused: false }).state;
   const nearDestination = {

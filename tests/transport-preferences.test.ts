@@ -5,8 +5,15 @@ import { transportTypes, supportedJourneySearchTypes, activeTypesForSearch, choi
 const groups = [
   { transportType: 'carpool', providers: [{ id: 'carpool:MARSHGO', name: 'MARSHGO Community', available: true, cities: [], sources: ['marshgo'], services: [] }] },
   { transportType: 'taxi', providers: [{ id: 'taxi:Uklon', name: 'Uklon', available: true, cities: [], sources: [], services: [] }, { id: 'taxi:Bolt', name: 'Bolt', available: true, cities: [], sources: [], services: [] }] },
-  { transportType: 'scooter', providers: [{ id: 'scooter:Bolt', name: 'Bolt', available: true, cities: [], sources: [], services: [] }] },
-  { transportType: 'bike', providers: [] },
+  { transportType: 'scooter', providers: [{ id: 'scooter:zelectra', name: 'Zelectra', available: true, cities: ['Київ'], sources: ['gbfs'], services: ['scooter'] }] },
+  { transportType: 'bike', providers: [
+    { id: 'bike:nextbike', name: 'Nextbike', available: true, cities: ['Львів', 'Київ'], sources: ['static-bike-network-estimate'], services: ['bike'] },
+    { id: 'bike:realtime-only', name: 'Realtime only', available: true, cities: [], sources: ['gtfs_rt'], services: ['bike'] },
+  ] },
+  { transportType: 'metro', providers: [
+    { id: 'metro:Київ', name: 'Київ', available: true, cities: ['Київ'], sources: ['geojson', 'rest'], services: ['metro'] },
+    { id: 'metro:geometry-only', name: 'Geometry only', available: true, cities: ['Київ'], sources: ['geojson'], services: [] },
+  ] },
   { transportType: 'bus', providers: [{ id: 'bus:Львівавтодор', name: 'Львівавтодор', available: true, cities: ['Львів'], sources: ['gtfs'], services: ['bus', 'tram'] }] },
   { transportType: 'trolleybus', providers: [{ id: 'trolleybus:Львівавтодор', name: 'Львівавтодор', available: true, cities: ['Львів'], sources: ['gtfs'], services: ['trolleybus'] }, { id: 'trolleybus:Test trolley', name: 'Test trolley', available: true, cities: ['Львів'], sources: ['gtfs'], services: ['trolleybus'] }] },
   { transportType: 'train', providers: [{ id: 'train:Укрзалізниця', name: 'Укрзалізниця', available: true, cities: ['Україна'], sources: ['gtfs'], services: ['train'] }, { id: 'train:Test rail', name: 'Test rail', available: true, cities: ['Україна'], sources: ['gtfs'], services: ['train'] }] },
@@ -17,7 +24,7 @@ describe('transport types and providers', () => {
   it('uses the exact twelve approved categories in order and keeps walking internal', () => {
     assert.deepEqual(transportTypes.map((type) => type.id), ['bus','marshrutka','trolleybus','tram','metro','carpool','taxi','train','bike','scooter','carsharing','transfer']);
     assert.equal(new Set(transportTypes.map((type) => type.id)).size, 12);
-    assert.equal(supportedJourneySearchTypes.length, 7);
+    assert.equal(supportedJourneySearchTypes.length, 9);
     assert.deepEqual(journeyTypesForCategory.train, ['train','suburban_train','city_train']);
     assert.equal(transportTypes.some((type) => (type.id as string) === 'walk'), false);
   });
@@ -44,9 +51,10 @@ describe('transport types and providers', () => {
     selection = toggleProvider(selection, 'train', 'train:Test rail');
     assert.deepEqual(effectiveProviders(selection, 'bus', groups), ['bus:Львівавтодор']);
     assert.deepEqual(effectiveProviders(selection, 'train', groups), ['train:Test rail']);
-    assert.deepEqual(effectiveProviders(selection, 'scooter', groups), []);
+    assert.deepEqual(effectiveProviders(selection, 'scooter', groups), ['scooter:zelectra']);
     assert.deepEqual(effectiveProviders(selection, 'tram', groups), []);
-    assert.deepEqual(effectiveProviders(selection, 'bike', groups), []);
+    assert.deepEqual(effectiveProviders(selection, 'bike', groups), ['bike:nextbike']);
+    assert.deepEqual(effectiveProviders(selection, 'metro', groups), ['metro:Київ']);
   });
 
   it('sends provider choices separately for each transport type', () => {
@@ -93,8 +101,21 @@ describe('transport types and providers', () => {
     assert.equal(toJourneyPreferences(taxiOnly, groups).allowCommunity, false);
     assert.deepEqual(toJourneyPreferences(taxiOnly, groups).allowedTransportTypes, []);
     const bikeOnly = toJourneyPreferences({ ...defaultSelection, active: ['bike' as const] }, groups);
-    assert.deepEqual(bikeOnly.allowedTransportTypes, []);
+    assert.deepEqual(bikeOnly.allowedTransportTypes, ['bike']);
     assert.equal(bikeOnly.allowPublicTransport, false);
+    assert.deepEqual(bikeOnly.allowedProviderIds, ['nextbike']);
+    const scooterOnly = toJourneyPreferences({ ...defaultSelection, active: ['scooter' as const] }, groups);
+    assert.deepEqual(scooterOnly.allowedTransportTypes, ['scooter']);
+    assert.equal(scooterOnly.allowPublicTransport, false);
+    assert.deepEqual(scooterOnly.allowedProviderIds, ['zelectra']);
+    const mixedMicromobility = toJourneyPreferences({ ...defaultSelection, active: ['bike' as const, 'scooter' as const] }, groups);
+    assert.deepEqual(mixedMicromobility.allowedTransportTypes, ['bike', 'scooter']);
+    assert.deepEqual(mixedMicromobility.allowedProviderIds, ['nextbike', 'zelectra']);
+    const metroWithRentals = toJourneyPreferences({ ...defaultSelection, active: ['metro' as const, 'bike' as const, 'scooter' as const] }, groups);
+    assert.deepEqual(metroWithRentals.allowedTransportTypes, ['metro', 'bike', 'scooter']);
+    assert.equal(metroWithRentals.allowPublicTransport, true);
+    assert.deepEqual(metroWithRentals.allowedProviderIds, ['nextbike', 'zelectra']);
+    assert.deepEqual(metroWithRentals.allowedTransitProvidersByType, { metro: ['Київ'] });
     const busOnly = toJourneyPreferences({ ...defaultSelection, active: ['bus' as const] }, groups);
     assert.equal(busOnly.allowBus && busOnly.allowPublicTransport, true);
     assert.equal(busOnly.allowRail || busOnly.allowMinibus || busOnly.allowCommunity, false);

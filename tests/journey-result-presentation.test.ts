@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ApiJourney } from '../src/services/productionApi';
 import {
-  buildJourneyResultSegments, formatJourneySegmentPrice, formatJourneyTotalPrice,
+  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneySegmentPrice, formatJourneyTotalPrice,
 } from '../src/views/journeyResultPresentation';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
@@ -40,10 +40,34 @@ describe('journey result presentation data', () => {
   });
 
   it('does not turn unknown segment fares into zero or present a partial total as complete', () => {
-    const unknownFareJourney = journey({ legs: [leg({ id: 'bus', priceMinor: null, priceStatus: 'UNKNOWN' })] });
+    const unknownFareJourney = journey({
+      legs: [leg({ id: 'bus', priceMinor: null, priceStatus: 'UNKNOWN' })],
+      totalPriceMinor: 3000,
+    });
     const segment = buildJourneyResultSegments(unknownFareJourney).find(item => item.leg?.id === 'bus')!;
     assert.equal(formatJourneySegmentPrice(segment), '—');
     assert.equal(formatJourneyTotalPrice(unknownFareJourney), '—');
+  });
+
+  it('does not round a positive sub-minute segment down to zero', () => {
+    assert.equal(formatJourneyDuration(30), 'менше хвилини');
+    assert.equal(formatJourneyDuration(60), '1 хв');
+  });
+
+  it('keeps short measured route distances in meters instead of rounding them to zero kilometers', () => {
+    assert.equal(formatJourneyDistance(80), '80 м');
+    assert.equal(formatJourneyDistance(1000), '1 км');
+    assert.equal(formatJourneyDistance(null), 'відстань невідома');
+  });
+
+  it('labels partial and estimated aggregate distances without implying verified full mileage', () => {
+    assert.equal(formatJourneyDistanceSummary([
+      leg({ id: 'scooter', mode: 'SCOOTER', source: 'gbfs-geofence-scooter-estimate', distanceMeters: 2300 }),
+      leg({ id: 'metro', mode: 'METRO', distanceMeters: null }),
+    ]), 'Частково ≈ 2,3 км');
+    assert.equal(formatJourneyDistanceSummary([
+      leg({ id: 'bus-a', distanceMeters: 1200 }), leg({ id: 'bus-b', distanceMeters: 1800 }),
+    ]), '3 км');
   });
 
   it('marks estimated leg fares and route totals as approximate in hryvnias', () => {
