@@ -117,16 +117,16 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
       </header>
       {showLayers ? <>
         {availabilityError && <p role="status" className="mb-2 rounded-xl bg-amber-50 p-2 text-[11px] leading-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Не вдалося перевірити джерела шарів. Вони тимчасово вимкнені.<button type="button" className="ml-1 font-bold underline" onClick={() => { availabilityCache = null; setAvailable(null); setAvailabilityError(false); setRetryKey((key) => key + 1); }}>Повторити</button></p>}
-        <section className="mb-1 rounded-2xl border border-slate-200 bg-slate-50/70 p-0.5 dark:border-slate-700 dark:bg-[#0E2435]">
+        <section className="mb-1 rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-[#0E2435]">
           <SectionHeading title="Транспорт" icon={BusFront} expanded={expandedSections.transport} onToggle={() => setExpandedSections(value => ({ ...value, transport: !value.transport }))}/>
-          {expandedSections.transport && <div className="grid grid-cols-2 gap-x-1 px-1 pb-1">{mapLayerDisplayOrder.map((id) => {
+          {expandedSections.transport && <div className="grid grid-cols-2 gap-x-1 px-1">{mapLayerDisplayOrder.map((id) => {
             const item = transportLayerList.find((layer) => layer.id === id);
             return item ? <LayerRow key={item.id} label={item.label} ids={[item.id]} selected={selected} available={available} onToggle={toggleGroup}/> : null;
           })}</div>}
         </section>
-        <section className="mb-1 rounded-2xl border border-slate-200 bg-slate-50/70 p-0.5 dark:border-slate-700 dark:bg-[#0E2435]">
+        <section className="mb-1 rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-[#0E2435]">
           <SectionHeading title="Відображення" icon={Eye} expanded={expandedSections.display} onToggle={() => setExpandedSections(value => ({ ...value, display: !value.display }))}/>
-          {expandedSections.display && <div className="grid grid-cols-2 gap-x-1 px-1 pb-1">
+          {expandedSections.display && <div className="grid grid-cols-2 gap-x-1 px-1">
             <PreferenceRow label="Лінії маршрутів" id="routeLines" checked={displayPreferences.routeLines} onChange={togglePreference}/>
             <PreferenceRow label="Номери маршрутів" id="routeNumbers" checked={displayPreferences.routeNumbers} onChange={togglePreference}/>
             <LayerRow label="Зупинки" ids={['STOPS']} selected={selected} available={available} onToggle={toggleGroup}/>
@@ -135,9 +135,9 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
             <UnavailableRow label="Пересадки"/>
           </div>}
         </section>
-        <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-0.5 dark:border-slate-700 dark:bg-[#0E2435]">
+        <section className="rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-[#0E2435]">
           <SectionHeading title="Інфраструктура" icon={Route} expanded={expandedSections.infrastructure} onToggle={() => setExpandedSections(value => ({ ...value, infrastructure: !value.infrastructure }))}/>
-          {expandedSections.infrastructure && <div className="grid grid-cols-2 gap-x-1 px-1 pb-1">
+          {expandedSections.infrastructure && <div className="grid grid-cols-2 gap-x-1 px-1">
             <UnavailableRow label="Дорожній рух"/><UnavailableRow label="Велодоріжки"/>
             <UnavailableRow label="Події на дорогах"/><LayerRow label="Пункти оренди" ids={['RENTAL_POINTS']} selected={selected} available={available} onToggle={toggleGroup}/>
             <UnavailableRow label="Паркування"/><UnavailableRow label="Об’єкти доступності"/>
