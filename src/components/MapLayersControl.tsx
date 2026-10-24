@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BusFront, ChevronDown, Eye, Layers, Route, X } from 'lucide-react';
-import { cityTransportLayerIds, getTransportLayers, mapLayerDisplayOrder, setTransportLayers, subscribeTransportLayers, type TransportLayerId, transportLayerList } from '../map/transportLayers';
+import { getTransportLayers, mapLayerDisplayOrder, setTransportLayers, subscribeTransportLayers, type TransportLayerId, transportLayerList } from '../map/transportLayers';
 import { productionApi } from '../services/productionApi';
 import { getMapDisplayPreferences, setMapDisplayPreference, subscribeMapDisplayPreferences, type MapDisplayPreferenceId } from '../map/mapLayerPreferences';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
@@ -101,22 +101,6 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
   const navigationMode = variant === 'navigation';
   const toggleGroup = (ids: TransportLayerId[], enabled: boolean) => setTransportLayers(ids, enabled);
   const togglePreference = (id: MapDisplayPreferenceId, enabled: boolean) => setMapDisplayPreference(id, enabled);
-  const allLayerIds: TransportLayerId[] = [...transportLayerList.map((item) => item.id), 'PUBLIC_TRANSPORT', 'CITY_TRAIN', 'FUNICULAR', 'STOPS', 'RENTAL_POINTS'];
-  const applyPreset = (preset: 'clean' | 'city' | 'route') => {
-    if (preset === 'city') {
-      setTransportLayers(allLayerIds, false);
-      setTransportLayers(cityTransportLayerIds(available), true);
-      setMapDisplayPreference('routeLines', true);
-      setMapDisplayPreference('liveVehicles', true);
-      setMapDisplayPreference('routeNumbers', true);
-      return;
-    }
-    setTransportLayers(allLayerIds, false);
-    setMapDisplayPreference('routeLines', preset === 'route');
-    setMapDisplayPreference('liveVehicles', false);
-    setMapDisplayPreference('routeNumbers', false);
-  };
-
   return <>
     <div className="relative">
       <button type="button" aria-label="Шари карти" aria-expanded={open} aria-controls="marshgo-map-layers" onClick={() => setOpen((value) => !value)} className={`relative grid h-12 w-12 place-items-center rounded-full shadow-lg ${navigationMode ? 'border border-slate-200 bg-white/95 text-[#0B1730] backdrop-blur dark:border-white/15 dark:bg-[#0A1D2D]/90 dark:text-white' : 'bg-white text-[#1789F4] dark:bg-[#0B1C2B] dark:text-[#66B2FF]'}`}>
@@ -132,11 +116,6 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
       </header>
       {showLayers ? <>
         {availabilityError && <p role="status" className="mb-2 rounded-xl bg-amber-50 p-2 text-[11px] leading-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Не вдалося перевірити джерела шарів. Вони тимчасово вимкнені.<button type="button" className="ml-1 font-bold underline" onClick={() => { availabilityCache = null; setAvailable(null); setAvailabilityError(false); setRetryKey((key) => key + 1); }}>Повторити</button></p>}
-        <div className="mb-2 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 text-[10px] dark:bg-[#10283B]">
-          <button type="button" onClick={() => applyPreset('clean')} className="min-h-8 rounded-lg px-1 font-semibold hover:bg-white dark:hover:bg-white/10">Чиста карта</button>
-          <button type="button" onClick={() => applyPreset('city')} disabled={available === null} className="min-h-8 rounded-lg px-1 font-semibold hover:bg-white disabled:opacity-45 dark:hover:bg-white/10">Міський транспорт</button>
-          <button type="button" onClick={() => applyPreset('route')} className="min-h-8 rounded-lg px-1 font-semibold hover:bg-white dark:hover:bg-white/10">Мій маршрут</button>
-        </div>
         <section className="mb-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-1 dark:border-slate-700 dark:bg-[#0E2435]">
           <SectionHeading title="Транспорт" icon={BusFront} expanded={expandedSections.transport} onToggle={() => setExpandedSections(value => ({ ...value, transport: !value.transport }))}/>
           {expandedSections.transport && <div className="grid grid-cols-2 gap-x-1 px-1 pb-1">{mapLayerDisplayOrder.map((id) => {
