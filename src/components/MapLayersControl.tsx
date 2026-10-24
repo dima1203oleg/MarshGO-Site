@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Layers, X } from 'lucide-react';
-import { cityTransportLayerIds, getTransportLayers, setTransportLayers, subscribeTransportLayers, type TransportLayerId, transportLayerList } from '../map/transportLayers';
+import { BusFront, ChevronDown, Eye, Layers, Route, X } from 'lucide-react';
+import { cityTransportLayerIds, getTransportLayers, mapLayerDisplayOrder, setTransportLayers, subscribeTransportLayers, type TransportLayerId, transportLayerList } from '../map/transportLayers';
 import { productionApi } from '../services/productionApi';
 import { getMapDisplayPreferences, setMapDisplayPreference, subscribeMapDisplayPreferences, type MapDisplayPreferenceId } from '../map/mapLayerPreferences';
+import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
+import { TransportIcon } from '../design-system/transport/TransportIcon';
 
 /** Layers that can show data depend on connected feeds; the server is authoritative. */
 let availabilityCache: Record<string, boolean> | null = null;
@@ -21,13 +23,21 @@ function LayerRow({
   available: Record<string, boolean> | null;
   onToggle: (ids: TransportLayerId[], enabled: boolean) => void;
 }) {
+  const modeId: Partial<Record<TransportLayerId, string>> = {
+    BUS: 'BUS', MINIBUS: 'MINIBUS', TROLLEYBUS: 'TROLLEYBUS', TRAIN: 'TRAIN', TRAM: 'TRAM',
+    BICYCLE: 'BIKE', METRO: 'METRO', SCOOTER: 'SCOOTER', CARPOOL: 'CARPOOL', CARSHARING: 'CARSHARING',
+    TAXI: 'TAXI', TRANSFER: 'TRANSFER',
+  };
+  const mode = modeId[ids[0]];
+  const visual = mode ? getTransportModeVisual(mode) : null;
   const readyIds = available === null ? [] : ids.filter((id) => available[id] === true);
   const ready = readyIds.length > 0;
   const checked = readyIds.some((id) => selected.has(id));
-  return <label className={`flex min-h-10 min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-[11px] ${ready ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`}>
-    <span className="min-w-0 flex-1 font-semibold leading-tight">{label}</span>
-    {!ready && <small className="shrink-0 text-[9px]">{available === null ? 'перевірка' : 'немає даних'}</small>}
-    <input type="checkbox" role="switch" aria-label={label} checked={checked} disabled={!ready} onChange={() => onToggle(readyIds, !checked)} className="peer sr-only"/>
+  const unavailableReason = ready ? null : available === null ? 'Перевіряємо доступність' : 'Немає доступних даних';
+  return <label className={`flex min-h-11 min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-[11px] ${ready ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`}>
+    {visual && <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-white" style={{ backgroundColor: visual.color }}><TransportIcon mode={mode!} size={16} strokeWidth={2.4}/></span>}
+    <span className="flex min-w-0 flex-1 flex-col justify-center font-semibold leading-tight"><span className="truncate">{label}</span>{unavailableReason && <small className="mt-0.5 truncate text-[8px] font-medium leading-none text-slate-400 dark:text-slate-500">{unavailableReason}</small>}</span>
+    <input type="checkbox" role="switch" aria-label={unavailableReason ? `${label} — ${unavailableReason}` : label} checked={checked} disabled={!ready} onChange={() => onToggle(readyIds, !checked)} className="peer sr-only"/>
     <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-[#1789F4] peer-checked:after:translate-x-4 peer-disabled:bg-slate-200 dark:bg-slate-700 dark:peer-disabled:bg-slate-800"/>
   </label>;
 }
@@ -41,10 +51,16 @@ function PreferenceRow({ label, id, checked, onChange }: { label: string; id: Ma
 }
 
 function UnavailableRow({ label }: { label: string }) {
-  return <div aria-disabled="true" className="flex min-h-10 min-w-0 cursor-not-allowed items-center gap-2 rounded-xl px-2 py-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-    <span className="min-w-0 flex-1 font-semibold leading-tight">{label}</span><small className="shrink-0 text-[9px]">дані недоступні</small>
+  return <div aria-disabled="true" className="flex min-h-11 min-w-0 cursor-not-allowed items-center gap-2 rounded-xl px-2 py-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+    <span className="flex min-w-0 flex-1 flex-col justify-center font-semibold leading-tight"><span className="truncate">{label}</span><small className="mt-0.5 truncate text-[8px] font-medium leading-none">Немає доступних даних</small></span>
     <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-200 dark:bg-slate-800"/>
   </div>;
+}
+
+function SectionHeading({ title, icon: Icon, expanded, onToggle }: { title: string; icon: typeof BusFront; expanded: boolean; onToggle: () => void }) {
+  return <button type="button" aria-expanded={expanded} onClick={onToggle} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-300 dark:hover:bg-white/5">
+    <Icon size={17} className="text-blue-600 dark:text-blue-400" aria-hidden="true"/><span className="flex-1">{title}</span><ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true"/>
+  </button>;
 }
 
 /** Mobile-first layers sheet with truthful provider availability and desktop popover fallback. */
@@ -55,6 +71,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
   const [available, setAvailable] = useState<Record<string, boolean> | null>(availabilityCache);
   const [availabilityError, setAvailabilityError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const [expandedSections, setExpandedSections] = useState({ transport: true, display: true, infrastructure: true });
 
   useEffect(() => subscribeTransportLayers(setSelected), []);
   useEffect(() => subscribeMapDisplayPreferences(setDisplayPreferences), []);
@@ -120,28 +137,32 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
           <button type="button" onClick={() => applyPreset('city')} disabled={available === null} className="min-h-8 rounded-lg px-1 font-semibold hover:bg-white disabled:opacity-45 dark:hover:bg-white/10">Міський транспорт</button>
           <button type="button" onClick={() => applyPreset('route')} className="min-h-8 rounded-lg px-1 font-semibold hover:bg-white dark:hover:bg-white/10">Мій маршрут</button>
         </div>
-        {(['Громадський транспорт', 'Спільні поїздки', 'Мікромобільність'] as const).map((group) => <section key={group} className="mb-2">
-          <h3 className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">{group}</h3>
-          <div className="grid grid-cols-2 gap-x-2">{transportLayerList.filter((item) => item.group === group).map((item) => <LayerRow key={item.id} label={item.label} ids={[item.id]} selected={selected} available={available} onToggle={toggleGroup}/>)}</div>
-        </section>)}
-        <section className="mb-2 border-t border-slate-200 pt-2 dark:border-slate-700">
-          <h3 className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Відображення</h3>
-          <div className="grid grid-cols-2 gap-x-2">
-            <PreferenceRow label="Лінії маршрутів" id="routeLines" checked={displayPreferences.routeLines} onChange={togglePreference}/>
-            <LayerRow label="Зупинки" ids={['STOPS']} selected={selected} available={available} onToggle={toggleGroup}/>
-            <PreferenceRow label="Рух транспорту" id="liveVehicles" checked={displayPreferences.liveVehicles} onChange={togglePreference}/>
-            <PreferenceRow label="Номери маршрутів" id="routeNumbers" checked={displayPreferences.routeNumbers} onChange={togglePreference}/>
-            <UnavailableRow label="Час прибуття (ETA)"/><UnavailableRow label="Пересадки"/>
-          </div>
+        <section className="mb-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-1 dark:border-slate-700 dark:bg-[#0E2435]">
+          <SectionHeading title="Транспорт" icon={BusFront} expanded={expandedSections.transport} onToggle={() => setExpandedSections(value => ({ ...value, transport: !value.transport }))}/>
+          {expandedSections.transport && <div className="grid grid-cols-2 gap-x-1 px-1 pb-1">{mapLayerDisplayOrder.map((id) => {
+            const item = transportLayerList.find((layer) => layer.id === id);
+            return item ? <LayerRow key={item.id} label={item.label} ids={[item.id]} selected={selected} available={available} onToggle={toggleGroup}/> : null;
+          })}</div>}
         </section>
-        <section className="border-t border-slate-200 pt-2 dark:border-slate-700">
-          <h3 className="mb-1 px-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Інфраструктура</h3>
-          <div className="grid grid-cols-2 gap-x-2">
+        <section className="mb-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-1 dark:border-slate-700 dark:bg-[#0E2435]">
+          <SectionHeading title="Відображення" icon={Eye} expanded={expandedSections.display} onToggle={() => setExpandedSections(value => ({ ...value, display: !value.display }))}/>
+          {expandedSections.display && <div className="grid grid-cols-2 gap-x-1 px-1 pb-1">
+            <PreferenceRow label="Лінії маршрутів" id="routeLines" checked={displayPreferences.routeLines} onChange={togglePreference}/>
+            <PreferenceRow label="Номери маршрутів" id="routeNumbers" checked={displayPreferences.routeNumbers} onChange={togglePreference}/>
+            <LayerRow label="Зупинки" ids={['STOPS']} selected={selected} available={available} onToggle={toggleGroup}/>
+            <UnavailableRow label="Час прибуття (ETA)"/>
+            <PreferenceRow label="Рух транспорту (онлайн)" id="liveVehicles" checked={displayPreferences.liveVehicles} onChange={togglePreference}/>
+            <UnavailableRow label="Пересадки"/>
+          </div>}
+        </section>
+        <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-1 dark:border-slate-700 dark:bg-[#0E2435]">
+          <SectionHeading title="Інфраструктура" icon={Route} expanded={expandedSections.infrastructure} onToggle={() => setExpandedSections(value => ({ ...value, infrastructure: !value.infrastructure }))}/>
+          {expandedSections.infrastructure && <div className="grid grid-cols-2 gap-x-1 px-1 pb-1">
             <UnavailableRow label="Дорожній рух"/><UnavailableRow label="Велодоріжки"/>
-            <UnavailableRow label="Події на дорогах"/><LayerRow label="Пункти прокату" ids={['RENTAL_POINTS']} selected={selected} available={available} onToggle={toggleGroup}/>
-            <UnavailableRow label="Паркування"/><UnavailableRow label="Доступність"/>
+            <UnavailableRow label="Події на дорогах"/><LayerRow label="Пункти оренди" ids={['RENTAL_POINTS']} selected={selected} available={available} onToggle={toggleGroup}/>
+            <UnavailableRow label="Паркування"/><UnavailableRow label="Об’єкти доступності"/>
             <UnavailableRow label="Зарядні станції"/><UnavailableRow label="Місця повернення"/>
-          </div>
+          </div>}
         </section>
       </> : <p className="rounded-xl bg-slate-50 p-3 text-[11px] leading-4 text-slate-500 dark:bg-[#10283B] dark:text-slate-400">Додаткові транспортні шари доступні на транспортній карті.</p>}
     </div>, document.body)}

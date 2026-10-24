@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { cityTransportLayerIds, lineTypesFor, microTypesFor, transportLayerList } from '../src/map/transportLayerConfig';
+import { cityTransportLayerIds, lineTypesFor, mapLayerDisplayOrder, microTypesFor, transportLayerList } from '../src/map/transportLayerConfig';
 
 describe('map transport layers', () => {
   it('shows carsharing separately and requests its live assets', () => {
@@ -19,6 +19,14 @@ describe('map transport layers', () => {
     assert.deepEqual(lineTypesFor(new Set(['BUS'])), ['bus']);
     assert.deepEqual(lineTypesFor(new Set(['MINIBUS'])), ['marshrutka']);
     assert.deepEqual(lineTypesFor(new Set(['TRAIN'])), ['train', 'suburban', 'city_train']);
+  });
+
+  it('uses the approved paired order in the two-column map layer sheet', () => {
+    assert.deepEqual(mapLayerDisplayOrder, [
+      'BUS', 'MINIBUS', 'TROLLEYBUS', 'TRAIN', 'TRAM', 'BICYCLE',
+      'METRO', 'SCOOTER', 'CARPOOL', 'CARSHARING', 'TAXI', 'TRANSFER',
+    ]);
+    assert.deepEqual(new Set(mapLayerDisplayOrder), new Set(transportLayerList.map((layer) => layer.id)));
   });
 
   it('city preset selects only available public transport and stops', () => {
