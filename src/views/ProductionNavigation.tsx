@@ -14,6 +14,7 @@ import { canonicalRoute } from '../navigation/canonicalRoute';
 import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
 import { BasicRouteMapMatchingProvider } from '../navigation/BasicRouteMapMatchingProvider';
 import { navigationError } from '../../shared/navigation/errors';
+import { formatMoneyMinor } from '../domain/money';
 import { OffRouteGuard } from '../navigation/OffRouteGuard';
 import { snapNavigationSheet, type NavigationSheetLevel } from '../navigation/navigationSheet';
 import { createNavigationShareUrl } from '../routing/navigationShare';
@@ -228,7 +229,10 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     if (!session || !hasRoute(session)) return;
     try { navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: session.id, route: canonicalRoute(session), paused: session.state === 'paused' }); }
     catch { setGpsMessage('Сервер повернув маршрут у несумісному форматі. Поточний маршрут не змінено.'); }
-  }, [navigationStore, session?.id, session?.route_version, session?.state, session?.route]);
+  // A GPS heartbeat refreshes the session payload (and creates a new `route`
+  // array) without changing its route version. Re-reconciling on that object
+  // identity resets locally matched progress back to the route origin.
+  }, [navigationStore, session?.id, session?.route_version, session?.state]);
 
   // The map would otherwise open zoomed out; centre on the driver once, after that the "my location" button brings the follow camera back.
   useEffect(() => {
@@ -556,7 +560,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       <div className="flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-200">{matches.length ? `Сумісні заявки · ${matches.length}` : 'Шукаємо вздовж дороги'}</p>{session.state === 'active' && <span className="text-[10px] text-slate-500 dark:text-slate-400">оновлення щохвилини</span>}</div>
       {matches.map((match) => <article key={match.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[#0B1730] shadow-sm dark:border-white/10 dark:bg-[#0B1C2B] dark:text-white">
         <div className="flex items-start justify-between gap-3"><div className="min-w-0"><b className="block truncate text-xs">{match.origin_name.split(',')[0]} → {match.destination_name.split(',')[0]}</b><p className="mt-1 text-[10px] text-slate-600 dark:text-slate-300">{match.passenger_count} пас. · забрати орієнтовно {new Intl.DateTimeFormat('uk-UA',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Kyiv'}).format(new Date(match.pickup_eta))}</p></div><span className="shrink-0 text-right text-[10px] font-bold text-blue-700 dark:text-blue-300">+{(match.detour_distance_m/1000).toFixed(1)} км<br/>+{Math.round(match.detour_duration_s/60)} хв</span></div>
-        <p className="mt-1 text-[10px] text-slate-600 dark:text-slate-300">{match.budget_minor === null ? 'Бюджет не вказаний' : `${new Intl.NumberFormat('uk-UA',{style:'currency',currency:'UAH',maximumFractionDigits:0}).format(match.budget_minor/100)} ${match.budget_type === 'per_seat' ? 'за місце' : 'за всіх'}`}{match.vehicle_make ? ` · ${match.vehicle_make} ${match.vehicle_model ?? ''}` : ''}</p>
+        <p className="mt-1 text-[10px] text-slate-600 dark:text-slate-300">{match.budget_minor === null ? 'Бюджет не вказаний' : `${formatMoneyMinor(match.budget_minor)} ${match.budget_type === 'per_seat' ? 'за місце' : 'за всіх'}`}{match.vehicle_make ? ` · ${match.vehicle_make} ${match.vehicle_model ?? ''}` : ''}</p>
         {match.status === 'suggested' && session.state === 'active' && <button disabled={busy} onClick={() => void pauseForResponse()} className="mt-2 w-full rounded-lg bg-amber-100 py-2 text-[10px] font-bold text-amber-900">Зупиніться та призупиніть навігацію, щоб відповісти</button>}
         {match.status === 'suggested' && session.state === 'paused' && <button disabled={matchingBusy} onClick={() => void expressInterest(match.id)} className="mt-2 w-full rounded-lg bg-emerald-600 py-2 text-[10px] font-bold text-white">Підтвердити інтерес водія</button>}
         {match.status === 'driver_interested' && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-[10px] font-semibold text-amber-900">Ваш інтерес надіслано. Чекаємо підтвердження пасажира; бронювання ще немає.</p>}

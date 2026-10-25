@@ -5,6 +5,7 @@ import { getTransportLayers, mapLayerDisplayOrder, setTransportLayers, subscribe
 import { layerAvailabilityForCity } from '../map/transportLayerConfig';
 import { productionApi } from '../services/productionApi';
 import { getMapDisplayPreferences, setMapDisplayPreference, subscribeMapDisplayPreferences, type MapDisplayPreferenceId } from '../map/mapLayerPreferences';
+import { mapLayerBadgeColor } from '../map/mapLayerPalette';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 
@@ -36,7 +37,7 @@ function LayerRow({
   const checked = readyIds.some((id) => selected.has(id));
   const unavailableReason = ready ? null : available === null ? 'Перевіряємо доступність' : 'Немає доступних даних';
   return <label className={`flex min-h-11 min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-[11px] ${ready ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`}>
-    {visual && <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-white" style={{ backgroundColor: visual.color }}><TransportIcon mode={mode!} size={16} strokeWidth={2.4}/></span>}
+    {visual && <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-white" style={{ backgroundColor: mapLayerBadgeColor(ids[0], visual.color) }}><TransportIcon mode={mode!} size={16} strokeWidth={2.4}/></span>}
     <span className="flex min-w-0 flex-1 flex-col justify-center font-semibold leading-tight"><span className="truncate">{label}</span>{unavailableReason && <small className="mt-0.5 truncate text-[8px] font-medium leading-none text-slate-400 dark:text-slate-500">{unavailableReason}</small>}</span>
     <input type="checkbox" role="switch" aria-label={unavailableReason ? `${label} — ${unavailableReason}` : label} checked={checked} disabled={!ready} onChange={() => onToggle(readyIds, !checked)} className="peer sr-only"/>
     <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-[#1789F4] peer-checked:after:translate-x-4 peer-disabled:bg-slate-200 dark:bg-slate-700 dark:peer-disabled:bg-slate-800"/>

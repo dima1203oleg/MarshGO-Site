@@ -10,6 +10,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { BrandMark } from '../components/BrandMark';
 import { VehiclePhoto } from '../components/VehiclePhoto';
 import { passengersLabel } from '../domain/plural';
+import { formatMoneyMinor } from '../domain/money';
 import { shouldWatchRendezvousLocation } from '../domain/rendezvousLocationTracking';
 import { TransportTypesPanel } from '../components/TransportTypesPanel';
 import { DepartureDateTimePicker } from '../components/DepartureDateTimePicker';
@@ -39,7 +40,7 @@ const TransportMapView = lazy(() => import('./TransportMapView').then((module) =
 const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((module) => ({ default: module.ProductionNavigation })));
 
 type Tab = ProductionTab;
-const formatMoney = (minor: number, currency: string) => new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(minor / 100);
+const formatMoney = formatMoneyMinor;
 const formatDate = (value: string, options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }) => new Intl.DateTimeFormat('uk-UA', { ...options, timeZone: 'Europe/Kyiv' }).format(new Date(value));
 const todayKyiv = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv' }).format(new Date());
 const tabItems: { id: Tab; label: string; icon: typeof Home }[] = [
