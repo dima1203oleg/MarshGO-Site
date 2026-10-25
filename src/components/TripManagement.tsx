@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { CalendarClock, CarFront, Minus, Plus, Wallet, X } from 'lucide-react';
 import { productionApi, type ApiBookingChange, type ApiOffer, type ApiVehicle } from '../services/productionApi';
 import { formatKyivDateTimeInput, kyivDateTimeInputToIso } from '../domain/kyivTime';
+import { formatMoneyMinor } from '../domain/money';
 
-const money = (minor: number, currency = 'UAH') => new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(minor / 100);
+const money = formatMoneyMinor;
 const when = (iso: string) => new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(new Date(iso));
 export const offerStatusLabel: Record<string, string> = { published: 'Опубліковано', in_progress: 'У дорозі', completed: 'Завершено', cancelled: 'Скасовано' };
 
