@@ -321,6 +321,15 @@ export type ApiJourneySearchPartialReason =
   | 'provider_error'
   | 'unsupported_preference'
   | 'walking_routing_unavailable';
+export type ApiGtfsSearchTruncation = {
+  stopSelection?: boolean;
+  candidateGraph?: boolean;
+  searchBudget?: boolean;
+  searchStepLimit?: boolean;
+  candidatePoolLimit?: boolean;
+  candidateSampling?: boolean;
+  responsePage?: boolean;
+};
 export type ApiJourneySearchResult = {
   journeys: ApiJourney[];
   requestedStrategy?: ApiJourneyStrategy;
@@ -332,6 +341,8 @@ export type ApiJourneySearchResult = {
   resultsTruncated?: boolean;
   candidateGenerationTruncated?: boolean;
   resultSamplingTruncated?: boolean;
+  /** Present on newer Server builds; omitted fields remain compatible with older deployments. */
+  gtfsTruncation?: ApiGtfsSearchTruncation;
   partial: boolean;
   partialReasons?: ApiJourneySearchPartialReason[];
   blockedProviders: string[];
