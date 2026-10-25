@@ -6,10 +6,21 @@ export function visibleTransportLayers(layers: ReadonlySet<TransportLayerId>, fo
   return focusMode ? new Set() : new Set(layers);
 }
 
-/** In overview show the whole itinerary; on selection emphasize that leg and dim its itinerary context. */
+function suppressItineraryContext(segment: ColoredRouteSegment): boolean {
+  const mode = segment.mode?.toLocaleUpperCase('en-US');
+  const transport = segment.transportType?.toLocaleLowerCase('en-US');
+  return mode === 'BUS' || mode === 'MINIBUS' || mode === 'MARSHRUTKA'
+    || transport === 'bus' || transport === 'minibus' || transport === 'marshrutka';
+}
+
+/** Bus/minibus focus shows only that corridor; ordinary focus keeps other itinerary legs dimmed. */
 export function journeySegmentsForFocus(segments: readonly ColoredRouteSegment[], activeId: string | null): Array<ColoredRouteSegment & { selected: boolean; dimmed: boolean }> {
   if (!activeId) return segments.map(segment => ({ ...segment, selected: true, dimmed: false }));
   if (!segments.some(segment => segment.id === activeId)) return [];
+  const activeSegment = segments.find(segment => segment.id === activeId)!;
+  if (suppressItineraryContext(activeSegment)) {
+    return [{ ...activeSegment, selected: true, dimmed: false }];
+  }
   return segments.map(segment => ({
     ...segment,
     selected: segment.id === activeId,

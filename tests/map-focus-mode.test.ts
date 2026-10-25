@@ -13,17 +13,15 @@ test('normal navigation renders exactly the selected map layers', () => {
   assert.deepEqual(visibleTransportLayers(saved, false), saved);
 });
 
-test('segment focus emphasizes the selected leg and dims the rest of the itinerary', () => {
+test('bus and minibus focus retain only the selected corridor on the map', () => {
   const itinerary = [
     { id: 'walk', coordinates: [[24, 49], [24.01, 49.01]] as [number, number][], modeColor: '#91A6BB' },
-    { id: 'minibus', coordinates: [[24.01, 49.01], [24.2, 49.2]] as [number, number][], modeColor: '#F43F7B' },
+    { id: 'minibus', coordinates: [[24.01, 49.01], [24.2, 49.2]] as [number, number][], modeColor: '#F43F7B', mode: 'MINIBUS' },
     { id: 'carpool', coordinates: [[24.2, 49.2], [24.3, 49.3]] as [number, number][], modeColor: '#A855F7' },
   ];
 
   assert.deepEqual(journeySegmentsForFocus(itinerary, 'minibus').map(({ id, selected, dimmed }) => ({ id, selected, dimmed })), [
-    { id: 'walk', selected: false, dimmed: true },
     { id: 'minibus', selected: true, dimmed: false },
-    { id: 'carpool', selected: false, dimmed: true },
   ]);
   assert.deepEqual(journeySegmentsForFocus(itinerary, null).map(({ id, selected, dimmed }) => ({ id, selected, dimmed })), [
     { id: 'walk', selected: true, dimmed: false },
@@ -32,6 +30,19 @@ test('segment focus emphasizes the selected leg and dims the rest of the itinera
   ]);
   assert.deepEqual(journeySegmentsForFocus(itinerary, 'unknown'), []);
   assert.deepEqual(itinerary.map(segment => segment.id), ['walk', 'minibus', 'carpool']);
+});
+
+test('ordinary tram focus emphasizes its leg and dims the remaining itinerary context', () => {
+  const itinerary = [
+    { id: 'walk', coordinates: [[24, 49], [24.01, 49.01]] as [number, number][], modeColor: '#91A6BB', mode: 'WALK' },
+    { id: 'tram', coordinates: [[24.01, 49.01], [24.2, 49.2]] as [number, number][], modeColor: '#8B3CE6', mode: 'TRAM' },
+    { id: 'bus', coordinates: [[24.2, 49.2], [24.3, 49.3]] as [number, number][], modeColor: '#1687FF', mode: 'BUS' },
+  ];
+  assert.deepEqual(journeySegmentsForFocus(itinerary, 'tram').map(({ id, selected, dimmed }) => ({ id, selected, dimmed })), [
+    { id: 'walk', selected: false, dimmed: true },
+    { id: 'tram', selected: true, dimmed: false },
+    { id: 'bus', selected: false, dimmed: true },
+  ]);
 });
 
 test('segment focus keeps only waypoints for the selected leg and shared transfer points', () => {

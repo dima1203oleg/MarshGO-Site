@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BusFront, ChevronDown, Eye, Layers, Route, X } from 'lucide-react';
 import { getTransportLayers, mapLayerDisplayOrder, setTransportLayers, subscribeTransportLayers, type TransportLayerId, transportLayerList } from '../map/transportLayers';
+import { layerAvailabilityForCity } from '../map/transportLayerConfig';
 import { productionApi } from '../services/productionApi';
 import { getMapDisplayPreferences, setMapDisplayPreference, subscribeMapDisplayPreferences, type MapDisplayPreferenceId } from '../map/mapLayerPreferences';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
@@ -64,7 +65,7 @@ function SectionHeading({ title, icon: Icon, expanded, onToggle }: { title: stri
 }
 
 /** Mobile-first layers sheet with truthful provider availability and desktop popover fallback. */
-export function MapLayersControl({ overlays = false, variant = 'explore', visible = true }: { overlays?: boolean; variant?: 'explore' | 'navigation'; visible?: boolean }) {
+export function MapLayersControl({ overlays = false, variant = 'explore', visible = true, cityModes }: { overlays?: boolean; variant?: 'explore' | 'navigation'; visible?: boolean; cityModes?: readonly string[] }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<TransportLayerId>>(getTransportLayers());
   const [displayPreferences, setDisplayPreferences] = useState(getMapDisplayPreferences());
@@ -72,6 +73,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
   const [availabilityError, setAvailabilityError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const [expandedSections, setExpandedSections] = useState({ transport: true, display: true, infrastructure: true });
+  const cityAvailable = layerAvailabilityForCity(available, cityModes);
 
   useEffect(() => subscribeTransportLayers(setSelected), []);
   useEffect(() => subscribeMapDisplayPreferences(setDisplayPreferences), []);
@@ -121,7 +123,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
           <SectionHeading title="Транспорт" icon={BusFront} expanded={expandedSections.transport} onToggle={() => setExpandedSections(value => ({ ...value, transport: !value.transport }))}/>
           {expandedSections.transport && <div className="grid grid-cols-2 gap-x-1 px-1">{mapLayerDisplayOrder.map((id) => {
             const item = transportLayerList.find((layer) => layer.id === id);
-            return item ? <LayerRow key={item.id} label={item.label} ids={[item.id]} selected={selected} available={available} onToggle={toggleGroup}/> : null;
+            return item ? <LayerRow key={item.id} label={item.label} ids={[item.id]} selected={selected} available={cityAvailable} onToggle={toggleGroup}/> : null;
           })}</div>}
         </section>
         <section className="mb-0.5 rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-[#0E2435]">
@@ -129,7 +131,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
           {expandedSections.display && <div className="grid grid-cols-2 gap-x-1 px-1">
             <PreferenceRow label="Лінії маршрутів" id="routeLines" checked={displayPreferences.routeLines} onChange={togglePreference}/>
             <PreferenceRow label="Номери маршрутів" id="routeNumbers" checked={displayPreferences.routeNumbers} onChange={togglePreference}/>
-            <LayerRow label="Зупинки" ids={['STOPS']} selected={selected} available={available} onToggle={toggleGroup}/>
+            <LayerRow label="Зупинки" ids={['STOPS']} selected={selected} available={cityAvailable} onToggle={toggleGroup}/>
             <UnavailableRow label="Час прибуття (ETA)"/>
             <PreferenceRow label="Рух транспорту (онлайн)" id="liveVehicles" checked={displayPreferences.liveVehicles} onChange={togglePreference}/>
             <UnavailableRow label="Пересадки"/>
