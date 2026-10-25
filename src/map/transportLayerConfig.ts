@@ -4,6 +4,30 @@ import { getTransportModeVisual } from '../design-system/transport/transportMode
 export type TransportLayerId = 'PUBLIC_TRANSPORT' | 'METRO' | 'BUS' | 'MINIBUS' | 'TRAM' | 'TROLLEYBUS' | 'CITY_TRAIN' | 'TRAIN' | 'FUNICULAR' | 'STOPS' | 'CARPOOL' | 'TAXI' | 'BICYCLE' | 'SCOOTER' | 'CARSHARING' | 'TRANSFER' | 'RENTAL_POINTS';
 export type TransportLayerGroup = 'Громадський транспорт' | 'Спільні поїздки' | 'Мікромобільність';
 
+const transitModesByLayer: Partial<Record<TransportLayerId, readonly string[]>> = {
+  PUBLIC_TRANSPORT: ['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'train', 'suburban', 'city_train', 'funicular'],
+  BUS: ['bus'], MINIBUS: ['marshrutka'], TROLLEYBUS: ['trolleybus'], TRAM: ['tram'], METRO: ['metro'],
+  TRAIN: ['train', 'suburban', 'city_train'], CITY_TRAIN: ['city_train'], FUNICULAR: ['funicular'],
+};
+
+/** Restrict globally healthy feeds to the modes declared by the currently selected city's GTFS sources. */
+export function layerAvailabilityForCity(
+  availability: Readonly<Record<string, boolean>> | null,
+  cityModes?: readonly string[],
+): Record<string, boolean> | null {
+  if (!availability || cityModes === undefined) return availability ? { ...availability } : null;
+  const modes = new Set(cityModes);
+  return Object.fromEntries(Object.entries(availability).map(([id, globallyAvailable]) => {
+    const supportedModes = transitModesByLayer[id as TransportLayerId];
+    return [id, globallyAvailable && (!supportedModes || supportedModes.some((mode) => modes.has(mode)))];
+  }));
+}
+
+export function isTransitLayerAvailableInCity(layer: TransportLayerId, cityModes: readonly string[] | undefined): boolean {
+  const supportedModes = transitModesByLayer[layer];
+  return !supportedModes || cityModes === undefined || supportedModes.some((mode) => cityModes.includes(mode));
+}
+
 /** Exactly the twelve canonical map categories. Unavailable feeds stay disabled in the layer sheet. */
 export const transportLayerList: Array<{ id: TransportLayerId; label: string; group: TransportLayerGroup }> = [
   { id: 'BUS', label: getTransportModeVisual('BUS').pluralLabel, group: 'Громадський транспорт' },

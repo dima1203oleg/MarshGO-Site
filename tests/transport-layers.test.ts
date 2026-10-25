@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { cityTransportLayerIds, lineTypesFor, mapLayerDisplayOrder, microTypesFor, transportLayerList } from '../src/map/transportLayerConfig';
+import { cityTransportLayerIds, isTransitLayerAvailableInCity, layerAvailabilityForCity, lineTypesFor, mapLayerDisplayOrder, microTypesFor, transportLayerList } from '../src/map/transportLayerConfig';
 
 describe('map transport layers', () => {
   it('shows carsharing separately and requests its live assets', () => {
@@ -32,5 +32,15 @@ describe('map transport layers', () => {
   it('city preset selects only available public transport and stops', () => {
     assert.deepEqual(cityTransportLayerIds(null), []);
     assert.deepEqual(cityTransportLayerIds({ BUS: true, METRO: true, BICYCLE: true, SCOOTER: true, TAXI: true, STOPS: true }), ['BUS', 'METRO', 'STOPS']);
+  });
+
+  it('scopes transit map layers to the selected city GTFS modes', () => {
+    const global = { BUS: true, TRAM: true, METRO: true, TRAIN: true, STOPS: true, BICYCLE: true };
+    assert.deepEqual(layerAvailabilityForCity(global, ['bus', 'tram']), {
+      BUS: true, TRAM: true, METRO: false, TRAIN: false, STOPS: true, BICYCLE: true,
+    });
+    assert.equal(isTransitLayerAvailableInCity('METRO', ['bus', 'tram']), false);
+    assert.equal(isTransitLayerAvailableInCity('METRO', ['metro']), true);
+    assert.equal(isTransitLayerAvailableInCity('METRO', undefined), true);
   });
 });
