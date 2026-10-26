@@ -1147,7 +1147,7 @@ export function ProductionMarketplace() {
     try {
       await productionApi.blockBookingOther(selectedBooking.id);
       await refreshBlockedUsers();
-      setMessages([]); setRealtimeConnected(false); setSelectedBooking(null); setTab((currentTab) => currentTab === 'chat' ? 'trips' : currentTab);
+      setMessages([]); setRealtimeConnected(false); setSelectedBooking(null); setTab('trips');
       setStatusMessage(`${contactName} заблоковано. Бронювання залишилось у списку поїздок.`);
     } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося заблокувати користувача.'); }
     finally { setBusy(false); }
