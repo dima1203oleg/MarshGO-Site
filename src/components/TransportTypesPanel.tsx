@@ -8,7 +8,7 @@ import type { ApiTransportProviders } from '../services/productionApi';
 // This order follows the approved route-search screen, while the domain
 // catalogue remains ordered by the product's broader transport taxonomy.
 const routeSearchOrder: readonly TransportTypeId[] = [
-  'carpool', 'marshrutka', 'bus', 'taxi', 'trolleybus', 'metro', 'tram', 'train',
+  'carpool', 'marshrutka', 'bus', 'taxi', 'tram', 'trolleybus', 'metro', 'train',
   'bike', 'scooter', 'carsharing', 'transfer',
 ];
 function Tile({ label, visualLabel = label, selected, disabled, disabledReason, compact, type, onClick }: { label: string; visualLabel?: string; selected: boolean; disabled: boolean; disabledReason?: string; compact?: boolean; type: TransportTypeId; onClick: () => void }) {

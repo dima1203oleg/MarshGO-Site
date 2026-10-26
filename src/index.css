@@ -264,6 +264,7 @@ html.dark .search-screen .journey-search-card .search-submit {
   box-shadow: 0 5px 16px rgba(11, 45, 82, .075) !important;
 }
 .journey-result-card-content { padding: .25rem .5rem !important; }
+.journey-result-header { min-height: 2.75rem; }
 html.dark .journey-results {
   background: linear-gradient(180deg, #0A1D2D 0%, #061522 100%);
 }
@@ -275,6 +276,9 @@ html.dark .journey-results .journey-result-card {
 }
 html.dark .journey-results .journey-result-card:first-of-type {
   border-color: #1687FF !important;
+}
+html.dark .journey-results .journey-result-duration {
+  color: #F5F9FF !important;
 }
 html.dark .journey-results [aria-label="Режим пошуку маршрутів"] > button:not([aria-pressed="true"]) {
   border-color: #20384D !important;
@@ -292,7 +296,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
 .journey-segment-ribbon {
   display: flex;
   width: 100%;
-  height: .625rem;
+  height: 11px;
   gap: 2px;
   overflow: hidden;
   border-radius: 999px;
@@ -325,7 +329,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 2.125rem;
+  min-height: 2.75rem;
   flex-direction: column;
   justify-content: center;
   gap: .08rem;
@@ -411,8 +415,13 @@ html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background
 .journey-result-action-badge,
 .journey-result-transfer-badge,
 .journey-result-save-visual { border: 1px solid #D9E2EC; }
-.journey-result-save-button { margin-block: -.25rem; background-color: transparent; }
-.journey-result-save-visual { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 999px; background: transparent; }
+.journey-result-action-badge,
+.journey-result-transfer-badge { min-height: 2.5rem; }
+.journey-result-action-badge { width: 2.5rem; height: 2.5rem; }
+.journey-result-transfer-badge { min-width: 2.5rem; }
+.journey-result-save-button { margin-block: 0; background-color: transparent; }
+.journey-result-save-visual { display: grid; width: 2.5rem; height: 2.5rem; place-items: center; border-radius: 999px; background: transparent; }
+.journey-result-actions > span:last-child { width: 2.75rem; height: 2.75rem; }
 html.dark .journey-result-action-badge,
 html.dark .journey-result-transfer-badge,
 html.dark .journey-result-save-visual { border-color: #223C52 !important; }

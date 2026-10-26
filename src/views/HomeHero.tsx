@@ -24,8 +24,8 @@ const banners = [
 const actions = [
   { title: 'Навігація', subtitle: 'Побудувати маршрут', tone: 'navigation', icon: Navigation },
   { title: 'Карта транспорту', subtitle: 'Зупинки, лінії, рух', tone: 'transport', icon: BusFront },
-  { title: 'Знайти маршрут', subtitle: 'Усі види транспорту', tone: 'search', icon: Search },
   { title: 'Опублікувати поїздку', subtitle: 'Попутка / маршрут', tone: 'publish', icon: CirclePlus },
+  { title: 'Знайти маршрут', subtitle: 'Усі види транспорту', tone: 'search', icon: Search },
 ] as const;
 
 const popularRoutes = [
@@ -100,7 +100,7 @@ export function HomeHero({
     if (action === 'publish') onPlanTrip();
   };
 
-  return <main ref={root} className={`home-hero home-hero--canonical mx-auto flex w-full max-w-xl flex-col px-4 pb-1 pt-2 ${availableHeight ? 'overflow-hidden' : ''}`} style={availableHeight ? { height: availableHeight } : undefined}>
+  return <main ref={root} className="home-hero home-hero--canonical mx-auto flex w-full max-w-xl flex-col px-4 pb-1 pt-2" style={availableHeight ? { height: availableHeight, overflowY: 'auto', overscrollBehaviorY: 'contain' } : undefined}>
     <button type="button" onClick={onSearchTrip} className="home-city-pill mb-2 inline-flex min-h-9 shrink-0 items-center gap-2 self-start rounded-full border border-[#DFE7F1] bg-white px-3.5 text-sm font-bold text-[#14243B] shadow-sm">
       <MapPin size={16} className="text-blue-600"/> Львів <ChevronRight size={14} className="rotate-90 text-slate-400"/>
     </button>
