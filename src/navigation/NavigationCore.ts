@@ -78,10 +78,14 @@ export function transition(state: NavigationState, event: NavigationEvent): Tran
           currentManeuverIndex: 0,
           matching: { status: 'IDLE' as const, confidence: null, provider: null },
         } : {}),
-        remainingDistanceMeters: event.route.distanceMeters,
-        remainingDurationSeconds: event.route.durationSeconds,
-        offRoute: false,
-        rerouteRequired: false,
+        // Server session refreshes may return the same route after every GPS
+        // heartbeat. Preserve matched live progress until the session or route
+        // version actually changes; otherwise a refresh resets the ETA to zero
+        // progress and makes navigation appear stuck.
+        remainingDistanceMeters: routeChanged ? event.route.distanceMeters : state.remainingDistanceMeters ?? event.route.distanceMeters,
+        remainingDurationSeconds: routeChanged ? event.route.durationSeconds : state.remainingDurationSeconds ?? event.route.durationSeconds,
+        offRoute: routeChanged ? false : state.offRoute,
+        rerouteRequired: routeChanged ? false : state.rerouteRequired,
         error: null,
       }, effects: [] };
     }

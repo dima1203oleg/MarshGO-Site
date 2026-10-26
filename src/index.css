@@ -14,9 +14,9 @@
   --mode-bus: #1687FF;
   --mode-marshrutka: #F02F79;
   --mode-trolleybus: #00C2A0;
-  --mode-tram: #F43F7B;
+  --mode-tram: #8B3CE6;
   --mode-metro: #E43F86;
-  --mode-carpool: #A855F7;
+  --mode-carpool: #E83E8C;
   --mode-taxi: #F5B51B;
   --mode-train: #914BF4;
   --mode-bike: #20B86A;
@@ -276,6 +276,9 @@ html.dark .journey-results .journey-result-card {
 }
 html.dark .journey-results .journey-result-card:first-of-type {
   border-color: #1687FF !important;
+}
+html.dark .journey-results .journey-result-duration {
+  color: #F5F9FF !important;
 }
 html.dark .journey-results [aria-label="Режим пошуку маршрутів"] > button:not([aria-pressed="true"]) {
   border-color: #20384D !important;

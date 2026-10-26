@@ -339,10 +339,19 @@ export type ApiJourneySearchResult = {
   returnedCount?: number;
   alternativeLimitPerStrategy?: number;
   resultsTruncated?: boolean;
-  candidateGenerationTruncated?: boolean;
   resultSamplingTruncated?: boolean;
-  /** Present on newer Server builds; omitted fields remain compatible with older deployments. */
+  candidateGenerationTruncated?: boolean;
   gtfsTruncation?: ApiGtfsSearchTruncation;
+  gtfsSearchDiagnostics?: Array<{
+    providers: string[];
+    stopSelection: boolean;
+    searchBudget: boolean;
+    searchStepLimit: boolean;
+    candidatePoolLimit: boolean;
+    candidateSampling: boolean;
+    segmentSpan: boolean;
+    responsePage: boolean;
+  }>;
   partial: boolean;
   partialReasons?: ApiJourneySearchPartialReason[];
   blockedProviders: string[];

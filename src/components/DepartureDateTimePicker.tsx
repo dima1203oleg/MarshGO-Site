@@ -109,7 +109,8 @@ export function DepartureDateTimePicker({ open, value, onChange, onClose }: {
   return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/65 px-3 pt-4 backdrop-blur-sm sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section role="dialog" aria-modal="true" aria-labelledby="departure-picker-title" className="max-h-[94dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-blue-900/50 bg-[#071a31] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 text-white shadow-2xl sm:rounded-[2rem]">
       <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-600"/>
-      <header className="flex items-center justify-between"><button type="button" onClick={onClose} aria-label="Закрити вибір дати й часу" className="grid h-10 w-10 place-items-center rounded-full bg-[#102847] text-slate-300"><X size={19}/></button><h2 id="departure-picker-title" className="text-base font-extrabold">Вибір дати і часу</h2><span className="w-10"/></header>
+      <header className="flex items-center justify-between"><button type="button" onClick={onClose} aria-label="Закрити вибір дати й часу" className="grid h-10 w-10 place-items-center rounded-full bg-[#102847] text-slate-300"><X size={19}/></button><h2 id="departure-picker-title" className="text-base font-extrabold">Час маршруту</h2><span className="w-10"/></header>
+      <p className="mt-1 text-center text-xs text-slate-300">Виберіть дату й час відправлення</p>
 
       <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-[#0d2340] p-1.5">
         {[['today', 'Сьогодні', today], ['tomorrow', 'Завтра', addDays(today, 1)], ['other', 'Інша дата', null]].map(([key, label, target]) => {
@@ -127,9 +128,9 @@ export function DepartureDateTimePicker({ open, value, onChange, onClose }: {
 
       <div className="mt-5 flex items-center gap-2 text-sm font-bold"><Clock3 size={17} className="text-blue-300"/>Час відправлення</div>
       <div className="mt-3 flex items-center gap-3">
-        <WheelColumn label="Година відправлення" values={Array.from({ length: 24 }, (_, index) => index)} selected={hour} selectedIndex={hour} onSelect={setHour}/>
+        <WheelColumn label="Години" values={Array.from({ length: 24 }, (_, index) => index)} selected={hour} selectedIndex={hour} onSelect={setHour}/>
         <span className="text-2xl font-bold text-blue-200">:</span>
-        <WheelColumn label="Хвилина відправлення" values={MINUTES} selected={minute} selectedIndex={MINUTES.indexOf(minute)} onSelect={setMinute}/>
+        <WheelColumn label="Хвилини" values={MINUTES} selected={minute} selectedIndex={MINUTES.indexOf(minute)} onSelect={setMinute}/>
       </div>
 
       <div className="mt-5 flex items-center justify-between border-t border-blue-900/70 pt-4 text-xs text-slate-300"><span className="flex items-center gap-2"><CalendarDays size={15}/>{dateLabel(date, { day: 'numeric', month: 'long', year: 'numeric' })}</span><span>{pad(hour)}:{pad(minute)} · Київ</span></div>

@@ -9,7 +9,8 @@ import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
 import { productionApi, type ApiJourney, type ApiJourneyLive, type ApiOffer } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
-import { JourneySegmentStrip, type JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
+import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
+import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
 import { routeBearingForHorizontalFit } from '../map/routeOrientation';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
 import {
@@ -20,7 +21,6 @@ import {
   formatJourneyTotalPrice,
 } from './journeyResultPresentation';
 import { routeSheetHeights, settleRouteSheetSnap, type RouteSheetSnap } from './routeSheet';
-import { journeyLiveArrivalMessage } from './journeyLiveArrival';
 import { themeService } from '../services/theme';
 
 type JourneyLeg = ApiJourney['legs'][number];
@@ -394,7 +394,7 @@ export function JourneyRouteMapScreen({
     if (!start || start.pointerId !== event.pointerId) return;
     if (start.moved) {
       const heights = routeSheetHeights(viewportHeight);
-      const next = settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights);
+      const next = settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height);
       moveToSnap(next);
     }
     dragStart.current = null;
@@ -540,41 +540,33 @@ export function JourneyRouteMapScreen({
       </button>
 
       <div className={`route-sheet-summary shrink-0 px-3 pb-2${sheetSnap === 'collapsed' ? ' route-sheet-summary--compact' : ''}`}>
-        <div className="px-3 py-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-baseline gap-2">
-              <strong className="text-[21px] font-black leading-6 tabular-nums">{formatDuration(allDuration)}</strong>
-              <span aria-hidden="true" className="h-7 border-l border-[var(--route-border)]"/>
-              <span className="flex min-w-0 flex-col leading-tight"><strong className="truncate text-[15px] font-extrabold tabular-nums">{priceSummary}</strong><span className="truncate text-[9px] font-semibold text-[var(--route-muted)]">{distanceSummary}</span></span>
-            </div>
-            <div className="route-summary-actions flex shrink-0 items-center gap-1">
+        <CanonicalRouteLip
+          density="sheet"
+          durationLabel={formatDuration(allDuration)}
+          durationTitle={`Виїзд ${firstLeg ? formatTime(firstLeg.departureAt) : '—'} · прибуття ${lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}`}
+          priceLabel={priceSummary}
+          priceAccessibleLabel={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`}
+          distanceLabel={distanceSummary}
+          actionsClassName="route-summary-actions flex shrink-0 items-center gap-1"
+          actions={ <>
               <span aria-label={`Режим: ${strategyLabel}`} title={strategyLabel} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[#1687FF]"><StrategyIcon size={18}/></span>
               <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-[var(--route-border)] px-2 text-[10px] font-extrabold tabular-nums"><ArrowLeftRight size={13}/>{journey.transfers}</span>
               {sheetSnap === 'expanded' && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[#1687FF] hover:bg-[var(--route-hover)]"><Navigation size={18}/></button>}
               <button type="button" aria-label={sheetSnap === 'expanded' ? 'Згорнути панель до карти' : sheetSnap === 'half' ? 'Розгорнути панель повністю' : 'Показати деталі маршруту'} onClick={cycleSheet} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[#1687FF] hover:bg-[var(--route-hover)]"><ChevronRight size={19} className={sheetSnap === 'expanded' ? 'rotate-90' : ''}/></button>
-            </div>
-          </div>
-          {waitingSeconds > 0 && <p className="mt-1 text-right text-[9px] font-semibold text-[var(--route-muted)]">Очікування · {formatDuration(waitingSeconds)}</p>}
-          {(mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured' || liveJourneyRequestMessage !== '' || selectedLiveLineIncomplete || missingShapes > 0 || approximateWalkCount > 0) && <p role="status" className={`mt-1 text-[9px] font-semibold ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{mapStatusText}</p>}
-          {stripItems.length > 0 ? <>
-            <JourneySegmentStrip
-              items={stripItems}
-              ariaLabel="Етапи маршруту та їхня вартість"
-              activeItemId={activeSegmentId}
-              onSelect={chooseSegment}
-              className="mt-2"
-            />
-            <span className="sr-only">Загальна відстань: {distanceSummary}. Виїзд {firstLeg ? formatTime(firstLeg.departureAt) : '—'}, прибуття {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}. Кольорова шкала пропорційна часу руху кожним відрізком; очікування не змішується з транспортними сегментами.</span>
-          </> : <p className="mt-2 text-xs text-[var(--route-muted)]">Дані сегментів цього маршруту не надійшли.</p>}
-          {liveJourneyRequestState === 'ready' && selectedLiveSegment && <p
-            role="status"
-            aria-live="polite"
-            data-testid="journey-live-arrival-status"
-            className={`mt-2 rounded-xl border px-3 py-2 text-[11px] font-semibold leading-4 ${isDark ? 'border-[#24455F] bg-[#102638] text-sky-100' : 'border-sky-200 bg-sky-50 text-sky-950'}`}
-          >
-            {journeyLiveArrivalMessage(selectedLiveSegment)}
-          </p>}
-        </div>
+          </>}
+          items={stripItems}
+          ariaLabel="Етапи маршруту та їхня вартість"
+          activeItemId={activeSegmentId}
+          onSelect={chooseSegment}
+          className=""
+          stripClassName="mt-2"
+          summaryNote={<>
+            {waitingSeconds > 0 && <p className="mt-1 text-right text-[9px] font-semibold text-[var(--route-muted)]">Очікування · {formatDuration(waitingSeconds)}</p>}
+            {(mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured' || liveJourneyRequestMessage !== '' || selectedLiveLineIncomplete || missingShapes > 0 || approximateWalkCount > 0) && <p role="status" className={`mt-1 text-[9px] font-semibold ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{mapStatusText}</p>}
+            {!stripItems.length && <p className="mt-2 text-xs text-[var(--route-muted)]">Дані сегментів цього маршруту не надійшли.</p>}
+          </>}
+        />
+        {stripItems.length > 0 && <span className="sr-only">Загальна відстань: {distanceSummary}. Виїзд {firstLeg ? formatTime(firstLeg.departureAt) : '—'}, прибуття {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}. Кольорова шкала пропорційна часу руху кожним відрізком; очікування не змішується з транспортними сегментами.</span>}
       </div>
 
       {sheetSnap !== 'collapsed' && <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3" data-testid="route-segment-list">

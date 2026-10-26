@@ -11,6 +11,7 @@ test('route sheet snap points leave a visible map strip and keep an ordered rang
     assert.ok(viewport - heights.expanded >= 112);
     assert.ok(heights.collapsed >= 200);
   }
+  assert.equal(routeSheetHeights(844).half, 422);
 });
 
 test('slow release chooses the nearest snap and a quick swipe advances one snap', () => {
@@ -19,6 +20,12 @@ test('slow release chooses the nearest snap and a quick swipe advances one snap'
   assert.equal(settleRouteSheetSnap(heights.collapsed + 40, 0.8, heights), 'half');
   assert.equal(settleRouteSheetSnap(heights.expanded - 40, -0.8, heights), 'half');
   assert.equal(settleRouteSheetSnap(heights.expanded - 10, 0.1, heights), 'expanded');
+  assert.equal(settleRouteSheetSnap(heights.half + 4, 0.8, heights, 0.45, heights.collapsed), 'half');
+  assert.equal(settleRouteSheetSnap(heights.half + 80, 0.8, heights, 0.45, heights.half), 'expanded');
+  assert.equal(settleRouteSheetSnap(heights.expanded - 120, 0.8, heights, 0.45, heights.expanded), 'half');
+  assert.equal(settleRouteSheetSnap(heights.half + 4, -0.8, heights, 0.45, heights.collapsed), 'half');
+  assert.equal(settleRouteSheetSnap(heights.expanded - 80, 0.1, heights, 0.45, heights.expanded), 'half');
+  assert.equal(settleRouteSheetSnap(heights.expanded - 30, 0.1, heights, 0.45, heights.expanded), 'expanded');
 });
 
 test('route alignment rotates north-south routes sideways and leaves east-west routes north-up', () => {

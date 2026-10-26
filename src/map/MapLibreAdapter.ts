@@ -369,6 +369,8 @@ export class MapLibreAdapter implements MapAdapter {
     }
     const mapSegments = journeySegmentsForFocus(segments, this.activeRouteSegmentId);
     const container = this.map.getContainer();
+    container.dataset.marshgoRouteSegmentCount = String(mapSegments.length);
+    container.dataset.marshgoRoutePointCount = String(mapSegments.reduce((count, segment) => count + segment.coordinates.length, 0));
     container.dataset.marshgoSelectedRouteSegmentCount = String(mapSegments.filter(segment => segment.selected).length);
     container.dataset.marshgoDimmedRouteSegmentCount = String(mapSegments.filter(segment => segment.dimmed).length);
   }
