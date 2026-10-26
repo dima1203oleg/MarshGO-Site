@@ -77,3 +77,12 @@ export function validateLocationFix(fix: LocationFix, nowMs: number, previous?: 
   }
   return { accepted: true, fix: parsed.data };
 }
+
+/** A cached browser repeat is a no-op, not a new stale/out-of-order GPS error. */
+export function isDuplicateLocationFix(fix: LocationFix, previous?: LocationFix): boolean {
+  return Boolean(previous
+    && fix.capturedAtClient === previous.capturedAtClient
+    && fix.latitude === previous.latitude
+    && fix.longitude === previous.longitude
+    && fix.accuracyMeters === previous.accuracyMeters);
+}

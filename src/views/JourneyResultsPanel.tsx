@@ -7,7 +7,7 @@ import { JourneySegmentStrip, type JourneySegmentStripItem } from '../design-sys
 import { journeyLegCaveat } from './journeyLegLabel';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
-  buildJourneyResultSegments, formatJourneyClock, formatJourneyDuration,
+  buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
   formatJourneySegmentPrice, formatJourneyTotalPrice,
 } from './journeyResultPresentation';
 
@@ -49,13 +49,6 @@ function formatRouteCount(count: number): string {
   const plural = new Intl.PluralRules('uk-UA').select(count);
   const noun = plural === 'one' ? 'маршрут' : plural === 'few' ? 'маршрути' : 'маршрутів';
   return `${count} ${noun}`;
-}
-
-function formatDistance(meters: number | null): string {
-  if (meters === null || !Number.isFinite(meters) || meters < 0) return 'відстань невідома';
-  return meters >= 1000
-    ? `${(meters / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 1 })} км`
-    : `${Math.round(meters)} м`;
 }
 
 function RouteResultCard({ journey, strategy, index, onOpen }: {
@@ -138,7 +131,7 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
       <div className="journey-result-header flex min-h-9 items-center gap-1">
         <div className="journey-result-key-metrics flex min-w-0 flex-1 items-center gap-2">
           <div className="min-w-0">
-            <p title={`Виїзд ${formatJourneyClock(startAt)} · прибуття ${formatJourneyClock(lastLeg.arrivalAt)}`} className="journey-result-duration text-[22px] font-black leading-6 tracking-tight tabular-nums text-slate-900 dark:text-white">{formatJourneyDuration(journey.totalDurationSeconds)}</p>
+            <p data-testid="canonical-route-duration" title={`Виїзд ${formatJourneyClock(startAt)} · прибуття ${formatJourneyClock(lastLeg.arrivalAt)}`} className="journey-result-duration text-[22px] font-black leading-6 tracking-tight tabular-nums text-slate-900 dark:text-white">{formatJourneyDuration(journey.totalDurationSeconds)}</p>
             {waitingSeconds > 0 && <p data-testid="journey-result-wait" className="text-[9px] font-semibold leading-3 tabular-nums text-slate-500 dark:text-slate-400">Очікування · {formatJourneyDuration(waitingSeconds)}</p>}
           </div>
           <span aria-hidden="true" className="h-7 w-px shrink-0 bg-slate-200 dark:bg-[#294258]"/>
@@ -159,7 +152,7 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
         ariaLabel="Послідовність етапів маршруту"
         className="mt-1.5 pointer-events-none"
       />
-      {segments.map(segment => segment.leg && <span key={segment.id} className="sr-only">{formatDistance(segment.leg.distanceMeters)}</span>)}
+      {segments.map(segment => segment.leg && <span key={segment.id} className="sr-only">{formatJourneyDistance(segment.leg.distanceMeters)}</span>)}
       {caveats.length > 0 && <p title={[...new Set(caveats)].join(' ')} className="mt-1 truncate text-[9px] leading-3 text-amber-800 dark:text-amber-200">{[...new Set(caveats)].join(' ')}</p>}
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
       <span className="sr-only">Виїзд {formatJourneyClock(startAt)}, прибуття {formatJourneyClock(lastLeg.arrivalAt)}{waitingSeconds > 0 ? `, очікування ${formatJourneyDuration(waitingSeconds)}` : ''}.</span>
