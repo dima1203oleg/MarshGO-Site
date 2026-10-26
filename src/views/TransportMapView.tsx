@@ -3,6 +3,7 @@ import { ArrowLeft, Bike, Bus, TrainFront } from 'lucide-react';
 import { productionApi, type ApiTransportCity } from '../services/productionApi';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
+import { isTransitLayerAvailableInCity } from '../map/transportLayerConfig';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
 import { clearTransportLayers, getTransportLayers, subscribeTransportLayers, toggleTransportLayer, type TransportLayerId } from '../map/transportLayers';
 
@@ -54,7 +55,10 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
         </select>}
       </div>
       <div className="pointer-events-auto flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Швидкі шари">
-        {chips.map(({ label, id, Icon }) => <button key={id} type="button" aria-pressed={selected.has(id)} onClick={() => toggleTransportLayer(id)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold shadow ${selected.has(id) ? 'bg-[#1789F4] text-white' : 'bg-white text-slate-700'}`}><Icon size={15}/>{label}</button>)}
+        {chips.map(({ label, id, Icon }) => {
+          const availableInCity = id !== 'METRO' || isTransitLayerAvailableInCity(id, selectedCity?.modes);
+          return <button key={id} type="button" aria-label={availableInCity ? label : `${label} — немає у вибраному місті`} aria-pressed={availableInCity && selected.has(id)} disabled={!availableInCity} onClick={() => toggleTransportLayer(id)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold shadow disabled:cursor-not-allowed disabled:opacity-45 ${availableInCity && selected.has(id) ? 'bg-[#1789F4] text-white' : 'bg-white text-slate-700'}`}><Icon size={15}/>{label}</button>;
+        })}
       </div>
       {hint && <p role="status" className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-[11px] font-semibold text-slate-600 shadow">{hint}</p>}
       {selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-[10px] font-semibold text-slate-700 shadow">
@@ -64,6 +68,6 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
       </p>}
       {status === 'failed' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">Не вдалося завантажити карту. Перевірте мережу.</p>}
     </div>
-    <div className="absolute right-4 top-1/2 z-[500] -translate-y-1/2"><MapLayersControl overlays/></div>
+    <div className="absolute right-4 top-1/2 z-[500] -translate-y-1/2"><MapLayersControl overlays cityModes={selectedCity?.modes}/></div>
   </main>;
 }

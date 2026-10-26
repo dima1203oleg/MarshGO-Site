@@ -1,6 +1,7 @@
 import type { ApiJourney } from '../services/productionApi';
 import { journeyLegLabel } from './journeyLegLabel';
 import { journeyModeColor } from '../map/journeyRouteModel';
+import { formatMoneyMinor as formatMoney } from '../domain/money';
 
 export type JourneyResultSegment = {
   id: string;
@@ -17,12 +18,7 @@ export type JourneyResultSegment = {
 const validTime = (value?: string) => value && Number.isFinite(Date.parse(value)) ? Date.parse(value) : null;
 
 function formatMoneyMinor(amountMinor: number, currency: string): string {
-  if (currency.toUpperCase() === 'UAH') {
-    return `${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 0 }).format(amountMinor / 100)}\u00a0₴`;
-  }
-  return new Intl.NumberFormat('uk-UA', {
-    style: 'currency', currency, maximumFractionDigits: 0,
-  }).format(amountMinor / 100);
+  return formatMoney(amountMinor, currency);
 }
 
 /** Keep transfer waits visible in both the time ribbon and the compact leg list. */

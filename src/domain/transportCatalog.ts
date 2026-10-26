@@ -8,13 +8,13 @@ export interface TransportMode { id: TransportModeId; label: string; group: Tran
 
 /** Order is part of the product contract; do not alphabetize or add legacy feed types here. */
 export const transportModes: TransportMode[] = [
-  { id: 'bus', label: 'Автобус', group: 'Громадський транспорт' },
-  { id: 'marshrutka', label: 'Маршрутка', group: 'Громадський транспорт' },
-  { id: 'trolleybus', label: 'Тролейбус', group: 'Громадський транспорт' },
-  { id: 'tram', label: 'Трамвай', group: 'Громадський транспорт' },
-  { id: 'metro', label: 'Метро', group: 'Громадський транспорт' },
   { id: 'carpool', label: 'Попутка', group: 'Спільні поїздки' },
+  { id: 'marshrutka', label: 'Маршрутка', group: 'Громадський транспорт' },
+  { id: 'bus', label: 'Автобус', group: 'Громадський транспорт' },
   { id: 'taxi', label: 'Таксі', group: 'Спільні поїздки' },
+  { id: 'tram', label: 'Трамвай', group: 'Громадський транспорт' },
+  { id: 'trolleybus', label: 'Тролейбус', group: 'Громадський транспорт' },
+  { id: 'metro', label: 'Метро', group: 'Громадський транспорт' },
   { id: 'train', label: 'Поїзд', group: 'Залізниця' },
   { id: 'bike', label: 'Велосипед', group: 'Мікромобільність' },
   { id: 'scooter', label: 'Самокат', group: 'Мікромобільність' },

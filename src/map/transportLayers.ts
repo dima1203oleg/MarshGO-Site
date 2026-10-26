@@ -4,7 +4,7 @@ import { productionApi, type GeoJsonCollection } from '../services/productionApi
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import { lineTypesFor, microTypesFor, transportLayerList, type TransportLayerId } from './transportLayerConfig';
 import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
-export { cityTransportLayerIds, lineTypesFor, microTypesFor, transportLayerList } from './transportLayerConfig';
+export { cityTransportLayerIds, lineTypesFor, mapLayerDisplayOrder, microTypesFor, transportLayerList } from './transportLayerConfig';
 export type { TransportLayerId } from './transportLayerConfig';
 
 /**

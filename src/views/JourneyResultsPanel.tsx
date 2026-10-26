@@ -5,6 +5,7 @@ import {
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
 import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
+import { getJourneySearchNoticeState } from '../features/search/model/journeySearchNotices';
 import { journeyLegCaveat } from './journeyLegLabel';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
@@ -174,6 +175,7 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   const [activeStrategy, setActiveStrategy] = useState<ApiJourneyStrategy>(defaultStrategy);
   useEffect(() => setActiveStrategy(defaultStrategy), [result, defaultStrategy]);
   const shownJourneys = strategyJourneys(result, activeStrategy);
+  const searchNotices = getJourneySearchNoticeState(result);
 
   const preferenceMessages: Record<string, string> = {
     preferredVehicleClass: 'клас автомобіля не застосовується до розкладів громадського транспорту',
@@ -206,8 +208,16 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
     {result.partialReasons?.includes('walking_routing_unavailable') && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.</p>}
     {result.unsupportedPreferences.length > 0 && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Не всі умови можна врахувати: {result.unsupportedPreferences.map(value => preferenceMessages[value] ?? value).join('; ')}.</p>}
     {result.providerErrors.length > 0 && <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">Деякі розклади тимчасово недоступні: {result.providerErrors.join('; ')}.</p>}
-    {result.resultsTruncated && <p className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">Показано до {result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із {result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.</p>}
-    {result.candidateGenerationTruncated && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.</p>}
+    {searchNotices.resultSampling && <p className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">Показано до {result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із {result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.</p>}
+    {searchNotices.candidateGeneration && <div role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+      <p>{searchNotices.gtfsReasons.length > 0
+        ? 'Список маршрутів громадського транспорту може бути неповним.'
+        : 'Пошук не охопив усі варіанти, тож частина маршрутів може бути відсутня.'} Змініть час або види транспорту й повторіть пошук.</p>
+      {searchNotices.gtfsReasons.length > 0 && <details className="mt-1.5">
+        <summary className="min-h-11 cursor-pointer py-2 font-semibold underline decoration-amber-500 underline-offset-2">Чому список неповний</summary>
+        <p>Під час пошуку спрацювали обмеження: {searchNotices.gtfsReasons.join(', ')}.</p>
+      </details>}
+    </div>}
 
     {shownJourneys.length ? <div className="space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} strategy={activeStrategy} index={index} onOpen={onOpenMap}/>)}</div>
       : <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]">

@@ -4,7 +4,7 @@ import type { Coordinate } from '../../shared/navigation/contracts';
 export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 'failed';
 export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
-export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; modeColor: string; approximate?: boolean };
+export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; modeColor: string; mode?: string; transportType?: string; approximate?: boolean };
 export type RouteWaypoint = { coordinate: Coordinate; kind: string; segmentIds?: string[] };
 export type ScreenPoint = { x: number; y: number };
 export type LiveTransitPosition = { coordinates: Coordinate; color: string; label: string; updatedAt: string };
