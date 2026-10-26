@@ -27,7 +27,7 @@ describe('production journey-search status', () => {
     }));
 
     assert.match(html, /role="status"/);
-    assert.match(html, /Пошук не охопив усі варіанти/);
+    assert.match(html, /Пошук не охопив усі можливі варіанти/);
     assert.match(html, /частина маршрутів може бути відсутня/);
   });
 
@@ -37,7 +37,7 @@ describe('production journey-search status', () => {
       onOpenMap: () => undefined,
     }));
 
-    assert.doesNotMatch(html, /Пошук не охопив усі варіанти/);
+    assert.doesNotMatch(html, /Пошук не охопив усі можливі варіанти/);
   });
 
   it('shows plain-language GTFS truncation detail only when the Server provides a cause', () => {

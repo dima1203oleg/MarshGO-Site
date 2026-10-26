@@ -211,8 +211,8 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
     {searchNotices.resultSampling && <p className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">Показано до {result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із {result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.</p>}
     {searchNotices.candidateGeneration && <div role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
       <p>{searchNotices.gtfsReasons.length > 0
-        ? 'Список маршрутів громадського транспорту може бути неповним.'
-        : 'Пошук не охопив усі можливі варіанти; результат може бути неповним у частині джерел.'} Змініть час або види транспорту й повторіть пошук.</p>
+        ? 'Список маршрутів громадського транспорту може бути неповним. Спробуйте змінити час або види транспорту.'
+        : 'Пошук не охопив усі можливі варіанти в частині джерел; частина маршрутів може бути відсутня. Спробуйте змінити час або види транспорту.'}</p>
       {searchNotices.gtfsReasons.length > 0 && <details className="mt-1.5">
         <summary className="min-h-11 cursor-pointer py-2 font-semibold underline decoration-amber-500 underline-offset-2">Чому список неповний</summary>
         <p>Під час пошуку спрацювали обмеження: {searchNotices.gtfsReasons.join(', ')}.</p>
