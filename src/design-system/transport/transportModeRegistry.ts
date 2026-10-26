@@ -55,7 +55,7 @@ export const transportModeRegistry: Record<TransportModeId, CanonicalVisual> = {
   trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', BusFront, '#00C2A0', 'Громадський транспорт'),
   tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#8B3CE6', 'Громадський транспорт'),
   metro: visual('metro', 'Метро', 'Метро', 'Metro', TrainTrack, '#E43F86', 'Громадський транспорт'),
-  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#A855F7', 'Спільні поїздки'),
+  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#E83E8C', 'Спільні поїздки'),
   taxi: visual('taxi', 'Таксі', 'Таксі', 'Taxi', CarTaxiFront, '#F5B51B', 'Спільні поїздки'),
   train: visual('train', 'Поїзд', 'Поїзди', 'Train', TrainFront, '#914BF4', 'Залізниця'),
   bike: visual('bike', 'Велосипед', 'Велосипеди', 'Bicycle', Bike, '#20B86A', 'Мікромобільність'),

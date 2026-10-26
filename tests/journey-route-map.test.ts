@@ -146,7 +146,7 @@ test('uses one stable canonical color for each supported transport category', ()
   const cases: Array<[string, string | undefined, string]> = [
     ['BUS', 'bus', '#1687FF'], ['MINIBUS', 'marshrutka', '#F02F79'],
     ['TROLLEYBUS', 'trolleybus', '#00C2A0'], ['TRAM', 'tram', '#8B3CE6'],
-    ['METRO', 'metro', '#E43F86'], ['COMMUNITY', 'carpool', '#A855F7'],
+    ['METRO', 'metro', '#E43F86'], ['COMMUNITY', 'carpool', '#E83E8C'],
     ['TAXI', 'taxi', '#F5B51B'], ['RAIL', 'train', '#914BF4'],
     ['BIKE', 'bike', '#20B86A'], ['SCOOTER', 'scooter', '#8B5CF6'],
     ['CARSHARING', 'carsharing', '#00A8D6'], ['TRANSFER', 'transfer', '#16B6A5'],
