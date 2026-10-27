@@ -11,6 +11,7 @@ import {
   formatJourneySegmentPrice, formatJourneyTotalPrice,
 } from './journeyResultPresentation';
 
+import { strategyJourneys } from './journeyStrategySelection';
 const FAVORITES_KEY = 'marshgo.saved-route-results.v1';
 
 const strategyConfig: Array<{ id: ApiJourneyStrategy; label: string; Icon: typeof Scale; tone: string }> = [
@@ -18,32 +19,6 @@ const strategyConfig: Array<{ id: ApiJourneyStrategy; label: string; Icon: typeo
   { id: 'FASTEST', label: 'Найшвидший', Icon: Timer, tone: 'text-[#FF9A32]' },
   { id: 'CHEAPEST', label: 'Найдешевший', Icon: Coins, tone: 'text-[#1FCB78]' },
 ];
-
-function strategyJourneys(result: ApiJourneySearchResult, strategy: ApiJourneyStrategy): ApiJourney[] {
-  return result.journeys
-    .filter(journey => journey.strategyRanks
-      ? typeof journey.strategyRanks[strategy] === 'number'
-      : (journey.recommendedStrategies ?? [journey.strategy]).includes(strategy))
-    .filter(journey => strategy !== 'CHEAPEST' || formatJourneyTotalPrice(journey) !== '—')
-    .sort((a, b) => {
-      const rankA = a.strategyRanks?.[strategy];
-      const rankB = b.strategyRanks?.[strategy];
-      if (typeof rankA === 'number' || typeof rankB === 'number') {
-        return (rankA ?? Number.MAX_SAFE_INTEGER) - (rankB ?? Number.MAX_SAFE_INTEGER);
-      }
-      if (strategy === 'FASTEST') return a.totalDurationSeconds - b.totalDurationSeconds;
-      if (strategy === 'CHEAPEST') {
-        const priceA = a.confirmedPriceMinor ?? a.totalPriceMinor;
-        const priceB = b.confirmedPriceMinor ?? b.totalPriceMinor;
-        if (priceA === null) return priceB === null ? a.totalDurationSeconds - b.totalDurationSeconds : 1;
-        if (priceB === null) return -1;
-        return priceA - priceB || a.totalDurationSeconds - b.totalDurationSeconds;
-      }
-      return a.totalDurationSeconds - b.totalDurationSeconds
-        || (a.confirmedPriceMinor ?? a.totalPriceMinor ?? Number.MAX_SAFE_INTEGER)
-          - (b.confirmedPriceMinor ?? b.totalPriceMinor ?? Number.MAX_SAFE_INTEGER);
-    });
-}
 
 function formatRouteCount(count: number): string {
   const plural = new Intl.PluralRules('uk-UA').select(count);
