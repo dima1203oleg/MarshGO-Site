@@ -5,6 +5,7 @@ export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 
 export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK';
 export type CameraMode = 'OVERVIEW' | 'FOLLOW' | 'FOLLOW_HEADING' | 'MANEUVER' | 'FREE' | 'RECENTER_PENDING';
 export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; modeColor: string; approximate?: boolean };
+export type RouteWaypoint = { coordinate: Coordinate; kind: string; segmentIds?: string[] };
 export type LiveTransitPosition = { coordinates: Coordinate; color: string; label: string; updatedAt: string };
 export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number; bearing?: number };
 export interface MapAdapter {

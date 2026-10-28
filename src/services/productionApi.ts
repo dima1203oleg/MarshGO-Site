@@ -81,11 +81,26 @@ export type ApiBookingChange = { id: string; summary: ApiChangeSummary; new_unit
 export type ApiOfferChange = { id: string; field: 'price' | 'departure' | 'seats' | 'vehicle' | 'status'; old_value: string | null; new_value: string | null; significant: boolean; reason: string | null; created_at: string };
 export type ApiReview = { id: string; booking_id: string; author_id: string; target_id: string; rating: number; comment: string | null; created_at: string };
 export type ApiRendezvousLocation = { coordinates: [number, number]; accuracyMeters: number; capturedAt: string; freshness: 'LIVE' | 'STALE' } | null;
+export type ApiRendezvousApproach = {
+  status: 'ROUTED' | 'LOCATION_UNAVAILABLE' | 'ROUTING_UNAVAILABLE';
+  geometry: [number, number][] | null;
+  distanceMeters: number | null;
+  durationSeconds: number | null;
+  calculatedAt?: string;
+};
+export type ApiRendezvousApproaches = {
+  rendezvousId: string;
+  pickup: { label: string; coordinates: [number, number] };
+  driver: { location: ApiRendezvousLocation; approach: ApiRendezvousApproach };
+  passenger: { location: ApiRendezvousLocation; approach: ApiRendezvousApproach };
+  updatedAt: string;
+};
 export type ApiRendezvous = {
   id: string; bookingId: string; journeyLegId: string | null; state: string;
   pickup: { label: string; coordinates: [number, number] };
   plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
   locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
+  currentParticipant: 'driver' | 'passenger'; currentParticipantConsent: boolean; otherParticipantConsent: boolean;
   locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
 };
 export type ApiRescueAlternative = ApiOffer & {
@@ -521,6 +536,9 @@ export const productionApi = {
     return request<{ rendezvousId: string; storedEphemerally: true; expiresInSeconds: number; nearPickup: boolean; arrivalRequiresUserConfirmation: true }>(
       `/rendezvous/${encodeURIComponent(rendezvousId)}/location`, { method: 'POST', body: JSON.stringify(location) },
     );
+  },
+  rendezvousApproaches(rendezvousId: string) {
+    return request<ApiRendezvousApproaches>(`/rendezvous/${encodeURIComponent(rendezvousId)}/approaches`);
   },
   rendezvousStatus(rendezvousId: string, action: 'approaching' | 'arrived' | 'delayed' | 'will_arrive' | 'cannot_make_it', minutes?: number) {
     return request<{ id: string; state: string; locationSharingEnabled: boolean }>(
