@@ -29,7 +29,8 @@ function strategyJourneys(result: ApiJourneySearchResult, strategy: ApiJourneySt
       const rankA = a.strategyRanks?.[strategy];
       const rankB = b.strategyRanks?.[strategy];
       if (typeof rankA === 'number' || typeof rankB === 'number') {
-        return (rankA ?? Number.MAX_SAFE_INTEGER) - (rankB ?? Number.MAX_SAFE_INTEGER);
+        const rankOrder = (rankA ?? Number.MAX_SAFE_INTEGER) - (rankB ?? Number.MAX_SAFE_INTEGER);
+        if (rankOrder !== 0) return rankOrder;
       }
       if (strategy === 'FASTEST') return a.totalDurationSeconds - b.totalDurationSeconds;
       if (strategy === 'CHEAPEST') {
