@@ -2,6 +2,7 @@ import { getTransportModeVisual, normalizeTransportMode } from '../design-system
 
 const transportTypeLabels: Record<string, string> = {
   intercity_bus: 'Міжміський автобус',
+  train: 'Поїзд',
   city_train: 'Міська електричка',
   suburban_train: 'Електричка',
   funicular: 'Фунікулер',
