@@ -8,6 +8,8 @@ export type ApiUser = {
   email?: string | null;
   roles: string[];
   is_verified: boolean;
+  /** The driver's face photo (driver profile); vehicles have their own photos. */
+  driver_photo_url?: string | null;
 };
 export type ApiUserDataExport = {
   profile: Pick<ApiUser, 'id' | 'display_name' | 'phone_e164' | 'email' | 'roles' | 'is_verified'> & { created_at: string };
@@ -46,7 +48,10 @@ export type ApiOffer = {
   average_rating: number | null;
   review_count: number;
   status?: string;
+  vehicle_id?: string;
   vehicle_photo_url?: string | null;
+  /** Road geometry from the routing backend, [longitude, latitude]; only present on offer detail responses. */
+  route_geometry?: Array<[number, number]> | null;
 };
 
 export type ApiBooking = {
@@ -67,18 +72,42 @@ export type ApiBooking = {
   current_user_is_driver: boolean;
   completion_confirmation_count: number;
   current_user_confirmed_completion: boolean;
+  current_user_has_review: boolean;
+  /** A significant change by the driver waiting for this passenger's decision. */
+  pending_change?: ApiBookingChange | null;
 };
+export type ApiChangeSummary = { price?: { old: number; new: number }; departure?: { old: string; new: string }; vehicle?: { old: string; new: string }; seats?: { old: number; new: number } };
+export type ApiBookingChange = { id: string; summary: ApiChangeSummary; new_unit_price_minor: number | null; created_at: string };
+export type ApiOfferChange = { id: string; field: 'price' | 'departure' | 'seats' | 'vehicle' | 'status'; old_value: string | null; new_value: string | null; significant: boolean; reason: string | null; created_at: string };
+export type ApiReview = { id: string; booking_id: string; author_id: string; target_id: string; rating: number; comment: string | null; created_at: string };
 export type ApiRendezvousLocation = { coordinates: [number, number]; accuracyMeters: number; capturedAt: string; freshness: 'LIVE' | 'STALE' } | null;
+export type ApiRendezvousApproach = {
+  status: 'ROUTED' | 'LOCATION_UNAVAILABLE' | 'ROUTING_UNAVAILABLE';
+  geometry: [number, number][] | null;
+  distanceMeters: number | null;
+  durationSeconds: number | null;
+  calculatedAt?: string;
+};
+export type ApiRendezvousApproaches = {
+  rendezvousId: string;
+  pickup: { label: string; coordinates: [number, number] };
+  driver: { location: ApiRendezvousLocation; approach: ApiRendezvousApproach };
+  passenger: { location: ApiRendezvousLocation; approach: ApiRendezvousApproach };
+  updatedAt: string;
+};
 export type ApiRendezvous = {
   id: string; bookingId: string; journeyLegId: string | null; state: string;
   pickup: { label: string; coordinates: [number, number] };
   plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
   locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
+  currentParticipant: 'driver' | 'passenger'; currentParticipantConsent: boolean; otherParticipantConsent: boolean;
   locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
 };
 export type ApiRescueAlternative = ApiOffer & {
   origin_distance_m: number;
   destination_distance_m: number;
+  rescue_match: 'ENDPOINTS' | 'ALONG_CANCELLED_ROUTE';
+  route_origin_distance_m: number | null;
   source: 'MARSHGO Community';
 };
 export type ApiRescueResult = {
@@ -95,19 +124,75 @@ export type ApiVehicle = {
   model_year: number;
   seat_count: number;
   verification_status: string;
+  /** Licence plate (canonical form). */
+  plate: string | null;
+  /** 0 none, 1 plate + photo (automatic), 2 vehicle documents verified, 3 driver verified. */
+  trust_level?: number;
   is_active: boolean;
 };
-export type ApiVehiclePhoto = { id: string; url: string; is_primary: boolean; created_at: string };
+export type ApiVehiclePhoto = { id: string; url: string; is_primary: boolean; sort_order: number; created_at: string };
 export type ApiVerificationRecord = {
   id: string; verification_type: 'vehicle' | 'driver_license' | 'identity' | 'commercial'; vehicle_id: string | null;
-  status: 'pending' | 'approved' | 'rejected'; created_at: string; reviewed_at: string | null;
+  status: 'pending' | 'approved' | 'rejected'; created_at: string; reviewed_at: string | null; review_note: string | null;
 };
 export type ApiVerificationQueueItem = ApiVerificationRecord & {
   user_id: string; display_name: string; make: string | null; model: string | null;
   model_year: number | null; seat_count: number | null;
 };
 
+export type ApiMobilityProvider = {
+  id: string; name: string; city: string; provider_type: string; source_type: string; feed_host: string | null; realtime_host: string | null;
+  priority: number; status: 'enabled' | 'disabled' | 'paused'; health: 'unknown' | 'healthy' | 'degraded' | 'offline';
+  country: string; access: 'open' | 'requires_credentials' | 'requires_partner_access' | 'insecure_endpoint'; license: string | null; update_frequency: string | null; coverage: string | null; source_ref: string | null;
+  last_checked_at: string | null; last_sync_at: string | null; last_error: string | null;
+  last_report: { checks?: Array<{ name: string; ok: boolean; detail?: string }>; counts?: Record<string, number>; responseMs?: number };
+};
+export type ApiMobilityAudit = { id: number; action: string; entity_id: string; details: Record<string, unknown>; created_at: string; actor: string | null };
+
+export type ApiTransitAvailability = Record<string, { available: boolean; cities: string[] }>;
+export type ApiMobilityAvailability = { modes: ApiRentalAvailability[]; transit: ApiTransitAvailability };
+export type ApiRentalAvailability = { mode: 'bike' | 'scooter' | 'moped' | 'carsharing'; available: boolean; cities: string[] };
+export type ApiProvider = { id: string; name: string; available: boolean; cities: string[]; sources: string[]; services: string[] };
+export type ApiTransportProviders = { transportType: string; providers: ApiProvider[] };
+export type ApiTransportCity = {
+  id: string; name: string; timezone: string; bbox: [number, number, number, number] | null; modes: string[];
+  routeCount: number; stopCount: number; realtimeAvailable: boolean; sourceUrl: string | null; licenses: string[];
+  providers: Array<{ name: string; sourceType: string; license: string | null; sourceRef: string | null }>;
+};
+export type ApiNearbyAsset = { id: string; type: string; location: [number, number]; distanceM: number; providerName: string; batteryPercent?: number; rangeMeters?: number };
+export type ApiNearbyStation = { id: string; name: string; location: [number, number]; distanceM: number; providerName: string; availableAssets?: number; capacity?: number; returnAllowed?: boolean };
+export type ApiNearby = { mode: string; radiusM: number; providers: number; failedProviders: number; assets: ApiNearbyAsset[]; stations: ApiNearbyStation[]; totalAssets: number };
+export type ApiMobilityOperator = {
+  provider_id: string; provider_name: string; provider_group: string; data_source: string; source_url: string;
+  integration_status: string; data_freshness_seconds: number | null; booking_method: string; pricing_capability: string;
+  live_availability_capability: boolean; commercial_permissions: string; attribution_requirements: string | null;
+  enabled: boolean; last_successful_sync: string | null; last_sync_error: string | null; api_key_configured: boolean;
+  location_count: number; live_available_count: number; status_message?: string | null;
+};
+export type ApiRentalLocation = {
+  id: string; providerId: string; providerName: string; networkId: string | null; mode: 'BICYCLE' | 'SCOOTER';
+  rentalModel: string; source: string; externalId: string; name: string | null; operatorName: string | null;
+  networkName: string | null; city: string | null; address: string | null; openingHours: string | null;
+  pickupAllowed: boolean | null; dropoffAllowed: boolean | null; oneWayReturn: 'CONFIRMED' | 'NOT_ALLOWED' | 'UNKNOWN';
+  availability: 'AVAILABLE' | 'UNAVAILABLE' | 'UNKNOWN'; availableVehicles: number | null; availableDocks: number | null;
+  availabilityCheckedAt: string | null; sourceUpdatedAt: string | null; sourceImportedAt: string;
+  sourceQuality: string; sourceStatus: 'LIVE' | 'STATIC' | 'UNKNOWN'; lon: number; lat: number;
+};
+export type ApiRentalCompatibility = {
+  allowed: boolean; confirmationLevel: 'VERIFIED' | 'CONDITIONAL' | 'UNKNOWN'; reason: string;
+  pickupLocationId: string; dropoffLocationId: string; networkId: string | null; returnRule: string;
+  availabilityStatus: string; availabilityCheckedAt: string | null;
+};
+export type ApiTransferOffer = {
+  offerId: string; providerId: string; providerName: string; originCity: string | null; destinationCity: string | null;
+  vehicleClass: string | null; seats: number | null; luggage: number | null; priceMinor: number | null; currency: string | null;
+  priceStatus: string; quoteStatus: 'DYNAMIC' | 'CATALOG_ONLY' | 'UNKNOWN'; availabilityStatus: 'UNKNOWN';
+  bookingUrl: string | null; bookingAvailable: false; sourceUpdatedAt: string | null;
+};
+export type ApiTransferSearch = { data: ApiTransferOffer[]; providers: Array<{ providerId: string; status: string; catalogAvailable: boolean; bookingAvailable: boolean; affiliateAvailable: boolean; message: string }>; meta: { catalogOnly: true; liveQuotes: false; bookingAvailable: false; count: number } };
+
 export type ApiMessage = { id: string; sender_id: string; sender_name: string; body: string; created_at: string };
+export type ApiConversationUnread = { conversation_id: string; booking_id: string | null; unread_count: number };
 export type ApiNotification = {
   id: string; event_type: string; title: string; body: string; payload: Record<string, unknown>;
   created_at: string; read_at: string | null;
@@ -115,6 +200,7 @@ export type ApiNotification = {
 export type ApiNotificationPage = { items: ApiNotification[]; nextCursor: string | null; unreadCount: number };
 export type ApiRealtimeEvent =
   | { type: 'conversation.message.created'; data: ApiMessage & { conversation_id: string } }
+  | { type: 'booking.change-requested' | 'trip.updated' | 'trip.cancelled'; data: { booking_id: string; offer_id: string; status?: string } }
   | { type: 'booking.confirmed' | 'booking.cancelled' | 'booking.changed'; data: { booking_id: string; offer_id?: string; status: string; seat_count?: number; available_seats?: number | null } }
   | { type: 'proposal.created' | 'proposal.countered' | 'proposal.updated'; data: { proposal_id: string; demand_id: string; status?: string; revision_number: number; price_minor: number; departure_at: string } }
   | { type: 'proposal.accepted'; data: { proposal_id: string; demand_id: string; booking_id: string; status: string; price_minor: number; departure_at: string } }
@@ -123,17 +209,30 @@ export type ApiRealtimeEvent =
   | { type: 'navigation.match.passenger-confirmed'; data: { candidate_id: string; demand_id: string; status: 'passenger_confirmed' } }
   | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } }
   | { type: `rendezvous.${string}`; data: { rendezvous_id: string; state?: string; participant?: 'driver' | 'passenger'; coordinates?: [number, number]; accuracyMeters?: number; capturedAt?: string; near_pickup?: boolean } }
-  | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'REPLANNING' } };
+  | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'PARTIALLY_RESERVED' | 'REPLANNING' } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
 export type ApiJourneyStrategy = 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM' | 'RELIABLE' | 'CUSTOM';
 export type ApiJourney = {
   id: string;
-  offerId: string;
+  offerId: string | null;
+  source?: string;
+  providerName?: string;
+  routeName?: string;
+  headsign?: string;
   strategy: ApiJourneyStrategy;
+  /** The same exact journey may be recommended under more than one strategy. */
+  recommendedStrategies?: ApiJourneyStrategy[];
+  /** Rank among Pareto-feasible candidates for each strategy, starting at 1. */
+  strategyRanks?: Partial<Record<ApiJourneyStrategy, number>>;
   state: string;
   totalDurationSeconds: number;
-  totalPriceMinor: number;
+  /** Time from the requested start until arrival includes scheduled waits. */
+  requestedDepartureAt?: string;
+  waitingSeconds?: number;
+  totalPriceMinor: number | null;
+  currency?: string | null;
+  priceStatus?: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
   confirmedPriceMinor: number | null;
   estimatedPriceMinMinor: number | null;
   estimatedPriceMaxMinor: number | null;
@@ -143,25 +242,64 @@ export type ApiJourney = {
   legs: Array<{
     id: string;
     mode: string;
-    offerId: string;
+    offerId: string | null;
     origin: { name: string; coordinates: [number, number] };
     destination: { name: string; coordinates: [number, number] };
     departureAt: string;
     arrivalAt: string;
     durationSeconds: number;
-    distanceMeters: number;
-    priceMinor: number;
+    distanceMeters: number | null;
+    priceMinor: number | null;
+    currency?: string | null;
     priceStatus: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
+    fareProductId?: string;
+    fareIncludedByPreviousSegment?: boolean;
+    fareSource?: 'gtfs-v1' | 'city-tariff-registry';
+    scheduleSemantics?: 'published_departures' | 'frequency_estimate';
     availabilityStatus: string;
     source: string;
     lastUpdatedAt: string;
-    driver: { id: string; name: string; averageRating: number | null; reviewCount: number };
-    vehicle: { id: string; make: string; model: string };
+    providerName?: string;
+    routeName?: string;
+    headsign?: string;
+    /** Concrete feed mode, such as suburban_train or marshrutka. */
+    transportType?: string;
+    /** Provider-supplied route shape, [longitude, latitude]; absent when the source has no verified geometry. */
+    routeGeometry?: Array<[number, number]>;
+    /** Complete scheduled stop calls, populated only when the provider publishes GTFS stop times. */
+    stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string; pickupType?: number; dropOffType?: number; skipped?: boolean }>;
+    liveStatus?: 'LIVE' | 'PREDICTED' | 'SCHEDULED' | 'UNVERIFIED' | 'UNAVAILABLE';
+    driver: { id: string; name: string; averageRating: number | null; reviewCount: number } | null;
+    vehicle: { id: string; make: string; model: string } | null;
   }>;
 };
+export type ApiJourneyLive = {
+  journeyId: string;
+  checkedAt: string;
+  segments: Array<{
+    legId: string;
+    status: 'LIVE' | 'SCHEDULED' | 'UNVERIFIED';
+    reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
+    vehicle?: { coordinates: [number, number]; bearing: number | null; speed: number | null; route: string; updatedAt: string };
+  }>;
+};
+export type ApiJourneySearchPartialReason =
+  | 'candidate_generation_truncated'
+  | 'provider_error'
+  | 'unsupported_preference'
+  | 'walking_routing_unavailable';
 export type ApiJourneySearchResult = {
   journeys: ApiJourney[];
+  requestedStrategy?: ApiJourneyStrategy;
+  availableStrategies?: ApiJourneyStrategy[];
+  candidateCount?: number;
+  paretoCount?: number;
+  returnedCount?: number;
+  alternativeLimitPerStrategy?: number;
+  resultsTruncated?: boolean;
+  candidateGenerationTruncated?: boolean;
   partial: boolean;
+  partialReasons?: ApiJourneySearchPartialReason[];
   blockedProviders: string[];
   unsupportedPreferences: string[];
   providerErrors: string[];
@@ -176,13 +314,16 @@ export type ApiStoredJourney = {
   passenger_count: number;
   total_price_minor: number | null;
   confirmed_price_minor: number | null;
-  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string }>;
+  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string; stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string }> }>;
 };
+export type GeoJsonCollection = { type: 'FeatureCollection'; features: Array<{ type: 'Feature'; properties: Record<string, unknown>; geometry: { type: string; coordinates: unknown } }> };
 export type ApiNavigationSession = {
-  id: string; state: 'active' | 'paused' | 'ended'; destination_name: string;
-  route_distance_m: number; route_duration_s: number; route_version: number; opt_in: boolean;
+  id: string; state: 'active' | 'paused' | 'ended'; destination_name: string | null;
+  route_distance_m: number | null; route_duration_s: number | null; route_version: number; opt_in: boolean;
   matching_vehicle_available: boolean; vehicle_seat_count: number | null;
-  started_at: string; ended_at?: string | null; route: [number, number][];
+  started_at: string; ended_at?: string | null; route: [number, number][] | null;
+  /** Turn-by-turn steps of the current route (absent on older servers). */
+  maneuvers?: import('../../shared/navigation/contracts').Maneuver[];
   current_location: [number, number] | null; current_location_accuracy_m: number | null; current_location_at: string | null;
 };
 export type ApiNavigationMatch = {
@@ -220,7 +361,7 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   if (accessToken) headers.set('authorization', `Bearer ${accessToken}`);
   const response = await fetch(`${apiBase}/api/v1${path}`, { ...init, headers, credentials: 'include' });
-  const body = await response.json().catch(() => null) as { data?: T; error?: { message?: string } } | null;
+  const body = await response.json().catch(() => null) as { data?: T; error?: { code?: string; message?: string } } | null;
   if (response.status === 401 && retryAuth && accessToken && !path.startsWith('/auth/')) {
     try {
       const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false);
@@ -230,16 +371,30 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
       accessToken = null;
     }
   }
-  if (!response.ok) throw new Error(body?.error?.message || `Request failed (${response.status})`);
+  if (!response.ok) {
+    if (response.status === 429 || body?.error?.code === 'rate_limit_exceeded') {
+      throw new Error('Забагато запитів за короткий час. Зачекайте кілька хвилин і спробуйте ще раз.');
+    }
+    throw new Error(body?.error?.message || `Request failed (${response.status})`);
+  }
   if (response.status === 204) return undefined as T;
   return (body as ApiEnvelope<T>).data;
 }
 
 export const productionApi = {
   async restoreSession() {
-    const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' });
-    accessToken = session.accessToken;
-    return session.user;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
+    try {
+      const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      accessToken = session.accessToken;
+      return session.user;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   },
   async requestOtp(phone: string, displayName: string) {
     return request<{ expiresInSeconds: number; delivery: string; developmentCode?: string }>('/auth/otp/request', {
@@ -254,7 +409,10 @@ export const productionApi = {
     return session.user;
   },
   async logout() {
-    try { await request('/auth/logout'); } finally { accessToken = null; }
+    try { await request('/auth/logout', { method: 'POST' }); } finally { accessToken = null; }
+  },
+  async logoutAll() {
+    try { await request('/auth/logout-all', { method: 'POST' }); } finally { accessToken = null; }
   },
   offers(params: { origin: string; destination: string; date: string; seats: number; originCoordinates?: [number, number]; destinationCoordinates?: [number, number] }) {
     const query = new URLSearchParams({ origin: params.origin, destination: params.destination, date: params.date, seats: String(params.seats) });
@@ -264,6 +422,13 @@ export const productionApi = {
   },
   offer(id: string) { return request<ApiOffer>(`/offers/${encodeURIComponent(id)}`); },
   myOffers() { return request<ApiOffer[]>('/offers/mine'); },
+  updateOffer(id: string, input: { pricePerSeatMinor?: number; departureAt?: string; totalSeats?: number; vehicleId?: string; reason?: string }) {
+    return request<ApiOffer & { changed: boolean; approvalsRequested: number; bookingsNotified: number }>(`/offers/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+  },
+  cancelOffer(id: string, reason?: string) { return request<{ id: string; status: 'cancelled'; cancelledBookings: number }>(`/offers/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) }); },
+  offerChanges(id: string) { return request<ApiOfferChange[]>(`/offers/${id}/changes`); },
+  acceptBookingChange(id: string) { return request<{ id: string; status: 'accepted' }>(`/booking-changes/${id}/accept`, { method: 'POST' }); },
+  rejectBookingChange(id: string) { return request<{ id: string; status: 'rejected' }>(`/booking-changes/${id}/reject`, { method: 'POST' }); },
   createOffer(input: {
     vehicleId: string; originName: string; destinationName: string; origin: [number, number]; destination: [number, number];
     departureAt: string; pricePerSeatMinor: number; seats: number;
@@ -284,12 +449,14 @@ export const productionApi = {
     departureAt: string;
     passengers: number;
     strategy: ApiJourneyStrategy;
+    preferences?: Record<string, boolean | string[] | Record<string, string[]>>;
   }) {
     return request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(input) });
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
-  startNavigation(input: { origin: [number, number]; destination: [number, number]; destinationName: string }) {
+  journeyLive(id: string, signal?: AbortSignal) { return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live`, { signal }); },
+  startNavigation(input: { origin: [number, number]; destination?: [number, number]; destinationName?: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },
   async calculateRoute(input: RouteRequest): Promise<RouteResult> {
@@ -304,6 +471,16 @@ export const productionApi = {
   },
   pauseNavigation(id: string) { return request<{ id: string; state: 'paused'; opt_in: boolean }>(`/navigation/sessions/${id}/pause`, { method: 'POST' }); },
   resumeNavigation(id: string) { return request<{ id: string; state: 'active'; opt_in: boolean }>(`/navigation/sessions/${id}/resume`, { method: 'POST' }); },
+  transportLayerAvailability() { return request<Array<{ id: string; available: boolean }>>('/transport/layers'); },
+  transportCities(signal?: AbortSignal) { return request<ApiTransportCity[]>('/transport/cities', { signal }); },
+  transportRoutes(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/routes?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
+  transportStops(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/stops?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
+  transportVehicles(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/vehicles?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
+  transportMicromobility(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
+  transportMicromobilityGeofences(bbox: string, signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility/geofences?bbox=${bbox}`, { signal }); },
+  setNavigationDestination(id: string, input: { destination: [number, number]; destinationName: string }) {
+    return request<ApiNavigationSession>(`/navigation/sessions/${id}/destination`, { method: 'PUT', body: JSON.stringify(input) });
+  },
   rerouteNavigation(id: string) { return request<ApiNavigationSession>(`/navigation/sessions/${id}/reroute`, { method: 'POST' }); },
   refreshNavigationMatches(id: string) { return request<ApiNavigationMatch[]>(`/navigation/sessions/${id}/matches/refresh`, { method: 'POST' }); },
   navigationMatches(id: string) { return request<ApiNavigationMatch[]>(`/navigation/sessions/${id}/matches`); },
@@ -360,6 +537,9 @@ export const productionApi = {
       `/rendezvous/${encodeURIComponent(rendezvousId)}/location`, { method: 'POST', body: JSON.stringify(location) },
     );
   },
+  rendezvousApproaches(rendezvousId: string) {
+    return request<ApiRendezvousApproaches>(`/rendezvous/${encodeURIComponent(rendezvousId)}/approaches`);
+  },
   rendezvousStatus(rendezvousId: string, action: 'approaching' | 'arrived' | 'delayed' | 'will_arrive' | 'cannot_make_it', minutes?: number) {
     return request<{ id: string; state: string; locationSharingEnabled: boolean }>(
       `/rendezvous/${encodeURIComponent(rendezvousId)}/status`, { method: 'POST', body: JSON.stringify({ action, ...(minutes ? { minutes } : {}) }) },
@@ -392,6 +572,9 @@ export const productionApi = {
   confirmTripCompletion(bookingId: string) {
     return request<{ id: string; status: string; confirmations: number; requiredConfirmations: number; replayed?: boolean }>(`/bookings/${bookingId}/complete`, { method: 'POST' });
   },
+  createBookingReview(bookingId: string, input: { rating: number; comment?: string }) {
+    return request<ApiReview>(`/bookings/${bookingId}/reviews`, { method: 'POST', body: JSON.stringify(input) });
+  },
   blockedUsers() { return request<ApiBlockedUser[]>('/users/me/blocks'); },
   blockBookingOther(bookingId: string) { return request<void>(`/bookings/${bookingId}/block-other`, { method: 'POST' }); },
   unblockUser(userId: string) { return request<void>(`/users/${encodeURIComponent(userId)}/block`, { method: 'DELETE' }); },
@@ -413,10 +596,22 @@ export const productionApi = {
   enableRole(role: 'passenger' | 'driver') {
     return request<{ id: string; roles: string[] }>('/users/me/roles', { method: 'POST', body: JSON.stringify({ role }) });
   },
-  createVehicle(input: { make: string; model: string; modelYear: number; seats: number }) {
+  createVehicle(input: { make: string; model: string; modelYear: number; seats: number; plate: string }) {
     return request<ApiVehicle>('/vehicles', { method: 'POST', body: JSON.stringify(input) });
   },
   vehiclePhotos(vehicleId: string) { return request<ApiVehiclePhoto[]>(`/vehicles/${vehicleId}/photos`); },
+  async uploadDriverPhoto(file: File) {
+    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!allowed.has(file.type) || file.size < 1 || file.size > 10 * 1024 * 1024) throw new Error('Додайте JPEG, PNG або WebP до 10 МБ.');
+    const upload = await request<{ key: string; url: string; fields: Record<string, string> }>('/users/me/driver-photo/upload-url', { method: 'POST', body: JSON.stringify({ contentType: file.type }) });
+    const form = new FormData();
+    for (const [key, value] of Object.entries(upload.fields)) form.append(key, value);
+    form.append('file', file);
+    const uploaded = await fetch(upload.url, { method: 'POST', body: form });
+    if (!uploaded.ok) throw new Error(`Сховище не прийняло фото (${uploaded.status}).`);
+    return request<{ driver_photo_url: string }>('/users/me/driver-photo', { method: 'POST', body: JSON.stringify({ key: upload.key, contentType: file.type }) });
+  },
+  deleteDriverPhoto() { return request<{ driver_photo_url: null }>('/users/me/driver-photo', { method: 'DELETE' }); },
   async uploadVehiclePhoto(vehicleId: string, file: File) {
     const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
     if (!allowed.has(file.type) || file.size < 1 || file.size > 10 * 1024 * 1024) throw new Error('Додайте JPEG, PNG або WebP до 10 МБ.');
@@ -433,9 +628,13 @@ export const productionApi = {
   setPrimaryVehiclePhoto(vehicleId: string, photoId: string) {
     return request<ApiVehiclePhoto>(`/vehicles/${vehicleId}/photos/${photoId}/primary`, { method: 'PATCH' });
   },
+  reorderVehiclePhotos(vehicleId: string, photoIds: string[]) {
+    return request<{ photoIds: string[] }>(`/vehicles/${vehicleId}/photos/order`, { method: 'PUT', body: JSON.stringify({ photoIds }) });
+  },
   deleteVehiclePhoto(vehicleId: string, photoId: string) {
     return request<{ id: string; deleted: boolean }>(`/vehicles/${vehicleId}/photos/${photoId}`, { method: 'DELETE' });
   },
+  deleteVehicle(id: string) { return request<{ id: string; archived: true; activatedVehicleId: string | null }>(`/vehicles/${id}`, { method: 'DELETE' }); },
   activateVehicle(id: string) { return request<ApiVehicle>(`/vehicles/${id}/activate`, { method: 'POST' }); },
   verificationRecords() { return request<ApiVerificationRecord[]>('/users/me/verification'); },
   verificationEvidenceUploadUrl(vehicleId: string, contentType: string) {
@@ -456,6 +655,41 @@ export const productionApi = {
   submitVehicleVerification(vehicleId: string, input: { registrationEvidenceKey: string; registrationContentType: string; driverLicenseEvidenceKey: string; driverLicenseContentType: string }) {
     return request<{ vehicleId: string; status: string }>(`/vehicles/${vehicleId}/verification`, { method: 'POST', body: JSON.stringify(input) });
   },
+  providersByTransport(point?: { latitude: number; longitude: number }) { return request<ApiTransportProviders[]>(`/mobility/providers${point ? `?lat=${point.latitude}&lon=${point.longitude}` : ''}`); },
+  mobilityOperators() { return request<ApiMobilityOperator[]>('/mobility/operators'); },
+  updateMobilityOperator(id: string, enabled: boolean) {
+    return request<Pick<ApiMobilityOperator, 'provider_id' | 'provider_name' | 'integration_status' | 'enabled'>>(`/admin/mobility/operators/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
+  },
+  rentalLocations(input: { bbox: string; mode?: 'BICYCLE' | 'SCOOTER'; providerId?: string; networkId?: string; sourceStatus?: 'LIVE' | 'STATIC' | 'UNKNOWN'; limit?: number; offset?: number }, signal?: AbortSignal) {
+    const query = new URLSearchParams({ bbox: input.bbox });
+    if (input.mode) query.set('mode', input.mode);
+    if (input.providerId) query.set('provider_id', input.providerId);
+    if (input.networkId) query.set('network_id', input.networkId);
+    if (input.sourceStatus) query.set('source_status', input.sourceStatus);
+    if (input.limit !== undefined) query.set('limit', String(input.limit));
+    if (input.offset !== undefined) query.set('offset', String(input.offset));
+    return request<ApiRentalLocation[]>(`/mobility/rental-locations?${query}`, { signal });
+  },
+  rentalCompatibility(input: { pickupLocationId: string; dropoffLocationId: string; vehicleType: string; departureAt: string; arrivalAt: string; requireVerifiedReturn?: boolean }) {
+    return request<ApiRentalCompatibility>('/mobility/rental-compatibility', { method: 'POST', body: JSON.stringify(input) });
+  },
+  transferSearch(input: { originPlaceId: string; destinationPlaceId: string; passengerCount?: number; providerIds?: string[] }) {
+    return request<ApiTransferSearch>('/mobility/transfers/search', { method: 'POST', body: JSON.stringify(input) });
+  },
+  mobilityAvailability() { return request<ApiMobilityAvailability>('/mobility/availability'); },
+  nearbyRentals(mode: string, latitude: number, longitude: number, radiusM = 1000) {
+    return request<ApiNearby>(`/mobility/nearby?mode=${encodeURIComponent(mode)}&lat=${latitude}&lon=${longitude}&radiusM=${radiusM}`);
+  },
+  mobilityProviders() { return request<ApiMobilityProvider[]>('/admin/mobility/providers'); },
+  createMobilityProvider(input: { name: string; city: string; providerType: string; sourceType: string; feedUrl: string; realtimeUrl?: string; priority?: number }) {
+    return request<ApiMobilityProvider>('/admin/mobility/providers', { method: 'POST', body: JSON.stringify(input) });
+  },
+  updateMobilityProvider(id: string, input: { status?: 'enabled' | 'disabled' | 'paused'; priority?: number }) {
+    return request<ApiMobilityProvider>(`/admin/mobility/providers/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) });
+  },
+  deleteMobilityProvider(id: string) { return request<void>(`/admin/mobility/providers/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
+  testMobilityProvider(id: string) { return request<{ provider: ApiMobilityProvider }>(`/admin/mobility/providers/${encodeURIComponent(id)}/test`, { method: 'POST' }); },
+  mobilityAudit() { return request<ApiMobilityAudit[]>('/admin/mobility/audit'); },
   adminVerificationQueue() { return request<ApiVerificationQueueItem[]>('/admin/verification'); },
   adminVerificationEvidence(id: string) { return request<{ url: string; expiresInSeconds: number }>(`/admin/verification/${id}/evidence`); },
   decideVerification(id: string, decision: 'approved' | 'rejected', note?: string) {
@@ -465,7 +699,31 @@ export const productionApi = {
   },
   conversation(bookingId: string) { return request<ApiConversation>(`/bookings/${bookingId}/conversation`); },
   conversationById(conversationId: string) { return request<ApiConversation>(`/conversations/${encodeURIComponent(conversationId)}`); },
-  messages(conversationId: string) { return request<ApiMessage[]>(`/conversations/${conversationId}/messages`); },
+  async messages(conversationId: string) {
+    const page = await request<ApiMessage[] | { messages: ApiMessage[] }>(
+      `/conversations/${conversationId}/messages`,
+    );
+    return Array.isArray(page) ? page : page.messages;
+  },
+  async messagePage(conversationId: string, before?: string) {
+    const params = new URLSearchParams({ limit: '50' });
+    if (before) params.set('before', before);
+    const page = await request<ApiMessage[] | { messages: ApiMessage[]; pagination?: { hasMore: boolean; nextCursor: string | null } }>(
+      `/conversations/${conversationId}/messages?${params}`,
+    );
+    if (Array.isArray(page)) return { messages: page, hasMore: false, nextCursor: null };
+    return {
+      messages: page.messages,
+      hasMore: page.pagination?.hasMore ?? false,
+      nextCursor: page.pagination?.nextCursor ?? null,
+    };
+  },
+  conversationUnreadCounts() { return request<ApiConversationUnread[]>('/conversation-unread-counts'); },
+  markConversationRead(conversationId: string) {
+    return request<{ conversation_id: string; last_read_message_id: string | null; unread_count: number }>(
+      `/conversations/${encodeURIComponent(conversationId)}/read`, { method: 'POST' },
+    );
+  },
   sendMessage(conversationId: string, body: string) {
     return request<ApiMessage>(`/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
   },
@@ -494,7 +752,7 @@ export const productionApi = {
         next.onmessage = (message) => {
           try {
             const event = JSON.parse(String(message.data)) as ApiRealtimeEvent | { type: string };
-            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type.startsWith('booking.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.') || event.type.startsWith('rendezvous.')) onEvent(event as ApiRealtimeEvent);
+            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type.startsWith('booking.') || event.type.startsWith('trip.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.') || event.type.startsWith('rendezvous.')) onEvent(event as ApiRealtimeEvent);
           } catch { /* Ignore malformed realtime frames; persisted REST history remains authoritative. */ }
         };
         next.onerror = () => next.close();
