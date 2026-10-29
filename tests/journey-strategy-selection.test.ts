@@ -35,3 +35,17 @@ test('available strategy uses server ranks and never presents a journey with unk
   assert.deepEqual(strategyJourneys(available, 'CHEAPEST').map(item => item.id), ['slower']);
   assert.deepEqual(strategyJourneys(available, 'FASTEST').map(item => item.id), []);
 });
+
+test('three strategy tabs preserve distinct server-ranked winners', () => {
+  const fastest = journey({ id: 'fastest', totalDurationSeconds: 600, totalPriceMinor: 1200,
+    strategyRanks: { FASTEST: 1, BALANCED: 2, CHEAPEST: 3 } });
+  const balanced = journey({ id: 'balanced', totalDurationSeconds: 900, totalPriceMinor: 800,
+    strategyRanks: { FASTEST: 2, BALANCED: 1, CHEAPEST: 2 } });
+  const cheapest = journey({ id: 'cheapest', totalDurationSeconds: 1200, totalPriceMinor: 200,
+    strategyRanks: { FASTEST: 3, BALANCED: 3, CHEAPEST: 1 } });
+  const available = result([cheapest, fastest, balanced], ['BALANCED', 'FASTEST', 'CHEAPEST']);
+
+  assert.deepEqual(strategyJourneys(available, 'FASTEST').map(item => item.id), ['fastest', 'balanced', 'cheapest']);
+  assert.deepEqual(strategyJourneys(available, 'BALANCED').map(item => item.id), ['balanced', 'fastest', 'cheapest']);
+  assert.deepEqual(strategyJourneys(available, 'CHEAPEST').map(item => item.id), ['cheapest', 'balanced', 'fastest']);
+});
