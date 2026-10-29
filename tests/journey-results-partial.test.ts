@@ -44,3 +44,18 @@ it('distinguishes omitted result alternatives from candidate generation limits',
   assert.doesNotMatch(render({ resultsTruncated: true, candidateGenerationTruncated: true }), /Pareto-варіантів/,
     'an ambiguous legacy aggregate must not assert list sampling when candidate generation was truncated');
 });
+
+it('does not present an incomplete empty search as a conclusive absence of routes', () => {
+  const base: ApiJourneySearchResult = {
+    journeys: [], partial: false, blockedProviders: [], unsupportedPreferences: [], providerErrors: [],
+  };
+  const render = (overrides: Partial<ApiJourneySearchResult>) => renderToStaticMarkup(createElement(JourneyResultsPanel, {
+    result: { ...base, ...overrides }, onOpenMap: () => undefined,
+  }));
+  const incomplete = render({ partial: true, candidateGenerationTruncated: true,
+    partialReasons: ['candidate_generation_truncated'] });
+  assert.match(incomplete, /Пошук неповний — не вдалося перевірити всі маршрути/);
+  assert.doesNotMatch(incomplete, /Актуальних маршрутів поки немає/);
+  assert.match(render({ providerErrors: ['помилка джерела'] }), /Пошук неповний — не вдалося перевірити всі маршрути/);
+  assert.match(render({}), /Маршрутів за цими умовами не знайдено/);
+});
