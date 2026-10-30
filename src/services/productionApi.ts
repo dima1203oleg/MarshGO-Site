@@ -1,6 +1,25 @@
 import { routeResultSchema, type RouteRequest, type RouteResult } from '../../shared/navigation/contracts';
 import { NavigationProviderError } from '../../shared/navigation/errors';
 
+export interface TransitArrival {
+  stopId: string;
+  routeId: string;
+  mode?: string;
+  tripId?: string;
+  vehicleId?: string;
+  scheduledArrival?: string;
+  predictedArrival?: string;
+  arrivalSource: 'TRIP_UPDATE' | 'VEHICLE_PROJECTION' | 'SCHEDULE' | 'UNKNOWN';
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+  /** Timestamp of the source vehicle observation; only present for GPS-derived arrivals. */
+  observedAt?: string;
+  /** Timestamp of a GTFS-RT feed update; it is not a vehicle GPS observation. */
+  realtimeUpdatedAt?: string;
+  isRealtime: boolean;
+  etaSeconds?: number;
+  displayLabel: string;
+}
+
 export type ApiUser = {
   id: string;
   display_name: string;
@@ -49,7 +68,11 @@ export type ApiOffer = {
   review_count: number;
   status?: string;
   vehicle_id?: string;
+  /** The search found nothing on the chosen day; this offer is the same route on another day. */
+  other_date?: boolean;
   vehicle_photo_url?: string | null;
+  /** The driver's own face photo (separate from the vehicle photo). */
+  driver_photo_url?: string | null;
   /** Road geometry from the routing backend, [longitude, latitude]; only present on offer detail responses. */
   route_geometry?: Array<[number, number]> | null;
 };
@@ -81,6 +104,14 @@ export type ApiBookingChange = { id: string; summary: ApiChangeSummary; new_unit
 export type ApiOfferChange = { id: string; field: 'price' | 'departure' | 'seats' | 'vehicle' | 'status'; old_value: string | null; new_value: string | null; significant: boolean; reason: string | null; created_at: string };
 export type ApiReview = { id: string; booking_id: string; author_id: string; target_id: string; rating: number; comment: string | null; created_at: string };
 export type ApiRendezvousLocation = { coordinates: [number, number]; accuracyMeters: number; capturedAt: string; freshness: 'LIVE' | 'STALE' } | null;
+export type ApiRendezvous = {
+  id: string; bookingId: string; journeyLegId: string | null; state: string;
+  pickup: { label: string; coordinates: [number, number] };
+  plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
+  locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
+  currentParticipant: 'driver' | 'passenger'; currentParticipantConsent: boolean; otherParticipantConsent: boolean;
+  locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
+};
 export type ApiRendezvousApproach = {
   status: 'ROUTED' | 'LOCATION_UNAVAILABLE' | 'ROUTING_UNAVAILABLE';
   geometry: [number, number][] | null;
@@ -94,14 +125,6 @@ export type ApiRendezvousApproaches = {
   driver: { location: ApiRendezvousLocation; approach: ApiRendezvousApproach };
   passenger: { location: ApiRendezvousLocation; approach: ApiRendezvousApproach };
   updatedAt: string;
-};
-export type ApiRendezvous = {
-  id: string; bookingId: string; journeyLegId: string | null; state: string;
-  pickup: { label: string; coordinates: [number, number] };
-  plannedPickupAt: string; predictedPickupAt: string | null; activationAt: string;
-  locationSharingEnabled: boolean; driverArrivedAt: string | null; passengerArrivedAt: string | null;
-  currentParticipant: 'driver' | 'passenger'; currentParticipantConsent: boolean; otherParticipantConsent: boolean;
-  locations: { driver: ApiRendezvousLocation; passenger: ApiRendezvousLocation };
 };
 export type ApiRescueAlternative = ApiOffer & {
   origin_distance_m: number;
@@ -141,7 +164,7 @@ export type ApiVerificationQueueItem = ApiVerificationRecord & {
 };
 
 export type ApiMobilityProvider = {
-  id: string; name: string; city: string; provider_type: string; source_type: string; feed_host: string | null; realtime_host: string | null;
+  id: string; name: string; city: string; provider_type: string; source_type: string; feed_url: string; realtime_url: string | null;
   priority: number; status: 'enabled' | 'disabled' | 'paused'; health: 'unknown' | 'healthy' | 'degraded' | 'offline';
   country: string; access: 'open' | 'requires_credentials' | 'requires_partner_access' | 'insecure_endpoint'; license: string | null; update_frequency: string | null; coverage: string | null; source_ref: string | null;
   last_checked_at: string | null; last_sync_at: string | null; last_error: string | null;
@@ -154,42 +177,9 @@ export type ApiMobilityAvailability = { modes: ApiRentalAvailability[]; transit:
 export type ApiRentalAvailability = { mode: 'bike' | 'scooter' | 'moped' | 'carsharing'; available: boolean; cities: string[] };
 export type ApiProvider = { id: string; name: string; available: boolean; cities: string[]; sources: string[]; services: string[] };
 export type ApiTransportProviders = { transportType: string; providers: ApiProvider[] };
-export type ApiTransportCity = {
-  id: string; name: string; timezone: string; bbox: [number, number, number, number] | null; modes: string[];
-  routeCount: number; stopCount: number; realtimeAvailable: boolean; sourceUrl: string | null; licenses: string[];
-  providers: Array<{ name: string; sourceType: string; license: string | null; sourceRef: string | null }>;
-};
 export type ApiNearbyAsset = { id: string; type: string; location: [number, number]; distanceM: number; providerName: string; batteryPercent?: number; rangeMeters?: number };
 export type ApiNearbyStation = { id: string; name: string; location: [number, number]; distanceM: number; providerName: string; availableAssets?: number; capacity?: number; returnAllowed?: boolean };
 export type ApiNearby = { mode: string; radiusM: number; providers: number; failedProviders: number; assets: ApiNearbyAsset[]; stations: ApiNearbyStation[]; totalAssets: number };
-export type ApiMobilityOperator = {
-  provider_id: string; provider_name: string; provider_group: string; data_source: string; source_url: string;
-  integration_status: string; data_freshness_seconds: number | null; booking_method: string; pricing_capability: string;
-  live_availability_capability: boolean; commercial_permissions: string; attribution_requirements: string | null;
-  enabled: boolean; last_successful_sync: string | null; last_sync_error: string | null; api_key_configured: boolean;
-  location_count: number; live_available_count: number; status_message?: string | null;
-};
-export type ApiRentalLocation = {
-  id: string; providerId: string; providerName: string; networkId: string | null; mode: 'BICYCLE' | 'SCOOTER';
-  rentalModel: string; source: string; externalId: string; name: string | null; operatorName: string | null;
-  networkName: string | null; city: string | null; address: string | null; openingHours: string | null;
-  pickupAllowed: boolean | null; dropoffAllowed: boolean | null; oneWayReturn: 'CONFIRMED' | 'NOT_ALLOWED' | 'UNKNOWN';
-  availability: 'AVAILABLE' | 'UNAVAILABLE' | 'UNKNOWN'; availableVehicles: number | null; availableDocks: number | null;
-  availabilityCheckedAt: string | null; sourceUpdatedAt: string | null; sourceImportedAt: string;
-  sourceQuality: string; sourceStatus: 'LIVE' | 'STATIC' | 'UNKNOWN'; lon: number; lat: number;
-};
-export type ApiRentalCompatibility = {
-  allowed: boolean; confirmationLevel: 'VERIFIED' | 'CONDITIONAL' | 'UNKNOWN'; reason: string;
-  pickupLocationId: string; dropoffLocationId: string; networkId: string | null; returnRule: string;
-  availabilityStatus: string; availabilityCheckedAt: string | null;
-};
-export type ApiTransferOffer = {
-  offerId: string; providerId: string; providerName: string; originCity: string | null; destinationCity: string | null;
-  vehicleClass: string | null; seats: number | null; luggage: number | null; priceMinor: number | null; currency: string | null;
-  priceStatus: string; quoteStatus: 'DYNAMIC' | 'CATALOG_ONLY' | 'UNKNOWN'; availabilityStatus: 'UNKNOWN';
-  bookingUrl: string | null; bookingAvailable: false; sourceUpdatedAt: string | null;
-};
-export type ApiTransferSearch = { data: ApiTransferOffer[]; providers: Array<{ providerId: string; status: string; catalogAvailable: boolean; bookingAvailable: boolean; affiliateAvailable: boolean; message: string }>; meta: { catalogOnly: true; liveQuotes: false; bookingAvailable: false; count: number } };
 
 export type ApiMessage = { id: string; sender_id: string; sender_name: string; body: string; created_at: string };
 export type ApiConversationUnread = { conversation_id: string; booking_id: string | null; unread_count: number };
@@ -209,7 +199,7 @@ export type ApiRealtimeEvent =
   | { type: 'navigation.match.passenger-confirmed'; data: { candidate_id: string; demand_id: string; status: 'passenger_confirmed' } }
   | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } }
   | { type: `rendezvous.${string}`; data: { rendezvous_id: string; state?: string; participant?: 'driver' | 'passenger'; coordinates?: [number, number]; accuracyMeters?: number; capturedAt?: string; near_pickup?: boolean } }
-  | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'PARTIALLY_RESERVED' | 'REPLANNING' } };
+  | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'REPLANNING' } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
 export type ApiJourneyStrategy = 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM' | 'RELIABLE' | 'CUSTOM';
@@ -223,7 +213,6 @@ export type ApiJourney = {
   strategy: ApiJourneyStrategy;
   /** The same exact journey may be recommended under more than one strategy. */
   recommendedStrategies?: ApiJourneyStrategy[];
-  /** Rank among Pareto-feasible candidates for each strategy, starting at 1. */
   strategyRanks?: Partial<Record<ApiJourneyStrategy, number>>;
   state: string;
   totalDurationSeconds: number;
@@ -231,8 +220,6 @@ export type ApiJourney = {
   requestedDepartureAt?: string;
   waitingSeconds?: number;
   totalPriceMinor: number | null;
-  currency?: string | null;
-  priceStatus?: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
   confirmedPriceMinor: number | null;
   estimatedPriceMinMinor: number | null;
   estimatedPriceMaxMinor: number | null;
@@ -250,25 +237,20 @@ export type ApiJourney = {
     durationSeconds: number;
     distanceMeters: number | null;
     priceMinor: number | null;
-    currency?: string | null;
     priceStatus: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
-    fareProductId?: string;
-    fareIncludedByPreviousSegment?: boolean;
-    fareSource?: 'gtfs-v1' | 'city-tariff-registry';
-    scheduleSemantics?: 'published_departures' | 'frequency_estimate';
     availabilityStatus: string;
     source: string;
     lastUpdatedAt: string;
     providerName?: string;
     routeName?: string;
     headsign?: string;
-    /** Concrete feed mode, such as suburban_train or marshrutka. */
+    /** Concrete feed mode, e.g. suburban_train or marshrutka; mode remains the broad journey category. */
     transportType?: string;
-    /** Provider-supplied route shape, [longitude, latitude]; absent when the source has no verified geometry. */
-    routeGeometry?: Array<[number, number]>;
-    /** Complete scheduled stop calls, populated only when the provider publishes GTFS stop times. */
-    stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string; pickupType?: number; dropOffType?: number; skipped?: boolean }>;
-    liveStatus?: 'LIVE' | 'PREDICTED' | 'SCHEDULED' | 'UNVERIFIED' | 'UNAVAILABLE';
+    coordinates?: [number, number][];
+    /** Provider/feed geometry in [longitude, latitude] order; absent means no verified path. */
+    routeGeometry?: [number, number][] | null;
+    geometrySource?: 'gtfs-shape' | 'gtfs-stop-sequence' | 'walking-estimate';
+    stops?: Array<{ id: string; name: string; coordinates?: [number, number]; arrivalAt?: string; departureAt?: string }>;
     driver: { id: string; name: string; averageRating: number | null; reviewCount: number } | null;
     vehicle: { id: string; make: string; model: string } | null;
   }>;
@@ -280,14 +262,10 @@ export type ApiJourneyLive = {
     legId: string;
     status: 'LIVE' | 'SCHEDULED' | 'UNVERIFIED';
     reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
-    vehicle?: { coordinates: [number, number]; bearing: number | null; speed: number | null; route: string; updatedAt: string };
+    lineRoutes?: Array<{ id: string; providerId: string; routeId: string; name: string; direction: string; directionId: string | null; geometrySource: 'gtfs_shape' | 'official_geojson'; coordinates: [number, number][] }>;
+    vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean; etaSeconds?: number | null }>;
   }>;
 };
-export type ApiJourneySearchPartialReason =
-  | 'candidate_generation_truncated'
-  | 'provider_error'
-  | 'unsupported_preference'
-  | 'walking_routing_unavailable';
 export type ApiJourneySearchResult = {
   journeys: ApiJourney[];
   requestedStrategy?: ApiJourneyStrategy;
@@ -298,8 +276,8 @@ export type ApiJourneySearchResult = {
   alternativeLimitPerStrategy?: number;
   resultsTruncated?: boolean;
   candidateGenerationTruncated?: boolean;
+  resultSamplingTruncated?: boolean;
   partial: boolean;
-  partialReasons?: ApiJourneySearchPartialReason[];
   blockedProviders: string[];
   unsupportedPreferences: string[];
   providerErrors: string[];
@@ -314,7 +292,7 @@ export type ApiStoredJourney = {
   passenger_count: number;
   total_price_minor: number | null;
   confirmed_price_minor: number | null;
-  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string; stops?: Array<{ id: string; name: string; coordinates: [number, number]; arrivalAt: string; departureAt: string }> }>;
+  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string }>;
 };
 export type GeoJsonCollection = { type: 'FeatureCollection'; features: Array<{ type: 'Feature'; properties: Record<string, unknown>; geometry: { type: string; coordinates: unknown } }> };
 export type ApiNavigationSession = {
@@ -353,18 +331,41 @@ export type ApiProposalRevision = {
 };
 
 type ApiEnvelope<T> = { data: T };
-const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
+const apiBase = (typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL) ?? (typeof process !== 'undefined' ? process.env?.VITE_API_BASE_URL : '') ?? '';
 let accessToken: string | null = null;
+let refreshInFlight: Promise<{ user: ApiUser; accessToken: string }> | null = null;
+
+const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+async function uploadPhotoFile<T>(path: string, file: File): Promise<T> {
+  // Phones often report an empty type for camera files; infer it from the extension before validating.
+  const type = file.type || (/\.png$/i.test(file.name) ? 'image/png' : /\.webp$/i.test(file.name) ? 'image/webp' : /\.(jpe?g|heic)$/i.test(file.name) ? 'image/jpeg' : '');
+  if (!PHOTO_TYPES.has(type)) throw new Error('Додайте фото у форматі JPEG, PNG або WebP. Знімок із камери iPhone зберігайте як «Найсумісніший».');
+  if (file.size < 1 || file.size > 10 * 1024 * 1024) throw new Error('Фото має бути до 10 МБ.');
+  try { return await request<T>(path, { method: 'POST', body: file, headers: { 'content-type': type } }); }
+  catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (/storage is not configured/i.test(message)) throw new Error('Сховище фото тимчасово недоступне. Спробуйте пізніше.', { cause: error });
+    if (/at most \d+ photos/i.test(message)) throw new Error('Можна додати не більше 3 фото. Видаліть одне, щоб додати інше.', { cause: error });
+    if (/not a valid photo|Send a JPEG/i.test(message)) throw new Error('Не вдалося прийняти файл. Оберіть фото JPEG, PNG або WebP до 10 МБ.', { cause: error });
+    if (/Failed to fetch|NetworkError|Load failed/i.test(message)) throw new Error('Немає зв’язку із сервером. Перевірте інтернет і повторіть.', { cause: error });
+    throw error;
+  }
+}
 
 async function request<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
   const headers = new Headers(init.headers);
+  const tokenUsed = accessToken;
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
-  if (accessToken) headers.set('authorization', `Bearer ${accessToken}`);
+  if (tokenUsed) headers.set('authorization', `Bearer ${tokenUsed}`);
   const response = await fetch(`${apiBase}/api/v1${path}`, { ...init, headers, credentials: 'include' });
   const body = await response.json().catch(() => null) as { data?: T; error?: { code?: string; message?: string } } | null;
   if (response.status === 401 && retryAuth && accessToken && !path.startsWith('/auth/')) {
+    if (tokenUsed !== accessToken) return request<T>(path, init, false);
     try {
-      const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false);
+      refreshInFlight ??= request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false)
+        .then((session) => { accessToken = session.accessToken; return session; })
+        .finally(() => { refreshInFlight = null; });
+      const session = await refreshInFlight;
       accessToken = session.accessToken;
       return request<T>(path, init, false);
     } catch {
@@ -395,6 +396,22 @@ export const productionApi = {
     } finally {
       window.clearTimeout(timeoutId);
     }
+  },
+  async login(email: string, password: string) {
+    const session = await request<{ user: ApiUser; accessToken: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    accessToken = session.accessToken;
+    return session.user;
+  },
+  async register(input: { email: string; password: string; displayName: string; phone?: string }) {
+    const session = await request<{ user: ApiUser; accessToken: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    accessToken = session.accessToken;
+    return session.user;
   },
   async requestOtp(phone: string, displayName: string) {
     return request<{ expiresInSeconds: number; delivery: string; developmentCode?: string }>('/auth/otp/request', {
@@ -443,7 +460,7 @@ export const productionApi = {
   reverseGeocode(latitude: number, longitude: number) {
     return request<ApiPlace>(`/places/reverse?lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`);
   },
-  searchJourneys(input: {
+  async searchJourneys(input: {
     origin: { name: string; coordinates: [number, number] };
     destination: { name: string; coordinates: [number, number] };
     departureAt: string;
@@ -451,11 +468,21 @@ export const productionApi = {
     strategy: ApiJourneyStrategy;
     preferences?: Record<string, boolean | string[] | Record<string, string[]>>;
   }) {
-    return request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(input) });
+    const send = (body: typeof input) => request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(body) });
+    try { return await send(input); } catch (error) {
+      // An older API release does not know the schedule-provider preferences and rejects the request: retry once with the legacy fields only.
+      const { allowedTransportTypes, allowedTransitProviders, allowedTransitProvidersByType, ...legacy } = input.preferences ?? {};
+      if (allowedTransportTypes === undefined && allowedTransitProviders === undefined && allowedTransitProvidersByType === undefined) throw error;
+      if (error instanceof Error && /Забагато запитів/.test(error.message)) throw error;
+      return send({ ...input, preferences: legacy });
+    }
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
-  journeyLive(id: string, signal?: AbortSignal) { return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live`, { signal }); },
+  journeyLive(id: string, signal?: AbortSignal, legId?: string) {
+    const suffix = legId ? `?legId=${encodeURIComponent(legId)}` : '';
+    return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live${suffix}`, { signal });
+  },
   startNavigation(input: { origin: [number, number]; destination?: [number, number]; destinationName?: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
   },
@@ -471,13 +498,36 @@ export const productionApi = {
   },
   pauseNavigation(id: string) { return request<{ id: string; state: 'paused'; opt_in: boolean }>(`/navigation/sessions/${id}/pause`, { method: 'POST' }); },
   resumeNavigation(id: string) { return request<{ id: string; state: 'active'; opt_in: boolean }>(`/navigation/sessions/${id}/resume`, { method: 'POST' }); },
+  transportTypesCatalog(cityId?: string) {
+    const query = cityId ? `?cityId=${encodeURIComponent(cityId)}` : '';
+    return request<Array<{
+      id: string;
+      label: string;
+      enabled: boolean;
+      availability: string;
+      capabilities: string[];
+      reason: string | null;
+    }>>(`/catalog/transport-types${query}`);
+  },
+  transportRegions() {
+    return request<Array<{
+      id: string;
+      name: string;
+      capital: string;
+      majorCities: string[];
+      bbox: [number, number, number, number];
+    }>>('/catalog/regions');
+  },
   transportLayerAvailability() { return request<Array<{ id: string; available: boolean }>>('/transport/layers'); },
-  transportCities(signal?: AbortSignal) { return request<ApiTransportCity[]>('/transport/cities', { signal }); },
   transportRoutes(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/routes?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
   transportStops(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/stops?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
   transportVehicles(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/vehicles?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
+  transitStopArrivals(stopId: string, lat: number, lon: number, signal?: AbortSignal) {
+    return request<{ stopId: string; lat: number; lon: number; arrivals: TransitArrival[] }>(
+      `/transit/stops/${encodeURIComponent(stopId)}/arrivals?lat=${lat}&lon=${lon}`, { signal },
+    );
+  },
   transportMicromobility(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
-  transportMicromobilityGeofences(bbox: string, signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility/geofences?bbox=${bbox}`, { signal }); },
   setNavigationDestination(id: string, input: { destination: [number, number]; destinationName: string }) {
     return request<ApiNavigationSession>(`/navigation/sessions/${id}/destination`, { method: 'PUT', body: JSON.stringify(input) });
   },
@@ -532,13 +582,16 @@ export const productionApi = {
   bookings() { return request<ApiBooking[]>('/bookings'); },
   bookingRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous`); },
   activateRendezvous(bookingId: string) { return request<ApiRendezvous>(`/bookings/${encodeURIComponent(bookingId)}/rendezvous/activate`, { method: 'POST' }); },
+  setRendezvousConsent(rendezvousId: string, enabled: boolean) {
+    return request<ApiRendezvous>(`/rendezvous/${encodeURIComponent(rendezvousId)}/consent`, { method: 'POST', body: JSON.stringify({ enabled }) });
+  },
+  rendezvousApproaches(rendezvousId: string) {
+    return request<ApiRendezvousApproaches>(`/rendezvous/${encodeURIComponent(rendezvousId)}/approaches`);
+  },
   sendRendezvousLocation(rendezvousId: string, location: { longitude: number; latitude: number; accuracyMeters: number; capturedAt: string }) {
     return request<{ rendezvousId: string; storedEphemerally: true; expiresInSeconds: number; nearPickup: boolean; arrivalRequiresUserConfirmation: true }>(
       `/rendezvous/${encodeURIComponent(rendezvousId)}/location`, { method: 'POST', body: JSON.stringify(location) },
     );
-  },
-  rendezvousApproaches(rendezvousId: string) {
-    return request<ApiRendezvousApproaches>(`/rendezvous/${encodeURIComponent(rendezvousId)}/approaches`);
   },
   rendezvousStatus(rendezvousId: string, action: 'approaching' | 'arrived' | 'delayed' | 'will_arrive' | 'cannot_make_it', minutes?: number) {
     return request<{ id: string; state: string; locationSharingEnabled: boolean }>(
@@ -600,30 +653,13 @@ export const productionApi = {
     return request<ApiVehicle>('/vehicles', { method: 'POST', body: JSON.stringify(input) });
   },
   vehiclePhotos(vehicleId: string) { return request<ApiVehiclePhoto[]>(`/vehicles/${vehicleId}/photos`); },
+  /** The file goes to the API (not straight to storage), so it works behind tunnels and on phones. */
   async uploadDriverPhoto(file: File) {
-    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
-    if (!allowed.has(file.type) || file.size < 1 || file.size > 10 * 1024 * 1024) throw new Error('Додайте JPEG, PNG або WebP до 10 МБ.');
-    const upload = await request<{ key: string; url: string; fields: Record<string, string> }>('/users/me/driver-photo/upload-url', { method: 'POST', body: JSON.stringify({ contentType: file.type }) });
-    const form = new FormData();
-    for (const [key, value] of Object.entries(upload.fields)) form.append(key, value);
-    form.append('file', file);
-    const uploaded = await fetch(upload.url, { method: 'POST', body: form });
-    if (!uploaded.ok) throw new Error(`Сховище не прийняло фото (${uploaded.status}).`);
-    return request<{ driver_photo_url: string }>('/users/me/driver-photo', { method: 'POST', body: JSON.stringify({ key: upload.key, contentType: file.type }) });
+    return uploadPhotoFile<{ driver_photo_url: string }>('/users/me/driver-photo/file', file);
   },
   deleteDriverPhoto() { return request<{ driver_photo_url: null }>('/users/me/driver-photo', { method: 'DELETE' }); },
   async uploadVehiclePhoto(vehicleId: string, file: File) {
-    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
-    if (!allowed.has(file.type) || file.size < 1 || file.size > 10 * 1024 * 1024) throw new Error('Додайте JPEG, PNG або WebP до 10 МБ.');
-    const upload = await request<{ key: string; url: string; fields: Record<string, string>; maxBytes: number }>(`/vehicles/${vehicleId}/photos/upload-url`, {
-      method: 'POST', body: JSON.stringify({ contentType: file.type }),
-    });
-    const form = new FormData();
-    for (const [key, value] of Object.entries(upload.fields)) form.append(key, value);
-    form.append('file', file);
-    const uploaded = await fetch(upload.url, { method: 'POST', body: form });
-    if (!uploaded.ok) throw new Error(`Сховище не прийняло фото (${uploaded.status}).`);
-    return request<ApiVehiclePhoto>(`/vehicles/${vehicleId}/photos`, { method: 'POST', body: JSON.stringify({ key: upload.key, contentType: file.type }) });
+    return uploadPhotoFile<ApiVehiclePhoto>(`/vehicles/${vehicleId}/photos/file`, file);
   },
   setPrimaryVehiclePhoto(vehicleId: string, photoId: string) {
     return request<ApiVehiclePhoto>(`/vehicles/${vehicleId}/photos/${photoId}/primary`, { method: 'PATCH' });
@@ -656,26 +692,6 @@ export const productionApi = {
     return request<{ vehicleId: string; status: string }>(`/vehicles/${vehicleId}/verification`, { method: 'POST', body: JSON.stringify(input) });
   },
   providersByTransport(point?: { latitude: number; longitude: number }) { return request<ApiTransportProviders[]>(`/mobility/providers${point ? `?lat=${point.latitude}&lon=${point.longitude}` : ''}`); },
-  mobilityOperators() { return request<ApiMobilityOperator[]>('/mobility/operators'); },
-  updateMobilityOperator(id: string, enabled: boolean) {
-    return request<Pick<ApiMobilityOperator, 'provider_id' | 'provider_name' | 'integration_status' | 'enabled'>>(`/admin/mobility/operators/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
-  },
-  rentalLocations(input: { bbox: string; mode?: 'BICYCLE' | 'SCOOTER'; providerId?: string; networkId?: string; sourceStatus?: 'LIVE' | 'STATIC' | 'UNKNOWN'; limit?: number; offset?: number }, signal?: AbortSignal) {
-    const query = new URLSearchParams({ bbox: input.bbox });
-    if (input.mode) query.set('mode', input.mode);
-    if (input.providerId) query.set('provider_id', input.providerId);
-    if (input.networkId) query.set('network_id', input.networkId);
-    if (input.sourceStatus) query.set('source_status', input.sourceStatus);
-    if (input.limit !== undefined) query.set('limit', String(input.limit));
-    if (input.offset !== undefined) query.set('offset', String(input.offset));
-    return request<ApiRentalLocation[]>(`/mobility/rental-locations?${query}`, { signal });
-  },
-  rentalCompatibility(input: { pickupLocationId: string; dropoffLocationId: string; vehicleType: string; departureAt: string; arrivalAt: string; requireVerifiedReturn?: boolean }) {
-    return request<ApiRentalCompatibility>('/mobility/rental-compatibility', { method: 'POST', body: JSON.stringify(input) });
-  },
-  transferSearch(input: { originPlaceId: string; destinationPlaceId: string; passengerCount?: number; providerIds?: string[] }) {
-    return request<ApiTransferSearch>('/mobility/transfers/search', { method: 'POST', body: JSON.stringify(input) });
-  },
   mobilityAvailability() { return request<ApiMobilityAvailability>('/mobility/availability'); },
   nearbyRentals(mode: string, latitude: number, longitude: number, radiusM = 1000) {
     return request<ApiNearby>(`/mobility/nearby?mode=${encodeURIComponent(mode)}&lat=${latitude}&lon=${longitude}&radiusM=${radiusM}`);
@@ -752,7 +768,7 @@ export const productionApi = {
         next.onmessage = (message) => {
           try {
             const event = JSON.parse(String(message.data)) as ApiRealtimeEvent | { type: string };
-            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type.startsWith('booking.') || event.type.startsWith('trip.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.') || event.type.startsWith('rendezvous.')) onEvent(event as ApiRealtimeEvent);
+            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type === 'navigation.route-updated' || event.type.startsWith('booking.') || event.type.startsWith('trip.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.') || event.type.startsWith('rendezvous.')) onEvent(event as ApiRealtimeEvent);
           } catch { /* Ignore malformed realtime frames; persisted REST history remains authoritative. */ }
         };
         next.onerror = () => next.close();
@@ -771,10 +787,19 @@ export const productionApi = {
     };
   },
   book(offerId: string, seats: number, journey?: { journeyId: string; journeyLegId: string }) {
+    const context = [offerId, seats, journey?.journeyId ?? '', journey?.journeyLegId ?? ''].join(':');
+    const storageKey = `marshgo:booking-attempt:${context}`;
+    let idempotencyKey: string | null = null;
+    try { idempotencyKey = sessionStorage.getItem(storageKey); } catch { /* Private browsing may disable storage. */ }
+    idempotencyKey ??= crypto.randomUUID();
+    try { sessionStorage.setItem(storageKey, idempotencyKey); } catch { /* The request remains protected for this invocation. */ }
     return request<ApiBooking>('/bookings', {
       method: 'POST',
-      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify({ offerId, seats, ...(journey ?? {}) }),
+    }).then((booking) => {
+      try { sessionStorage.removeItem(storageKey); } catch { /* Storage may be disabled. */ }
+      return booking;
     });
   },
 };

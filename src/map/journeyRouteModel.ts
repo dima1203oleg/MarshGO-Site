@@ -1,5 +1,5 @@
 import type { ApiJourney } from '../services/productionApi';
-import type { ColoredRouteSegment } from './MapAdapter';
+import type { ColoredRouteSegment, RouteWaypoint } from './MapAdapter';
 import type { Coordinate } from '../../shared/navigation/contracts';
 import { journeyLegLabel } from '../views/journeyLegLabel';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
@@ -39,11 +39,20 @@ function validCoordinate(point: unknown): point is Coordinate {
 export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
   legs: JourneyRouteMapLeg[];
   routeSegments: ColoredRouteSegment[];
-  routeWaypoints: Array<{ coordinate: Coordinate; kind: string }>;
+  routeWaypoints: RouteWaypoint[];
   missingShapeCount: number;
   approximateWalkCount: number;
+  approximateMicromobilityCount: number;
 } {
+  const isEstimatedMicromobility = (leg: ApiJourney['legs'][number]) =>
+    (leg.mode === 'BIKE' || leg.mode === 'BICYCLE' || leg.mode === 'SCOOTER'
+      || leg.transportType === 'bike' || leg.transportType === 'scooter')
+    && (leg.source === 'static-bike-network-estimate' || leg.source === 'gbfs-geofence-scooter-estimate');
   const mappedLegs = legs.flatMap(leg => {
+    // End-to-end rental estimates contain only pickup/drop-off coordinates.
+    // Treating those two points as a road line invents a route shape, so keep
+    // the endpoints as waypoints and let the details card carry the estimate.
+    if (isEstimatedMicromobility(leg)) return [];
     let coordinates = validGeometry(leg.routeGeometry);
     let approximate = false;
     if (coordinates.length < 2 && leg.mode === 'WALK'
@@ -64,21 +73,30 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
   const validPoint = validCoordinate;
   const firstPoint = legs[0]?.origin?.coordinates;
   const lastPoint = legs.at(-1)?.destination?.coordinates;
-  const waypointCandidates: Array<{ coordinate: Coordinate; kind: string }> = [];
-  if (validPoint(firstPoint)) waypointCandidates.push({ coordinate: firstPoint, kind: 'PICKUP' });
+  const waypointCandidates: RouteWaypoint[] = [];
+  if (validPoint(firstPoint) && legs[0]) waypointCandidates.push({ coordinate: firstPoint, kind: 'PICKUP', segmentIds: [legs[0].id] });
   legs.forEach((leg, index) => {
-    if (index > 0 && validPoint(leg.origin?.coordinates)) waypointCandidates.push({ coordinate: leg.origin.coordinates, kind: 'TRANSFER' });
+    if (index > 0 && validPoint(leg.origin?.coordinates)) waypointCandidates.push({
+      coordinate: leg.origin.coordinates,
+      kind: 'TRANSFER',
+      segmentIds: [legs[index - 1]!.id, leg.id],
+    });
     if (leg.stops?.length) for (const stop of leg.stops) {
-      if (validPoint(stop.coordinates)) waypointCandidates.push({ coordinate: stop.coordinates, kind: 'STOP' });
+      if (validPoint(stop.coordinates)) waypointCandidates.push({ coordinate: stop.coordinates, kind: 'STOP', segmentIds: [leg.id] });
     }
   });
-  if (validPoint(lastPoint)) waypointCandidates.push({ coordinate: lastPoint, kind: 'DROPOFF' });
-  const waypointsByCoordinate = new Map<string, { coordinate: Coordinate; kind: string }>();
+  if (validPoint(lastPoint) && legs.at(-1)) waypointCandidates.push({ coordinate: lastPoint, kind: 'DROPOFF', segmentIds: [legs.at(-1)!.id] });
+  const waypointsByCoordinate = new Map<string, RouteWaypoint>();
+  const kindPriority: Record<string, number> = { PICKUP: 4, DROPOFF: 4, TRANSFER: 3, STOP: 2 };
   for (const waypoint of waypointCandidates) {
     const { coordinate, kind } = waypoint;
     const key = `${coordinate[0].toFixed(6)},${coordinate[1].toFixed(6)}`;
     const previous = waypointsByCoordinate.get(key);
-    if (!previous || (kind === 'PICKUP' || kind === 'DROPOFF')) waypointsByCoordinate.set(key, waypoint);
+    if (!previous) waypointsByCoordinate.set(key, { ...waypoint, segmentIds: [...(waypoint.segmentIds ?? [])] });
+    else {
+      previous.segmentIds = [...new Set([...(previous.segmentIds ?? []), ...(waypoint.segmentIds ?? [])])];
+      if ((kindPriority[kind] ?? 0) > (kindPriority[previous.kind] ?? 0)) previous.kind = kind;
+    }
   }
   const routeWaypoints = [...waypointsByCoordinate.values()];
   const mappedLegIds = new Set(mappedLegs.map(leg => leg.id));
@@ -89,5 +107,6 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     routeWaypoints,
     missingShapeCount: legs.filter(leg => leg.mode !== 'WALK' && !mappedLegIds.has(leg.id)).length,
     approximateWalkCount: mappedLegs.filter(leg => leg.approximate).length,
+    approximateMicromobilityCount: legs.filter(isEstimatedMicromobility).length,
   };
 }

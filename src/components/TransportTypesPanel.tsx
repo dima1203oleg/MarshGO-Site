@@ -4,11 +4,12 @@ import { choiceFor, hasJourneySearchProvider, isAllActive, isJourneySearchSuppor
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import type { ApiTransportProviders } from '../services/productionApi';
+import { transportUnavailableMessage } from '../domain/transportAvailabilityPresentation';
 
 // This order follows the approved route-search screen, while the domain
 // catalogue remains ordered by the product's broader transport taxonomy.
 const routeSearchOrder: readonly TransportTypeId[] = [
-  'carpool', 'marshrutka', 'bus', 'taxi', 'trolleybus', 'metro', 'tram', 'train',
+  'carpool', 'marshrutka', 'bus', 'taxi', 'tram', 'trolleybus', 'metro', 'train',
   'bike', 'scooter', 'carsharing', 'transfer',
 ];
 function Tile({ label, visualLabel = label, selected, disabled, disabledReason, compact, type, onClick }: { label: string; visualLabel?: string; selected: boolean; disabled: boolean; disabledReason?: string; compact?: boolean; type: TransportTypeId; onClick: () => void }) {
@@ -28,9 +29,7 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
   const showProviders = selection.active.length > 0 && (!allActive || expandedAll);
   const isConnected = (type: TransportTypeId) => isJourneySearchSupported(type)
     && (groups === null || hasJourneySearchProvider(type, groups));
-  const disabledReason = (type: TransportTypeId) => !isJourneySearchSupported(type)
-    ? 'Провайдер є в реєстрі, але для нього ще немає маршрутизатора. Ця категорія не потрапляє в результати.'
-    : groups !== null && !isConnected(type) ? 'Немає доступного розкладу у вибраному районі.' : undefined;
+  const disabledReason = (type: TransportTypeId) => transportUnavailableMessage(type, groups);
   const providersOf = (type: TransportTypeId) => providersForJourneySearch(type, groups);
 
   const visibleTypes = compact ? routeSearchOrder.flatMap((id) => transportTypes.filter((type) => type.id === id)) : transportTypes;
@@ -42,6 +41,9 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
       <button type="button" aria-pressed={allActive} onClick={() => onChange(allActive ? { ...selection, active: [] } : selectAll(selection))} className={`min-h-11 rounded-full border px-4 py-1.5 text-xs font-bold ${allActive ? 'border-[#1789F4] bg-[#1789F4] text-white dark:border-[#0B6EF3] dark:bg-[#0B6EF3]' : 'border-slate-200 bg-white text-[#1789F4] dark:border-slate-700 dark:bg-[#16202B] dark:text-[#66B2FF]'}`}>Усі</button>
       </span>
     </div>
+    {groups === null && <p role="status" className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+      Покриття маршрутів ще не перевірено; наявність провайдерів не підтверджена.
+    </p>}
     {!compact && <p className="mb-3 text-xs leading-5 text-slate-500">Рівно 12 категорій у затвердженому порядку. Неактивні категорії залишаються видимими; «Пішки» додається автоматично до пересадок.</p>}
     <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>
     {!compact && allActive && <button type="button" onClick={() => setExpandedAll((value) => !value)} className="mt-3 text-xs font-bold text-[#1789F4]">{expandedAll ? 'Сховати провайдерів' : 'Налаштувати провайдерів'}</button>}

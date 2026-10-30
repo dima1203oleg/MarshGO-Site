@@ -3,11 +3,12 @@ import { Check, LocateFixed, X } from 'lucide-react';
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { resolveMapAssets } from '../map/mapConfig';
 import { productionApi, type ApiPlace } from '../services/productionApi';
+import { coordinateMapPlace, geolocationFailureMessage, getBrowserPosition } from '../domain/mapPointSelection';
 
 type Props = { title: string; initial: { latitude: number; longitude: number } | null; onConfirm: (place: ApiPlace) => void; onClose: () => void };
 const UKRAINE_CENTER: [number, number] = [31.1656, 48.3794];
 
-/** Full-screen map: the user moves the map under a fixed pin, the address is resolved by the server geocoder. */
+/** Full-screen map: coordinates can be confirmed even when reverse geocoding is unavailable. */
 export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
@@ -17,7 +18,7 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
   const lookup = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scheduleResolve = (latitude: number, longitude: number) => {
-    lookup.current += 1; setPlace(null); setState('resolving'); setMessage('');
+    lookup.current += 1; setPlace(coordinateMapPlace(latitude, longitude)); setState('resolving'); setMessage('');
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void resolve(latitude, longitude), 450);
   };
@@ -32,8 +33,8 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
       setState('ready');
     } catch (error) {
       if (ticket !== lookup.current) return;
-      setPlace(null); setState('error');
-      setMessage(error instanceof Error ? error.message : 'Не вдалося визначити адресу. Посуньте мапу ще раз.');
+      setState('error');
+      setMessage(error instanceof Error ? `Адресу не визначено: ${error.message}. Координату можна підтвердити без адреси.` : 'Адресу не визначено. Координату можна підтвердити без адреси.');
     }
   };
 
@@ -46,19 +47,28 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
       maplibre.setWorkerUrl(mapLibreWorkerUrl);
       map = new maplibre.Map({ container: container.current, style: assets.style, center, zoom: initial ? 14 : 5.5, attributionControl: { compact: true } });
       mapRef.current = map;
+      map.on('click', (event) => {
+        const point = event.lngLat;
+        scheduleResolve(point.lat, point.lng);
+        map!.easeTo({ center: point, duration: 200 });
+      });
       map.on('moveend', () => { const c = map!.getCenter(); scheduleResolve(c.lat, c.lng); });
-      map.once('load', () => { const c = map!.getCenter(); if (initial) void resolve(c.lat, c.lng); else setState('ready'); });
+      map.once('load', () => {
+        const c = map!.getCenter();
+        if (initial) {
+          setPlace(coordinateMapPlace(c.lat, c.lng));
+          void resolve(c.lat, c.lng);
+        } else setState('ready');
+      });
     }).catch(() => { setState('error'); setMessage('Не вдалося завантажити мапу.'); });
     return () => { cancelled = true; if (timer.current) clearTimeout(timer.current); map?.remove(); mapRef.current = null; };
   }, []);
 
   const locate = () => {
     if (!navigator.geolocation) { setMessage('Геолокація недоступна в цьому браузері.'); return; }
-    navigator.geolocation.getCurrentPosition(
-      (position) => mapRef.current?.easeTo({ center: [position.coords.longitude, position.coords.latitude], zoom: 16, duration: 600 }),
-      () => setMessage('Немає доступу до геолокації. Дозвольте його в налаштуваннях браузера.'),
-      { enableHighAccuracy: true, timeout: 10_000 },
-    );
+    void getBrowserPosition(navigator.geolocation)
+      .then((position) => mapRef.current?.easeTo({ center: [position.coords.longitude, position.coords.latitude], zoom: 16, duration: 600 }))
+      .catch((error: unknown) => setMessage(geolocationFailureMessage(typeof error === 'object' && error !== null && 'code' in error ? Number((error as { code: unknown }).code) : undefined)));
   };
 
   return <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[80] flex flex-col bg-white">
@@ -73,9 +83,9 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
     </div>
     <div className="border-t border-slate-100 bg-white px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Обрана точка</p>
-      <p role="status" className="mt-1 min-h-[2.5rem] text-sm font-bold text-[#0E1F35]">{state === 'resolving' ? 'Визначаємо адресу…' : place ? place.label : state === 'error' ? message : 'Посуньте мапу, щоб поставити позначку'}</p>
-      {message && state !== 'error' && <p className="text-xs text-rose-600">{message}</p>}
-      <button type="button" disabled={!place || state === 'resolving'} onClick={() => place && onConfirm(place)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1789F4] py-3.5 text-sm font-bold text-white disabled:opacity-50"><Check size={17}/>Підтвердити точку</button>
+      <p role="status" className="mt-1 min-h-[2.5rem] text-sm font-bold text-[#0E1F35]">{state === 'resolving' ? place ? `${place.label} · шукаємо адресу…` : 'Торкніться точки на мапі або посуньте мапу під позначку' : place ? place.label : state === 'error' ? message : 'Торкніться точки на мапі або посуньте мапу під позначку'}</p>
+      {message && <p className="text-xs text-amber-700">{message}</p>}
+      <button type="button" disabled={!place} onClick={() => place && onConfirm(place)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1789F4] py-3.5 text-sm font-bold text-white disabled:opacity-50"><Check size={17}/>Підтвердити точку</button>
     </div>
   </div>;
 }

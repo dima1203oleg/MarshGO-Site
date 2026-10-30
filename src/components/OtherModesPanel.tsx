@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { formatDistance } from '../domain/transportCatalog';
 import { activeTypesForSearch, choiceFor, effectiveProviders, journeyTypesForCategory, transportTypes, type TransportSelection, type TransportTypeId } from '../domain/transportPreferences';
 import { productionApi, type ApiNearby, type ApiTransportProviders } from '../services/productionApi';
+import { staticBikeAvailabilityMessage } from '../domain/transportAvailabilityPresentation';
 
 const rentalType = { bike: 'bike', scooter: 'scooter', carsharing: 'carsharing' } as const;
 type RentalType = keyof typeof rentalType;
@@ -32,9 +33,10 @@ export function OtherModesPanel({ selection, groups, origin }: { selection: Tran
       return <div key={type} className="rounded-2xl bg-white p-3 shadow-sm"><b className="text-sm text-[#0E1F35]">{label}</b>
         {providers.length === 0 ? <p className="mt-1 text-xs text-slate-500">{choiceFor(selection, type).all ? 'Провайдери недоступні у цьому районі.' : 'Вибрані провайдери недоступні у цьому районі.'}</p>
           : <ul className="mt-1 divide-y divide-slate-100">{providers.map((provider) => { const mine = data?.assets.filter((asset) => asset.providerName === provider.name) ?? [];
+            const staticBikeMessage = type === 'bike' ? staticBikeAvailabilityMessage(provider.sources) : undefined;
             return <li key={provider.id} className="flex items-center justify-between gap-2 py-2 text-xs"><span className="font-bold text-[#0E1F35]">{provider.name}</span>
               <span className="text-right text-slate-500">{transitTypes.includes(type) ? `розклад для пошуку підключено${provider.services.length ? ` (${provider.services.join(', ')})` : ''}; тариф може бути відсутній`
-                : isRental(type) ? (!origin ? 'оберіть «Звідки» для наявності' : !data ? 'шукаємо…' : mine.length > 0 ? `${data.assets.filter((asset) => asset.providerName === provider.name).length}+ вільних, найближчий ${formatDistance(mine[0].distanceM)}` : 'поблизу немає вільних')
+                : isRental(type) ? (staticBikeMessage ?? (!origin ? 'оберіть «Звідки» для наявності' : !data ? 'шукаємо…' : mine.length > 0 ? `${data.assets.filter((asset) => asset.providerName === provider.name).length}+ вільних, найближчий ${formatDistance(mine[0].distanceM)}` : 'поблизу немає вільних'))
                 : 'підключено'}</span></li>; })}</ul>}
       </div>; })}</div>
   </section>;

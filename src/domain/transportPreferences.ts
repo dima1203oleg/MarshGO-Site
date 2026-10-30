@@ -7,13 +7,12 @@ export interface TransportTypeInfo { id: TransportTypeId; label: string; group: 
 export const transportTypes: TransportTypeInfo[] = transportModes.map(({ id, label, group }) => ({ id, label, group }));
 
 /**
- * The planner currently composes MARSHGO carpool offers and open GTFS schedules.
- * The remaining categories stay visible, but cannot be selected until their
- * real routing adapters are available. Static map layers and vehicle feeds are
- * deliberately not mistaken for an itinerary provider.
+ * The planner composes MARSHGO carpool offers, open GTFS schedules, and
+ * provider-scoped micromobility estimates. A map layer alone is not enough:
+ * bikes require a confirmed return network, scooters require GBFS coverage.
  */
 export const supportedJourneySearchTypes: readonly TransportTypeId[] = [
-  'bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'carpool', 'train',
+  'bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'carpool', 'train', 'bike', 'scooter',
 ];
 const supportedTypeSet = new Set<TransportTypeId>(supportedJourneySearchTypes);
 export const isJourneySearchSupported = (type: TransportTypeId): boolean => supportedTypeSet.has(type);
@@ -99,7 +98,14 @@ function groupsForCategory(type: TransportTypeId, groups: ApiTransportProviders[
   return groups.filter((group) => names.includes(group.transportType));
 }
 function providerCanRoute(type: TransportTypeId, provider: ApiTransportProviders['providers'][number]): boolean {
-  return type === 'carpool' ? provider.sources.includes('marshgo') : provider.sources.includes('gtfs');
+  if (type === 'carpool') return provider.sources.includes('marshgo');
+  if (type === 'bike') return provider.sources.includes('static-bike-network-estimate');
+  if (type === 'scooter') return provider.sources.includes('gbfs');
+  if (type === 'metro') return provider.sources.includes('gtfs')
+    || (provider.sources.includes('geojson') && provider.services.includes('metro'));
+  if (type === 'marshrutka') return provider.sources.includes('gtfs')
+    || provider.sources.includes('geojson') || provider.sources.includes('json');
+  return provider.sources.includes('gtfs');
 }
 export function hasJourneySearchProvider(type: TransportTypeId, groups: ApiTransportProviders[] | null): boolean {
   if (!isJourneySearchSupported(type)) return false;
@@ -109,6 +115,41 @@ export function hasJourneySearchProvider(type: TransportTypeId, groups: ApiTrans
 export function providersForJourneySearch(type: TransportTypeId, groups: ApiTransportProviders[] | null): ApiTransportProviders['providers'] {
   if (!isJourneySearchSupported(type)) return [];
   return groupsForCategory(type, groups).flatMap((group) => group.providers.filter((provider) => provider.available && providerCanRoute(type, provider)));
+}
+/** Union endpoint-local provider coverage; an available provider at either end remains discoverable. */
+export function mergeProviderGroups(responses: readonly ApiTransportProviders[][]): ApiTransportProviders[] {
+  const merged = new Map<string, Map<string, ApiTransportProviders['providers'][number]>>();
+  for (const groups of responses) for (const group of groups) {
+    const providers = merged.get(group.transportType) ?? new Map<string, ApiTransportProviders['providers'][number]>();
+    for (const provider of group.providers) {
+      const existing = providers.get(provider.id);
+      if (!existing) {
+        providers.set(provider.id, provider);
+        continue;
+      }
+      providers.set(provider.id, {
+        ...existing,
+        name: existing.name || provider.name,
+        available: existing.available || provider.available,
+        cities: [...new Set([...existing.cities, ...provider.cities])],
+        sources: [...new Set([...existing.sources, ...provider.sources])],
+        services: [...new Set([...existing.services, ...provider.services])],
+      });
+    }
+    merged.set(group.transportType, providers);
+  }
+  return [...merged].map(([transportType, providers]) => ({ transportType, providers: [...providers.values()] }));
+}
+/** Keep successful endpoint discovery while exposing whether any endpoint failed. */
+export function mergeSettledProviderGroups(
+  results: readonly PromiseSettledResult<ApiTransportProviders[]>[],
+): { groups: ApiTransportProviders[]; failedCount: number } | null {
+  const fulfilled = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
+  if (fulfilled.length === 0) return null;
+  return {
+    groups: mergeProviderGroups(fulfilled),
+    failedCount: results.length - fulfilled.length,
+  };
 }
 export function effectiveProviders(selection: TransportSelection, type: TransportTypeId, groups: ApiTransportProviders[] | null): string[] {
   const available = providersForJourneySearch(type, groups);
@@ -122,7 +163,11 @@ export function toJourneyPreferences(selection: TransportSelection, groups: ApiT
   const categoryHasProviders = (type: TransportTypeId) => type === 'carpool' || groups === null || effectiveProviders(selection, type, groups).length > 0;
   const withProviders = active.filter(categoryHasProviders);
   const allowedTransportTypes = [...withProviders];
-  const transit = withProviders.filter((type) => type !== 'carpool');
+  const transitTypes = new Set<TransportTypeId>(['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'train']);
+  const transit = withProviders.filter((type) => transitTypes.has(type));
+  const rentalTypes = withProviders.filter((type) => type === 'bike' || type === 'scooter');
+  const allowedProviderIds = rentalTypes.flatMap((type) => effectiveProviders(selection, type, groups)
+    .map((providerId) => providerId.slice(providerId.indexOf(':') + 1)));
   const allowedTransitProvidersByType: Record<string, string[]> = {};
   const selectedTransitProviders: string[] = [];
   if (groups !== null) for (const category of transit) {
@@ -145,6 +190,7 @@ export function toJourneyPreferences(selection: TransportSelection, groups: ApiT
     allowMinibus: withProviders.includes('marshrutka'),
     allowRail: withProviders.includes('train'),
     allowPublicTransport: transit.length > 0,
+    allowedProviderIds: [...new Set(allowedProviderIds)],
     allowedTransportTypes,
     allowedTransitProviders: [...new Set(selectedTransitProviders)],
     allowedTransitProvidersByType,

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Coordinate } from '../../shared/navigation/contracts';
 import { resolveMapAssets, schemeBasemapConfigured } from './mapConfig';
-import type { ColoredRouteSegment, MapAdapter, MapStatus, MapTheme, RouteFitPadding } from './MapAdapter';
+import type { ColoredRouteSegment, MapAdapter, MapStatus, MapTheme, RouteFitPadding, RouteWaypoint, ScreenPoint } from './MapAdapter';
 import { getMapLayer, getMapPerspective, styleForLayer, subscribeMapLayer, subscribeMapPerspective, type MapLayer } from './mapMode';
 import { getTransportLayers, subscribeTransportLayers } from './transportLayers';
 import { getMapDisplayPreferences, subscribeMapDisplayPreferences } from './mapLayerPreferences';
@@ -9,16 +9,17 @@ import { visibleTransportLayers } from './focusMode';
 import { configuredMapStyleUrl } from './mapConfig';
 import { themeService } from '../services/theme';
 
-type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: Array<{ coordinate: Coordinate; kind: string }>; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; focusMode?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
+type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: RouteWaypoint[]; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; focusMode?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
 function themeForMapLayer(layer: MapLayer, dark: boolean): MapTheme {
   void layer;
   return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
 }
-export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPadding, activeRouteSegmentId = null, onRouteSegmentSelect, vehicle, heading = null, theme, overlays = false, focusMode = false, onTransportHint, onStatus, onAdapter }: Props) {
+export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPadding, activeRouteSegmentId = null, onRouteSegmentSelect, onRouteSegmentAmbiguous, vehicle, heading = null, theme, overlays = false, focusMode = false, onTransportHint, onStatus, onAdapter }: Props) {
   const container = useRef<HTMLDivElement | null>(null);
   const adapter = useRef<MapAdapter | null>(null);
   const syncOverlays = useRef<() => void>(() => undefined);
   const routeSegmentSelect = useRef(onRouteSegmentSelect);
+  const routeSegmentAmbiguous = useRef(onRouteSegmentAmbiguous);
   const activeSegment = useRef(activeRouteSegmentId);
   const fitPadding = useRef(routeFitPadding);
   const routeRef = useRef(route);
@@ -27,6 +28,7 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
   const vehicleRef = useRef(vehicle);
   const headingRef = useRef(heading);
   routeSegmentSelect.current = onRouteSegmentSelect;
+  routeSegmentAmbiguous.current = onRouteSegmentAmbiguous;
   activeSegment.current = activeRouteSegmentId;
   fitPadding.current = routeFitPadding;
   routeRef.current = route;
@@ -53,7 +55,10 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
       instance.setLayer(initialLayer);
       instance.setPerspective(getMapPerspective());
       instance.setTransportDisplayPreferences(getMapDisplayPreferences());
-      adapter.current = instance; instance.onRouteSegmentSelect = (id) => routeSegmentSelect.current?.(id); onAdapter(instance);
+      adapter.current = instance;
+      instance.onRouteSegmentSelect = (id) => routeSegmentSelect.current?.(id);
+      instance.onRouteSegmentAmbiguous = (ids, point) => routeSegmentAmbiguous.current?.(ids, point);
+      onAdapter(instance);
       instance.onTransportHint = (message) => onTransportHint?.(message);
       syncOverlays.current();
       const latestRouteSegments = routeSegmentsRef.current;

@@ -23,11 +23,11 @@ test('keeps real route shapes separate and uses each transport mode color', () =
   assert.deepEqual(model.routeSegments.map(segment => segment.modeColor), ['#1687FF', '#8B3CE6']);
   assert.deepEqual(model.routeSegments.map(segment => segment.coordinates.length), [3, 2]);
   assert.deepEqual(model.routeWaypoints, [
-    { coordinate: [24, 49.8], kind: 'PICKUP' },
-    { coordinate: [24.01, 49.81], kind: 'STOP' },
-    { coordinate: [24.02, 49.82], kind: 'STOP' },
-    { coordinate: [24.03, 49.83], kind: 'TRANSFER' },
-    { coordinate: [24.05, 49.85], kind: 'DROPOFF' },
+    { coordinate: [24, 49.8], kind: 'PICKUP', segmentIds: ['bus'] },
+    { coordinate: [24.01, 49.81], kind: 'STOP', segmentIds: ['bus'] },
+    { coordinate: [24.02, 49.82], kind: 'STOP', segmentIds: ['bus'] },
+    { coordinate: [24.03, 49.83], kind: 'TRANSFER', segmentIds: ['bus', 'minibus'] },
+    { coordinate: [24.05, 49.85], kind: 'DROPOFF', segmentIds: ['tram'] },
   ]);
   assert.equal(model.missingShapeCount, 1);
 });
@@ -75,9 +75,9 @@ test('does not manufacture straight lines for legs without source geometry', () 
 
   assert.deepEqual(model.routeSegments, []);
   assert.deepEqual(model.routeWaypoints, [
-    { coordinate: [24, 49.8], kind: 'PICKUP' },
-    { coordinate: [25, 50], kind: 'TRANSFER' },
-    { coordinate: [25.1, 50.1], kind: 'DROPOFF' },
+    { coordinate: [24, 49.8], kind: 'PICKUP', segmentIds: ['bus'] },
+    { coordinate: [25, 50], kind: 'TRANSFER', segmentIds: ['bus', 'walk'] },
+    { coordinate: [25.1, 50.1], kind: 'DROPOFF', segmentIds: ['walk'] },
   ]);
   assert.equal(model.missingShapeCount, 1);
 });
@@ -94,6 +94,35 @@ test('renders estimated walking connectors as explicitly approximate dashed segm
     coordinates: [[24, 49.8], [24.01, 49.81]],
   }]);
   assert.equal(model.missingShapeCount, 0);
+});
+
+test('does not draw estimated bike rental endpoint pairs as road geometry', () => {
+  const model = buildJourneyRouteMapModel(legs([
+    { id: 'bike-estimate', mode: 'BICYCLE', transportType: 'bike', source: 'static-bike-network-estimate',
+      origin: { coordinates: [30.5229, 50.4471] }, destination: { coordinates: [30.4818, 50.4623] },
+      routeGeometry: [[30.5229, 50.4471], [30.4818, 50.4623]] },
+  ]));
+
+  assert.deepEqual(model.routeSegments, []);
+  assert.deepEqual(model.routeWaypoints, [
+    { coordinate: [30.5229, 50.4471], kind: 'PICKUP', segmentIds: ['bike-estimate'] },
+    { coordinate: [30.4818, 50.4623], kind: 'DROPOFF', segmentIds: ['bike-estimate'] },
+  ]);
+  assert.equal(model.missingShapeCount, 1);
+  assert.equal(model.approximateMicromobilityCount, 1);
+});
+
+test('does not draw estimated geofenced scooter endpoint pairs as road geometry', () => {
+  const model = buildJourneyRouteMapModel(legs([
+    { id: 'scooter-estimate', mode: 'SCOOTER', transportType: 'scooter', source: 'gbfs-geofence-scooter-estimate',
+      origin: { coordinates: [30.5229, 50.4471] }, destination: { coordinates: [30.4818, 50.4623] },
+      routeGeometry: [[30.5229, 50.4471], [30.4818, 50.4623]] },
+  ]));
+
+  assert.deepEqual(model.routeSegments, []);
+  assert.equal(model.routeWaypoints.length, 2);
+  assert.equal(model.missingShapeCount, 1);
+  assert.equal(model.approximateMicromobilityCount, 1);
 });
 
 test('drops malformed coordinates before passing route geometry to the map', () => {
