@@ -171,6 +171,40 @@ export type ApiMobilityProvider = {
   last_report: { checks?: Array<{ name: string; ok: boolean; detail?: string }>; counts?: Record<string, number>; responseMs?: number };
 };
 export type ApiMobilityAudit = { id: number; action: string; entity_id: string; details: Record<string, unknown>; created_at: string; actor: string | null };
+export type ApiMobilityOperator = {
+  provider_id: string;
+  provider_name: string;
+  provider_group: string;
+  data_source: string;
+  source_url: string;
+  integration_status: string;
+  data_freshness_seconds: number | null;
+  booking_method: string;
+  pricing_capability: string;
+  live_availability_capability: boolean;
+  commercial_permissions: string;
+  attribution_requirements: string | null;
+  enabled: boolean;
+  last_successful_sync: string | null;
+  last_sync_error: string | null;
+  api_key_configured: boolean;
+  location_count: number;
+  live_available_count: number;
+  status_message: string | null;
+};
+export type ApiTransportCity = {
+  id: string;
+  name: string;
+  timezone: string;
+  bbox: [number, number, number, number] | null;
+  modes: string[];
+  routeCount: number;
+  stopCount: number;
+  realtimeAvailable: boolean;
+  sourceUrl: string | null;
+  licenses: string[];
+  providers: Array<{ name: string; sourceType: string; license: string | null; sourceRef: string | null }>;
+};
 
 export type ApiTransitAvailability = Record<string, { available: boolean; cities: string[] }>;
 export type ApiMobilityAvailability = { modes: ApiRentalAvailability[]; transit: ApiTransitAvailability };
@@ -199,7 +233,7 @@ export type ApiRealtimeEvent =
   | { type: 'navigation.match.passenger-confirmed'; data: { candidate_id: string; demand_id: string; status: 'passenger_confirmed' } }
   | { type: 'navigation.route-updated'; data: { navigation_session_id: string; booking_id: string; route_version: number } }
   | { type: `rendezvous.${string}`; data: { rendezvous_id: string; state?: string; participant?: 'driver' | 'passenger'; coordinates?: [number, number]; accuracyMeters?: number; capturedAt?: string; near_pickup?: boolean } }
-  | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id: string; booking_id: string; state: 'READY' | 'REPLANNING' } };
+  | { type: 'journey.updated'; data: { journey_id: string; journey_leg_id?: string; booking_id?: string; state: 'READY' | 'REPLANNING' | 'PARTIALLY_RESERVED' | string } };
 export type ApiConversation = { id: string; booking_id: string; created_at: string };
 export type ApiPlace = { label: string; latitude: number; longitude: number; providerId: string };
 export type ApiJourneyStrategy = 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM' | 'RELIABLE' | 'CUSTOM';
@@ -226,6 +260,8 @@ export type ApiJourney = {
   walkingMeters: number;
   transfers: number;
   reliabilityScore: number | null;
+  currency?: string;
+  priceStatus?: 'ESTIMATED' | 'LOCKED' | 'DYNAMIC' | 'UNKNOWN';
   legs: Array<{
     id: string;
     mode: string;
@@ -250,7 +286,12 @@ export type ApiJourney = {
     /** Provider/feed geometry in [longitude, latitude] order; absent means no verified path. */
     routeGeometry?: [number, number][] | null;
     geometrySource?: 'gtfs-shape' | 'gtfs-stop-sequence' | 'walking-estimate';
-    stops?: Array<{ id: string; name: string; coordinates?: [number, number]; arrivalAt?: string; departureAt?: string }>;
+    stops?: Array<{ id: string; name: string; coordinates?: [number, number]; arrivalAt?: string; departureAt?: string; skipped?: boolean }>;
+    currency?: string;
+    scheduleSemantics?: 'published_departures' | 'frequency_estimate' | null;
+    fareSource?: 'gtfs-v1' | 'city-tariff-registry' | null;
+    fareIncludedByPreviousSegment?: boolean;
+    liveStatus?: 'LIVE' | 'SCHEDULED' | 'PREDICTED' | 'UNAVAILABLE' | 'UNVERIFIED' | 'UNKNOWN';
     driver: { id: string; name: string; averageRating: number | null; reviewCount: number } | null;
     vehicle: { id: string; make: string; model: string } | null;
   }>;
@@ -278,6 +319,7 @@ export type ApiJourneySearchResult = {
   candidateGenerationTruncated?: boolean;
   resultSamplingTruncated?: boolean;
   partial: boolean;
+  partialReasons?: string[];
   blockedProviders: string[];
   unsupportedPreferences: string[];
   providerErrors: string[];
@@ -479,7 +521,9 @@ export const productionApi = {
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
-  journeyLive(id: string, signal?: AbortSignal, legId?: string) {
+  journeyLive(id: string, arg2?: AbortSignal | string, arg3?: string | AbortSignal) {
+    const signal = arg2 instanceof AbortSignal ? arg2 : arg3 instanceof AbortSignal ? arg3 : undefined;
+    const legId = typeof arg2 === 'string' ? arg2 : typeof arg3 === 'string' ? arg3 : undefined;
     const suffix = legId ? `?legId=${encodeURIComponent(legId)}` : '';
     return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live${suffix}`, { signal });
   },
@@ -527,7 +571,9 @@ export const productionApi = {
       `/transit/stops/${encodeURIComponent(stopId)}/arrivals?lat=${lat}&lon=${lon}`, { signal },
     );
   },
+  transportCities(signal?: AbortSignal) { return request<ApiTransportCity[]>('/transport/cities', { signal }); },
   transportMicromobility(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
+  transportMicromobilityGeofences(bbox: string, signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility/geofences?bbox=${encodeURIComponent(bbox)}`, { signal }); },
   setNavigationDestination(id: string, input: { destination: [number, number]; destinationName: string }) {
     return request<ApiNavigationSession>(`/navigation/sessions/${id}/destination`, { method: 'PUT', body: JSON.stringify(input) });
   },
@@ -695,6 +741,13 @@ export const productionApi = {
   mobilityAvailability() { return request<ApiMobilityAvailability>('/mobility/availability'); },
   nearbyRentals(mode: string, latitude: number, longitude: number, radiusM = 1000) {
     return request<ApiNearby>(`/mobility/nearby?mode=${encodeURIComponent(mode)}&lat=${latitude}&lon=${longitude}&radiusM=${radiusM}`);
+  },
+  mobilityOperators() { return request<ApiMobilityOperator[]>('/mobility/operators'); },
+  updateMobilityOperator(providerId: string, enabled: boolean) {
+    return request<{ provider_id: string; enabled: boolean }>(`/admin/mobility/operators/${encodeURIComponent(providerId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    });
   },
   mobilityProviders() { return request<ApiMobilityProvider[]>('/admin/mobility/providers'); },
   createMobilityProvider(input: { name: string; city: string; providerType: string; sourceType: string; feedUrl: string; realtimeUrl?: string; priority?: number }) {

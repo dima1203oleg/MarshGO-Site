@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   ArrowLeft, CheckCircle2, ChevronDown, Clock3, XCircle, Shield,
-  Lock, MapPin, Download, Trash2, AlertTriangle, PhoneCall, HelpCircle,
+  Download, Trash2, AlertTriangle, PhoneCall,
 } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
 import type { ApiVehicle, ApiVerificationRecord } from '../services/productionApi';

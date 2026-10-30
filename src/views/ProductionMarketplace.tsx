@@ -52,11 +52,10 @@ const vehicleUsable = (vehicle: ApiVehicle) => (vehicle.trust_level ?? 0) >= 1 |
 export function ProductionMarketplace() {
   const [user, setUser] = useState<ApiUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [phone, setPhone] = useState('+380');
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [otpRequested, setOtpRequested] = useState(false);
-  const [devCode, setDevCode] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authDisplayName, setAuthDisplayName] = useState('');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [showLogin, setShowLogin] = useState(false);
   const [authIntro, setAuthIntro] = useState(true);
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -509,25 +508,27 @@ export function ProductionMarketplace() {
     return () => { disposed = true; unsubscribe(); setRealtimeConnected(false); };
   }, [refreshUnreadConversations, selectedBooking?.id, tab]);
 
-  const requestOtp = async (event: FormEvent) => {
+  const handleLogin = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setStatusMessage('');
     try {
-      const result = await productionApi.requestOtp(phone, name);
-      setOtpRequested(true); setDevCode(result.developmentCode ?? '');
-      setStatusMessage(result.delivery === 'development' ? 'Код тестового середовища показано нижче.' : 'Код надіслано SMS.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося запросити код.'); }
-    finally { setBusy(false); }
-  };
-
-  const verifyOtp = async (event: FormEvent) => {
-    event.preventDefault(); setBusy(true); setStatusMessage('');
-    try {
-      const currentUser = await productionApi.verifyOtp(phone, code);
+      const currentUser = await productionApi.login(authEmail, authPassword);
       setUser(currentUser);
       const refreshedUser = await productionApi.me(); setUser(refreshedUser);
       await Promise.all([refreshBookings(), refreshJourneys(), refreshVehicles(), refreshBlockedUsers(), ...(refreshedUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(refreshedUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
       setShowLogin(false);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Код не прийнято.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Помилка входу. Перевірте email та пароль.'); }
+    finally { setBusy(false); }
+  };
+
+  const handleRegister = async (event: FormEvent) => {
+    event.preventDefault(); setBusy(true); setStatusMessage('');
+    try {
+      const currentUser = await productionApi.register({ email: authEmail, password: authPassword, displayName: authDisplayName });
+      setUser(currentUser);
+      const refreshedUser = await productionApi.me(); setUser(refreshedUser);
+      await Promise.all([refreshBookings(), refreshJourneys(), refreshVehicles(), refreshBlockedUsers(), ...(refreshedUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(refreshedUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
+      setShowLogin(false);
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Помилка реєстрації. Перевірте дані.'); }
     finally { setBusy(false); }
   };
 
@@ -1192,13 +1193,13 @@ export function ProductionMarketplace() {
     if (activeNavigation) await productionApi.endNavigation(activeNavigation.id).catch(() => undefined);
     await productionApi.logout().catch(() => undefined);
     new OfflineNavigationStore().clear();
-    setUser(null); setBookings([]); setJourneys([]); setNotificationPage({ items: [], nextCursor: null, unreadCount: 0 }); setShowNotifications(false); setBlockedUsers([]); setVehicles([]); setOffers([]); setShowLogin(true); setOtpRequested(false);
+    setUser(null); setBookings([]); setJourneys([]); setNotificationPage({ items: [], nextCursor: null, unreadCount: 0 }); setShowNotifications(false); setBlockedUsers([]); setVehicles([]); setOffers([]); setShowLogin(true);
   };
 
   const logoutAllDevices = async () => {
     await productionApi.logoutAll();
     new OfflineNavigationStore().clear();
-    setProfileSection(null); setUser(null); setBookings([]); setJourneys([]); setNotificationPage({ items: [], nextCursor: null, unreadCount: 0 }); setShowNotifications(false); setBlockedUsers([]); setVehicles([]); setOffers([]); setShowLogin(true); setOtpRequested(false);
+    setProfileSection(null); setUser(null); setBookings([]); setJourneys([]); setNotificationPage({ items: [], nextCursor: null, unreadCount: 0 }); setShowNotifications(false); setBlockedUsers([]); setVehicles([]); setOffers([]); setShowLogin(true);
   };
 
   const downloadPersonalData = async () => {
@@ -1273,7 +1274,7 @@ export function ProductionMarketplace() {
     finally { setNotificationsLoading(false); }
   };
 
-  const continueToPhoneLogin = () => {
+  const continueToLogin = () => {
     setOnboardingStep(0);
     setShowLogin(true);
   };
@@ -1315,26 +1316,28 @@ export function ProductionMarketplace() {
           </div>
         </> : onboardingStep > 0 ? <OnboardingSlides step={onboardingStep as 1 | 2 | 3} permissionMessage={onboardingPermissionMessage}
           onNext={() => setOnboardingStep(Math.min(3, onboardingStep + 1))} onBack={() => onboardingStep === 1 ? setAuthIntro(true) : setOnboardingStep(onboardingStep - 1)}
-          onSkip={continueToPhoneLogin} onFinish={continueToPhoneLogin} onRequestLocation={requestOnboardingLocation}/> : <>
+          onSkip={continueToLogin} onFinish={continueToLogin} onRequestLocation={requestOnboardingLocation}/> : <>
         <div className="mb-8 flex items-center gap-3"><BrandMark/><div><strong className="text-2xl tracking-tight">MARSH<span className="text-sky-400">GO</span></strong><p className="text-xs text-blue-100/80">Один маршрут. Усі способи доїхати.</p></div></div>
-        {!otpRequested ? <>
-          <h1 className="text-3xl font-extrabold">Вхід за номером телефону</h1><p className="mt-2 text-sm text-blue-100/80">Створіть профіль або увійдіть за номером.</p>
-          <form onSubmit={requestOtp} className="mt-6 space-y-3">
-            <input required minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Ваше ім’я" autoComplete="name" />
-            <input required type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="+380 номер телефону" autoComplete="tel" />
-            <button disabled={busy} className="w-full rounded-2xl bg-blue-600 px-5 py-4 font-bold shadow-lg shadow-blue-900/40 disabled:opacity-60">{busy ? 'Надсилаємо…' : 'Почати'}</button>
+        {authMode === 'login' ? <>
+          <h1 className="text-3xl font-extrabold">Вхід до MARSHGO</h1><p className="mt-2 text-sm text-blue-100/80">Увійдіть за email та паролем.</p>
+          <form onSubmit={handleLogin} className="mt-6 space-y-3">
+            <input required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Email адреса" autoComplete="email" />
+            <input required type="password" minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Пароль" autoComplete="current-password" />
+            <button disabled={busy} className="w-full rounded-2xl bg-blue-600 px-5 py-4 font-bold shadow-lg shadow-blue-900/40 disabled:opacity-60">{busy ? 'Входимо…' : 'Увійти'}</button>
           </form>
+          <button type="button" onClick={() => { setAuthMode('register'); setStatusMessage(''); }} className="mt-3 w-full py-2 text-sm text-blue-100">Немає акаунта? Зареєструватися</button>
         </> : <>
-          <h1 className="text-3xl font-extrabold">Вхід за номером</h1><p className="mt-2 text-sm text-blue-100/80">Підтвердьте номер телефону, щоб продовжити.</p>
-          <form onSubmit={verifyOtp} className="mt-6 space-y-3">
-            <input required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-4 text-center text-2xl tracking-[.4em] text-white outline-none focus:border-sky-300" placeholder="••••••" autoComplete="one-time-code" />
-            {devCode && <p className="rounded-xl bg-amber-100 p-3 text-sm text-amber-950">Тестовий OTP локального середовища: <b>{devCode}</b></p>}
-            <button disabled={busy} className="w-full rounded-2xl bg-blue-600 px-5 py-4 font-bold disabled:opacity-60">{busy ? 'Перевіряємо…' : 'Підтвердити номер'}</button>
-            <button type="button" onClick={() => { setOtpRequested(false); setCode(''); }} className="w-full py-2 text-sm text-blue-100">Змінити номер</button>
+          <h1 className="text-3xl font-extrabold">Реєстрація</h1><p className="mt-2 text-sm text-blue-100/80">Створіть акаунт MARSHGO.</p>
+          <form onSubmit={handleRegister} className="mt-6 space-y-3">
+            <input required minLength={2} maxLength={80} value={authDisplayName} onChange={(event) => setAuthDisplayName(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Ваше ім'я" autoComplete="name" />
+            <input required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Email адреса" autoComplete="email" />
+            <input required type="password" minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Пароль (мін. 8 символів)" autoComplete="new-password" />
+            <button disabled={busy} className="w-full rounded-2xl bg-blue-600 px-5 py-4 font-bold shadow-lg shadow-blue-900/40 disabled:opacity-60">{busy ? 'Реєструємо…' : 'Зареєструватися'}</button>
           </form>
+          <button type="button" onClick={() => { setAuthMode('login'); setStatusMessage(''); }} className="mt-3 w-full py-2 text-sm text-blue-100">Вже є акаунт? Увійти</button>
         </>}
         {statusMessage && <p role="status" className="mt-4 rounded-xl bg-white/10 p-3 text-sm text-white">{statusMessage}</p>}
-        {!authIntro && <p className="mt-5 flex gap-2 text-xs leading-5 text-blue-100/70"><ShieldCheck size={16} className="shrink-0"/>Реальна доставка SMS вмикається після налаштування провайдера.</p>}
+        {!authIntro && <p className="mt-5 flex gap-2 text-xs leading-5 text-blue-100/70"><ShieldCheck size={16} className="shrink-0"/>Захищено шифруванням. Дані не передаються третім особам.</p>}
         </>}
       </section>
     </main>

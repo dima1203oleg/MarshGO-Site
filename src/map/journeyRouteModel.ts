@@ -14,7 +14,7 @@ export function formatTransferCount(value: number): string {
   return `${count} ${noun}`;
 }
 
-function validGeometry(points: Array<[number, number]> | undefined): Coordinate[] {
+function validGeometry(points: Array<[number, number]> | null | undefined): Coordinate[] {
   if (!Array.isArray(points)) return [];
   const valid = points.every(point => Array.isArray(point) && point.length === 2
     && Number.isFinite(point[0]) && Number.isFinite(point[1])

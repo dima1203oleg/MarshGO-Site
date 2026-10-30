@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { Radio, CalendarClock, Clock, AlertTriangle, Ban } from 'lucide-react';
 
 export type TransportTelemetryStatus = 'live' | 'scheduled' | 'estimated' | 'stale' | 'unavailable';
