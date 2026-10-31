@@ -20,7 +20,7 @@ function SearchPicture() {
     <div className="space-y-2">
       <div className="flex items-center gap-3 rounded-xl bg-[#F4F8FD] px-3 py-2.5"><MapPin size={17} className="text-emerald-600"/><span><small className="block text-[10px] text-slate-400">Звідки</small><b className="text-sm text-[#0E1F35]">Моя локація</b></span></div>
       <div className="flex items-center gap-3 rounded-xl bg-[#F4F8FD] px-3 py-2.5"><MapPin size={17} className="text-rose-500"/><span><small className="block text-[10px] text-slate-400">Куди</small><b className="text-sm text-[#0E1F35]">Львів</b></span></div>
-      <div className="flex items-center gap-3 rounded-xl bg-[#F4F8FD] px-3 py-2.5"><CalendarClock size={17} className="text-[#1789F4]"/><span><small className="block text-[10px] text-slate-400">Коли</small><b className="text-sm text-[#0E1F35]">Завтра, 08:00–08:30</b></span></div>
+      <div className="flex items-center gap-3 rounded-xl bg-[#F4F8FD] px-3 py-2.5"><CalendarClock size={17} className="text-[#0B63D6]"/><span><small className="block text-[10px] text-slate-400">Коли</small><b className="text-sm text-[#0E1F35]">Завтра, 08:00–08:30</b></span></div>
     </div>
     <div className="mt-3 grid grid-cols-4 gap-2">{modes.map(({ Icon, label, tone }) => <div key={label} className="flex flex-col items-center gap-1"><span className={`grid h-10 w-10 place-items-center rounded-xl ${tone}`}><Icon size={19}/></span><small className="text-[10px] font-semibold text-slate-600">{label}</small></div>)}</div>
   </div>;
@@ -30,7 +30,7 @@ function SearchPicture() {
 function TrustPicture() {
   const items = [{ Icon: Phone, title: 'Підтверджений номер', caption: 'Кожен акаунт' }, { Icon: ShieldCheck, title: 'Авто з номером і фото', caption: 'Перед першою поїздкою' }, { Icon: LocateFixed, title: 'Геолокація лише в поїздці', caption: 'Вимикається будь-коли' }];
   return <div className="w-full max-w-[19rem] space-y-2.5">{items.map(({ Icon, title, caption }) => <div key={title} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_10px_26px_rgba(23,90,170,.12)]">
-    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#EAF3FF] text-[#1789F4]"><Icon size={19}/></span>
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#EAF3FF] text-[#0B63D6]"><Icon size={19}/></span>
     <span><b className="block text-sm text-[#0E1F35]">{title}</b><small className="text-xs text-slate-500">{caption}</small></span>
   </div>)}</div>;
 }
@@ -64,8 +64,8 @@ export function OnboardingSlides({ step, permissionMessage, onNext, onBack, onSk
     </div>
 
     <div className="shrink-0 pt-5">
-      <div className="flex justify-center gap-1.5" aria-label={`Крок ${step} з 3`}>{([1, 2, 3] as const).map((item) => <span key={item} className={`h-1.5 rounded-full transition-all ${item === step ? 'w-6 bg-[#1789F4]' : 'w-1.5 bg-slate-300'}`}/>)}</div>
-      <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-[.18em] text-[#1789F4]">{slide.eyebrow}</p>
+      <div className="flex justify-center gap-1.5" aria-label={`Крок ${step} з 3`}>{([1, 2, 3] as const).map((item) => <span key={item} className={`h-1.5 rounded-full transition-all ${item === step ? 'w-6 bg-[#0B63D6]' : 'w-1.5 bg-slate-300'}`}/>)}</div>
+      <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-[.18em] text-[#0B63D6]">{slide.eyebrow}</p>
       <h1 className="mx-auto mt-1.5 max-w-sm text-balance text-center text-[1.6rem] font-extrabold leading-tight tracking-tight text-[#081b35]">{slide.title}</h1>
       <p className="mx-auto mt-2 max-w-sm text-center text-sm leading-6 text-slate-600">{slide.text}</p>
       {step === 3 && permissionMessage && <p role="status" className="mt-3 rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-900">{permissionMessage}</p>}
@@ -75,7 +75,7 @@ export function OnboardingSlides({ step, permissionMessage, onNext, onBack, onSk
       {step < 3
         ? <button onClick={onNext} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#2B95FF,#1477E6)] py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/25">Далі <ArrowRight size={17}/></button>
         : <>
-          <button onClick={onRequestLocation} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-white py-3.5 text-sm font-bold text-[#1789F4]"><LocateFixed size={17}/>Дозволити геолокацію</button>
+          <button onClick={onRequestLocation} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-white py-3.5 text-sm font-bold text-[#0B63D6]"><LocateFixed size={17}/>Дозволити геолокацію</button>
           <button onClick={onFinish} className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#2B95FF,#1477E6)] py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/25">Продовжити <ArrowRight size={17}/></button>
           <button onClick={onSkip} className="w-full py-2.5 text-sm font-semibold text-slate-500">Не зараз</button>
         </>}

@@ -20,7 +20,7 @@ export function DriverPhotoCard({ photoUrl, isDriver, onChange }: { photoUrl: st
   };
   return <section aria-label="Фото водія" className="mt-4 rounded-[1.4rem] bg-white p-4 shadow-sm">
     <div className="flex items-center gap-4">
-      <span className="relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#EAF3FF] text-[#1789F4]">
+      <span className="relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#EAF3FF] text-[#0B63D6]">
         {photoUrl ? <img src={photoUrl} alt="Фото водія" className="h-full w-full object-cover"/> : <UserRound size={30}/>}
       </span>
       <div className="min-w-0 flex-1"><h2 className="font-extrabold">Фото водія</h2>
@@ -28,7 +28,7 @@ export function DriverPhotoCard({ photoUrl, isDriver, onChange }: { photoUrl: st
     </div>
     {error && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-2.5 text-xs text-rose-700">{error}</p>}
     <div className="mt-3 flex gap-2">
-      <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#EAF3FF] py-2.5 text-xs font-bold text-[#1789F4]"><Camera size={15}/>{busy ? 'Зачекайте…' : photoUrl ? 'Замінити фото' : 'Додати фото обличчя'}
+      <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#EAF3FF] py-2.5 text-xs font-bold text-[#0B63D6]"><Camera size={15}/>{busy ? 'Зачекайте…' : photoUrl ? 'Замінити фото' : 'Додати фото обличчя'}
         <input type="file" accept="image/jpeg,image/png,image/webp" capture="user" disabled={busy} className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); event.currentTarget.value = ''; }}/></label>
       {photoUrl && <button type="button" disabled={busy} onClick={() => void remove()} className="rounded-xl border border-slate-200 px-4 text-xs font-bold text-slate-600 disabled:opacity-50">Видалити</button>}
     </div>

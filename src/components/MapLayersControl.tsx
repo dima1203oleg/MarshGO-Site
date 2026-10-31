@@ -33,7 +33,7 @@ function LayerRow({
     <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-md ${tone}`}><Icon size={15} aria-hidden="true"/></span>
     <span className="min-w-0 flex-1 font-semibold leading-tight">{label}{!ready && <small className="mt-0.5 block text-[9px] font-normal">{available === null ? 'перевірка' : 'немає даних'}</small>}</span>
     <input type="checkbox" role="switch" aria-label={label} checked={checked} disabled={!ready} onChange={() => onToggle(readyIds, !checked)} className="peer sr-only"/>
-    <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-[#1789F4] peer-checked:after:translate-x-4 peer-disabled:bg-slate-200 dark:bg-slate-700 dark:peer-disabled:bg-slate-800"/>
+    <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-[#0B63D6] peer-checked:after:translate-x-4 peer-disabled:bg-slate-200 dark:bg-slate-700 dark:peer-disabled:bg-slate-800"/>
   </label>;
 }
 
@@ -41,7 +41,7 @@ function PreferenceRow({ label, id, checked, icon: Icon, onChange }: { label: st
   return <label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-1.5 rounded-xl px-1 py-0.5 text-[10px] hover:bg-slate-50 dark:hover:bg-white/5">
     <Icon size={18} className="shrink-0 text-blue-500" aria-hidden="true"/><span className="min-w-0 flex-1 font-semibold leading-tight">{label}</span>
     <input type="checkbox" role="switch" aria-label={label} checked={checked} onChange={() => onChange(id, !checked)} className="peer sr-only"/>
-    <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-[#1789F4] peer-checked:after:translate-x-4 dark:bg-slate-700"/>
+    <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-[#0B63D6] peer-checked:after:translate-x-4 dark:bg-slate-700"/>
   </label>;
 }
 
@@ -92,9 +92,9 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
 
   return <>
     <div className="relative">
-      <button type="button" aria-label="Шари карти" aria-expanded={open} aria-controls="marshgo-map-layers" onClick={() => setOpen((value) => !value)} className={`relative grid h-12 w-12 place-items-center rounded-full shadow-lg ${navigationMode ? 'border border-slate-200 bg-white/95 text-[#0B1730] backdrop-blur dark:border-white/15 dark:bg-[#0A1D2D]/90 dark:text-white' : 'bg-white text-[#1789F4] dark:bg-[#0B1C2B] dark:text-[#66B2FF]'}`}>
+      <button type="button" aria-label="Шари карти" aria-expanded={open} aria-controls="marshgo-map-layers" onClick={() => setOpen((value) => !value)} className={`relative grid h-12 w-12 place-items-center rounded-full shadow-lg ${navigationMode ? 'border border-slate-200 bg-white/95 text-[#0B1730] backdrop-blur dark:border-white/15 dark:bg-[#0A1D2D]/90 dark:text-white' : 'bg-white text-[#0B63D6] dark:bg-[#0B1C2B] dark:text-[#66B2FF]'}`}>
         {open ? <X size={22}/> : <Layers size={22}/>}
-        {showLayers && selected.size > 0 && !open && <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#1789F4] px-1 text-[10px] font-bold text-white">{selected.size}</span>}
+        {showLayers && selected.size > 0 && !open && <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#0B63D6] px-1 text-[10px] font-bold text-white">{selected.size}</span>}
       </button>
     </div>
     {open && visible && typeof document !== 'undefined' && createPortal(<div id="marshgo-map-layers" role="dialog" aria-label="Шари карти" style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))', maxHeight: 'min(60dvh, calc(100dvh - max(.75rem, env(safe-area-inset-top)) - 5.3rem - env(safe-area-inset-bottom)))' }} className="fixed inset-x-0 z-[1000] max-h-[60svh] overflow-y-auto rounded-t-[1.75rem] border border-slate-200 bg-white px-4 pb-3 pt-1 text-slate-900 shadow-[0_-12px_40px_rgba(8,27,53,.2)] dark:border-[#263648] dark:bg-[#0A1D2D] dark:text-slate-100 dark:shadow-[0_-12px_40px_rgba(0,0,0,.45)] sm:fixed sm:inset-x-auto sm:bottom-auto sm:right-16 sm:top-1/2 sm:max-h-[70svh] sm:w-[20rem] sm:-translate-y-1/2 sm:rounded-2xl sm:p-3 sm:shadow-xl">

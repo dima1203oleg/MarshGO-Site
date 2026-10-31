@@ -9,11 +9,11 @@ export function PlanTripChoice({ onBack, onAsDriver, onAsPassenger }: { onBack: 
     </div>
     <div className="space-y-3">
       <button type="button" onClick={onAsDriver} className="flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-sm">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#EAF3FF] text-[#1789F4]"><CarFront size={24}/></span>
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#EAF3FF] text-[#0B63D6]"><CarFront size={24}/></span>
         <span><b className="block">Я їду автомобілем</b><small className="text-slate-500">Шукаю попутників: маршрут, дата й час, місця та ціна</small></span>
       </button>
       <button type="button" onClick={onAsPassenger} className="flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-sm">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#EAF3FF] text-[#1789F4]"><Users size={24}/></span>
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#EAF3FF] text-[#0B63D6]"><Users size={24}/></span>
         <span><b className="block">Я хочу поїхати</b><small className="text-slate-500">Шукаю водія: звідки, куди, дата, час і кількість пасажирів</small></span>
       </button>
     </div>

@@ -78,7 +78,7 @@ export function OfferEditSheet({ offer, vehicles, onClose, onDone }: { offer: Ap
         <input value={reason} maxLength={300} onChange={(event) => setReason(event.target.value)} placeholder="Наприклад, змінилися плани" className="mt-1.5 w-full rounded-xl bg-slate-50 px-3 py-3 text-sm outline-none"/></label>
       {error && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-700">{error}</p>}
       {!confirmCancel ? <>
-        <button type="button" disabled={busy} onClick={() => void save()} className="mt-4 w-full rounded-2xl bg-[#1789F4] py-3.5 text-sm font-bold text-white disabled:opacity-50">{busy ? 'Зберігаємо…' : 'Зберегти зміни'}</button>
+        <button type="button" disabled={busy} onClick={() => void save()} className="mt-4 w-full rounded-2xl bg-[#0B63D6] py-3.5 text-sm font-bold text-white disabled:opacity-50">{busy ? 'Зберігаємо…' : 'Зберегти зміни'}</button>
         <button type="button" disabled={busy} onClick={() => setConfirmCancel(true)} className="mt-2 w-full rounded-2xl border border-rose-200 py-3 text-sm font-bold text-rose-700 disabled:opacity-50">Скасувати поїздку</button>
       </> : <div role="alertdialog" aria-labelledby="offer-cancel-title" className="mt-4 rounded-2xl bg-rose-50 p-4">
         <b id="offer-cancel-title" className="block text-sm text-rose-900">Скасувати поїздку для всіх пасажирів?</b>
@@ -114,7 +114,7 @@ export function PendingChangeCard({ change, currency, onDecided }: { change: Api
       <dd className="text-right"><span className="text-slate-500 line-through">{before}</span> → <b className="text-[#0E1F35]">{after}</b></dd></div>)}</dl>
     {error && <p role="alert" className="mt-2 text-xs text-rose-700">{error}</p>}
     {!confirmDecline ? <div className="mt-3 grid grid-cols-2 gap-2">
-      <button type="button" disabled={busy} onClick={() => void decide(true)} className="rounded-xl bg-[#1789F4] py-2.5 text-xs font-bold text-white disabled:opacity-50">Погодитися</button>
+      <button type="button" disabled={busy} onClick={() => void decide(true)} className="rounded-xl bg-[#0B63D6] py-2.5 text-xs font-bold text-white disabled:opacity-50">Погодитися</button>
       <button type="button" disabled={busy} onClick={() => setConfirmDecline(true)} className="rounded-xl border border-amber-300 bg-white py-2.5 text-xs font-bold text-amber-900 disabled:opacity-50">Відмовитися</button>
     </div> : <div className="mt-3 rounded-xl bg-white p-3"><p className="text-xs text-slate-700">Відмова скасує бронювання без штрафу, місце повернеться водію.</p>
       <div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => setConfirmDecline(false)} className="rounded-xl border border-slate-200 py-2 text-xs font-bold">Назад</button>
