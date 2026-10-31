@@ -58,7 +58,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
         </select>}
       </div>
       <div className="pointer-events-auto flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Швидкі шари">
-        {chips.map(({ label, id, Icon }) => <button key={id} type="button" aria-pressed={selected.has(id)} onClick={() => toggleTransportLayer(id)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold shadow ${selected.has(id) ? 'bg-[#1789F4] text-white' : 'bg-white text-slate-700'}`}><Icon size={15}/>{label}</button>)}
+        {chips.map(({ label, id, Icon }) => <button key={id} type="button" aria-pressed={selected.has(id)} onClick={() => toggleTransportLayer(id)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold shadow ${selected.has(id) ? 'bg-[#0B63D6] text-white' : 'bg-white text-slate-700'}`}><Icon size={15}/>{label}</button>)}
       </div>
       {hint && <p role="status" className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-[11px] font-semibold text-slate-600 shadow">{hint}</p>}
       {quality && <p role="status" aria-label="Якість даних живого транспорту" className="pointer-events-auto self-start shadow"><StatusBadge status={quality.status} label={quality.label} size="sm"/></p>}

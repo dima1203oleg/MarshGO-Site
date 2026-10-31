@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* themeService owns the theme: it resolves "system" itself and writes html.dark.
+   Tailwind's default `dark:` follows the OS instead, so an in-app light theme on
+   a dark-mode OS applied dark utilities (e.g. white banner text on a white scrim). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --color-marshgo-navy: #081B35;
   --color-marshgo-blue: #0B6EF3;
@@ -233,10 +238,6 @@ html.dark .search-screen .transport-types-inline > div > button {
   border-color: #536B86;
   background: #16202B;
   color: #66B2FF;
-}
-html.dark .search-screen .journey-search-card .search-submit {
-  background: #0B6EF3;
-  box-shadow: 0 8px 18px rgba(11, 110, 243, .24);
 }
 .journey-search-card label { min-height: 3.65rem; }
 .journey-search-card input { font-size: 16px; } /* Prevent WKWebView input zoom. */
@@ -1094,20 +1095,177 @@ html.dark .journey-result-card { border-color: #263648 !important; box-shadow: 0
 html.dark .coverage-details[open] { border-color: #263648 !important; }
 .coverage-details[open] .coverage-chevron { transform: rotate(180deg); }
 
+/* ---- Motion foundation -------------------------------------------------
+   One shared vocabulary so screens feel alive without every component
+   inventing its own duration; the global reduced-motion guard above wins. */
+:root {
+  --mg-ease-standard: cubic-bezier(.32, .72, 0, 1);
+  --mg-ease-entrance: cubic-bezier(.16, .84, .28, 1);
+  --mg-ease-exit: cubic-bezier(.4, 0, 1, 1);
+  --mg-dur-tap: 120ms;
+  --mg-dur-fast: 180ms;
+  --mg-dur-base: 260ms;
+  --mg-dur-slow: 420ms;
+}
+
+@keyframes mg-rise {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes mg-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes mg-pop {
+  0% { opacity: 0; transform: scale(.94); }
+  70% { transform: scale(1.015); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes mg-shimmer {
+  from { background-position: 180% 0; }
+  to { background-position: -80% 0; }
+}
+@keyframes mg-breathe {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.35); }
+}
+@keyframes mg-wait {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .62; }
+}
+
+/* Entrance utilities: elements opt in and stagger with --mg-stagger-i. */
+.mg-rise, .mg-pop { animation-duration: var(--mg-dur-slow); animation-fill-mode: both; animation-timing-function: var(--mg-ease-entrance); }
+.mg-rise { animation-name: mg-rise; }
+.mg-pop { animation-name: mg-pop; }
+.mg-fade { animation: mg-fade var(--mg-dur-base) var(--mg-ease-standard) both; }
+.mg-stagger { animation-delay: calc(var(--mg-stagger-i, 0) * 55ms); }
+
+/* Tactile press feedback, kept subtle enough to read as weight, not jitter. */
+.mg-press { transition: transform var(--mg-dur-tap) var(--mg-ease-standard), box-shadow var(--mg-dur-fast) var(--mg-ease-standard), background-color var(--mg-dur-fast) var(--mg-ease-standard), border-color var(--mg-dur-fast) var(--mg-ease-standard); }
+.mg-press:active:not(:disabled) { transform: scale(.975); }
+@media (hover: hover) and (pointer: fine) {
+  .mg-press:hover { transform: translateY(-1px); }
+  .mg-press:active:not(:disabled) { transform: scale(.98); }
+}
+
+/* Loading placeholder that reads as "data is arriving" instead of a dead panel. */
+.mg-skeleton {
+  background-image: linear-gradient(100deg, rgba(148, 163, 184, .12) 30%, rgba(148, 163, 184, .28) 48%, rgba(148, 163, 184, .12) 66%);
+  background-size: 220% 100%;
+  animation: mg-shimmer 1.5s linear infinite;
+  border-radius: 10px;
+}
+.mg-live-dot { animation: mg-breathe 2.4s var(--mg-ease-standard) infinite; }
+
+@keyframes mg-slide-down {
+  from { opacity: 0; transform: translate3d(0, -8px, 0); }
+  to { opacity: 1; transform: none; }
+}
+/* These two names were already used across modals and views but had no
+   definition, so every one of those entrances rendered as an instant pop. */
+.animate-fadeIn { animation: mg-fade var(--mg-dur-base) var(--mg-ease-standard) both; }
+.animate-slideDown { animation: mg-slide-down var(--mg-dur-base) var(--mg-ease-entrance) both; }
+
+/* Journey results land in reading order, and every card answers to a press. */
+.journey-results [data-testid="journey-result-card"] { animation: mg-rise var(--mg-dur-base) var(--mg-ease-entrance) both; }
+.journey-results [data-testid="journey-result-card"]:nth-of-type(1) { animation-delay: 40ms; }
+.journey-results [data-testid="journey-result-card"]:nth-of-type(2) { animation-delay: 100ms; }
+.journey-results [data-testid="journey-result-card"]:nth-of-type(3) { animation-delay: 160ms; }
+.journey-results [data-testid="journey-result-card"]:nth-of-type(4) { animation-delay: 220ms; }
+.journey-results [data-testid="journey-result-card"]:nth-of-type(n+5) { animation-delay: 280ms; }
+.journey-results [data-testid="journey-result-card"] { transition: box-shadow var(--mg-dur-fast) var(--mg-ease-standard), border-color var(--mg-dur-fast) var(--mg-ease-standard), transform var(--mg-dur-tap) var(--mg-ease-standard); }
+.journey-results [data-testid="journey-result-card"]:active { transform: scale(.99); }
+@media (hover: hover) and (pointer: fine) {
+  .journey-results [data-testid="journey-result-card"]:hover { box-shadow: 0 8px 24px rgba(30, 64, 110, .12); }
+}
+/* The search button is the busiest control on the screen: make its waiting state obvious. */
+.search-submit { background: #0B63D6; }
+.search-submit:not(:disabled) { transition: transform var(--mg-dur-tap) var(--mg-ease-standard), box-shadow var(--mg-dur-fast) var(--mg-ease-standard), filter var(--mg-dur-fast) var(--mg-ease-standard); }
+.search-submit:active:not(:disabled) { transform: scale(.985); }
+.search-submit:disabled { animation: mg-wait 1.6s var(--mg-ease-standard) infinite; }
+
+/* Carpool offers are real bookable results, so they enter in order and answer to a press. */
+.journey-offer-card { animation: mg-rise var(--mg-dur-base) var(--mg-ease-entrance) both; transition: box-shadow var(--mg-dur-fast) var(--mg-ease-standard), border-color var(--mg-dur-fast) var(--mg-ease-standard), transform var(--mg-dur-tap) var(--mg-ease-standard); }
+.journey-offer-card:nth-of-type(1) { animation-delay: 40ms; }
+.journey-offer-card:nth-of-type(2) { animation-delay: 100ms; }
+.journey-offer-card:nth-of-type(3) { animation-delay: 160ms; }
+.journey-offer-card:nth-of-type(n+4) { animation-delay: 220ms; }
+.journey-offer-card:active { transform: scale(.99); }
+@media (hover: hover) and (pointer: fine) {
+  .journey-offer-card:hover { border-color: #C9DCF2; box-shadow: 0 10px 28px rgba(30, 64, 110, .12); }
+}
+
+/* The seat steppers sit at 24x32 px. Extend the hit area to 44x44 with an
+   overlay so the three-column row keeps its measured width. */
+.search-trip-details button[aria-label$="пасажирів"] { position: relative; }
+.search-trip-details button[aria-label$="пасажирів"]::after { content: ''; position: absolute; top: -6px; bottom: -6px; left: -10px; right: -10px; }
+
+/* Bottom navigation: the selected tab lifts instead of only changing colour. */
+.app-tabbar-inner button { transition: background-color var(--mg-dur-fast) var(--mg-ease-standard), color var(--mg-dur-fast) var(--mg-ease-standard); }
+.app-tabbar-inner button svg { transition: transform var(--mg-dur-base) var(--mg-ease-entrance); }
+.app-tabbar-inner button[aria-current="page"] svg { transform: translateY(-1px) scale(1.08); }
+.app-tabbar-inner button:active svg { transform: scale(.9); }
+
+/* Small print carries real information, so it must not fall below AA in either theme. */
+.production-app .text-slate-400 { color: #64748B; }
+html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
+
 /* Canonical home follows the owner reference: mountain cover, account trip card,
    four color-coded square actions, popular routes, above the fixed tab bar. */
 .home-hero--canonical { min-height: 0; overflow: hidden; }
 .home-canonical-banner { height: clamp(8.25rem, 18svh, 9rem); min-height: 8.25rem; }
 .home-action-grid { flex: 0 0 auto; grid-template-rows: repeat(2, clamp(6.2rem, 12.5svh, 6.8rem)); gap: .5rem; }
-.home-action-card { border-radius: 18px; border-color: rgba(255,255,255,.7); box-shadow: 0 7px 18px rgba(17,47,88,.13), inset 0 1px rgba(255,255,255,.18); }
-.home-action-card--navigation { background: linear-gradient(145deg,#1264ed,#0b54c5); }
-.home-action-card--transport { background: linear-gradient(145deg,#08775c,#065a48); }
-.home-action-card--search { background: linear-gradient(145deg,#7040d7,#5730b7); }
-.home-action-card--publish { background: linear-gradient(145deg,#b64820,#923515); }
-.home-action-icon { border: 1px solid rgba(255,255,255,.4); color: #fff; background: rgba(255,255,255,.18); box-shadow: inset 0 1px rgba(255,255,255,.15); }
+/* Four saturated blocks compete for attention and force white-on-color microcopy.
+   One filled primary action plus three tinted siblings keeps the colour coding
+   people scan by, while every label stays high-contrast ink. */
+.home-action-card {
+  --home-ink: #14243B;
+  --home-sub: #4E5D75;
+  border-radius: 20px;
+  border-color: #E2EAF5;
+  background: var(--home-surface, #FFFFFF);
+  box-shadow: 0 2px 10px rgba(17, 47, 88, .06);
+  color: var(--home-ink);
+}
+.home-action-card--navigation { --home-accent: #0B6EF3; --home-surface: #EDF4FE; }
+.home-action-card--transport { --home-accent: #0E8A6A; --home-surface: #E8F6F1; }
+.home-action-card--publish { --home-accent: #C2600F; --home-surface: #FCF1E6; }
+.home-action-card--search {
+  --home-accent: #FFFFFF;
+  --home-ink: #FFFFFF;
+  --home-sub: rgba(255, 255, 255, .9);
+  --home-surface: linear-gradient(150deg, #1264ED, #0B54C5);
+  border-color: #1B6FE8;
+  box-shadow: 0 8px 22px rgba(11, 84, 197, .26);
+  color: #FFFFFF;
+}
+.home-action-icon { border: 0; color: #fff; background: var(--home-accent); box-shadow: 0 4px 12px rgba(17, 47, 88, .16); }
+.home-action-card--search .home-action-icon { background: rgba(255, 255, 255, .2); }
+.home-action-card__title { color: var(--home-ink); }
+.home-action-card__subtitle { color: var(--home-sub); }
 .home-action-card:focus-visible { outline: 3px solid #0b6ef3; outline-offset: 3px; }
+.home-action-card__hint {
+  position: absolute; right: .8rem; top: 50%; opacity: 0;
+  transform: translate(-6px, -50%);
+  transition: opacity var(--mg-dur-fast) var(--mg-ease-standard), transform var(--mg-dur-base) var(--mg-ease-standard);
+}
+@media (hover: hover) and (pointer: fine) {
+  .home-action-card:hover { border-color: color-mix(in srgb, var(--home-accent) 45%, #E2EAF5); box-shadow: 0 8px 22px rgba(17, 47, 88, .12); }
+  .home-action-card:hover .home-action-card__hint { opacity: 1; transform: translate(0, -50%); }
+  .home-action-card:hover .home-action-icon { transform: translateY(-1px) scale(1.06); }
+}
+.home-action-icon { transition: transform var(--mg-dur-base) var(--mg-ease-entrance); }
 .home-popular-routes { flex: 0 0 auto; }
 .home-popular-route { height: 4rem; }
+.home-banner-copy, .home-banner-media { animation: mg-fade var(--mg-dur-slow) var(--mg-ease-standard) both; }
+.home-marshpass-slot { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) both; }
+.home-action-grid > .home-action-card { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) both; animation-delay: calc(90ms + var(--mg-stagger-i, 0) * 60ms); }
+.home-popular-routes { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) 260ms both; }
+.home-popular-route { transition: transform var(--mg-dur-base) var(--mg-ease-entrance), box-shadow var(--mg-dur-base) var(--mg-ease-standard); }
+@media (hover: hover) and (pointer: fine) {
+  .home-popular-route:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(17, 47, 88, .16); }
+}
 html.dark .home-canonical-banner > span[aria-hidden="true"] { background: linear-gradient(90deg,rgba(7,20,38,.94),rgba(7,20,38,.78) 60%,rgba(7,20,38,.16)); }
 html.dark .home-canonical-banner { border-color: rgba(83,107,134,.56) !important; box-shadow: 0 10px 28px rgba(0,0,0,.24); }
 html.dark .home-trip-card { background: #0a261e; color: #eff6ff; }
@@ -1116,12 +1274,16 @@ html.dark .home-canonical-banner p { color: #bfdbfe; }
 html.dark .home-trip-card > span:nth-child(2) > span:nth-child(2) { color: #eff6ff; }
 html.dark .home-hero--canonical .home-city-pill { background: #111820; color: #eff6ff; border-color: #263648 !important; }
 html.dark .home-screen .home-intro { border-radius: 1.4rem; }
-html.dark .home-action-card { border-color: #30465c; box-shadow: 0 8px 20px rgba(0,0,0,.22), inset 0 1px rgba(255,255,255,.04); }
-html.dark .home-action-card--navigation { background: linear-gradient(145deg,#1264ed,#0b54c5); }
-html.dark .home-action-card--transport { background: linear-gradient(145deg,#08775c,#065a48); }
-html.dark .home-action-card--search { background: linear-gradient(145deg,#7040d7,#5730b7); }
-html.dark .home-action-card--publish { background: linear-gradient(145deg,#b64820,#923515); }
-html.dark .home-action-icon { color: #fff; background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.42); }
+html.dark .home-action-card { --home-ink: #F5F9FF; --home-sub: #B6C2D0; --home-surface: #111820; border-color: #263648; box-shadow: 0 4px 16px rgba(0,0,0,.24); }
+html.dark .home-action-card--navigation { --home-surface: #12233B; border-color: #24486F; }
+html.dark .home-action-card--transport { --home-surface: #0E2620; border-color: #1E4A3C; }
+html.dark .home-action-card--publish { --home-surface: #2A1D10; border-color: #5A3A18; }
+html.dark .home-action-card--search { --home-surface: linear-gradient(150deg, #1264ED, #0B54C5); --home-ink: #FFFFFF; --home-sub: rgba(255,255,255,.92); border-color: #2E7BF0; box-shadow: 0 10px 26px rgba(0,0,0,.34); }
+html.dark .home-action-icon { color: #fff; background: var(--home-accent); box-shadow: 0 4px 14px rgba(0,0,0,.34); }
+html.dark .home-action-card--navigation .home-action-icon { background: #1687FF; }
+html.dark .home-action-card--transport .home-action-icon { background: #17B58A; }
+html.dark .home-action-card--publish .home-action-icon { background: #E0842B; }
+html.dark .home-action-card--search .home-action-icon { background: rgba(255,255,255,.2); }
 html.dark .home-popular-routes h2 { color: #F5F9FF !important; }
 html.dark .home-popular-route { border-color: #263648 !important; }
 
