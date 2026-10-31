@@ -4,6 +4,7 @@ import { productionApi, type GeoJsonCollection } from '../services/productionApi
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import { lineTypesFor, microTypesFor, transportLayerList, type TransportLayerId } from './transportLayerConfig';
 import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
+import { publishVehicleQuality, summarizeVehicleQuality, vehicleQualityWord } from './transportQuality';
 export { cityTransportLayerIds, lineTypesFor, microTypesFor, transportLayerList } from './transportLayerConfig';
 export type { TransportLayerId } from './transportLayerConfig';
 
@@ -130,6 +131,7 @@ export class TransportLayerController {
     this.aborters.forEach((controller) => controller.abort()); this.aborters.clear();
     this.popup?.remove(); this.popup = null;
     this.data = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
+    publishVehicleQuality(null);
     for (const id of ['mg-t-micro-zones-outline', 'mg-t-micro-zones-fill', 'mg-t-micro-count', 'mg-t-micro-clusters', 'mg-t-micro-points', 'mg-t-vehicle-label', 'mg-t-vehicles', 'mg-t-stop-label', 'mg-t-stops', 'mg-t-route-label', 'mg-t-routes']) if (this.map.getLayer(id)) this.map.removeLayer(id);
     for (const id of Object.values(SOURCES)) if (this.map.getSource(id)) this.map.removeSource(id);
     this.map.getContainer().dataset.marshgoTransportLayers = '';
@@ -176,7 +178,7 @@ export class TransportLayerController {
       const timestamp = typeof properties.updatedAt === 'string' ? Date.parse(properties.updatedAt) : NaN;
       const age = Number.isFinite(timestamp) ? Math.max(0, Math.round((Date.now() - timestamp) / 1000)) : null;
       const speed = typeof properties.speed === 'number' ? `${Math.round(properties.speed * 3.6)} км/год` : '';
-      detail.textContent = [age === null ? '' : `оновлено ${age} с тому`, speed].filter(Boolean).join(' · ');
+      detail.textContent = [vehicleQualityWord(properties), age === null ? '' : `оновлено ${age} с тому`, speed].filter(Boolean).join(' · ');
     }
     else if (properties.kind) {
       const kind = String(properties.kind);
@@ -244,12 +246,13 @@ export class TransportLayerController {
       if (controller.signal.aborted) return;
       this.data[key] = collection;
       (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(collection as never);
+      if (key === 'vehicles') publishVehicleQuality(summarizeVehicleQuality(collection));
     } catch (error) {
       if (!controller.signal.aborted && !(error instanceof DOMException)) this.onHint('Не вдалося завантажити частину шарів. Спробуйте ще раз.');
     }
   }
 
-  private clear(key: keyof typeof SOURCES) { this.aborters.get(key)?.abort(); this.data[key] = empty; (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(empty as never); }
+  private clear(key: keyof typeof SOURCES) { this.aborters.get(key)?.abort(); this.data[key] = empty; (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(empty as never); if (key === 'vehicles') publishVehicleQuality(null); }
 
   async refresh() {
     if (this.enabled.size === 0) return;

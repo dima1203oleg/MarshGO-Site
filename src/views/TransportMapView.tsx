@@ -5,6 +5,8 @@ import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
 import { clearTransportLayers, getTransportLayers, subscribeTransportLayers, toggleTransportLayer, type TransportLayerId } from '../map/transportLayers';
+import { getVehicleQuality, subscribeVehicleQuality, type VehicleQuality } from '../map/transportQuality';
+import { StatusBadge } from '../design-system/ui/StatusBadge';
 
 const chips: Array<{ label: string; id: TransportLayerId; Icon: typeof Bus }> = [
   { label: 'Метро', id: 'METRO', Icon: TrainFront }, { label: 'Транспорт', id: 'PUBLIC_TRANSPORT', Icon: Bus }, { label: 'Велосипеди', id: 'BICYCLE', Icon: Bike },
@@ -17,9 +19,11 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
   const [cities, setCities] = useState<ApiTransportCity[]>([]);
   const [cityId, setCityId] = useState('kyiv');
   const [selected, setSelected] = useState(getTransportLayers());
+  const [quality, setQuality] = useState<VehicleQuality | null>(getVehicleQuality());
   const adapter = useRef<MapAdapter | null>(null);
   const selectedCity = useMemo(() => cities.find((city) => city.id === cityId) ?? null, [cities, cityId]);
   useEffect(() => subscribeTransportLayers(setSelected), []);
+  useEffect(() => subscribeVehicleQuality(setQuality), []);
   useEffect(() => {
     const controller = new AbortController();
     void productionApi.transportCities(controller.signal).then((response) => {
@@ -57,6 +61,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
         {chips.map(({ label, id, Icon }) => <button key={id} type="button" aria-pressed={selected.has(id)} onClick={() => toggleTransportLayer(id)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold shadow ${selected.has(id) ? 'bg-[#1789F4] text-white' : 'bg-white text-slate-700'}`}><Icon size={15}/>{label}</button>)}
       </div>
       {hint && <p role="status" className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-[11px] font-semibold text-slate-600 shadow">{hint}</p>}
+      {quality && <p role="status" aria-label="Якість даних живого транспорту" className="pointer-events-auto self-start shadow"><StatusBadge status={quality.status} label={quality.label} size="sm"/></p>}
       {selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-[10px] font-semibold text-slate-700 shadow">
         {selectedCity.routeCount} маршрутів · {selectedCity.stopCount} зупинок · статичний розклад{selectedCity.realtimeAvailable ? ' · realtime джерело підключене' : ''}
         {selectedCity.sourceUrl && <><span aria-hidden="true"> · </span><a className="text-blue-700 underline" href={selectedCity.sourceUrl} target="_blank" rel="noreferrer">Джерело даних</a></>}
