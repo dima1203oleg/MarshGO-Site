@@ -143,7 +143,7 @@ export function RendezvousLocationMap({ session, currentUserIsDriver, onArrived 
         {status === 'loading' ? 'Завантажуємо карту зустрічі…' : status === 'degraded' ? 'Карта завантажилась не повністю.' : 'Карта тимчасово недоступна; статус точок доступний нижче.'}
       </div>}
     </div>
-    <div className="grid shrink-0 grid-cols-3 gap-1 border-t border-slate-100 px-2 py-2 text-center text-[9px] font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
+    <div className="grid shrink-0 grid-cols-3 gap-1 border-t border-slate-100 px-2 py-2 text-center text-[10px] font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
       <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-emerald-600"/>Точка посадки</span>
       <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-blue-600"/>{ownLive ? `Ви (${currentUserIsDriver ? 'водій' : 'пасажир'}) · наживо` : 'Ви · очікуємо GPS'}</span>
       <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-violet-600"/>{otherLive ? `${currentUserIsDriver ? 'Пасажир' : 'Водій'} · наживо` : 'Учасник · очікуємо GPS'}</span>
@@ -152,7 +152,7 @@ export function RendezvousLocationMap({ session, currentUserIsDriver, onArrived 
       <p data-testid="meeting-driver-card"><b className="block text-slate-700">Водій до посадки</b><span className="text-slate-500">{formatApproach(driverApproach, driverDistance)}</span></p>
       <p data-testid="meeting-passenger-card"><b className="block text-slate-700">Пасажир до посадки</b><span className="text-slate-500">{formatApproach(passengerApproach, passengerDistance)}</span></p>
     </div>
-    <p className="px-3 pb-2 text-[9px] leading-4 text-slate-500 dark:text-slate-400">Сині та фіолетові лінії й ETA надходять від налаштованої маршрутизації. Якщо її немає, показуємо GPS-стан без вигаданого шляху.</p>
+    <p className="px-3 pb-2 text-[10px] leading-4 text-slate-500 dark:text-slate-400">Сині та фіолетові лінії й ETA надходять від налаштованої маршрутизації. Якщо її немає, показуємо GPS-стан без вигаданого шляху.</p>
     {expanded && <div className="sticky bottom-0 mt-auto shrink-0 border-t border-slate-100 bg-white p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-[#0A1D2D]">
       <button type="button" onClick={onArrived} className="min-h-12 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white">Я на місці</button>
     </div>}

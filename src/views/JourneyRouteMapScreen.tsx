@@ -455,7 +455,7 @@ export function JourneyRouteMapScreen({
     {mapSegmentChoices && <div role="group" aria-label="Виберіть відрізок маршруту" className="absolute z-[30] w-[min(15rem,calc(100vw-1.5rem))] rounded-2xl border border-[var(--route-border)] bg-[var(--route-floating)] p-2 text-[var(--route-ink)] shadow-2xl backdrop-blur-xl" style={{ left: mapSegmentChoices.x, top: mapSegmentChoices.y }}>
       <div className="flex items-center justify-between gap-2 px-2 pb-1">
         <span className="text-xs font-extrabold">Кілька відрізків поруч</span>
-        <button type="button" aria-label="Закрити вибір відрізка" onClick={() => setMapSegmentChoices(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full hover:bg-[var(--route-hover)]">×</button>
+        <button type="button" aria-label="Закрити вибір відрізка" onClick={() => setMapSegmentChoices(null)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-[var(--route-hover)]">×</button>
       </div>
       {mapSegmentChoices.ids.map(id => {
         const leg = journey.legs.find(item => item.id === id);
@@ -547,8 +547,8 @@ export function JourneyRouteMapScreen({
           className=""
           stripClassName="mt-2"
           summaryNote={<>
-            {waitingSeconds > 0 && <p className="mt-1 text-right text-[9px] font-semibold text-[var(--route-muted)]">Очікування · {formatDuration(waitingSeconds)}</p>}
-            {(mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured' || liveJourneyRequestMessage !== '' || selectedLiveLineIncomplete || missingShapes > 0 || approximateWalkCount > 0) && <p role="status" className={`mt-1 text-[9px] font-semibold ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{mapStatusText}</p>}
+            {waitingSeconds > 0 && <p className="mt-1 text-right text-[10px] font-semibold text-[var(--route-muted)]">Очікування · {formatDuration(waitingSeconds)}</p>}
+            {(mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured' || liveJourneyRequestMessage !== '' || selectedLiveLineIncomplete || missingShapes > 0 || approximateWalkCount > 0) && <p role="status" className={`mt-1 text-[10px] font-semibold ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{mapStatusText}</p>}
             {!stripItems.length && <p className="mt-2 text-xs text-[var(--route-muted)]">Дані сегментів цього маршруту не надійшли.</p>}
           </>}
         />
@@ -585,17 +585,17 @@ export function JourneyRouteMapScreen({
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <b className="text-sm font-extrabold">{leg.mode === 'COMMUNITY' ? 'Попутка · приватний автомобіль' : `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`}</b>
-                      {liveStatus && <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-extrabold ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>{liveStatus === 'LIVE' ? 'LIVE' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ · ОЦІНКА' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}</span>}
+                      {liveStatus && <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>{liveStatus === 'LIVE' ? 'LIVE' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ · ОЦІНКА' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}</span>}
                     </span>
                     <span className="mt-1 block text-[11px] tabular-nums text-[var(--route-muted)]">{legTimeLabel(leg, item.durationSeconds)}{hasMeasuredDistance(leg) ? ` · ${formatJourneyDistance(leg.distanceMeters)}` : ''}</span>
                     <span className="mt-1 block text-[10px] leading-4 text-[var(--route-subtle)]">{leg.mode === 'COMMUNITY' ? `Посадка: ${leg.origin.name} · висадка: ${leg.destination.name}` : `${leg.origin.name} → ${leg.destination.name}`}</span>
-                    {caveat && <span className={`mt-1 block text-[9px] leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{caveat}</span>}
-                    {scheduled && stops.length === 0 && <span className={`mt-1 block text-[9px] leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>Перелік зупинок не надійшов від транспортного джерела.</span>}
+                    {caveat && <span className={`mt-1 block text-[10px] leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{caveat}</span>}
+                    {scheduled && stops.length === 0 && <span className={`mt-1 block text-[10px] leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>Перелік зупинок не надійшов від транспортного джерела.</span>}
                   </span>
                 </button>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <b className="text-xs tabular-nums" style={{ color: isDark ? color : '#14243B' }}>{legPriceLabel(leg)}</b>
-                  {scheduled && <button type="button" aria-label={`${expanded ? 'Згорнути' : 'Розгорнути'} зупинки: ${journeyLegLabel(leg.mode, leg.transportType)}`} aria-expanded={expanded} onClick={() => toggleExpanded(leg.id)} className="grid h-9 w-9 place-items-center rounded-lg text-[var(--route-muted)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1687FF]">
+                  {scheduled && <button type="button" aria-label={`${expanded ? 'Згорнути' : 'Розгорнути'} зупинки: ${journeyLegLabel(leg.mode, leg.transportType)}`} aria-expanded={expanded} onClick={() => toggleExpanded(leg.id)} className="grid h-11 w-11 place-items-center rounded-lg text-[var(--route-muted)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1687FF]">
                     {expanded ? <ChevronUp size={17}/> : <ChevronDown size={17}/>}
                   </button>}
                 </div>

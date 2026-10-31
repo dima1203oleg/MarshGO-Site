@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,4 +45,46 @@ test('route-result segment tiles stay at or above the 9 px legibility floor', as
       .filter(size => Number(size[1]) < 9)
       .map(size => `${selector.trim()} → ${size[1]}px`));
   assert.deepEqual(undersized, []);
+});
+
+const legibleSurfaces = [
+  'src/views/JourneyRouteMapScreen.tsx',
+  'src/views/TransportMapView.tsx',
+  'src/views/HomeView.tsx',
+  'src/components/MapLayersControl.tsx',
+  'src/design-system/journey/CanonicalRouteLip.tsx',
+  'src/design-system/ui/StatusBadge.tsx',
+];
+
+// Anything the passenger has to read is body copy, not a watermark: 10 px is the floor.
+test('the app keeps a 10 px text floor on every screen', async () => {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '../src');
+  const sources = readdirSync(root, { recursive: true })
+    .filter(entry => entry.endsWith('.tsx'))
+    .map(entry => ({ file: entry, source: readFileSync(resolve(root, entry), 'utf8') }));
+  const undersized = sources.flatMap(({ file, source }) => [...source.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)]
+    .filter(size => Number(size[1]) < 10)
+    .map(size => `${file} → ${size[1]}px`));
+  assert.deepEqual(undersized, []);
+});
+
+// The listed screens carry the journey wording, so they are also checked by name.
+test('passenger journey and map surfaces keep the 10 px text floor', async () => {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const undersized = await Promise.all(legibleSurfaces.map(async file => {
+    const source = await readFile(resolve(root, file), 'utf8');
+    return [...source.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)]
+      .filter(size => Number(size[1]) < 10)
+      .map(size => `${file} → ${size[1]}px`);
+  }));
+  assert.deepEqual(undersized.flat(), []);
+});
+
+// Tailwind utilities lose to this rule, so the sheet controls are only 44 px while it says so.
+test('route sheet actions keep the 44 px touch-target floor', async () => {
+  const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
+  const rule = css.match(/\.route-summary-actions > :is\(span, button\) \{([^}]*)\}/);
+  assert.ok(rule, 'route sheet action sizing went missing');
+  const sizes = [...rule![1].matchAll(/(?:width|height|min-width):\s*([\d.]+)rem/g)].map(value => Number(value[1]));
+  assert.ok(sizes.length >= 3 && sizes.every(size => size >= 2.75), `route sheet actions shrank below 2.75rem: ${sizes.join(', ')}`);
 });

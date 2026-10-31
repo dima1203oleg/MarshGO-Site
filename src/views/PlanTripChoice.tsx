@@ -4,7 +4,7 @@ import { ArrowLeft, CarFront, Users } from 'lucide-react';
 export function PlanTripChoice({ onBack, onAsDriver, onAsPassenger }: { onBack: () => void; onAsDriver: () => void; onAsPassenger: () => void }) {
   return <div className="mx-auto w-full max-w-xl px-5 pb-8">
     <div className="mb-4 flex items-center gap-3">
-      <button onClick={onBack} aria-label="Назад" className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button>
+      <button onClick={onBack} aria-label="Назад" className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button>
       <div><p className="text-xs text-slate-500">Запланувати поїздку</p><h1 className="text-xl font-extrabold">Як ви їдете?</h1></div>
     </div>
     <div className="space-y-3">

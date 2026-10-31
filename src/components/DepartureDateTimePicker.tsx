@@ -109,7 +109,7 @@ export function DepartureDateTimePicker({ open, value, onChange, onClose }: {
   return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/65 px-3 pt-4 backdrop-blur-sm sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section role="dialog" aria-modal="true" aria-labelledby="departure-picker-title" className="max-h-[94dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-blue-900/50 bg-[#071a31] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 text-white shadow-2xl sm:rounded-[2rem]">
       <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-600"/>
-      <header className="flex items-center justify-between"><button type="button" onClick={onClose} aria-label="Закрити вибір дати й часу" className="grid h-10 w-10 place-items-center rounded-full bg-[#102847] text-slate-300"><X size={19}/></button><h2 id="departure-picker-title" className="text-base font-extrabold">Час маршруту</h2><span className="w-10"/></header>
+      <header className="flex items-center justify-between"><button type="button" onClick={onClose} aria-label="Закрити вибір дати й часу" className="grid h-11 w-11 place-items-center rounded-full bg-[#102847] text-slate-300"><X size={19}/></button><h2 id="departure-picker-title" className="text-base font-extrabold">Час маршруту</h2><span className="w-11"/></header>
       <p className="mt-1 text-center text-xs text-slate-300">Виберіть дату й час відправлення</p>
 
       <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-[#0d2340] p-1.5">
@@ -121,7 +121,7 @@ export function DepartureDateTimePicker({ open, value, onChange, onClose }: {
 
       <div className="relative mt-3">
         <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-          {visibleDates.map((item) => <button key={item} type="button" onClick={() => setDate(item)} aria-pressed={date === item} className={`min-w-[58px] rounded-xl border px-2 py-2 text-center ${date === item ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-900/70 bg-[#0d2340] text-slate-300'}`}><span className="block text-[10px] font-semibold">{dateLabel(item, { weekday: 'short' })}</span><span className="mt-1 block text-lg font-bold">{dateLabel(item, { day: 'numeric' })}</span><span className="block text-[9px]">{dateLabel(item, { month: 'short' })}</span></button>)}
+          {visibleDates.map((item) => <button key={item} type="button" onClick={() => setDate(item)} aria-pressed={date === item} className={`min-w-[58px] rounded-xl border px-2 py-2 text-center ${date === item ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-900/70 bg-[#0d2340] text-slate-300'}`}><span className="block text-[10px] font-semibold">{dateLabel(item, { weekday: 'short' })}</span><span className="mt-1 block text-lg font-bold">{dateLabel(item, { day: 'numeric' })}</span><span className="block text-[10px]">{dateLabel(item, { month: 'short' })}</span></button>)}
         </div>
         <input ref={dateInput} aria-label="Інша дата відправлення" type="date" value={date} min={today} onChange={(event) => { if (event.target.value) setDate(event.target.value); }} className="pointer-events-none absolute h-px w-px opacity-0"/>
       </div>

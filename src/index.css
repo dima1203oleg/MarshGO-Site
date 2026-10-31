@@ -475,7 +475,8 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
 .route-summary-eyebrow { grid-area: eyebrow; min-width: 0; }
 .route-summary-title { grid-area: title; line-height: 1.2; overflow-wrap: anywhere; }
 .route-summary-actions { grid-area: actions; }
-.route-summary-actions > :is(span, button) { width: 2.25rem; height: 2.25rem; min-width: 2.25rem; }
+/* This rule beats the utilities on the buttons it sizes, so it sets the WCAG 44 px floor itself. */
+.route-summary-actions > :is(span, button) { width: 2.75rem; height: 2.75rem; min-width: 2.75rem; }
 @media (min-width: 480px) {
   .route-summary-heading {
     grid-template-areas: "eyebrow actions" "title actions";
@@ -1341,7 +1342,7 @@ html.dark .app-tabbar { border-color: var(--mg-line) !important; }
   .home-action-card > span:last-child > span:first-child > span:last-child { display: none; }
   .home-trip-card { min-height: 3.1rem; padding: .35rem .6rem; }
   .home-trip-card > span:first-child { width: 2rem; height: 2rem; }
-  .home-city-pill { min-height: 1.75rem; margin-bottom: .3rem; }
+  .home-city-pill { min-height: 2.75rem; margin-bottom: .3rem; }
 }
 /* Desktop keeps the canonical composition in a wider reading column. */
 @media (min-width: 1024px) {

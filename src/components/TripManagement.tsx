@@ -58,7 +58,7 @@ export function OfferEditSheet({ offer, vehicles, onClose, onDone }: { offer: Ap
   return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
     <section role="dialog" aria-modal="true" aria-labelledby="offer-edit-title" className="max-h-[92svh] w-full max-w-md overflow-y-auto rounded-[1.7rem] bg-white p-5 shadow-2xl">
       <div className="flex items-start justify-between gap-3"><div><p className="text-xs text-slate-500">{offer.origin_name} → {offer.destination_name}</p><h2 id="offer-edit-title" className="text-lg font-extrabold">Редагувати поїздку</h2></div>
-        <button type="button" onClick={onClose} aria-label="Закрити" className="grid h-9 w-9 place-items-center rounded-full bg-slate-100"><X size={17}/></button></div>
+        <button type="button" onClick={onClose} aria-label="Закрити" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100"><X size={17}/></button></div>
       {booked > 0 && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Заброньовано місць: {booked}. Вища ціна, зсув часу понад 30 хв або інше авто потребують згоди кожного пасажира; нижча ціна застосовується одразу.</p>}
       <label className="mt-4 block text-xs font-bold text-slate-600"><span className="flex items-center gap-1.5"><Wallet size={14}/>Ціна за місце, грн</span>
         <input inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} className="mt-1.5 w-full rounded-xl bg-slate-50 px-3 py-3 text-sm font-bold outline-none"/></label>
@@ -66,9 +66,9 @@ export function OfferEditSheet({ offer, vehicles, onClose, onDone }: { offer: Ap
         <input type="datetime-local" value={departure} onChange={(event) => setDeparture(event.target.value)} className="mt-1.5 w-full rounded-xl bg-slate-50 px-3 py-3 text-sm font-bold outline-none"/></label>
       <div className="mt-3"><p className="text-xs font-bold text-slate-600">Місць у поїздці</p>
         <div className="mt-1.5 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-          <button type="button" aria-label="Менше місць" disabled={seats <= Math.max(1, booked)} onClick={() => setSeats(seats - 1)} className="grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm disabled:opacity-30"><Minus size={16}/></button>
+          <button type="button" aria-label="Менше місць" disabled={seats <= Math.max(1, booked)} onClick={() => setSeats(seats - 1)} className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm disabled:opacity-30"><Minus size={16}/></button>
           <b>{seats}</b>
-          <button type="button" aria-label="Більше місць" disabled={seats >= 8} onClick={() => setSeats(seats + 1)} className="grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm disabled:opacity-30"><Plus size={16}/></button>
+          <button type="button" aria-label="Більше місць" disabled={seats >= 8} onClick={() => setSeats(seats + 1)} className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm disabled:opacity-30"><Plus size={16}/></button>
         </div>{booked > 0 && <small className="mt-1 block text-[11px] text-slate-500">Не менше, ніж уже заброньовано ({booked}).</small>}</div>
       {vehicles.length > 1 && <label className="mt-3 block text-xs font-bold text-slate-600"><span className="flex items-center gap-1.5"><CarFront size={14}/>Автомобіль</span>
         <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} className="mt-1.5 w-full rounded-xl bg-slate-50 px-3 py-3 text-sm font-bold outline-none">

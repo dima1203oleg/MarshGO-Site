@@ -360,7 +360,7 @@ export function RideshareLifecycleExperience({
             type="button"
             onClick={onClose}
             aria-label="Повернутися назад"
-            className="grid h-10 w-10 place-items-center rounded-xl bg-slate-800/80 text-slate-200 hover:bg-slate-700 active:scale-95 transition"
+            className="grid h-11 w-11 place-items-center rounded-xl bg-slate-800/80 text-slate-200 hover:bg-slate-700 active:scale-95 transition"
           >
             <ArrowLeft size={18} />
           </button>
@@ -410,7 +410,7 @@ export function RideshareLifecycleExperience({
             type="button"
             onClick={handleShare}
             aria-label="Поділитися поїздкою"
-            className="grid h-9 w-9 place-items-center rounded-xl bg-slate-800/80 text-slate-200 hover:bg-slate-700 transition"
+            className="grid h-11 w-11 place-items-center rounded-xl bg-slate-800/80 text-slate-200 hover:bg-slate-700 transition"
           >
             <Share2 size={16} />
           </button>
@@ -442,7 +442,7 @@ export function RideshareLifecycleExperience({
                   : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
               }`}
             >
-              <span className={`grid h-4 w-4 place-items-center rounded-full text-[9px] font-extrabold ${
+              <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] font-extrabold ${
                 isActive ? 'bg-white text-blue-700' : 'bg-slate-700 text-slate-300'
               }`}>
                 {item.num}
@@ -559,7 +559,7 @@ export function RideshareLifecycleExperience({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-black tracking-tight">{activeManeuver.dist}</span>
-                    <span className="rounded bg-emerald-400/20 px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-emerald-300">
+                    <span className="rounded bg-emerald-400/20 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-emerald-300">
                       Наступний маневр
                     </span>
                   </div>
@@ -630,7 +630,7 @@ export function RideshareLifecycleExperience({
               <span className="block text-xl font-black text-white leading-none">
                 {currentSpeed}
               </span>
-              <span className="block text-[9px] font-bold text-slate-400 uppercase">
+              <span className="block text-[10px] font-bold text-slate-400 uppercase">
                 км/год
               </span>
             </div>
@@ -934,7 +934,7 @@ export function RideshareLifecycleExperience({
                 className="h-28 w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 flex flex-col justify-end">
-                <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[9px] font-black uppercase text-slate-950 w-fit">
+                <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950 w-fit">
                   Ви прибули
                 </span>
                 <p className="mt-1 text-xs font-black text-white truncate">
@@ -957,7 +957,7 @@ export function RideshareLifecycleExperience({
                   key={star}
                   type="button"
                   onClick={() => setRatingStars(star)}
-                  className={`grid h-10 w-10 place-items-center rounded-2xl text-xl font-bold transition active:scale-95 ${
+                  className={`grid h-11 w-11 place-items-center rounded-2xl text-xl font-bold transition active:scale-95 ${
                     star <= ratingStars
                       ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-900/40'
                       : 'bg-slate-800 text-slate-500'
@@ -1097,7 +1097,7 @@ export function RideshareLifecycleExperience({
                 type="button"
                 onClick={() => setShowChatDrawer(false)}
                 aria-label="Закрити чат"
-                className="grid h-8 w-8 place-items-center rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
+                className="grid h-11 w-11 place-items-center rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700"
               >
                 <X size={18} />
               </button>
@@ -1140,7 +1140,7 @@ export function RideshareLifecycleExperience({
                   >
                     {msg.text}
                   </div>
-                  <span className="mt-0.5 text-[9px] text-slate-500 px-1">{msg.time}</span>
+                  <span className="mt-0.5 text-[10px] text-slate-500 px-1">{msg.time}</span>
                 </div>
               ))}
             </div>
@@ -1158,7 +1158,7 @@ export function RideshareLifecycleExperience({
                 type="submit"
                 disabled={!chatInputText.trim()}
                 aria-label="Надіслати"
-                className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white disabled:opacity-40 hover:bg-blue-500 active:scale-95 transition"
+                className="grid h-11 w-11 place-items-center rounded-xl bg-blue-600 text-white disabled:opacity-40 hover:bg-blue-500 active:scale-95 transition"
               >
                 <Send size={16} />
               </button>

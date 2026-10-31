@@ -31,7 +31,7 @@ function LayerRow({
   const checked = readyIds.some((id) => selected.has(id));
   return <label className={`flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl px-1 py-0.5 text-[10px] ${ready ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`}>
     <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-md ${tone}`}><Icon size={15} aria-hidden="true"/></span>
-    <span className="min-w-0 flex-1 font-semibold leading-tight">{label}{!ready && <small className="mt-0.5 block text-[9px] font-normal">{available === null ? 'перевірка' : 'немає даних'}</small>}</span>
+    <span className="min-w-0 flex-1 font-semibold leading-tight">{label}{!ready && <small className="mt-0.5 block text-[10px] font-normal">{available === null ? 'перевірка' : 'немає даних'}</small>}</span>
     <input type="checkbox" role="switch" aria-label={label} checked={checked} disabled={!ready} onChange={() => onToggle(readyIds, !checked)} className="peer sr-only"/>
     <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-[#0B63D6] peer-checked:after:translate-x-4 peer-disabled:bg-slate-200 dark:bg-slate-700 dark:peer-disabled:bg-slate-800"/>
   </label>;
@@ -47,7 +47,7 @@ function PreferenceRow({ label, id, checked, icon: Icon, onChange }: { label: st
 
 function UnavailableRow({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
   return <div aria-disabled="true" className="flex min-h-11 min-w-0 cursor-not-allowed items-center gap-1.5 rounded-xl px-1 py-0.5 text-[10px] text-slate-400 dark:text-slate-500">
-    <Icon size={18} className="shrink-0 text-slate-400" aria-hidden="true"/><span className="min-w-0 flex-1 font-semibold leading-tight"><span className="block">{label}</span><small className="mt-0.5 block text-[9px] font-normal">дані недоступні</small></span>
+    <Icon size={18} className="shrink-0 text-slate-400" aria-hidden="true"/><span className="min-w-0 flex-1 font-semibold leading-tight"><span className="block">{label}</span><small className="mt-0.5 block text-[10px] font-normal">дані недоступні</small></span>
     <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-200 dark:bg-slate-800"/>
   </div>;
 }

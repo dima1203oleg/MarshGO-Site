@@ -50,7 +50,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
     <MarshGoMap route={[]} overlays theme="MARSHGO_LIGHT" onStatus={setStatus} onTransportHint={setHint} onAdapter={onAdapter}/>
     <div className="pointer-events-none absolute inset-x-4 top-[max(.8rem,env(safe-area-inset-top))] z-[500] flex flex-col gap-2">
       <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white p-2 shadow-xl">
-        <button type="button" onClick={onBack} aria-label="Назад" className="grid h-10 w-10 place-items-center rounded-full bg-slate-100"><ArrowLeft size={18}/></button>
+        <button type="button" onClick={onBack} aria-label="Назад" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100"><ArrowLeft size={18}/></button>
         <h1 className="flex-1 truncate px-1 text-base font-extrabold">Карта транспорту</h1>
         {cities.length > 0 && <label className="sr-only" htmlFor="transport-city">Місто</label>}
         {cities.length > 0 && <select id="transport-city" aria-label="Місто на транспортній карті" value={cityId} onChange={(event) => chooseCity(event.target.value)} className="max-w-28 rounded-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700">
@@ -58,7 +58,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
         </select>}
       </div>
       <div className="pointer-events-auto flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Швидкі шари">
-        {chips.map(({ label, id, Icon }) => <button key={id} type="button" aria-pressed={selected.has(id)} onClick={() => toggleTransportLayer(id)} className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold shadow ${selected.has(id) ? 'bg-[#0B63D6] text-white' : 'bg-white text-slate-700'}`}><Icon size={15}/>{label}</button>)}
+        {chips.map(({ label, id, Icon }) => <button key={id} type="button" aria-pressed={selected.has(id)} onClick={() => toggleTransportLayer(id)} className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold shadow ${selected.has(id) ? 'bg-[#0B63D6] text-white' : 'bg-white text-slate-700'}`}><Icon size={15}/>{label}</button>)}
       </div>
       {hint && <p role="status" className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-[11px] font-semibold text-slate-600 shadow">{hint}</p>}
       {quality && <p role="status" aria-label="Якість даних живого транспорту" className="pointer-events-auto self-start shadow"><StatusBadge status={quality.status} label={quality.label} size="sm"/></p>}

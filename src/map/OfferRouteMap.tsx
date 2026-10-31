@@ -37,7 +37,7 @@ export function OfferRouteMap({ origin, destination, geometry }: OfferRouteMapPr
             aria-label="Показати весь маршрут"
             title="Показати весь маршрут"
             onClick={() => adapter?.fitRoute()}
-            className="absolute right-3 top-3 z-10 grid h-10 w-10 place-items-center rounded-xl border border-white/70 bg-white/95 text-[#1769F4] shadow-md"
+            className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-xl border border-white/70 bg-white/95 text-[#1769F4] shadow-md"
           >
             <Navigation className="h-4 w-4" aria-hidden="true" />
           </button>

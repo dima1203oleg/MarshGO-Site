@@ -70,7 +70,7 @@ export function ProfileSections({
         <button
           onClick={onBack}
           aria-label="Назад до профілю"
-          className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm dark:bg-[#16202B] dark:text-slate-200"
+          className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm dark:bg-[#16202B] dark:text-slate-200"
         >
           <ArrowLeft size={18} />
         </button>

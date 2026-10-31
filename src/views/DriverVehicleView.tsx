@@ -94,7 +94,7 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
                   <Car className="w-3.5 h-3.5" />
                   <span>{veh.make} {veh.model}</span>
                   {veh.id === currentActiveId && (
-                    <span className="text-[9px] bg-white/20 px-1 rounded ml-1">Основне</span>
+                    <span className="text-[10px] bg-white/20 px-1 rounded ml-1">Основне</span>
                   )}
                 </button>
               );

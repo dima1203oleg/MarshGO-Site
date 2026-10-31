@@ -54,7 +54,7 @@ export function OnboardingSlides({ step, permissionMessage, onNext, onBack, onSk
       if (end < start) { if (step < 3) onNext(); } else onBack();
     }}>
     <header className="flex shrink-0 items-center justify-between">
-      <button onClick={onBack} aria-label="Назад" className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={19}/></button>
+      <button onClick={onBack} aria-label="Назад" className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={19}/></button>
       <BrandMark size="sm"/>
       <button onClick={onSkip} className="px-2 py-2 text-xs font-semibold text-slate-500">Пропустити</button>
     </header>

@@ -56,7 +56,7 @@ export function CanonicalRouteLip({
         <span aria-hidden="true" className="h-7 w-px shrink-0 bg-slate-200 dark:bg-[#294258]"/>
         <span className={`flex flex-col leading-tight ${sheet ? 'min-w-0' : 'shrink-0'}`}>
           <strong aria-label={priceAccessibleLabel} className={`truncate ${sheet ? 'font-extrabold text-[15px]' : 'font-black text-[20px]'} tabular-nums ${priceUnavailable ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'} ${priceClassName}`}>{priceLabel}</strong>
-          {distanceLabel && <span className="truncate text-[9px] font-semibold text-slate-500 dark:text-slate-400">{distanceLabel}</span>}
+          {distanceLabel && <span className="truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400">{distanceLabel}</span>}
         </span>
       </div>
       <div className={actionsClassName}>{actions}</div>
