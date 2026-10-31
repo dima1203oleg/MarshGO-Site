@@ -501,7 +501,7 @@ export function JourneyRouteMapScreen({
       aria-label="Деталі маршруту"
       data-testid="route-bottom-sheet"
       data-sheet-state={sheetSnap}
-      style={{ height: `${sheetHeight}px`, transition: dragging ? 'none' : 'height 280ms cubic-bezier(.2,.8,.2,1)', paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(155deg,var(--route-sheet-start),var(--route-sheet-end))' }}
+      style={{ height: `${sheetHeight}px`, transition: dragging ? 'none' : `height var(--mg-dur-base) var(--mg-ease-entrance)`, paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(155deg,var(--route-sheet-start),var(--route-sheet-end))' }}
     >
       <button
         type="button"

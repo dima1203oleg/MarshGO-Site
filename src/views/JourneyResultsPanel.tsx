@@ -9,7 +9,7 @@ import { journeyLegCaveat } from './journeyLegLabel';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
-  formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice,
+  formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, searchPendingCopy,
 } from './journeyResultPresentation';
 import { strategyJourneys } from './journeyStrategySelection';
 
@@ -138,6 +138,42 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
       <span className="sr-only">Виїзд {formatJourneyClock(startAt)}, прибуття {formatJourneyClock(lastLeg.arrivalAt)}{waitingSeconds > 0 ? `, очікування ${formatJourneyDuration(waitingSeconds)}` : ''}.</span>
     </div>
   </article>;
+}
+
+/**
+ * Shown while a journey search is in flight. Multi-provider corridors really do take tens of
+ * seconds, so the only honest progress signal is measured elapsed time plus a skeleton of the
+ * cards that are about to arrive.
+ */
+export function JourneySearchPending({ startedAt }: { startedAt: number }) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => Math.max(0, Math.round((Date.now() - startedAt) / 1000)));
+  useEffect(() => {
+    setElapsedSeconds(Math.max(0, Math.round((Date.now() - startedAt) / 1000)));
+    const timer = window.setInterval(() => setElapsedSeconds(Math.max(0, Math.round((Date.now() - startedAt) / 1000))), 1000);
+    return () => window.clearInterval(timer);
+  }, [startedAt]);
+
+  const copy = searchPendingCopy(elapsedSeconds);
+  return <section className="journey-results mt-3 space-y-2" aria-busy="true" data-testid="journey-search-pending">
+    <p role="status" aria-live="polite" className="flex items-center gap-2 text-[13px] font-bold leading-5 text-slate-700 dark:text-slate-200">
+      <span className="mg-live-dot inline-block h-2 w-2 shrink-0 rounded-full bg-[#1687FF]" aria-hidden="true" />
+      <span className="tabular-nums">{copy.title}</span>
+    </p>
+    {copy.note && <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400">{copy.note}</p>}
+    {[0, 1, 2].map(i => <div
+      key={i}
+      className="mg-rise mg-stagger flex items-start gap-3 rounded-2xl border border-slate-200/70 bg-white/70 p-3 dark:border-slate-700/60 dark:bg-slate-900/50"
+      style={{ '--mg-stagger-i': i } as React.CSSProperties}
+      aria-hidden="true"
+    >
+      <span className="mg-skeleton h-11 w-11 shrink-0 rounded-xl" />
+      <span className="min-w-0 flex-1 space-y-2 pt-0.5">
+        <span className="mg-skeleton block h-3 w-2/3" />
+        <span className="mg-skeleton block h-3 w-1/3" />
+      </span>
+      <span className="mg-skeleton h-8 w-16 shrink-0 rounded-lg" />
+    </div>)}
+  </section>;
 }
 
 export function JourneyResultsPanel({ result, onOpenMap }: {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ApiJourney } from '../src/services/productionApi';
 import {
-  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice,
+  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, searchPendingCopy,
 } from '../src/views/journeyResultPresentation';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
@@ -89,5 +89,39 @@ describe('journey result presentation data', () => {
     const covered = leg({ id: 'transfer-leg', fareIncludedByPreviousSegment: true, priceMinor: null, priceStatus: 'UNKNOWN' });
     const segment = buildJourneyResultSegments(journey({ legs: [covered] })).find(item => item.leg?.id === 'transfer-leg')!;
     assert.equal(formatJourneySegmentPrice(segment), 'у квитку');
+  });
+});
+
+describe('journey search pending copy', () => {
+  it('shows a plain searching line before the wait becomes noticeable', () => {
+    assert.deepEqual(searchPendingCopy(0), { title: 'Шукаємо маршрути…', note: null });
+    assert.equal(searchPendingCopy(7).note, null);
+    assert.match(searchPendingCopy(7).title, /7 с$/);
+  });
+
+  it('explains what is happening once the search passes 8 seconds', () => {
+    const copy = searchPendingCopy(8);
+    assert.match(copy.title, /8 с$/);
+    assert.match(copy.note!, /перевізник/i);
+  });
+
+  it('admits the providers are slow past 20 seconds without inventing progress', () => {
+    const copy = searchPendingCopy(20);
+    assert.match(copy.title, /20 с$/);
+    assert.match(copy.note!, /затягуються/);
+    assert.doesNotMatch(`${copy.title} ${copy.note}`, /%|≈|近|ETA|приблизно/);
+  });
+
+  it('never claims a share of completion or a made-up arrival time', () => {
+    [0, 3, 8, 19, 20, 61, 3600].forEach(seconds => {
+      const copy = searchPendingCopy(seconds);
+      assert.doesNotMatch(copy.title, /%/);
+      assert.doesNotMatch(copy.note ?? '', /%/);
+    });
+  });
+
+  it('floors fractional and negative elapsed time to a real second count', () => {
+    assert.equal(searchPendingCopy(-4).title, 'Шукаємо маршрути…');
+    assert.match(searchPendingCopy(12.9).title, /12 с$/);
   });
 });

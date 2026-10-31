@@ -88,3 +88,40 @@ test('route sheet actions keep the 44 px touch-target floor', async () => {
   const sizes = [...rule![1].matchAll(/(?:width|height|min-width):\s*([\d.]+)rem/g)].map(value => Number(value[1]));
   assert.ok(sizes.length >= 3 && sizes.every(size => size >= 2.75), `route sheet actions shrank below 2.75rem: ${sizes.join(', ')}`);
 });
+
+// The results screen only mounts after showResults flips, so a pending panel wired into that
+// screen alone stays invisible for the whole 20-50 s search. That is exactly how it failed once.
+test('journey search enters the results screen and shows a pending panel while providers answer', async () => {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const [marketplace, panel, css] = await Promise.all([
+    readFile(resolve(root, 'src/views/ProductionMarketplace.tsx'), 'utf8'),
+    readFile(resolve(root, 'src/views/JourneyResultsPanel.tsx'), 'utf8'),
+    readFile(resolve(root, 'src/index.css'), 'utf8'),
+  ]);
+  assert.match(marketplace, /setJourneySearchStartedAt\(Date\.now\(\)\); setShowResults\(true\)/,
+    'search must move the passenger to the results screen before awaiting providers');
+  assert.match(marketplace, /journeySearchStartedAt !== null \? <JourneySearchPending/,
+    'results body lost its pending branch');
+  assert.match(marketplace, /finally \{ setBusy\(false\); setJourneySearchStartedAt\(null\); \}/,
+    'the pending clock must stop when the search settles');
+  assert.match(panel, /data-testid="journey-search-pending"[\s\S]{0,200}aria-live="polite"/,
+    'pending state must be announced to screen readers');
+  assert.match(panel, /mg-skeleton/, 'pending cards stopped using the shimmer placeholder');
+  assert.match(css, /\.mg-skeleton\s*\{[\s\S]*animation: mg-shimmer/, 'the skeleton shimmer lost its animation');
+});
+
+// Moving this onto a CSS class would strand the imperative style.transition='none' the drag
+// handlers set, and the sheet would stop snapping back with animation.
+test('route sheet snap uses the motion tokens without leaving the style prop', async () => {
+  const sheet = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/JourneyRouteMapScreen.tsx'), 'utf8');
+  assert.doesNotMatch(sheet, /280ms cubic-bezier/, 'the sheet snap reverted to an off-system curve');
+  assert.match(sheet, /style=\{\{[\s\S]{0,120}transition: dragging \? 'none' : `height var\(--mg-dur-base\) var\(--mg-ease-entrance\)`/,
+    'sheet snap must keep its transition in the React style prop, on the motion tokens');
+});
+
+// An animated wait is only honest while the motion preference is still honoured.
+test('prefers-reduced-motion still neutralizes every animation and transition', async () => {
+  const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,160}animation-duration:\s*\.01ms !important/,
+    'reduced-motion guard changed shape; verify it still overrides inline styles');
+});

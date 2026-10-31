@@ -154,3 +154,18 @@ export function formatJourneyClock(value: string): string {
     hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv',
   }).format(new Date(value));
 }
+
+/**
+ * Journey search really does take tens of seconds on multi-provider corridors, so the wait
+ * reports measured elapsed time. No percentage and no ETA: neither would be true.
+ */
+export function searchPendingCopy(elapsedSeconds: number): { title: string; note: string | null } {
+  const seconds = Math.max(0, Math.floor(elapsedSeconds));
+  if (seconds >= 20) {
+    return { title: `Шукаємо маршрути · ${seconds} с`, note: 'Відповіді перевізників затягуються. Результати зʼявляться, щойно надійдуть — вигаданих маршрутів ми не показуємо.' };
+  }
+  if (seconds >= 8) {
+    return { title: `Шукаємо маршрути · ${seconds} с`, note: 'Паралельно перевіряємо розклади й позиції кількох перевізників.' };
+  }
+  return { title: seconds > 0 ? `Шукаємо маршрути · ${seconds} с` : 'Шукаємо маршрути…', note: null };
+}
