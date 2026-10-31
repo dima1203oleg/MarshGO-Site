@@ -63,19 +63,32 @@ export const initialNavigationState = (): NavigationState => ({
 export function transition(state: NavigationState, event: NavigationEvent): TransitionResult {
   const noEffects: NavigationEffect[] = [];
   switch (event.type) {
-    case 'NAVIGATION_SESSION_RECONCILED':
+    case 'NAVIGATION_SESSION_RECONCILED': {
+      const sessionChanged = state.sessionId !== event.sessionId;
+      const routeChanged = sessionChanged || state.routeVersion !== event.route.routeVersion;
       return { state: {
         ...state,
         sessionId: event.sessionId,
         lifecycle: event.paused ? 'PAUSED' : state.connectivity === 'OFFLINE' ? 'OFFLINE' : 'ACTIVE',
         route: event.route,
         routeVersion: event.route.routeVersion,
-        remainingDistanceMeters: event.route.distanceMeters,
-        remainingDurationSeconds: event.route.durationSeconds,
-        offRoute: false,
-        rerouteRequired: false,
+        ...(routeChanged ? {
+          currentLocation: null,
+          currentLegIndex: 0,
+          currentManeuverIndex: 0,
+          matching: { status: 'IDLE' as const, confidence: null, provider: null },
+        } : {}),
+        // Server session refreshes may return the same route after every GPS
+        // heartbeat. Preserve matched live progress until the session or route
+        // version actually changes; otherwise a refresh resets the ETA to zero
+        // progress and makes navigation appear stuck.
+        remainingDistanceMeters: routeChanged ? event.route.distanceMeters : state.remainingDistanceMeters ?? event.route.distanceMeters,
+        remainingDurationSeconds: routeChanged ? event.route.durationSeconds : state.remainingDurationSeconds ?? event.route.durationSeconds,
+        offRoute: routeChanged ? false : state.offRoute,
+        rerouteRequired: routeChanged ? false : state.rerouteRequired,
         error: null,
       }, effects: [] };
+    }
     case 'NAVIGATION_START_REQUESTED':
       if (!['IDLE', 'ENDED', 'ERROR'].includes(state.lifecycle)) return { state, effects: noEffects };
       return { state: { ...initialNavigationState(), lifecycle: 'PLANNING', connectivity: state.connectivity }, effects: [{ type: 'REQUEST_ROUTE', request: event.request }] };

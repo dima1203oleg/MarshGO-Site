@@ -9,6 +9,17 @@ export interface LocationProvider {
   status(): LocationProviderStatus;
 }
 
+/**
+ * WebKit has exposed GeolocationPosition.timestamp in microseconds in some
+ * browser and WKWebView versions, while Chromium and Firefox expose epoch
+ * milliseconds. Normalize the unusually large value before constructing a Date.
+ */
+export function geolocationTimestampToIso(timestamp: number): string | null {
+  const timestampMs = timestamp > 100_000_000_000_000 ? timestamp / 1000 : timestamp;
+  if (!Number.isFinite(timestampMs) || timestampMs <= 0 || timestampMs > 8_640_000_000_000_000) return null;
+  return new Date(timestampMs).toISOString();
+}
+
 /** Foreground Web Geolocation adapter, also used by Capacitor WKWebView. */
 export class WebGeolocationProvider implements LocationProvider {
   private watchId: number | null = null;
@@ -35,11 +46,12 @@ export class WebGeolocationProvider implements LocationProvider {
     }));
   }
   private toFix(position: GeolocationPosition) {
+    const capturedAtClient = geolocationTimestampToIso(position.timestamp);
     return locationFixSchema.safeParse({ longitude: position.coords.longitude, latitude: position.coords.latitude,
       accuracyMeters: position.coords.accuracy, altitudeMeters: position.coords.altitude ?? undefined,
       altitudeAccuracyMeters: position.coords.altitudeAccuracy ?? undefined,
       headingDegrees: position.coords.heading ?? undefined, speedMps: position.coords.speed ?? undefined,
-      capturedAtClient: new Date(position.timestamp).toISOString(), source: 'gps' });
+      capturedAtClient, source: 'gps' });
   }
   async stop() { if (this.watchId !== null) navigator.geolocation.clearWatch(this.watchId); this.watchId = null; this.state = 'IDLE'; }
   subscribe(listener: (fix: LocationFix) => void) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
@@ -64,4 +76,13 @@ export function validateLocationFix(fix: LocationFix, nowMs: number, previous?: 
     if (distance > maxSpeed * elapsed + fix.accuracyMeters + previous.accuracyMeters) return { accepted: false, code: 'GPS_TELEPORT_DETECTED' };
   }
   return { accepted: true, fix: parsed.data };
+}
+
+/** A cached browser repeat is a no-op, not a new stale/out-of-order GPS error. */
+export function isDuplicateLocationFix(fix: LocationFix, previous?: LocationFix): boolean {
+  return Boolean(previous
+    && fix.capturedAtClient === previous.capturedAtClient
+    && fix.latitude === previous.latitude
+    && fix.longitude === previous.longitude
+    && fix.accuracyMeters === previous.accuracyMeters);
 }

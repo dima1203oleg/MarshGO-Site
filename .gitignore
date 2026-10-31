@@ -3,3 +3,6 @@ dist/
 coverage/
 .env
 *.log
+
+.e2e-dist/
+MarshGO-Site-*/
