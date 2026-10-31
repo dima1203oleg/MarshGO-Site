@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ArrowLeftRight, ChevronRight, Coins, Heart, Scale, Timer,
+  ArrowLeftRight, ChevronRight, Coins, Heart, Info, Scale, Timer,
 } from 'lucide-react';
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
@@ -9,7 +9,7 @@ import { journeyLegCaveat } from './journeyLegLabel';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
-  formatJourneySegmentPrice, formatJourneyTotalPrice,
+  formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice,
 } from './journeyResultPresentation';
 import { strategyJourneys } from './journeyStrategySelection';
 
@@ -27,10 +27,15 @@ function formatRouteCount(count: number): string {
   return `${count} ${noun}`;
 }
 
-function RouteResultCard({ journey, strategy, index, onOpen }: {
+function journeyCaveats(journey: ApiJourney): string[] {
+  return [...new Set(journey.legs.map(leg => journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource)).filter((text): text is string => Boolean(text)))];
+}
+
+function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
   journey: ApiJourney;
   strategy: ApiJourneyStrategy;
   index: number;
+  caveats: string[];
   onOpen: (journey: ApiJourney) => void;
 }) {
   const allSegments = buildJourneyResultSegments(journey);
@@ -70,12 +75,11 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
     selectionLabel: segment.label + (segment.leg?.routeName ? ' ' + segment.leg.routeName : ''),
     accessibilityLabel: segment.label + (segment.leg?.routeName ? ', маршрут ' + segment.leg.routeName : '') + ', ' + formatJourneyDuration(segment.durationSeconds) + ', ' + formatJourneySegmentPrice(segment, journey.currency ?? 'UAH'),
     durationSeconds: segment.durationSeconds,
-    durationLabel: formatJourneyDuration(segment.durationSeconds),
+    durationLabel: formatJourneyDurationTile(segment.durationSeconds),
     priceLabel: formatJourneySegmentPrice(segment, journey.currency ?? 'UAH'),
     color: segment.color,
   }));
   const startAt = journey.requestedDepartureAt ?? firstLeg.departureAt;
-  const caveats = [...new Set(journey.legs.map(leg => journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource)).filter(Boolean))];
   const openLabel = `Відкрити маршрут: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`;
 
   const toggleSaved = () => {
@@ -126,10 +130,10 @@ function RouteResultCard({ journey, strategy, index, onOpen }: {
         ariaLabel="Послідовність етапів маршруту"
         className="pointer-events-none"
         stripClassName="mt-1.5 pointer-events-none"
-        durationNote={waitingSeconds > 0 ? <span data-testid="journey-result-wait" className="text-[9px] font-semibold leading-3 tabular-nums text-slate-500 dark:text-slate-400">Очікування · {formatJourneyDuration(waitingSeconds)}</span> : undefined}
+        durationNote={waitingSeconds > 0 ? <span data-testid="journey-result-wait" className="text-[10px] font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">Очікування · {formatJourneyDuration(waitingSeconds)}</span> : undefined}
       />
       {segments.map(segment => segment.leg && <span key={segment.id} className="sr-only">{formatJourneyDistance(segment.leg.distanceMeters)}</span>)}
-      {caveats.length > 0 && <p title={[...new Set(caveats)].join(' ')} className="mt-1 truncate text-[9px] leading-3 text-amber-800 dark:text-amber-200">{[...new Set(caveats)].join(' ')}</p>}
+      {caveats.length > 0 && <p className="journey-result-caveat mt-1 text-[10px] leading-4 text-amber-800 dark:text-amber-200">{caveats.join(' ')}</p>}
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
       <span className="sr-only">Виїзд {formatJourneyClock(startAt)}, прибуття {formatJourneyClock(lastLeg.arrivalAt)}{waitingSeconds > 0 ? `, очікування ${formatJourneyDuration(waitingSeconds)}` : ''}.</span>
     </div>
@@ -149,6 +153,11 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   const [activeStrategy, setActiveStrategy] = useState<ApiJourneyStrategy>(defaultStrategy);
   useEffect(() => setActiveStrategy(defaultStrategy), [result, defaultStrategy]);
   const shownJourneys = strategyJourneys(result, activeStrategy);
+  const shownCaveats = shownJourneys.map(journeyCaveats);
+  // A caveat repeated on every card is one fact about the search, not about a route.
+  const sharedCaveats = shownJourneys.length
+    ? shownCaveats[0].filter(text => shownCaveats.every(list => list.includes(text)))
+    : [];
 
   const preferenceMessages: Record<string, string> = {
     preferredVehicleClass: 'клас автомобіля не застосовується до розкладів громадського транспорту',
@@ -166,6 +175,15 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
     'transportType:walk:not-in-route-engine': 'пішки доступно лише як короткий підхід до зупинки, окремий маршрут не будується',
   };
 
+  const notices: Array<{ tone: 'amber' | 'blue' | 'rose'; text: string }> = [];
+  if (result.partial && !result.partialReasons?.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
+  if (result.partialReasons?.includes('walking_routing_unavailable')) notices.push({ tone: 'amber', text: 'Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.' });
+  if (result.unsupportedPreferences.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${result.unsupportedPreferences.map(value => preferenceMessages[value] ?? value).join('; ')}.` });
+  if (result.providerErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${result.providerErrors.join('; ')}.` });
+  if (result.resultsTruncated) notices.push({ tone: 'blue', text: `Показано до ${result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із ${result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.` });
+  if (result.candidateGenerationTruncated) notices.push({ tone: 'amber', text: 'Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.' });
+  sharedCaveats.forEach(text => notices.push({ tone: 'amber', text }));
+
   return <section aria-label="Результати мультимодального пошуку" className="mt-2">
     <div role="group" aria-label="Режим пошуку маршрутів" className="mb-2 grid grid-cols-3 gap-1.5">
       {strategyConfig.map(({ id, label, Icon, tone }) => {
@@ -177,14 +195,22 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
       })}
     </div>
 
-    {result.partial && !result.partialReasons?.length && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.</p>}
-    {result.partialReasons?.includes('walking_routing_unavailable') && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.</p>}
-    {result.unsupportedPreferences.length > 0 && <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Не всі умови можна врахувати: {result.unsupportedPreferences.map(value => preferenceMessages[value] ?? value).join('; ')}.</p>}
-    {result.providerErrors.length > 0 && <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100">Деякі розклади тимчасово недоступні: {result.providerErrors.join('; ')}.</p>}
-    {result.resultsTruncated && <p className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">Показано до {result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із {result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.</p>}
-    {result.candidateGenerationTruncated && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.</p>}
+    {notices.length > 0 && <details className="search-notices mb-3 rounded-2xl border border-slate-200 bg-slate-50 dark:border-[#20354A] dark:bg-[#0D1B28]">
+      <summary aria-label={`Обмеження даних пошуку: ${notices.length}`} className={`search-notices-summary flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-[11px] font-extrabold ${notices.some(notice => notice.tone === 'rose') ? 'text-rose-800 dark:text-rose-100' : 'text-slate-700 dark:text-slate-200'}`}>
+        <Info size={14} aria-hidden="true"/>
+        <span className="flex-1">Обмеження даних пошуку</span>
+        <span className="rounded-full bg-slate-200/70 px-1.5 py-0.5 tabular-nums dark:bg-[#15283A]">{notices.length}</span>
+        <ChevronRight size={16} aria-hidden="true" className="search-notices-chevron shrink-0"/>
+      </summary>
+      <ul className="search-notices-list space-y-1.5 px-3 pb-3">
+        {notices.map(notice => <li key={notice.text} className="flex gap-2 text-[11px] leading-4">
+          <span aria-hidden="true" className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${notice.tone === 'rose' ? 'bg-rose-500' : notice.tone === 'blue' ? 'bg-blue-500' : 'bg-amber-500'}`}/>
+          <span className={notice.tone === 'rose' ? 'text-rose-800 dark:text-rose-100' : notice.tone === 'blue' ? 'text-blue-900 dark:text-blue-100' : 'text-amber-900 dark:text-amber-100'}>{notice.text}</span>
+        </li>)}
+      </ul>
+    </details>}
 
-    {shownJourneys.length ? <div className="space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} strategy={activeStrategy} index={index} onOpen={onOpenMap}/>)}</div>
+    {shownJourneys.length ? <div className="space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} strategy={activeStrategy} index={index} caveats={shownCaveats[index].filter(text => !sharedCaveats.includes(text))} onOpen={onOpenMap}/>)}</div>
       : <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]">
         <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{result.journeys.length ? 'Спробуйте інший режим або змініть умови пошуку.' : 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>

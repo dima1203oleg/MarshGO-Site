@@ -34,3 +34,14 @@ test('canonical MARSHGO design references stay owner-approved', async () => {
     assert.equal(actualHash, expectedHash, `${filename} changed; replace only with an owner-approved canonical board`);
   }
 });
+
+// A duplicate rule later in the sheet silently wins the cascade, which is how tile
+// text drifted back to 8.5 px after the legibility pass.
+test('route-result segment tiles stay at or above the 9 px legibility floor', async () => {
+  const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
+  const undersized = [...css.matchAll(/([^{}]*journey-segment-tile[^{}]*)\{([^}]*)\}/g)]
+    .flatMap(([, selector, body]) => [...body.matchAll(/font-size:\s*(?:clamp\(\s*)?([\d.]+)px/g)]
+      .filter(size => Number(size[1]) < 9)
+      .map(size => `${selector.trim()} → ${size[1]}px`));
+  assert.deepEqual(undersized, []);
+});

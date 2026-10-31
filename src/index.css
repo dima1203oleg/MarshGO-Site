@@ -366,7 +366,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   overflow: hidden;
   padding-left: 1.25rem;
   color: #64748b;
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-weight: 500;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -374,6 +374,8 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   font-variant-numeric: tabular-nums;
 }
 .journey-segment-tile-meta-value { font-weight: 700; }
+/* The scroll cue floats over the strip, so the last tile needs reserved space to stay readable. */
+.journey-segment-tiles:has(+ .journey-segment-scroll-cue) { padding-inline-end: 2.3rem; }
 .journey-segment-scroll-cue {
   position: absolute;
   z-index: 2;
@@ -446,17 +448,17 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
 }
 .journey-segment-tile-heading { font-size: 10px; }
 .journey-segment-tile-icon { flex-basis: 1.125rem; }
-.journey-segment-tile-meta { padding-left: 1.25rem; font-size: 8.5px; text-align: left; }
+.journey-segment-tile-meta { padding-left: 1.25rem; font-size: 9.5px; text-align: left; }
 @media (min-width: 640px) {
   .journey-segment-tile--scroll { flex-basis: 0; }
 }
 @media (max-width: 479px) {
-  .journey-segment-tile-heading { gap: .125rem; font-size: clamp(8.5px, 2.15vw, 9px); }
+  .journey-segment-tile-heading { gap: .125rem; font-size: clamp(9px, 2.4vw, 10px); }
   .journey-segment-tile-icon { flex-basis: 1rem; }
   .journey-segment-tile:not(.journey-segment-tile--scroll) .journey-segment-tile-meta {
     padding-left: 1.25rem;
     text-align: left;
-    font-size: 8.5px;
+    font-size: 9.5px;
   }
 }
 @media (max-width: 379px) {
@@ -1184,6 +1186,13 @@ html.dark .coverage-details[open] { border-color: #263648 !important; }
 .search-submit:not(:disabled) { transition: transform var(--mg-dur-tap) var(--mg-ease-standard), box-shadow var(--mg-dur-fast) var(--mg-ease-standard), filter var(--mg-dur-fast) var(--mg-ease-standard); }
 .search-submit:active:not(:disabled) { transform: scale(.985); }
 .search-submit:disabled { animation: mg-wait 1.6s var(--mg-ease-standard) infinite; }
+
+/* Data-quality disclaimers stay verbatim; they only cost one line until the rider asks for the rest. */
+.search-notices summary::-webkit-details-marker { display: none; }
+.search-notices summary:focus-visible { outline: 2px solid #0B63D6; outline-offset: -2px; }
+.search-notices-chevron { transform: rotate(90deg); transition: transform var(--mg-dur-fast) var(--mg-ease-standard); }
+.search-notices[open] .search-notices-chevron { transform: rotate(-90deg); }
+.search-notices[open] .search-notices-list { animation: mg-fade var(--mg-dur-fast) var(--mg-ease-standard) both; }
 
 /* Carpool offers are real bookable results, so they enter in order and answer to a press. */
 .journey-offer-card { animation: mg-rise var(--mg-dur-base) var(--mg-ease-entrance) both; transition: box-shadow var(--mg-dur-fast) var(--mg-ease-standard), border-color var(--mg-dur-fast) var(--mg-ease-standard), transform var(--mg-dur-tap) var(--mg-ease-standard); }

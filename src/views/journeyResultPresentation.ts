@@ -122,6 +122,11 @@ export function formatJourneyDuration(seconds: number): string {
   return hours ? `${hours} год ${minutes % 60} хв` : `${minutes} хв`;
 }
 
+/** A segment tile is ~110 px wide; the spoken form stays in its accessibility label. */
+export function formatJourneyDurationTile(seconds: number): string {
+  return seconds > 0 && seconds < 60 ? '< 1 хв' : formatJourneyDuration(seconds);
+}
+
 export function formatJourneyDistance(meters: number | null | undefined): string {
   if (meters === null || meters === undefined || !Number.isFinite(meters) || meters < 0) return 'відстань невідома';
   if (meters > 0 && meters < 1) return '<1 м';

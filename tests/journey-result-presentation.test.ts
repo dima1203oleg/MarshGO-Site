@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ApiJourney } from '../src/services/productionApi';
 import {
-  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneySegmentPrice, formatJourneyTotalPrice,
+  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice,
 } from '../src/views/journeyResultPresentation';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
@@ -52,6 +52,12 @@ describe('journey result presentation data', () => {
   it('does not round a positive sub-minute segment down to zero', () => {
     assert.equal(formatJourneyDuration(30), 'менше хвилини');
     assert.equal(formatJourneyDuration(60), '1 хв');
+  });
+
+  it('shrinks only the words a ~110 px segment tile cannot show without ellipsis', () => {
+    assert.equal(formatJourneyDurationTile(30), '< 1 хв');
+    assert.equal(formatJourneyDurationTile(60), '1 хв');
+    assert.equal(formatJourneyDurationTile(420), formatJourneyDuration(420));
   });
 
   it('keeps short measured route distances in meters instead of rounding them to zero kilometers', () => {
