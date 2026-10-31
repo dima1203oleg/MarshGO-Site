@@ -328,13 +328,55 @@ export type ApiStoredJourney = {
   id: string;
   origin_name: string;
   destination_name: string;
+  origin_coordinates?: [number, number];
+  destination_coordinates?: [number, number];
   requested_departure_at: string;
   strategy: ApiJourneyStrategy;
   state: string;
   passenger_count: number;
   total_price_minor: number | null;
   confirmed_price_minor: number | null;
-  legs: Array<{ id: string; mode: string; offerId: string | null; bookingId: string | null; state: string; priceMinor: number | null; priceStatus: string }>;
+  total_duration_s?: number | null;
+  walking_distance_m?: number | null;
+  transfer_count?: number | null;
+  reliability_score?: number | null;
+  waitingSeconds?: number | null;
+  legs: Array<{
+    id: string;
+    mode: string;
+    offerId: string | null;
+    bookingId: string | null;
+    state: string;
+    priceMinor: number | null;
+    priceStatus: string;
+    originName?: string;
+    originCoordinates?: [number, number];
+    destinationName?: string;
+    destinationCoordinates?: [number, number];
+    departureAt?: string | null;
+    arrivalAt?: string | null;
+    scheduledDepartureAt?: string | null;
+    scheduledArrivalAt?: string | null;
+    predictedDepartureAt?: string | null;
+    predictedArrivalAt?: string | null;
+    liveStatus?: string | null;
+    durationSeconds?: number | null;
+    distanceMeters?: number | null;
+    currency?: string | null;
+    availabilityStatus?: string | null;
+    providerType?: string | null;
+    providerId?: string | null;
+    routeId?: string | null;
+    routeName?: string | null;
+    transportType?: string | null;
+    headsign?: string | null;
+    scheduleSemantics?: string | null;
+    dataSource?: string | null;
+    source?: string | null;
+    lastUpdatedAt?: string | null;
+    routeGeometry?: [number, number][] | null;
+    stops?: ApiJourney['legs'][number]['stops'];
+  }>;
 };
 export type GeoJsonCollection = { type: 'FeatureCollection'; features: Array<{ type: 'Feature'; properties: Record<string, unknown>; geometry: { type: string; coordinates: unknown } }> };
 export type ApiNavigationSession = {
@@ -394,6 +436,13 @@ async function uploadPhotoFile<T>(path: string, file: File): Promise<T> {
   }
 }
 
+export class ProductionApiError extends Error {
+  constructor(message: string, readonly code?: string, readonly status?: number) {
+    super(message);
+    this.name = 'ProductionApiError';
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
   const headers = new Headers(init.headers);
   const tokenUsed = accessToken;
@@ -416,9 +465,9 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
   }
   if (!response.ok) {
     if (response.status === 429 || body?.error?.code === 'rate_limit_exceeded') {
-      throw new Error('Забагато запитів за короткий час. Зачекайте кілька хвилин і спробуйте ще раз.');
+      throw new ProductionApiError('Забагато запитів за короткий час. Зачекайте кілька хвилин і спробуйте ще раз.', 'rate_limit_exceeded', response.status);
     }
-    throw new Error(body?.error?.message || `Request failed (${response.status})`);
+    throw new ProductionApiError(body?.error?.message || `Request failed (${response.status})`, body?.error?.code, response.status);
   }
   if (response.status === 204) return undefined as T;
   return (body as ApiEnvelope<T>).data;

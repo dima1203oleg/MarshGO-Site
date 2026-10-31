@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { ArrowLeft, ArrowUp, ChevronUp, CornerUpLeft, CornerUpRight, Eye, Flag, Layers, Map, MapPin, MoreHorizontal, Navigation, LocateFixed, RotateCcw, RefreshCw, Search, Share2, ShieldCheck, Square, TriangleAlert, Volume2, VolumeX, X, type LucideIcon } from 'lucide-react';
 import { dueAnnouncement, formatGuidanceDistance, instructionText, nextGuidance, prepareGuidance, voiceLine } from '../navigation/guidance';
 import type { Maneuver } from '../../shared/navigation/contracts';
-import { ApiNavigationMatch, ApiNavigationSession, ApiPlace, productionApi } from '../services/productionApi';
+import { ApiNavigationMatch, ApiNavigationSession, ApiPlace, ProductionApiError, productionApi } from '../services/productionApi';
 import type { LocationFix } from '../../shared/navigation/contracts';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
@@ -17,6 +17,7 @@ import { navigationError } from '../../shared/navigation/errors';
 import { OffRouteGuard } from '../navigation/OffRouteGuard';
 import { snapNavigationSheet, type NavigationSheetLevel } from '../navigation/navigationSheet';
 import { createNavigationShareUrl } from '../routing/navigationShare';
+import { navigationDestinationName } from '../navigation/destinationName';
 import { getMapLayer, getMapPerspective, mapLayers, satelliteAttribution, satelliteTiles, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 
 function navigationErrorMessage(error: unknown, fallback: string) {
@@ -31,6 +32,17 @@ function navigationErrorMessage(error: unknown, fallback: string) {
   };
   const locationMessage = locationMessages[error.message];
   if (locationMessage) return locationMessage;
+  // The API speaks English; the user sees Ukrainian. Map the machine code first so a server
+  // message never leaks untranslated into the navigation screen.
+  const apiCodes: Record<string, string> = {
+    invalid_destination: 'Сервер не прийняв координати пункту призначення. Оберіть точку зі списку підказок.',
+    destination_name_required: 'Пункт призначення не має назви. Оберіть адресу зі списку підказок.',
+    destination_name_too_long: 'Надто довга назва пункту призначення. Оберіть коротшу адресу зі списку підказок.',
+    routing_unavailable: 'Сервіс побудови автомобільних маршрутів тимчасово недоступний. Спробуйте ще раз пізніше.',
+    navigation_already_active: 'У вас уже відкрита навігація. Завершіть поточну сесію, перш ніж починати нову.',
+  };
+  const code = error instanceof ProductionApiError ? error.code : undefined;
+  if (code && apiCodes[code]) return apiCodes[code];
   if (/^[A-Z][A-Z0-9_]+$/.test(error.message)) return fallback;
   return error.message;
 }
@@ -433,7 +445,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       lastValidatedFixRef.current = checked.fix;
       const created = await productionApi.startNavigation({
         origin: [fix.longitude, fix.latitude],
-        ...(withDestination ? { destination: [withDestination.longitude, withDestination.latitude] as [number, number], destinationName: withDestination.label } : {}),
+        ...(withDestination ? { destination: [withDestination.longitude, withDestination.latitude] as [number, number], destinationName: navigationDestinationName(withDestination.label) } : {}),
       });
       if (hasRoute(created)) navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: created.id, route: canonicalRoute(created), paused: false });
       setSession(created); setMatchingEnabled(false); setMatches([]); setOnRoute(null); lastSentRef.current = null; setGpsMessage('');
@@ -467,7 +479,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     setGpsMessage('Оновлюємо пункт призначення активної навігації…');
     void productionApi.setNavigationDestination(session.id, {
       destination: [initialDestination.longitude, initialDestination.latitude],
-      destinationName: initialDestination.label,
+      destinationName: navigationDestinationName(initialDestination.label),
     }).then((updated) => {
       navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: updated.id, route: canonicalRoute(updated), paused: updated.state === 'paused' });
       setSession(updated);
@@ -492,7 +504,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     if (!session) return;
     setBusy(true); setTopSuggestions([]); setGpsMessage('Будуємо маршрут…');
     try {
-      const updated = await productionApi.setNavigationDestination(session.id, { destination: [place.longitude, place.latitude], destinationName: place.label });
+      const updated = await productionApi.setNavigationDestination(session.id, { destination: [place.longitude, place.latitude], destinationName: navigationDestinationName(place.label) });
       navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: updated.id, route: canonicalRoute(updated), paused: updated.state === 'paused' });
       setSession(updated); setMatches([]); setTopQuery(''); setGpsMessage('');
     } catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося побудувати маршрут. Дочекайтеся GPS і спробуйте ще раз.')); }
