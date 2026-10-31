@@ -213,7 +213,8 @@ export type ApiProvider = { id: string; name: string; available: boolean; cities
 export type ApiTransportProviders = { transportType: string; providers: ApiProvider[] };
 export type ApiNearbyAsset = { id: string; type: string; location: [number, number]; distanceM: number; providerName: string; batteryPercent?: number; rangeMeters?: number };
 export type ApiNearbyStation = { id: string; name: string; location: [number, number]; distanceM: number; providerName: string; availableAssets?: number; capacity?: number; returnAllowed?: boolean };
-export type ApiNearby = { mode: string; radiusM: number; providers: number; failedProviders: number; assets: ApiNearbyAsset[]; stations: ApiNearbyStation[]; totalAssets: number };
+export type ApiProviderFailure = { id: string; name: string; sourceType: string; layer: string; reason: string };
+export type ApiNearby = { mode: string; radiusM: number; providers: number; failedProviders: ApiProviderFailure[]; failedProviderCount: number; assets: ApiNearbyAsset[]; stations: ApiNearbyStation[]; totalAssets: number };
 
 export type ApiMessage = { id: string; sender_id: string; sender_name: string; body: string; created_at: string };
 export type ApiConversationUnread = { conversation_id: string; booking_id: string | null; unread_count: number };
