@@ -115,6 +115,20 @@ export function formatJourneyTotalPrice(journey: ApiJourney): string {
   return journey.confirmedPriceMinor !== null || journey.priceStatus === 'LOCKED' ? label : `≈ ${label}`;
 }
 
+const strategyLabels: Record<string, string> = {
+  BALANCED: 'Оптимальний',
+  FASTEST: 'Найшвидший',
+  CHEAPEST: 'Найдешевший',
+  PREMIUM: 'Преміум',
+  RELIABLE: 'Надійний',
+  CUSTOM: 'Свій набір',
+};
+
+/** The planner stores strategies as internal codes; every surface speaks Ukrainian. */
+export function journeyStrategyLabel(strategy: string): string {
+  return strategyLabels[strategy] ?? 'Маршрут';
+}
+
 export function formatJourneyDuration(seconds: number): string {
   if (seconds > 0 && seconds < 60) return 'менше хвилини';
   const minutes = Math.max(0, Math.round(seconds / 60));

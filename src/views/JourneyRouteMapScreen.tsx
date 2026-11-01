@@ -19,6 +19,7 @@ import {
   formatJourneyDistanceSummary,
   formatJourneyLegPrice,
   formatJourneyTotalPrice,
+  journeyStrategyLabel,
 } from './journeyResultPresentation';
 import { routeSheetHeights, settleRouteSheetSnap, type RouteSheetSnap } from './routeSheet';
 import { themeService } from '../services/theme';
@@ -411,7 +412,7 @@ export function JourneyRouteMapScreen({
   };
 
   const StrategyIcon = journey.strategy === 'FASTEST' ? Timer : journey.strategy === 'CHEAPEST' ? Coins : Scale;
-  const strategyLabel = journey.strategy === 'FASTEST' ? 'Найшвидший' : journey.strategy === 'CHEAPEST' ? 'Найдешевший' : 'Оптимальний';
+  const strategyLabel = journeyStrategyLabel(journey.strategy);
 
   const shareRoute = async () => {
     const url = `${window.location.origin}${window.location.pathname}${window.location.search}`;

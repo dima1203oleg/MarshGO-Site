@@ -4,7 +4,7 @@ import { productionApi, type GeoJsonCollection } from '../services/productionApi
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import { lineTypesFor, microTypesFor, transportLayerList, type TransportLayerId } from './transportLayerConfig';
 import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
-import { publishVehicleQuality, summarizeVehicleQuality, vehicleQualityWord } from './transportQuality';
+import { publishVehicleQuality, summarizeVehicleQuality, tagVehicleQuality, vehicleQualityWord } from './transportQuality';
 export { cityTransportLayerIds, lineTypesFor, microTypesFor, transportLayerList } from './transportLayerConfig';
 export type { TransportLayerId } from './transportLayerConfig';
 
@@ -70,6 +70,17 @@ const empty: GeoJsonCollection = { type: 'FeatureCollection', features: [] };
 const SOURCES = { routes: 'mg-t-routes', stops: 'mg-t-stops', vehicles: 'mg-t-vehicles', micro: 'mg-t-micro', zones: 'mg-t-micro-zones' } as const;
 const lineColor = ['match', ['get', 'transport'], 'bus', colors.bus, 'marshrutka', colors.marshrutka, 'trolleybus', colors.trolleybus, 'tram', colors.tram, 'metro', colors.metro, 'train', getTransportModeVisual('TRAIN').color, 'suburban', getTransportModeVisual('TRAIN').color, 'city_train', colors.city_train, 'funicular', colors.funicular, colors.other] as never;
 
+/**
+ * A position is only as good as its proof, so the halo around a vehicle carries the telemetry
+ * level (tagVehicleQuality) instead of a decorative glow: emerald = live GPS, amber = no timestamp,
+ * red = stale, slate = timetable, grey = unverified.
+ */
+const TRUST_COLOR = ['#2563EB', '#F59E0B', '#DC2626', '#64748B', '#94A3B8'] as const;
+const vehicleRadius = ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 9] as never;
+const qualityColor = ['match', ['get', 'mgQuality'], 'live', TRUST_COLOR[0], 'estimated', TRUST_COLOR[1], 'stale', TRUST_COLOR[2], 'scheduled', TRUST_COLOR[3], TRUST_COLOR[4]] as never;
+const qualityOpacity = ['match', ['get', 'mgQuality'], 'live', 0.4, 'estimated', 0.32, 'stale', 0.3, 'scheduled', 0.16, 0.12] as never;
+const dimUnverified = ['match', ['get', 'mgQuality'], 'live', 1, 'estimated', 1, 'scheduled', 1, 'stale', 0.55, 0.5] as never;
+
 export class TransportLayerController {
   private enabled: ReadonlySet<TransportLayerId> = new Set();
   private data: Record<keyof typeof SOURCES, GeoJsonCollection> = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
@@ -109,6 +120,7 @@ export class TransportLayerController {
       ['mg-t-route-label', this.display.routeLines && this.display.routeNumbers],
       ['mg-t-stops', this.enabled.has('STOPS')],
       ['mg-t-stop-label', this.enabled.has('STOPS')],
+      ['mg-t-vehicle-halo', this.display.liveVehicles],
       ['mg-t-vehicles', this.display.liveVehicles],
       ['mg-t-vehicle-label', this.display.liveVehicles && this.display.routeNumbers],
     ];
@@ -132,7 +144,7 @@ export class TransportLayerController {
     this.popup?.remove(); this.popup = null;
     this.data = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
     publishVehicleQuality(null);
-    for (const id of ['mg-t-micro-zones-outline', 'mg-t-micro-zones-fill', 'mg-t-micro-count', 'mg-t-micro-clusters', 'mg-t-micro-points', 'mg-t-vehicle-label', 'mg-t-vehicles', 'mg-t-stop-label', 'mg-t-stops', 'mg-t-route-label', 'mg-t-routes']) if (this.map.getLayer(id)) this.map.removeLayer(id);
+    for (const id of ['mg-t-micro-zones-outline', 'mg-t-micro-zones-fill', 'mg-t-micro-count', 'mg-t-micro-clusters', 'mg-t-micro-points', 'mg-t-vehicle-label', 'mg-t-vehicles', 'mg-t-vehicle-halo', 'mg-t-stop-label', 'mg-t-stops', 'mg-t-route-label', 'mg-t-routes']) if (this.map.getLayer(id)) this.map.removeLayer(id);
     for (const id of Object.values(SOURCES)) if (this.map.getSource(id)) this.map.removeSource(id);
     this.map.getContainer().dataset.marshgoTransportLayers = '';
   }
@@ -151,11 +163,12 @@ export class TransportLayerController {
     if (glyphs && !map.getLayer('mg-t-route-label')) map.addLayer({ id: 'mg-t-route-label', type: 'symbol', source: SOURCES.routes, minzoom: 13, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-size': 11, 'text-font': ['Noto Sans Regular'] }, paint: { 'text-color': lineColor, 'text-halo-color': '#fff', 'text-halo-width': 2 } }, before);
     if (!map.getLayer('mg-t-stops')) map.addLayer({ id: 'mg-t-stops', type: 'circle', source: SOURCES.stops, minzoom: minZoom.stops, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 3, 17, 7], 'circle-color': '#ffffff', 'circle-stroke-color': '#0E1F35', 'circle-stroke-width': 1.5 } }, before);
     if (glyphs && !map.getLayer('mg-t-stop-label')) map.addLayer({ id: 'mg-t-stop-label', type: 'symbol', source: SOURCES.stops, minzoom: 15.5, layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-font': ['Noto Sans Regular'] }, paint: { 'text-color': '#0E1F35', 'text-halo-color': '#fff', 'text-halo-width': 2 } }, before);
-    if (!map.getLayer('mg-t-vehicles')) map.addLayer({ id: 'mg-t-vehicles', type: 'circle', source: SOURCES.vehicles, minzoom: minZoom.vehicles, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 9], 'circle-color': lineColor, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+    if (!map.getLayer('mg-t-vehicle-halo')) map.addLayer({ id: 'mg-t-vehicle-halo', type: 'circle', source: SOURCES.vehicles, minzoom: minZoom.vehicles, paint: { 'circle-radius': ['+', vehicleRadius, 6], 'circle-color': qualityColor, 'circle-opacity': qualityOpacity, 'circle-blur': 0.42 } });
+    if (!map.getLayer('mg-t-vehicles')) map.addLayer({ id: 'mg-t-vehicles', type: 'circle', source: SOURCES.vehicles, minzoom: minZoom.vehicles, paint: { 'circle-radius': vehicleRadius, 'circle-color': lineColor, 'circle-opacity': dimUnverified, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
     if (glyphs && !map.getLayer('mg-t-vehicle-label')) map.addLayer({ id: 'mg-t-vehicle-label', type: 'symbol', source: SOURCES.vehicles, minzoom: 14, layout: { 'text-field': ['get', 'route'], 'text-size': 10, 'text-offset': [0, -1.4], 'text-font': ['Noto Sans Bold'], 'text-allow-overlap': false }, paint: { 'text-color': '#0E1F35', 'text-halo-color': '#fff', 'text-halo-width': 2 } });
     if (!map.getLayer('mg-t-micro-clusters')) map.addLayer({ id: 'mg-t-micro-clusters', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['has', 'point_count'], paint: { 'circle-color': '#0EA5E9', 'circle-opacity': 0.85, 'circle-radius': ['step', ['get', 'point_count'], 14, 25, 18, 100, 24], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
     if (glyphs && !map.getLayer('mg-t-micro-count')) map.addLayer({ id: 'mg-t-micro-count', type: 'symbol', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#fff' } });
-    if (!map.getLayer('mg-t-micro-points')) map.addLayer({ id: 'mg-t-micro-points', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': 6, 'circle-color': ['match', ['get', 'kind'], 'scooter', getTransportModeVisual('SCOOTER').color, 'carsharing', getTransportModeVisual('CARSHARING').color, 'station', '#64748B', getTransportModeVisual('BIKE').color], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+    if (!map.getLayer('mg-t-micro-points')) map.addLayer({ id: 'mg-t-micro-points', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['match', ['get', 'kind'], 'station', 4.5, 'carsharing', 7, 'scooter', 6, 6], 'circle-color': ['match', ['get', 'kind'], 'scooter', getTransportModeVisual('SCOOTER').color, 'carsharing', getTransportModeVisual('CARSHARING').color, 'station', '#64748B', getTransportModeVisual('BIKE').color], 'circle-opacity': ['case', ['==', ['get', 'availability'], 'UNAVAILABLE'], 0.4, ['==', ['get', 'availability'], 'AVAILABLE'], 1, 0.8], 'circle-stroke-color': '#fff', 'circle-stroke-width': ['match', ['get', 'kind'], 'station', 1.5, 2] } });
     if (!map.getLayer('mg-t-micro-zones-fill')) map.addLayer({ id: 'mg-t-micro-zones-fill', type: 'fill', source: SOURCES.zones, minzoom: minZoom.micro, paint: { 'fill-color': ['case', ['==', ['get', 'rideEndAllowed'], false], '#F43F5E', ['==', ['get', 'rideEndAllowed'], true], '#10B981', '#64748B'], 'fill-opacity': 0.15 } });
     if (!map.getLayer('mg-t-micro-zones-outline')) map.addLayer({ id: 'mg-t-micro-zones-outline', type: 'line', source: SOURCES.zones, minzoom: minZoom.micro, paint: { 'line-color': ['case', ['==', ['get', 'rideEndAllowed'], false], '#F43F5E', ['==', ['get', 'rideEndAllowed'], true], '#10B981', '#64748B'], 'line-width': 1.5, 'line-opacity': 0.8 } });
     for (const layer of ['mg-t-vehicles', 'mg-t-stops', 'mg-t-micro-points', 'mg-t-micro-zones-fill']) { map.off('click', layer, this.onClick); map.on('click', layer, this.onClick); }
@@ -242,8 +255,9 @@ export class TransportLayerController {
     this.aborters.get(key)?.abort();
     const controller = new AbortController(); this.aborters.set(key, controller);
     try {
-      const collection = await task(controller.signal);
+      const fetched = await task(controller.signal);
       if (controller.signal.aborted) return;
+      const collection = key === 'vehicles' ? tagVehicleQuality(fetched) : fetched;
       this.data[key] = collection;
       (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(collection as never);
       if (key === 'vehicles') publishVehicleQuality(summarizeVehicleQuality(collection));

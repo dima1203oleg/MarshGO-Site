@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SlidersHorizontal } from 'lucide-react';
+import { Check, SlidersHorizontal } from 'lucide-react';
 import { choiceFor, hasJourneySearchProvider, isAllActive, isJourneySearchSupported, providersForJourneySearch, selectAll, toggleProvider, toggleType, transportTypes, type TransportSelection, type TransportTypeId } from '../domain/transportPreferences';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
@@ -16,8 +16,9 @@ function Tile({ label, visualLabel = label, selected, disabled, disabledReason, 
   const description = disabled && disabledReason ? `${label}. ${disabledReason}` : label;
   const visual = getTransportModeVisual(type);
   return <button type="button" aria-pressed={disabled ? false : selected} aria-label={description} disabled={disabled} title={disabledReason}
-    onClick={onClick} className={`relative flex min-h-[5.8rem] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 py-3 text-center font-semibold leading-tight transition-colors ${compact ? 'min-h-[4.25rem] gap-1 rounded-xl py-1.5 text-[10px]' : 'text-[11px]'} ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-[#161f2a] dark:text-slate-500' : selected ? 'border-[#0B63D6] bg-[#EAF3FF] text-[#0B63D6] dark:border-[#1687FF] dark:bg-[#102746] dark:text-[#66B2FF]' : 'border-[#E5EDF7] bg-white text-[#475569] shadow-sm dark:border-[#263648] dark:bg-[#111820] dark:text-[#B6C2D0]'}`}>
-    <span className={`grid place-items-center ${compact ? 'h-7 w-7 rounded-lg' : 'h-9 w-9 rounded-xl'} ${disabled ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500' : ''}`} style={disabled ? undefined : visual.badgeStyle}><TransportIcon mode={type} size={compact ? 16 : 18}/></span>{visualLabel}
+    onClick={onClick} className={`relative flex min-h-[5.8rem] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 py-3 text-center font-semibold leading-tight transition-[background-color,border-color,color,box-shadow] duration-200 motion-reduce:transition-none ${compact ? 'min-h-[4.25rem] gap-1 rounded-xl py-1.5 text-[10px]' : 'text-[11px]'} ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-[#161f2a] dark:text-slate-500' : selected ? 'border-[#0B63D6] bg-[#EAF3FF] text-[#0B63D6] shadow-[inset_0_0_0_1px_#0B63D6] dark:border-[#1687FF] dark:bg-[#102746] dark:text-[#66B2FF]' : 'border-[#E5EDF7] bg-white text-[#475569] shadow-sm dark:border-[#263648] dark:bg-[#111820] dark:text-[#B6C2D0]'}`}>
+    <span className={`grid place-items-center ${compact ? 'h-7 w-7 rounded-lg' : 'h-9 w-9 rounded-xl'} ${disabled || !selected ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500' : ''}`} style={selected && !disabled ? visual.badgeStyle : undefined}><TransportIcon mode={type} size={compact ? 16 : 18}/></span>{visualLabel}
+    {selected && !disabled && <span className={`absolute grid place-items-center rounded-full bg-[#0B63D6] text-white motion-safe:transition-transform motion-safe:duration-200 ${compact ? 'right-1 top-1 h-4 w-4' : 'right-1.5 top-1.5 h-5 w-5'}`} aria-hidden="true"><Check size={compact ? 10 : 13} strokeWidth={3.2}/></span>}
     {disabled && <span className="sr-only">Недоступно для побудови маршруту в цьому районі</span>}
   </button>;
 }

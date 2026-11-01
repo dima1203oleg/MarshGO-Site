@@ -55,6 +55,20 @@ export function summarizeVehicleQuality(collection: GeoJsonCollection, now = Dat
   return { status, label, vehicleCount, oldestAgeMs };
 }
 
+/**
+ * MapLibre paint expressions cannot re-run the freshness rules, so the level is stamped on the
+ * feature once here — the halo a passenger sees and the words in the popup always agree.
+ */
+export function tagVehicleQuality(collection: GeoJsonCollection, now = Date.now()): GeoJsonCollection {
+  return {
+    ...collection,
+    features: collection.features.map((feature) => ({
+      ...feature,
+      properties: { ...feature.properties, mgQuality: vehicleQualityLevel(feature.properties ?? {}, now).status },
+    })),
+  };
+}
+
 // ---- badge store: the map publishes, the transport view renders (mirrors the layer-selection store) ----
 let current: VehicleQuality | null = null;
 const listeners = new Set<(quality: VehicleQuality | null) => void>();

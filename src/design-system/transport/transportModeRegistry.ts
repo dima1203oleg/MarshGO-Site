@@ -1,6 +1,6 @@
 import {
-  Bike, BusFront, Car, CarFront, CarTaxiFront, Clock3, createLucideIcon,
-  PersonStanding, TrainFront, TrainTrack, TramFront, Waypoints,
+  ArrowLeftRight, Bike, BusFront, Car, Caravan, CarFront, CarTaxiFront, Clock3, createLucideIcon,
+  PersonStanding, TrainFront, TramFront, Waypoints,
   type LucideIcon,
 } from 'lucide-react';
 import type { TransportGroup, TransportModeId } from '../../domain/transportCatalog';
@@ -28,6 +28,20 @@ const Scooter = createLucideIcon('Scooter', [
   ['path', { d: 'M16 8l-1-4h-2', key: 'scooter-handlebar' }],
 ]);
 
+/** Trolleybus must not share the bus silhouette: the body carries two current-collector poles. */
+const Trolleybus = createLucideIcon('Trolleybus', [
+  ['path', { d: 'M4 10h16v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z', key: 'trolleybus-body' }],
+  ['path', { d: 'M9 10 6.5 3.5M15 10l2.5-6.5', key: 'trolleybus-poles' }],
+  ['circle', { cx: '8', cy: '19', r: '1.6', key: 'trolleybus-wheel-rear' }],
+  ['circle', { cx: '16', cy: '19', r: '1.6', key: 'trolleybus-wheel-front' }],
+]);
+
+/** Diagonal rails read as a railway, not as a city metro — use the tunnel-arch M monogram. */
+const Metro = createLucideIcon('Metro', [
+  ['path', { d: 'M4 20v-8a8 8 0 0 1 16 0v8', key: 'metro-tunnel-arch' }],
+  ['path', { d: 'M8.5 16.5v-4.5l3.5 3 3.5-3v4.5', key: 'metro-m' }],
+]);
+
 function visual(
   id: string,
   label: string,
@@ -51,17 +65,17 @@ function visual(
  */
 export const transportModeRegistry: Record<TransportModeId, CanonicalVisual> = {
   bus: visual('bus', 'Автобус', 'Автобуси', 'Bus', BusFront, '#1687FF', 'Громадський транспорт'),
-  marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', BusFront, '#F02F79', 'Громадський транспорт'),
-  trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', BusFront, '#00C2A0', 'Громадський транспорт'),
+  marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', Caravan, '#F02F79', 'Громадський транспорт'),
+  trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', Trolleybus, '#00C2A0', 'Громадський транспорт'),
   tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#8B3CE6', 'Громадський транспорт'),
-  metro: visual('metro', 'Метро', 'Метро', 'Metro', TrainTrack, '#E43F86', 'Громадський транспорт'),
-  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#E83E8C', 'Спільні поїздки'),
+  metro: visual('metro', 'Метро', 'Метро', 'Metro', Metro, '#D6224A', 'Громадський транспорт'),
+  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#FF7A2F', 'Спільні поїздки'),
   taxi: visual('taxi', 'Таксі', 'Таксі', 'Taxi', CarTaxiFront, '#F5B51B', 'Спільні поїздки'),
-  train: visual('train', 'Поїзд', 'Поїзди', 'Train', TrainFront, '#914BF4', 'Залізниця'),
+  train: visual('train', 'Поїзд', 'Поїзди', 'Train', TrainFront, '#6366F1', 'Залізниця'),
   bike: visual('bike', 'Велосипед', 'Велосипеди', 'Bicycle', Bike, '#20B86A', 'Мікромобільність'),
-  scooter: visual('scooter', 'Самокат', 'Самокати', 'Scooter', Scooter, '#8B5CF6', 'Мікромобільність'),
+  scooter: visual('scooter', 'Самокат', 'Самокати', 'Scooter', Scooter, '#84CC16', 'Мікромобільність'),
   carsharing: visual('carsharing', 'Каршеринг', 'Каршеринг', 'Car sharing', Car, '#00A8D6', 'Спільні поїздки'),
-  transfer: visual('transfer', 'Трансфер', 'Трансфери', 'Transfer', BusFront, '#16B6A5', 'Спільні поїздки'),
+  transfer: visual('transfer', 'Трансфер', 'Трансфери', 'Transfer', ArrowLeftRight, '#6C7A93', 'Спільні поїздки'),
 };
 
 const specialVisuals: Record<string, CanonicalVisual> = {
