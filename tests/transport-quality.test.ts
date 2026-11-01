@@ -81,4 +81,18 @@ describe('vehicle data quality on the live map', () => {
     assert.match(layers, /detail\.textContent = \[vehicleQualityWord\(properties\)/, 'the popup must repeat the same level');
     assert.match(view, /<StatusBadge status=\{quality\.status\} label=\{quality\.label\}/, 'the map shows the badge');
   });
+
+  it('gives the trust halo a radius MapLibre accepts', () => {
+    const layers = readFileSync(new URL('../src/map/transportLayers.ts', import.meta.url), 'utf8');
+    assert.doesNotMatch(layers, /'circle-radius': \['\+', \['interpolate'/, 'MapLibre drops a layer whose radius nests a zoom expression in + and reports nothing');
+    assert.match(layers, /id: 'mg-t-vehicle-halo'[\s\S]*?'circle-radius': vehicleHaloRadius/, 'the halo must grade wider than the dot it wraps');
+  });
+
+  it('replays only geometry that does not move when a layer is switched back on', () => {
+    const layers = readFileSync(new URL('../src/map/transportLayers.ts', import.meta.url), 'utf8');
+    assert.match(layers, /cacheable = new Set<keyof typeof SOURCES>\(\['routes', 'stops'\]\)/, 'route and stop positions are static enough to survive a toggle');
+    assert.doesNotMatch(layers, /cacheable[\s\S]{0,120}(vehicles|micro|zones)/, 'live vehicles, scooters and geofences must never be replayed from memory');
+    assert.match(layers, /Date\.now\(\) - fresh\.at < STATIC_CACHE_TTL_MS/, 'a cached viewport must expire');
+    assert.match(layers, /destroy\(\) \{ this\.teardown\(\); this\.cache\.clear\(\); \}/, 'leaving the map must free the cached geometry');
+  });
 });

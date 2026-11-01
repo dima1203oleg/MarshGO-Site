@@ -71,20 +71,37 @@ const SOURCES = { routes: 'mg-t-routes', stops: 'mg-t-stops', vehicles: 'mg-t-ve
 const lineColor = ['match', ['get', 'transport'], 'bus', colors.bus, 'marshrutka', colors.marshrutka, 'trolleybus', colors.trolleybus, 'tram', colors.tram, 'metro', colors.metro, 'train', getTransportModeVisual('TRAIN').color, 'suburban', getTransportModeVisual('TRAIN').color, 'city_train', colors.city_train, 'funicular', colors.funicular, colors.other] as never;
 
 /**
+ * A city-wide view draws every route of every operator at once, so anything that reads as a solid
+ * stroke turns into a knot. Lines start as a whisper and only gain weight once the viewport is
+ * small enough that a single corridor owns a few pixels.
+ */
+const routeOpacity = ['interpolate', ['linear'], ['zoom'], 10, 0.14, 12, 0.26, 14, 0.46, 16, 0.72] as never;
+const routeWidth = ['interpolate', ['linear'], ['zoom'], 10, 0.7, 13, 1.3, 15, 2.2, 17, 3.2] as never;
+
+/**
  * A position is only as good as its proof, so the halo around a vehicle carries the telemetry
- * level (tagVehicleQuality) instead of a decorative glow: emerald = live GPS, amber = no timestamp,
+ * level (tagVehicleQuality) instead of a decorative glow: blue = live GPS, amber = estimated,
  * red = stale, slate = timetable, grey = unverified.
  */
 const TRUST_COLOR = ['#2563EB', '#F59E0B', '#DC2626', '#64748B', '#94A3B8'] as const;
 const vehicleRadius = ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 9] as never;
+/** MapLibre rejects `['+', <zoom expression>, n]` for circle-radius by silently dropping the layer, so the halo grades on its own. */
+const vehicleHaloRadius = ['interpolate', ['linear'], ['zoom'], 11, 10, 16, 15] as never;
 const qualityColor = ['match', ['get', 'mgQuality'], 'live', TRUST_COLOR[0], 'estimated', TRUST_COLOR[1], 'stale', TRUST_COLOR[2], 'scheduled', TRUST_COLOR[3], TRUST_COLOR[4]] as never;
 const qualityOpacity = ['match', ['get', 'mgQuality'], 'live', 0.4, 'estimated', 0.32, 'stale', 0.3, 'scheduled', 0.16, 0.12] as never;
 const dimUnverified = ['match', ['get', 'mgQuality'], 'live', 1, 'estimated', 1, 'scheduled', 1, 'stale', 0.55, 0.5] as never;
+
+const STATIC_CACHE_TTL_MS = 600_000;
+const STATIC_CACHE_LIMIT = 8;
 
 export class TransportLayerController {
   private enabled: ReadonlySet<TransportLayerId> = new Set();
   private data: Record<keyof typeof SOURCES, GeoJsonCollection> = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
   private aborters = new Map<string, AbortController>();
+  private requested = new Map<keyof typeof SOURCES, string>();
+  /** Only geometry that does not move is replayable; vehicle, scooter and geofence positions are always refetched. */
+  private readonly cacheable = new Set<keyof typeof SOURCES>(['routes', 'stops']);
+  private cache = new Map<string, { collection: GeoJsonCollection; at: number }>();
   private moveTimer: ReturnType<typeof setTimeout> | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private popup: maplibregl.Popup | null = null;
@@ -130,7 +147,8 @@ export class TransportLayerController {
   /** A basemap or theme change drops custom sources; rebuild them from cached data without refetching. */
   reinstall() { if (this.enabled.size) { this.install(); this.pushData(); this.applyDisplayPreferences(); } }
 
-  destroy() { this.teardown(); }
+  /** Leaving the map frees the memory; switching every layer off only stops the requests, so the geometry survives the next toggle. */
+  destroy() { this.teardown(); this.cache.clear(); }
 
   private teardown() {
     this.map.off('moveend', this.onMove);
@@ -140,7 +158,7 @@ export class TransportLayerController {
     if (this.moveTimer) clearTimeout(this.moveTimer);
     if (this.pollTimer) clearInterval(this.pollTimer);
     this.pollTimer = null; this.moveTimer = null;
-    this.aborters.forEach((controller) => controller.abort()); this.aborters.clear();
+    this.aborters.forEach((controller) => controller.abort()); this.aborters.clear(); this.requested.clear();
     this.popup?.remove(); this.popup = null;
     this.data = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
     publishVehicleQuality(null);
@@ -159,11 +177,11 @@ export class TransportLayerController {
     add(SOURCES.routes); add(SOURCES.stops); add(SOURCES.vehicles); add(SOURCES.micro, true); add(SOURCES.zones);
     const glyphs = this.hasGlyphs();
     const before = map.getLayer('marshgo-route-casing') ? 'marshgo-route-casing' : undefined; // transport layers sit under the user's own route
-    if (!map.getLayer('mg-t-routes')) map.addLayer({ id: 'mg-t-routes', type: 'line', source: SOURCES.routes, minzoom: minZoom.routes, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': lineColor, 'line-opacity': 0.85, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 15, 4] } }, before);
+    if (!map.getLayer('mg-t-routes')) map.addLayer({ id: 'mg-t-routes', type: 'line', source: SOURCES.routes, minzoom: minZoom.routes, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': lineColor, 'line-opacity': routeOpacity, 'line-width': routeWidth } }, before);
     if (glyphs && !map.getLayer('mg-t-route-label')) map.addLayer({ id: 'mg-t-route-label', type: 'symbol', source: SOURCES.routes, minzoom: 13, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-size': 11, 'text-font': ['Noto Sans Regular'] }, paint: { 'text-color': lineColor, 'text-halo-color': '#fff', 'text-halo-width': 2 } }, before);
     if (!map.getLayer('mg-t-stops')) map.addLayer({ id: 'mg-t-stops', type: 'circle', source: SOURCES.stops, minzoom: minZoom.stops, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 3, 17, 7], 'circle-color': '#ffffff', 'circle-stroke-color': '#0E1F35', 'circle-stroke-width': 1.5 } }, before);
     if (glyphs && !map.getLayer('mg-t-stop-label')) map.addLayer({ id: 'mg-t-stop-label', type: 'symbol', source: SOURCES.stops, minzoom: 15.5, layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-font': ['Noto Sans Regular'] }, paint: { 'text-color': '#0E1F35', 'text-halo-color': '#fff', 'text-halo-width': 2 } }, before);
-    if (!map.getLayer('mg-t-vehicle-halo')) map.addLayer({ id: 'mg-t-vehicle-halo', type: 'circle', source: SOURCES.vehicles, minzoom: minZoom.vehicles, paint: { 'circle-radius': ['+', vehicleRadius, 6], 'circle-color': qualityColor, 'circle-opacity': qualityOpacity, 'circle-blur': 0.42 } });
+    if (!map.getLayer('mg-t-vehicle-halo')) map.addLayer({ id: 'mg-t-vehicle-halo', type: 'circle', source: SOURCES.vehicles, minzoom: minZoom.vehicles, paint: { 'circle-radius': vehicleHaloRadius, 'circle-color': qualityColor, 'circle-opacity': qualityOpacity, 'circle-blur': 0.42 } });
     if (!map.getLayer('mg-t-vehicles')) map.addLayer({ id: 'mg-t-vehicles', type: 'circle', source: SOURCES.vehicles, minzoom: minZoom.vehicles, paint: { 'circle-radius': vehicleRadius, 'circle-color': lineColor, 'circle-opacity': dimUnverified, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
     if (glyphs && !map.getLayer('mg-t-vehicle-label')) map.addLayer({ id: 'mg-t-vehicle-label', type: 'symbol', source: SOURCES.vehicles, minzoom: 14, layout: { 'text-field': ['get', 'route'], 'text-size': 10, 'text-offset': [0, -1.4], 'text-font': ['Noto Sans Bold'], 'text-allow-overlap': false }, paint: { 'text-color': '#0E1F35', 'text-halo-color': '#fff', 'text-halo-width': 2 } });
     if (!map.getLayer('mg-t-micro-clusters')) map.addLayer({ id: 'mg-t-micro-clusters', type: 'circle', source: SOURCES.micro, minzoom: minZoom.micro, filter: ['has', 'point_count'], paint: { 'circle-color': '#0EA5E9', 'circle-opacity': 0.85, 'circle-radius': ['step', ['get', 'point_count'], 14, 25, 18, 100, 24], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
@@ -251,22 +269,43 @@ export class TransportLayerController {
 
   private bounds() { const b = this.map.getBounds(); return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }; }
 
-  private async load(key: keyof typeof SOURCES, task: (signal: AbortSignal) => Promise<GeoJsonCollection>) {
+  private paint(key: keyof typeof SOURCES, collection: GeoJsonCollection) {
+    this.data[key] = collection;
+    (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(collection as never);
+  }
+
+  private remember(cacheKey: string | null, collection: GeoJsonCollection) {
+    if (!cacheKey) return;
+    this.cache.set(cacheKey, { collection, at: Date.now() });
+    if (this.cache.size > STATIC_CACHE_LIMIT) this.cache.delete(this.cache.keys().next().value as string);
+  }
+
+  private async load(key: keyof typeof SOURCES, task: (signal: AbortSignal) => Promise<GeoJsonCollection>, signature?: string) {
+    if (signature && this.requested.get(key) === signature) return;
+    const cacheKey = signature && this.cacheable.has(key) ? `${key}|${signature}` : null;
+    const fresh = cacheKey ? this.cache.get(cacheKey) : undefined;
+    if (cacheKey && fresh && Date.now() - fresh.at < STATIC_CACHE_TTL_MS) {
+      this.requested.set(key, signature as string);
+      this.paint(key, fresh.collection);
+      return;
+    }
     this.aborters.get(key)?.abort();
+    if (signature) this.requested.set(key, signature);
     const controller = new AbortController(); this.aborters.set(key, controller);
     try {
       const fetched = await task(controller.signal);
       if (controller.signal.aborted) return;
       const collection = key === 'vehicles' ? tagVehicleQuality(fetched) : fetched;
-      this.data[key] = collection;
-      (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(collection as never);
+      this.paint(key, collection);
+      this.remember(cacheKey, collection);
       if (key === 'vehicles') publishVehicleQuality(summarizeVehicleQuality(collection));
     } catch (error) {
+      if (signature && this.requested.get(key) === signature) this.requested.delete(key);
       if (!controller.signal.aborted && !(error instanceof DOMException)) this.onHint('Не вдалося завантажити частину шарів. Спробуйте ще раз.');
     }
   }
 
-  private clear(key: keyof typeof SOURCES) { this.aborters.get(key)?.abort(); this.data[key] = empty; (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(empty as never); if (key === 'vehicles') publishVehicleQuality(null); }
+  private clear(key: keyof typeof SOURCES) { this.requested.delete(key); this.aborters.get(key)?.abort(); this.data[key] = empty; (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(empty as never); if (key === 'vehicles') publishVehicleQuality(null); }
 
   async refresh() {
     if (this.enabled.size === 0) return;
@@ -276,19 +315,19 @@ export class TransportLayerController {
     this.onHint(null);
     const tasks: Array<Promise<void>> = [];
     if (lines.length) {
-      if (this.display.routeLines && zoom >= minZoom.routes) tasks.push(this.load('routes', (signal) => productionApi.transportRoutes(viewportBbox(bounds, maxSpan.routes), lines, signal)));
+      if (this.display.routeLines && zoom >= minZoom.routes) { const bbox = viewportBbox(bounds, maxSpan.routes); tasks.push(this.load('routes', (signal) => productionApi.transportRoutes(bbox, lines, signal), `${bbox}|${lines.join(',')}`)); }
       else { this.clear('routes'); if (this.display.routeLines) hints.push('лінії'); }
       if (this.display.liveVehicles && zoom >= minZoom.vehicles) tasks.push(this.refreshVehicles()); else { this.clear('vehicles'); }
     } else { this.clear('routes'); this.clear('vehicles'); }
     if (this.enabled.has('STOPS')) {
-      if (zoom >= minZoom.stops) tasks.push(this.load('stops', (signal) => productionApi.transportStops(viewportBbox(bounds, maxSpan.stops), stopTypesFor(this.enabled), signal)));
+      if (zoom >= minZoom.stops) { const bbox = viewportBbox(bounds, maxSpan.stops); const types = stopTypesFor(this.enabled); tasks.push(this.load('stops', (signal) => productionApi.transportStops(bbox, types, signal), `${bbox}|${types.join(',')}`)); }
       else { this.clear('stops'); hints.push('зупинки'); }
     } else this.clear('stops');
     if (micro.length) {
       if (zoom >= minZoom.micro) {
         const bbox = viewportBbox(bounds, maxSpan.micro);
-        tasks.push(this.load('micro', (signal) => productionApi.transportMicromobility(bbox, micro, signal)));
-        if (micro.includes('scooter')) tasks.push(this.load('zones', (signal) => productionApi.transportMicromobilityGeofences(bbox, signal)));
+        tasks.push(this.load('micro', (signal) => productionApi.transportMicromobility(bbox, micro, signal), `${bbox}|${micro.join(',')}`));
+        if (micro.includes('scooter')) tasks.push(this.load('zones', (signal) => productionApi.transportMicromobilityGeofences(bbox, signal), bbox));
         else this.clear('zones');
       } else { this.clear('micro'); this.clear('zones'); hints.push('велосипеди, самокати й каршерінг'); }
     } else { this.clear('micro'); this.clear('zones'); }
