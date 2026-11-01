@@ -1,5 +1,6 @@
 import { routeResultSchema, type RouteRequest, type RouteResult } from '../../shared/navigation/contracts';
 import { NavigationProviderError } from '../../shared/navigation/errors';
+import { NETWORK_ERROR_CODE, networkFailureMessage, requestErrorMessage } from './requestErrorMessage';
 
 export interface TransitArrival {
   stopId: string;
@@ -449,7 +450,13 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
   const tokenUsed = accessToken;
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   if (tokenUsed) headers.set('authorization', `Bearer ${tokenUsed}`);
-  const response = await fetch(`${apiBase}/api/v1${path}`, { ...init, headers, credentials: 'include' });
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase}/api/v1${path}`, { ...init, headers, credentials: 'include' });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    throw new ProductionApiError(networkFailureMessage(typeof navigator === 'undefined' || navigator.onLine !== false), NETWORK_ERROR_CODE);
+  }
   const body = await response.json().catch(() => null) as { data?: T; error?: { code?: string; message?: string } } | null;
   if (response.status === 401 && retryAuth && accessToken && !path.startsWith('/auth/')) {
     if (tokenUsed !== accessToken) return request<T>(path, init, false);
@@ -468,7 +475,7 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
     if (response.status === 429 || body?.error?.code === 'rate_limit_exceeded') {
       throw new ProductionApiError('Забагато запитів за короткий час. Зачекайте кілька хвилин і спробуйте ще раз.', 'rate_limit_exceeded', response.status);
     }
-    throw new ProductionApiError(body?.error?.message || `Request failed (${response.status})`, body?.error?.code, response.status);
+    throw new ProductionApiError(requestErrorMessage(response.status, body?.error?.message, body?.error?.code), body?.error?.code, response.status);
   }
   if (response.status === 204) return undefined as T;
   return (body as ApiEnvelope<T>).data;

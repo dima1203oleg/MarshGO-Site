@@ -2,7 +2,7 @@ import { FormEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } f
 import {
   AlertCircle, ArrowDownUp, ArrowLeft, ArrowRight, Ban, Bell, CalendarDays, CarFront, ChevronDown, ChevronRight,
   CircleUserRound, Clock3, Compass, Eye, EyeOff, FileDown, Flag, Home, LogOut, MapPin, MessageCircle, Minus, Navigation, Pencil,
-  Plus, ScanLine, Search, ShieldCheck, Ticket, Users, X,
+  Plus, ScanLine, Search, ShieldCheck, Ticket, Users, WifiOff, X,
 } from 'lucide-react';
 
 import { Capacitor } from '@capacitor/core';
@@ -221,6 +221,7 @@ export function ProductionMarketplace() {
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [unreadConversations, setUnreadConversations] = useState<Record<string, number>>({});
   const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
   const [messageDraft, setMessageDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [journeySearchStartedAt, setJourneySearchStartedAt] = useState<number | null>(null);
@@ -568,6 +569,14 @@ export function ProductionMarketplace() {
     return () => { disposed = true; unsubscribe(); setRealtimeConnected(false); };
   }, [refreshUnreadConversations, selectedBooking?.id, tab]);
 
+  useEffect(() => {
+    const syncConnectivity = () => setIsOffline(navigator.onLine === false);
+    syncConnectivity();
+    window.addEventListener('online', syncConnectivity);
+    window.addEventListener('offline', syncConnectivity);
+    return () => { window.removeEventListener('online', syncConnectivity); window.removeEventListener('offline', syncConnectivity); };
+  }, []);
+
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setStatusMessage(''); setAuthError('');
     try {
@@ -632,8 +641,10 @@ export function ProductionMarketplace() {
       // where the message is actually rendered.
       setShowResults(false);
       const message = error instanceof Error ? error.message : '';
-      setStatusMessage(/authentication required|unauthorized/i.test(message)
-        ? 'Щоб отримати реальні пропозиції, увійдіть за номером телефону та повторіть пошук.'
+      const needsSignIn = (error instanceof ProductionApiError && (error.status === 401 || error.status === 403))
+        || /authentication required|unauthorized/i.test(message);
+      setStatusMessage(needsSignIn
+        ? 'Щоб отримати реальні пропозиції, увійдіть в акаунт і повторіть пошук.'
         : message || 'Не вдалося побудувати маршрут.');
     }
     finally { setBusy(false); setJourneySearchStartedAt(null); }
@@ -1502,7 +1513,7 @@ export function ProductionMarketplace() {
     </div>
     <TransportTypesPanel compact selection={transportSelection} groups={providerGroups} onChange={changeTransportSelection}
       onManageProviders={() => setTransportPickerOpen(true)}/>
-    <button type="submit" disabled={busy} className="search-submit mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 disabled:opacity-60"><Search size={17}/>{busy ? 'Шукаємо…' : 'Знайти маршрут'}<ArrowRight size={17}/></button>
+    <button type="submit" disabled={busy || isOffline} aria-label={isOffline ? 'Знайти маршрут: потрібне з’єднання з інтернетом' : undefined} className="search-submit mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 disabled:opacity-60">{isOffline ? <WifiOff size={17}/> : <Search size={17}/>}{busy ? 'Шукаємо…' : isOffline ? 'Немає з’єднання' : 'Знайти маршрут'}{!isOffline && <ArrowRight size={17}/>}</button>
   </form>;
 
   const sortedOffers = [...offers].sort((a, b) => offerSort === 'cheapest' ? a.price_per_seat_minor - b.price_per_seat_minor
@@ -1815,6 +1826,10 @@ export function ProductionMarketplace() {
   const immersiveRouteView = Boolean(selectedRouteMap || (showResults && (tab === 'search' || tab === 'home')));
   return <main className={`production-app min-h-[100svh] bg-[#f5f8fd] text-[#17243a] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[calc(5.3rem+env(safe-area-inset-bottom))]'}`}>
     {!hideSharedHeader && header}
+    {isOffline && !hideSharedHeader && <div className="mx-auto w-full max-w-xl px-5"><p role="status" aria-live="polite" data-testid="offline-notice" className="mg-fade flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] font-bold leading-snug text-amber-900 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+      <WifiOff size={15} aria-hidden="true" className="mt-px shrink-0"/>
+      <span>Офлайн: новий пошук, розклади, живі позиції та бронювання недоступні. Показуємо раніше завантажені дані — вони можуть бути неактуальними.</span>
+    </p></div>}
     {(!immersiveRouteView || Boolean(selectedOffer)) && status}
     <div className={immersiveRouteView ? '' : 'pt-1'}>{screen}</div>
     {navigationOverlay}

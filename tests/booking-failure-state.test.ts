@@ -20,6 +20,10 @@ describe('booking confirmation honesty', () => {
   it('localizes an unreachable server even though fetch rejects with a plain TypeError', () => {
     assert.equal(bookingFailureMessage(new TypeError('Failed to fetch')), NETWORK_FAILURE_TEXT);
     assert.equal(bookingFailureMessage(new Error('The operation was aborted.')), NETWORK_FAILURE_TEXT);
+    // The API layer now names the failure itself, so the booking-specific honesty still applies.
+    assert.equal(bookingFailureMessage(new ProductionApiError('Немає з’єднання з інтернетом. Перевірте мережу й повторіть спробу.', 'network_error')), NETWORK_FAILURE_TEXT);
+    assert.equal(boardingFailureMessage(new ProductionApiError('Немає зв’язку із сервером. Повторіть спробу за мить.', 'network_error')),
+      'Сервер не відповів. Посадку не підтверджено — повторіть сканування після відновлення зʼєднання.');
   });
 
   it('keeps an unmapped server answer visible instead of masking it with a generic failure', () => {

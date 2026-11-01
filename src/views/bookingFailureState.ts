@@ -1,4 +1,13 @@
 import { ProductionApiError } from '../services/productionApi';
+import { NETWORK_ERROR_CODE } from '../services/requestErrorMessage';
+
+// The API layer names an unreachable server itself now; the raw browser strings stay matched too,
+// because fetch can still reject outside that layer.
+function isNetworkFailure(error: unknown): boolean {
+  return error instanceof Error
+    && ((error instanceof ProductionApiError && error.code === NETWORK_ERROR_CODE)
+      || /Failed to fetch|NetworkError|Load failed|abort/i.test(error.message));
+}
 
 // The public offer endpoint only answers for trips that are still open for
 // booking, so a 404 after a rejected booking is the server's own statement that
@@ -16,7 +25,7 @@ export const NETWORK_FAILURE_TEXT = 'Сервер не відповів. Бро�
 // product states in Ukrainian while preserving the client-side Ukrainian guards.
 export function deepLinkFailureMessage(error: unknown): string {
   if (isOfferNoLongerBookable(error)) return 'Цю поїздку більше не відкрити: останні місця зайняли, її скасовано або вона вже відправилася.';
-  if (error instanceof Error && /Failed to fetch|NetworkError|Load failed|abort/i.test(error.message)) return 'Сервер не відповів. Перевірте зʼєднання та спробуйте ще раз.';
+  if (isNetworkFailure(error)) return 'Сервер не відповів. Перевірте зʼєднання та спробуйте ще раз.';
   if (error instanceof Error && error.message.trim()) return error.message;
   return 'Посилання більше недоступне. Перевірте доступ і спробуйте ще раз.';
 }
@@ -26,7 +35,7 @@ export function deepLinkFailureMessage(error: unknown): string {
 export function bookingFailureMessage(error: unknown): string {
   // fetch() rejects an unreachable server with a plain TypeError, not a
   // ProductionApiError, so this has to be matched before the API branch.
-  if (error instanceof Error && /Failed to fetch|NetworkError|Load failed|abort/i.test(error.message)) return NETWORK_FAILURE_TEXT;
+  if (isNetworkFailure(error)) return NETWORK_FAILURE_TEXT;
   if (error instanceof ProductionApiError) {
     if (error.code === 'offer_expired' || /departure has passed/i.test(error.message)) return 'Відправлення цієї поїздки вже минуло — бронювання не створено.';
     if (/not enough available seats/i.test(error.message) || (error.status === 409 && !error.code)) return 'Вільних місць уже немає — бронювання не створено. Актуальну наявність оновлено.';
@@ -41,7 +50,7 @@ export function bookingFailureMessage(error: unknown): string {
 // POST /bookings/:id/boarding answers in English; the driver has to see the real
 // reason nothing was confirmed.
 export function boardingFailureMessage(error: unknown): string {
-  if (error instanceof Error && /Failed to fetch|NetworkError|Load failed|abort/i.test(error.message)) return 'Сервер не відповів. Посадку не підтверджено — повторіть сканування після відновлення зʼєднання.';
+  if (isNetworkFailure(error)) return 'Сервер не відповів. Посадку не підтверджено — повторіть сканування після відновлення зʼєднання.';
   if (error instanceof ProductionApiError) {
     if (error.code === 'ticket_invalid' || /ticket is invalid or expired/i.test(error.message)) return 'Квиток не підходить до цієї поїздки або прострочив. Посадку не підтверджено.';
     if (/booking cannot enter boarding/i.test(error.message)) return 'Бронювання більше не на етапі посадки. Посадку не підтверджено.';
@@ -55,7 +64,7 @@ export function boardingFailureMessage(error: unknown): string {
 // GET /bookings/:id/ticket refuses once the trip left 'confirmed'; the passenger
 // needs to know no ticket was issued rather than reading a raw English answer.
 export function ticketFailureMessage(error: unknown): string {
-  if (error instanceof Error && /Failed to fetch|NetworkError|Load failed|abort/i.test(error.message)) return 'Сервер не відповів. Квиток не видано — повторіть спробу після відновлення зʼєднання.';
+  if (isNetworkFailure(error)) return 'Сервер не відповів. Квиток не видано — повторіть спробу після відновлення зʼєднання.';
   if (error instanceof ProductionApiError) {
     if (/no longer valid/i.test(error.message) || error.status === 409) return 'Квиток не видано: ця поїздка вже на іншому етапі — посадка, рух або завершення.';
     if (error.status === 404) return 'Квиток не видано: бронювання недоступне для вашого акаунта.';

@@ -10,6 +10,7 @@ import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
   formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, searchPendingCopy,
+  unavailableTransportNotices,
 } from './journeyResultPresentation';
 import { strategyJourneys } from './journeyStrategySelection';
 
@@ -20,6 +21,14 @@ const strategyConfig: Array<{ id: ApiJourneyStrategy; label: string; Icon: typeo
   { id: 'FASTEST', label: 'Найшвидший', Icon: Timer, tone: 'text-[#FF9A32]' },
   { id: 'CHEAPEST', label: 'Найдешевший', Icon: Coins, tone: 'text-[#1FCB78]' },
 ];
+
+/** Amber = a caveat about the data; rose = something failed; slate = something is simply unavailable here. */
+const noticeTone = {
+  rose: { dot: 'bg-rose-500', text: 'text-rose-800 dark:text-rose-100' },
+  amber: { dot: 'bg-amber-500', text: 'text-amber-900 dark:text-amber-100' },
+  blue: { dot: 'bg-blue-500', text: 'text-blue-900 dark:text-blue-100' },
+  slate: { dot: 'bg-slate-400', text: 'text-slate-600 dark:text-slate-300' },
+} as const;
 
 function formatRouteCount(count: number): string {
   const plural = new Intl.PluralRules('uk-UA').select(count);
@@ -203,24 +212,19 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
     'maxPriceMinor:public-transit-fare-unavailable': 'обмеження ціни не застосовується до рейсів без тарифів у джерелі',
     'CHEAPEST:public-transit-fares-unavailable': 'найдешевший варіант серед розкладів без оприлюднених тарифів визначити неможливо',
     'maxTransfers:limited-to-4': 'планувальник будує максимум чотири пересадки',
-    'transportType:taxi:not-in-route-engine': 'маршрути таксі ще не входять до планувальника',
-    'transportType:carsharing:not-in-route-engine': 'маршрути каршерингу ще не входять до планувальника',
-    'transportType:car_rental:not-in-route-engine': 'оренда авто доступна окремо, але не додається до маршрутного ланцюжка',
-    'transportType:transfer:not-in-route-engine': 'зовнішні трансфери ще не входять до планувальника',
-    'transportType:bike:not-in-route-engine': 'велосипедні прокати ще не додаються до маршрутного ланцюжка',
-    'transportType:scooter:not-in-route-engine': 'самокати ще не додаються до маршрутного ланцюжка',
-    'transportType:moped:not-in-route-engine': 'прокат мопедів ще не додається до маршрутного ланцюжка',
-    'transportType:plane:not-in-route-engine': 'авіарейси не входять до затвердженого списку MARSHGO',
-    'transportType:walk:not-in-route-engine': 'пішки доступно лише як короткий підхід до зупинки, окремий маршрут не будується',
   };
 
-  const notices: Array<{ tone: 'amber' | 'blue' | 'rose'; text: string }> = [];
+  // Transport-type tokens are availability facts, not preferences: they get their own honest lines.
+  const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences);
+  const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
   if (result.partial && !result.partialReasons?.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
   if (result.partialReasons?.includes('walking_routing_unavailable')) notices.push({ tone: 'amber', text: 'Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.' });
-  if (result.unsupportedPreferences.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${result.unsupportedPreferences.map(value => preferenceMessages[value] ?? value).join('; ')}.` });
+  const preferenceTokens = result.unsupportedPreferences.filter(token => !token.startsWith('transportType:'));
+  if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${preferenceTokens.map(value => preferenceMessages[value] ?? value).join('; ')}.` });
   if (result.providerErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${result.providerErrors.join('; ')}.` });
   if (result.resultsTruncated) notices.push({ tone: 'blue', text: `Показано до ${result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із ${result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.` });
   if (result.candidateGenerationTruncated) notices.push({ tone: 'amber', text: 'Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.' });
+  unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
   sharedCaveats.forEach(text => notices.push({ tone: 'amber', text }));
 
   return <section aria-label="Результати мультимодального пошуку" className="mt-2">
@@ -228,23 +232,25 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
       {strategyConfig.map(({ id, label, Icon, tone }) => {
         const count = strategyJourneys(result, id).length;
         const active = activeStrategy === id;
-        return <button key={id} type="button" disabled={count === 0} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : 'border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] hover:border-[var(--mg-blue)]'}`}>
-          <Icon size={18} className={`shrink-0 ${active ? 'text-white' : tone}`} aria-hidden="true"/><span className="whitespace-nowrap text-[10px] font-extrabold leading-tight sm:text-[11px]">{label}</span>
+        const disabled = count === 0;
+        const filled = active && !disabled;
+        return <button key={id} type="button" disabled={disabled} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed ${filled ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : `border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] ${active ? 'border-[var(--mg-action)]' : disabled ? 'opacity-70' : 'hover:border-[var(--mg-blue)]'}`}`}>
+          <Icon size={18} className={`shrink-0 ${filled ? 'text-white' : tone}`} aria-hidden="true"/><span className="whitespace-nowrap text-[10px] font-extrabold leading-tight sm:text-[11px]">{label}</span>
         </button>;
       })}
     </div>
 
     {notices.length > 0 && <details className="search-notices mb-3 rounded-2xl border border-slate-200 bg-slate-50 dark:border-[#20354A] dark:bg-[#0D1B28]">
-      <summary aria-label={`Обмеження даних пошуку: ${notices.length}`} className={`search-notices-summary flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-[11px] font-extrabold ${notices.some(notice => notice.tone === 'rose') ? 'text-rose-800 dark:text-rose-100' : 'text-slate-700 dark:text-slate-200'}`}>
+      <summary aria-label={`Обмеження пошуку та недоступний транспорт: ${notices.length}`} className={`search-notices-summary flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-[11px] font-extrabold ${notices.some(notice => notice.tone === 'rose') ? 'text-rose-800 dark:text-rose-100' : 'text-slate-700 dark:text-slate-200'}`}>
         <Info size={14} aria-hidden="true"/>
-        <span className="flex-1">Обмеження даних пошуку</span>
+        <span className="flex-1">Обмеження пошуку та недоступний транспорт</span>
         <span className="rounded-full bg-slate-200/70 px-1.5 py-0.5 tabular-nums dark:bg-[#15283A]">{notices.length}</span>
         <ChevronRight size={16} aria-hidden="true" className="search-notices-chevron shrink-0"/>
       </summary>
       <ul className="search-notices-list space-y-1.5 px-3 pb-3">
         {notices.map(notice => <li key={notice.text} className="flex gap-2 text-[11px] leading-4">
-          <span aria-hidden="true" className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${notice.tone === 'rose' ? 'bg-rose-500' : notice.tone === 'blue' ? 'bg-blue-500' : 'bg-amber-500'}`}/>
-          <span className={notice.tone === 'rose' ? 'text-rose-800 dark:text-rose-100' : notice.tone === 'blue' ? 'text-blue-900 dark:text-blue-100' : 'text-amber-900 dark:text-amber-100'}>{notice.text}</span>
+          <span aria-hidden="true" className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${noticeTone[notice.tone].dot}`}/>
+          <span className={noticeTone[notice.tone].text}>{notice.text}</span>
         </li>)}
       </ul>
     </details>}
@@ -252,7 +258,15 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
     {shownJourneys.length ? <div className="space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} strategy={activeStrategy} index={index} caveats={shownCaveats[index].filter(text => !sharedCaveats.includes(text))} onOpen={onOpenMap}/>)}</div>
       : <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]">
         <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{result.journeys.length ? 'Спробуйте інший режим або змініть умови пошуку.' : 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{result.journeys.length
+          ? 'Спробуйте інший режим або змініть умови пошуку.'
+          : 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>
+        {unavailable.length > 0 && <ul className="mx-auto mt-3 max-w-sm space-y-1.5 text-left">
+          {unavailable.map(notice => <li key={notice.mode} className="flex gap-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+            <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400"/>
+            <span>{notice.text}</span>
+          </li>)}
+        </ul>}
       </div>}
   </section>;
 }

@@ -183,3 +183,49 @@ export function searchPendingCopy(elapsedSeconds: number): { title: string; note
   }
   return { title: seconds > 0 ? `Шукаємо маршрути · ${seconds} с` : 'Шукаємо маршрути…', note: null };
 }
+
+const transportModeNames: Record<string, string> = {
+  bus: 'Автобуси', tram: 'Трамваї', trolleybus: 'Тролейбуси', marshrutka: 'Маршрутки',
+  metro: 'Метро', train: 'Потяги', taxi: 'Таксі', bike: 'Велопрокати', scooter: 'Самокати',
+  carsharing: 'Каршеринг', car_rental: 'Оренда авто', moped: 'Мопеди', transfer: 'Зовнішні трансфери',
+  walk: 'Пішохідні маршрути', plane: 'Авіарейси', community: 'Попутки',
+};
+
+/** Machine-readable reason → the sentence a passenger can act on. */
+const transportBlockReasons: Record<string, string> = {
+  'no-routed-provider-in-corridor': 'у цьому коридорі немає жодного підключеного розкладу',
+  'not-in-route-engine': 'ще не входять до планувальника маршрутів',
+  'no-provider-configured': 'немає жодного підключеного джерела',
+  'feed_unavailable': 'розклад тимчасово недоступний',
+};
+
+export type UnavailableTransportNotice = { mode: string; text: string };
+
+/**
+ * The server reports a mode as unsupported when the passenger asked for it but no adapter had data
+ * in this corridor. `blockedProviders` lists every uncovered mode, including ones nobody chose, so
+ * it is only a reason lookup here — otherwise a bus-only search would lecture about metro and taxis.
+ */
+export function unavailableTransportNotices(
+  blockedProviders: readonly string[] = [],
+  unsupportedPreferences: readonly string[] = [],
+): UnavailableTransportNotice[] {
+  const reasons = new Map<string, string>();
+  for (const token of blockedProviders) {
+    const modeMatch = /^transportType:([a-z_]+):([a-z0-9_-]+)$/i.exec(token);
+    if (modeMatch) reasons.set(modeMatch[1], modeMatch[2]);
+  }
+
+  const byMode = new Map<string, UnavailableTransportNotice>();
+  for (const token of unsupportedPreferences) {
+    const modeMatch = /^transportType:([a-z_]+):([a-z0-9_-]+)$/i.exec(token);
+    if (!modeMatch || byMode.has(modeMatch[1])) continue;
+    const [, mode, reason] = modeMatch;
+    const effectiveReason = reasons.get(mode) ?? reason;
+    byMode.set(mode, {
+      mode,
+      text: `${transportModeNames[mode] ?? 'Цей вид транспорту'}: ${transportBlockReasons[effectiveReason] ?? 'недоступно в цьому пошуку'}.`,
+    });
+  }
+  return [...byMode.values()];
+}

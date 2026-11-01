@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ApiJourney } from '../src/services/productionApi';
 import {
-  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, searchPendingCopy,
+  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, searchPendingCopy, unavailableTransportNotices,
 } from '../src/views/journeyResultPresentation';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
@@ -123,5 +123,68 @@ describe('journey search pending copy', () => {
   it('floors fractional and negative elapsed time to a real second count', () => {
     assert.equal(searchPendingCopy(-4).title, 'Шукаємо маршрути…');
     assert.match(searchPendingCopy(12.9).title, /12 с$/);
+  });
+});
+
+describe('unavailableTransportNotices', () => {
+  // Captured from a real public search: Lviv, Личаківська → Городоцька, 2026-11-01.
+  const blockedProviders = [
+    'transportType:marshrutka:no-routed-provider-in-corridor',
+    'transportType:trolleybus:no-routed-provider-in-corridor',
+    'transportType:metro:no-routed-provider-in-corridor',
+    'transportType:taxi:no-routed-provider-in-corridor',
+    'transportType:bike:no-routed-provider-in-corridor',
+    'transportType:carsharing:no-routed-provider-in-corridor',
+    'transportType:transfer:no-routed-provider-in-corridor',
+    'door-to-door-walking:requires-WALKING_ROUTING_URL',
+    'walking-transfers-between-unmatched-stops',
+    'community-intermediate-pickup:requires-explicit-driver-approved-stop',
+  ];
+  const unsupportedPreferences = blockedProviders
+    .filter(token => token.startsWith('transportType:'))
+    .map(token => token.replace('no-routed-provider-in-corridor', 'not-in-route-engine'));
+
+  it('names every requested-but-unavailable mode in Ukrainian and never leaks a machine token', () => {
+    const texts = unavailableTransportNotices(blockedProviders, unsupportedPreferences).map(notice => notice.text);
+    for (const mode of ['Маршрутки', 'Тролейбуси', 'Метро', 'Таксі', 'Велопрокати', 'Каршеринг', 'Зовнішні трансфери']) {
+      assert.ok(texts.some(text => text.startsWith(`${mode}:`)), `no line for ${mode}`);
+    }
+    assert.ok(!texts.some(text => /transportType|no-routed-provider|not-in-route-engine|WALKING_ROUTING_URL/.test(text)), 'a raw token reached the UI');
+  });
+
+  it('says one sentence per mode even when two lists report it', () => {
+    const notices = unavailableTransportNotices(blockedProviders, unsupportedPreferences);
+    assert.equal(new Set(notices.map(notice => notice.mode)).size, notices.length);
+    assert.equal(notices.filter(notice => notice.mode === 'metro').length, 1);
+  });
+
+  // The server reports every uncovered mode in the corridor, not just the chosen ones; a passenger
+  // who asked for a tram must not be lectured about metro they never selected.
+  it('stays silent about modes the passenger did not ask for', () => {
+    const notices = unavailableTransportNotices(blockedProviders, ['transportType:tram:not-in-route-engine']);
+    assert.deepEqual(notices.map(notice => notice.mode), ['tram']);
+  });
+
+  it('keeps the specific corridor reason over the generic engine reason', () => {
+    const metro = unavailableTransportNotices(blockedProviders, unsupportedPreferences)
+      .find(notice => notice.mode === 'metro');
+    assert.match(metro!.text, /немає жодного підключеного розкладу/);
+  });
+
+  it('ignores search rules and non-transport preferences', () => {
+    const notices = unavailableTransportNotices(
+      ['door-to-door-walking:requires-WALKING_ROUTING_URL', 'walking-transfers-between-unmatched-stops'],
+      ['maxPriceMinor:public-transit-fare-unavailable', 'preferredVehicleClass', 'future-internal-token'],
+    );
+    assert.deepEqual(notices, []);
+  });
+
+  it('falls back to an honest «недоступно» instead of inventing a cause', () => {
+    const [notice] = unavailableTransportNotices(['transportType:train:something-new'], ['transportType:train:something-new']);
+    assert.equal(notice.text, 'Потяги: недоступно в цьому пошуку.');
+  });
+
+  it('returns nothing when the search blocked nothing', () => {
+    assert.deepEqual(unavailableTransportNotices([], []), []);
   });
 });
