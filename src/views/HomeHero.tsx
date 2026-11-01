@@ -23,8 +23,8 @@ const banners = [
 
 const actions = [
   { title: 'Навігація', subtitle: 'Побудувати маршрут', tone: 'navigation', icon: Navigation },
-  { title: 'Карта транспорту', subtitle: 'Зупинки, лінії, рух', tone: 'transport', icon: BusFront },
   { title: 'Опублікувати поїздку', subtitle: 'Попутка / маршрут', tone: 'publish', icon: CirclePlus },
+  { title: 'Карта транспорту', subtitle: 'Зупинки, лінії, рух', tone: 'transport', icon: BusFront },
   { title: 'Знайти маршрут', subtitle: 'Усі види транспорту', tone: 'search', icon: Search },
 ] as const;
 
