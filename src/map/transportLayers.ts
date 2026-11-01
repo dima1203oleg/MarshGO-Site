@@ -290,7 +290,8 @@ export class TransportLayerController {
     if (providerLink) node.append(providerLink);
     this.popup?.remove();
     const coordinates = feature.geometry.type === 'Point' ? feature.geometry.coordinates as [number, number] : [event.lngLat.lng, event.lngLat.lat] as [number, number];
-    this.popup = new maplibregl.Popup({ closeButton: true, offset: 12 }).setLngLat(coordinates).setDOMContent(node).addTo(this.map);
+    // closeOnMove defaults to true, which would dismiss the card the instant its own action eases the camera
+    this.popup = new maplibregl.Popup({ closeButton: true, offset: 12, closeOnMove: false }).setLngLat(coordinates).setDOMContent(node).addTo(this.map);
   };
 
   /**
