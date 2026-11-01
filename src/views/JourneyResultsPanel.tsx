@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ArrowLeftRight, ChevronRight, Coins, Heart, Info, Scale, Timer,
+  ArrowLeftRight, ChevronRight, Coins, Heart, Info, Scale, Star, Timer,
 } from 'lucide-react';
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
@@ -102,7 +102,8 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
   return <article
     data-testid="journey-result-card"
     data-journey-id={journey.id}
-    className={`journey-result-card relative isolate overflow-hidden rounded-[16px] border bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)] ${index === 0 ? 'border-blue-400 ring-1 ring-blue-100 dark:border-blue-600 dark:ring-blue-950' : 'border-slate-200 dark:border-[#20354A]'}`}
+    data-top-pick={index === 0 ? 'true' : undefined}
+    className={`journey-result-card relative isolate overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]`}
   >
     <button type="button" aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
       <span className="sr-only">Переглянути карту й деталі маршруту</span>
@@ -116,6 +117,8 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
         priceAccessibleLabel={`Загальна вартість: ${totalPrice === '—' ? 'невідома' : totalPrice}`}
         priceClassName="journey-result-total-price"
         priceUnavailable={totalPrice === '—'}
+        priceCaption={totalPrice === '—' ? <span data-testid="journey-result-price-caption" className="block max-w-[7.5rem] truncate text-[10px] font-semibold leading-4 text-slate-500 dark:text-slate-400">тариф невідомий</span> : undefined}
+        summaryNote={index === 0 ? <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-[#EAF3FF] px-2 py-[3px] text-[10px] font-extrabold uppercase tracking-[.07em] text-[#0B57A8] dark:bg-[#0E2A44] dark:text-[#7FC0FF]"><Star size={10} className="shrink-0 fill-current" aria-hidden="true"/>Рекомендований</span> : undefined}
         actionsClassName="journey-result-actions flex shrink-0 items-center gap-1"
         summaryRowClassName="journey-result-header"
         actions={<>

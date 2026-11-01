@@ -10,6 +10,7 @@ export function CanonicalRouteLip({
   priceAccessibleLabel,
   priceClassName = '',
   priceUnavailable = false,
+  priceCaption,
   distanceLabel,
   durationNote,
   actions,
@@ -31,6 +32,7 @@ export function CanonicalRouteLip({
   priceAccessibleLabel: string;
   priceClassName?: string;
   priceUnavailable?: boolean;
+  priceCaption?: ReactNode;
   distanceLabel?: string;
   durationNote?: ReactNode;
   actions: ReactNode;
@@ -56,6 +58,7 @@ export function CanonicalRouteLip({
         <span aria-hidden="true" className="h-7 w-px shrink-0 bg-slate-200 dark:bg-[#294258]"/>
         <span className={`flex flex-col leading-tight ${sheet ? 'min-w-0' : 'shrink-0'}`}>
           <strong aria-label={priceAccessibleLabel} className={`truncate ${sheet ? 'font-extrabold text-[15px]' : 'font-black text-[20px]'} tabular-nums ${priceUnavailable ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'} ${priceClassName}`}>{priceLabel}</strong>
+          {priceCaption}
           {distanceLabel && <span className="truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400">{distanceLabel}</span>}
         </span>
       </div>

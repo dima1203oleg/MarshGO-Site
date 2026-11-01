@@ -141,3 +141,34 @@ test('search trip details share one control family with thumb-sized steppers', a
   // The 8.6rem radial circle behind «Куди їдемо?» was pure decoration and fought the headline.
   assert.doesNotMatch(css, /\.home-intro::after \{[\s\S]{0,200}radial-gradient/, 'the decorative blob behind the search heading came back');
 });
+
+// The first card of every strategy tab used to carry a blue ring — the same visual language the
+// app uses for "selected" — while nothing was selected; opening a card navigates to the map screen.
+test('result cards mark the ranked pick instead of faking a selection state', async () => {
+  const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
+  const panel = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/JourneyResultsPanel.tsx'), 'utf8');
+  assert.match(panel, /data-top-pick=\{index === 0 \? 'true' : undefined\}/,
+    'the rank-1 journey must be exposed as data, not as an ad-hoc class');
+  assert.match(panel, /Рекомендований/, 'the stronger-looking card has to say why it looks different');
+  assert.doesNotMatch(panel, /ring-blue-100/, 'a selection ring on an unselected card is a false affordance');
+  assert.match(css, /\.journey-result-card\[data-top-pick="true"\] \{ border-color: #B9D8F7; \}/,
+    'the light theme lost its one-notch accent border for the ranked pick');
+  assert.doesNotMatch(css, /\.journey-result-card:first-of-type \{[\s\S]{0,80}border-color: #1687FF/,
+    'position-based border styling came back; it highlighted the first card in every tab');
+});
+
+// An unknown fare rendered as a bare em-dash with no explanation, and the segment scroll cue could
+// appear for flex rounding alone. Keep a measured floor for the cue and a caption beside the dash.
+test('segment scroll cue ignores rounding and unknown fare explains itself', async () => {
+  const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
+  const [strip, lip, panel] = await Promise.all([
+    read('../src/design-system/journey/JourneySegmentStrip.tsx'),
+    read('../src/design-system/journey/CanonicalRouteLip.tsx'),
+    read('../src/views/JourneyResultsPanel.tsx'),
+  ]);
+  assert.match(strip, /hidden >= 24/, 'the cue needs a floor a real stage chip can actually cross');
+  assert.doesNotMatch(strip, /clientWidth \+ 2/, 'the cue threshold drifted back to 2 px, where rounding alone triggers it');
+  assert.match(lip, /priceCaption\?: ReactNode;/, 'the shared lip needs one caption slot for unavailable prices');
+  assert.match(panel, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
+  assert.match(panel, /max-w-\[7\.5rem\] truncate/, 'the caption must not widen the summary row on 360 px phones');
+});

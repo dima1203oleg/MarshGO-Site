@@ -288,9 +288,13 @@ html.dark .journey-results .journey-result-card {
   border-color: #20384D !important;
   box-shadow: 0 7px 20px rgba(0, 0, 0, .24) !important;
 }
-html.dark .journey-results .journey-result-card:first-of-type {
-  border-color: #1687FF !important;
-}
+/*
+ * Position in the list is not selection. The rank-1 journey of the active mode is marked with a
+ * data attribute and a visible label, so its border only needs to be one notch stronger than the
+ * other cards — a full ring here read as "already opened" while nothing was selected.
+ */
+.journey-result-card[data-top-pick="true"] { border-color: #B9D8F7; }
+html.dark .journey-results .journey-result-card[data-top-pick="true"] { border-color: rgba(22,135,255,.5) !important; }
 html.dark .journey-results .journey-result-duration {
   color: #F5F9FF !important;
 }

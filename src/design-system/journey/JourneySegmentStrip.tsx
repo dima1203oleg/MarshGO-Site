@@ -37,8 +37,11 @@ export function JourneySegmentStrip({
     const element = scroller.current;
     if (!element) return;
     const syncScrollState = () => {
+      const hidden = element.scrollWidth - element.clientWidth;
       const next = {
-        overflow: element.scrollWidth > element.clientWidth + 2,
+        // Sub-pixel flex rounding leaves a couple of stray units behind; a 44 px button must not
+        // cover the last stage of the route because of them.
+        overflow: hidden >= 24,
         atEnd: element.scrollLeft + element.clientWidth >= element.scrollWidth - 10,
       };
       setScrollState(current => current.overflow === next.overflow && current.atEnd === next.atEnd ? current : next);
