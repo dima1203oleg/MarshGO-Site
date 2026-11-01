@@ -148,8 +148,8 @@ export function QrScanner({ onToken, onClose }: { onToken: (token: string) => vo
             {notice || 'Камера увімкнюється… Дозвольте доступ, якщо браузер запитає.'}
           </p>
         )}
-        <button type="button" onClick={onClose} aria-label="Закрити сканер" className="absolute right-2 top-2 rounded-lg bg-white/85 p-1.5 text-slate-700">
-          <X size={15} />
+        <button type="button" onClick={onClose} aria-label="Закрити сканер" className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-lg bg-white/85 text-slate-700">
+          <X size={18} />
         </button>
       </div>
       <canvas ref={canvasRef} className="hidden" />
