@@ -547,14 +547,14 @@ html.dark .journey-result-card [data-segment-mode] { filter: saturate(1.08); }
   box-shadow: 0 -8px 28px rgba(20, 49, 87, .07);
 }
 .app-tabbar button { min-height: 2.9rem; }
-.app-tabbar button[aria-current="page"] { color: var(--mg-blue); }
+.app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
 html.dark .app-tabbar {
   border-color: #263648 !important;
   background: rgba(17, 24, 32, .96) !important;
   box-shadow: 0 -8px 28px rgba(0, 0, 0, .28);
   color: #B6C2D0;
 }
-html.dark .app-tabbar button[aria-current="page"] { color: #1687FF; }
+html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
 .auth-screen { isolation: isolate; min-height: 100svh; min-height: 100dvh; }
 .auth-screen button { min-height: 44px; }
 .auth-screen input { min-height: 48px; font-size: 16px; }
@@ -757,7 +757,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: #1687FF; }
   }
   .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg { color: var(--mg-blue); }
   .app-tabbar-inner button:not(.app-create-button) > span { font-size: 11px; }
-  .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] > span { font-weight: 700; color: var(--mg-blue); }
+  .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] > span { font-weight: 700; color: var(--mg-blue-ink); }
   .app-tabbar-inner .app-create-button {
     order: initial;
     grid-column: 3;
