@@ -308,7 +308,7 @@ export function ProductionMarketplace() {
       if (active) setStatusMessage(error instanceof Error ? error.message : 'Не вдалося відновити результати пошуку.');
     });
     if (parsed.mode === 'planner') {
-      setStatusMessage('Параметри планування відновлено. Натисніть «Оптимізувати весь маршрут», щоб оновити варіанти.');
+      setStatusMessage('Параметри планування відновлено. Натисніть «Знайти маршрут», щоб оновити варіанти.');
     }
     return () => { active = false; };
   }, [loading, locationKey, route?.kind, route?.tab, tab, user?.id]);
