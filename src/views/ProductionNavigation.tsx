@@ -578,10 +578,10 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     </div>}
   </section> : null;
 
-  if (!session) return <main className="min-h-[100svh] bg-[#f5f8fd] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe text-[#17243a]">
+  if (!session) return <main className="min-h-[100svh] bg-[#f5f8fd] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe text-[#17243a] dark:text-[#F5F9FF]">
     <div className="mx-auto max-w-xl">
       <button onClick={onBack} className="mt-3 grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm" aria-label="Назад"><ArrowLeft size={19}/></button>
-      <div className="mt-7"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-white"><Navigation size={24}/></span><p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-blue-600">MARSHGO Navigation</p><h1 className="mt-1 text-2xl font-extrabold">Куди прямуєте?</h1><p className="mt-2 text-sm leading-5 text-slate-500">Побудуємо реальний автомобільний маршрут від вашої GPS-позиції. Геолокація передаватиметься лише під час відкритого екрана.</p></div>
+      <div className="mt-7"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-white"><Navigation size={24}/></span><p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">MARSHGO Navigation</p><h1 className="mt-1 text-2xl font-extrabold">Куди прямуєте?</h1><p className="mt-2 text-sm leading-5 text-slate-500">Побудуємо реальний автомобільний маршрут від вашої GPS-позиції. Геолокація передаватиметься лише під час відкритого екрана.</p></div>
       <div className="mt-6 rounded-[1.5rem] bg-white p-4 shadow-sm">
         <label className="block text-xs font-bold text-slate-500">Пункт призначення</label>
         <div className="mt-2 flex gap-2"><input value={destinationText} onChange={(event) => { setDestinationText(event.target.value); setDestination(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void searchDestination(); } }} placeholder="Наприклад, Львів" className="min-w-0 flex-1 rounded-xl bg-slate-50 px-3 py-3 text-sm outline-none"/><button type="button" onClick={() => void searchDestination()} disabled={busy || destinationText.trim().length < 3} className="rounded-xl bg-blue-50 px-3 text-xs font-bold text-blue-700 disabled:opacity-50">Знайти</button></div>
@@ -612,7 +612,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const previewCenter = navigationState.currentLocation
     ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number]
     : liveFix ?? session.current_location ?? session.route?.[0] ?? null;
-  return <main aria-hidden={!isPresented} className={`fixed inset-0 z-20 overflow-hidden bg-[#dbeafe] text-[#17243a] dark:bg-[#081B35] dark:text-white ${isPresented ? '' : 'invisible pointer-events-none'}`}>
+  return <main aria-hidden={!isPresented} className={`fixed inset-0 z-20 overflow-hidden bg-[#dbeafe] text-[#17243a] dark:text-[#F5F9FF] dark:bg-[#081B35] dark:text-white ${isPresented ? '' : 'invisible pointer-events-none'}`}>
     <MarshGoMap route={session.route ?? []} vehicle={navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] : liveFix ?? session.current_location} heading={liveHeading} overlays focusMode={focusMode} onStatus={setMapStatus} onAdapter={(adapter) => { mapRef.current = adapter; if (adapter) adapter.onCameraModeChange = (mode) => setFollowing(mode === 'FOLLOW' || mode === 'FOLLOW_HEADING'); }} />
     {routed && !focusMode && <div aria-label="MARSHGO" className="absolute left-4 z-[490] select-none text-[1.3rem] font-black tracking-[-.06em] text-[#0B1730] drop-shadow-sm dark:text-white" style={{ top: 'max(.6rem, env(safe-area-inset-top))' }}>MARSH<span className="text-[#0878F9]">GO</span></div>}
     {!routed && <>
