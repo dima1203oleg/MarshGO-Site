@@ -56,6 +56,33 @@ export function viewportBbox(bounds: { west: number; south: number; east: number
   return [west, south, east, north].map((value) => value.toFixed(5)).join(',');
 }
 
+/** Only the trust levels that actually move can be followed; a timetable dot has no live position to keep in view. */
+export const isFollowableQuality = (quality: unknown): boolean => quality === 'live' || quality === 'estimated';
+
+export function distanceMetersBetween(a: [number, number], b: [number, number]): number {
+  const radians = (value: number) => (value * Math.PI) / 180;
+  const dLat = radians(b[1] - a[1]);
+  const dLon = radians(b[0] - a[0]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(radians(a[1])) * Math.cos(radians(b[1])) * Math.sin(dLon / 2) ** 2;
+  return 6371000 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/**
+ * The nearest stop among the ones already loaded. The stops layer only covers the current viewport,
+ * so the caller must never present this as the stop of the vehicle's route or as a walking route.
+ */
+export function nearestStopTo(stops: GeoJsonCollection, point: [number, number]): { name: string; distanceMeters: number; coordinates: [number, number] } | null {
+  let best: { name: string; distanceMeters: number; coordinates: [number, number] } | null = null;
+  for (const feature of stops.features) {
+    if (feature.geometry.type !== 'Point' || !Array.isArray(feature.geometry.coordinates)) continue;
+    const coordinates = feature.geometry.coordinates.slice(0, 2) as [number, number];
+    if (!coordinates.every(Number.isFinite)) continue;
+    const distance = Math.round(distanceMetersBetween(point, coordinates));
+    if (best === null || distance < best.distanceMeters) best = { name: String(feature.properties.name ?? 'Зупинка'), distanceMeters: distance, coordinates };
+  }
+  return best;
+}
+
 const colors: Record<string, string> = {
   bus: getTransportModeVisual('BUS').color,
   marshrutka: getTransportModeVisual('MINIBUS').color,
@@ -107,6 +134,8 @@ export class TransportLayerController {
   private moveTimer: ReturnType<typeof setTimeout> | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private popup: maplibregl.Popup | null = null;
+  /** The vehicle whose camera the user asked to hold; dropped as soon as the source stops reporting it. */
+  private followVehicleId: string | null = null;
   private readonly onMove = () => { if (this.moveTimer) clearTimeout(this.moveTimer); this.moveTimer = setTimeout(() => void this.refresh(), 350); };
   private readonly onVisibility = () => { if (document.visibilityState === 'visible') void this.refreshVehicles(); };
 
@@ -164,6 +193,7 @@ export class TransportLayerController {
     this.popup?.remove(); this.popup = null;
     this.data = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
     this.notices.clear();
+    this.followVehicleId = null;
     publishVehicleQuality(null);
     for (const id of ['mg-t-micro-zones-outline', 'mg-t-micro-zones-fill', 'mg-t-micro-count', 'mg-t-micro-clusters', 'mg-t-micro-points', 'mg-t-vehicle-label', 'mg-t-vehicles', 'mg-t-vehicle-halo', 'mg-t-stop-label', 'mg-t-stops', 'mg-t-route-label', 'mg-t-routes']) if (this.map.getLayer(id)) this.map.removeLayer(id);
     for (const id of Object.values(SOURCES)) if (this.map.getSource(id)) this.map.removeSource(id);
@@ -200,6 +230,7 @@ export class TransportLayerController {
     const feature = event.features?.[0]; if (!feature) return;
     const properties = feature.properties; const node = document.createElement('div'); node.style.cssText = 'font:600 12px system-ui;color:#0E1F35;max-width:220px';
     let providerLink: HTMLAnchorElement | null = null;
+    let vehicleActions: HTMLElement | null = null;
     const title = document.createElement('div');
     const detail = document.createElement('div'); detail.style.cssText = 'font-weight:500;color:#64748B;margin-top:2px';
     const names: Record<string, string> = { city_train: 'Міська електричка', funicular: 'Фунікулер', station: 'Пункт прокату' };
@@ -213,6 +244,9 @@ export class TransportLayerController {
       const age = Number.isFinite(timestamp) ? Math.max(0, Math.round((Date.now() - timestamp) / 1000)) : null;
       const speed = typeof properties.speed === 'number' ? `${Math.round(properties.speed * 3.6)} км/год` : '';
       detail.textContent = [vehicleQualityWord(properties), age === null ? '' : `оновлено ${age} с тому`, speed].filter(Boolean).join(' · ');
+      const point = feature.geometry.type === 'Point' && Array.isArray(feature.geometry.coordinates)
+        ? feature.geometry.coordinates.slice(0, 2) as [number, number] : null;
+      vehicleActions = this.vehicleActions(properties, point);
     }
     else if (properties.kind) {
       const kind = String(properties.kind);
@@ -252,11 +286,82 @@ export class TransportLayerController {
       detail.textContent = [routes, types].filter(Boolean).join(' · ');
     }
     node.append(title, detail);
+    if (vehicleActions) node.append(vehicleActions);
     if (providerLink) node.append(providerLink);
     this.popup?.remove();
     const coordinates = feature.geometry.type === 'Point' ? feature.geometry.coordinates as [number, number] : [event.lngLat.lng, event.lngLat.lat] as [number, number];
     this.popup = new maplibregl.Popup({ closeButton: true, offset: 12 }).setLngLat(coordinates).setDOMContent(node).addTo(this.map);
   };
+
+  /**
+   * The two actions the live-map contract asks a vehicle to offer. Both are refused rather than faked:
+   * a timetable dot has nothing to follow, and stops outside the loaded viewport simply are not known yet.
+   */
+  private vehicleActions(properties: Record<string, unknown>, point: [number, number] | null): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:9px';
+    const id = typeof properties.id === 'string' ? properties.id : null;
+    const follow = this.mapActionButton(this.followVehicleId === id ? 'Припинити стежити' : 'Стежити', true);
+    if (id === null || point === null || !isFollowableQuality(properties.mgQuality)) {
+      this.disableAction(follow, properties.mgQuality === 'stale'
+        ? 'Позиція застаріла — стежити ні за чим'
+        : 'Борт без живого GPS — стеження недоступне');
+    } else {
+      follow.addEventListener('click', () => {
+        if (this.followVehicleId === id) {
+          this.followVehicleId = null;
+          follow.textContent = 'Стежити';
+          return;
+        }
+        this.followVehicleId = id;
+        follow.textContent = 'Припинити стежити';
+        this.map.easeTo({ center: point, duration: 500 });
+      });
+    }
+    const nearest = point === null ? null : nearestStopTo(this.data.stops, point);
+    const toStop = this.mapActionButton(nearest ? `До найближчої зупинки · ${nearest.distanceMeters} м` : 'До найближчої зупинки', false);
+    if (nearest === null || point === null) {
+      this.disableAction(toStop, 'Зупинки ще не завантажені в полі зору — наблизьте мапу');
+    } else {
+      toStop.addEventListener('click', () => {
+        this.map.easeTo({ center: nearest.coordinates, duration: 600 });
+        this.onHint(`Найближча зупинка в полі зору — ${nearest.name}, приблизно ${nearest.distanceMeters} м. Це відстань, а не маршрут пішки.`);
+      });
+    }
+    row.append(follow, toStop);
+    return row;
+  }
+
+  private mapActionButton(label: string, primary: boolean): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.setAttribute('data-testid', 'map-vehicle-action');
+    button.style.cssText = `min-height:44px;padding:0 13px;border-radius:13px;font:700 12px system-ui;cursor:pointer;border:1px solid ${primary ? 'transparent' : '#CBD5E1'};background:${primary ? '#0B63D6' : '#FFFFFF'};color:${primary ? '#FFFFFF' : '#0E1F35'}`;
+    return button;
+  }
+
+  private disableAction(button: HTMLButtonElement, reason: string) {
+    button.disabled = true;
+    button.title = reason;
+    button.style.cursor = 'not-allowed';
+    button.style.opacity = '.5';
+  }
+
+  /** A followed vehicle is only worth the camera while the source keeps reporting it. */
+  private trackFollowedVehicle() {
+    const id = this.followVehicleId;
+    if (id === null) return;
+    const feature = this.data.vehicles.features.find((item) => item.properties.id === id);
+    if (!feature || feature.geometry.type !== 'Point' || !Array.isArray(feature.geometry.coordinates)) {
+      this.followVehicleId = null;
+      this.onHint('Борт зник із живого джерела — стеження вимкнено.');
+      return;
+    }
+    const coordinates = feature.geometry.coordinates.slice(0, 2) as [number, number];
+    this.map.easeTo({ center: coordinates, duration: 1_200 });
+    this.popup?.setLngLat(coordinates);
+  }
 
   private readonly onRouteClick = (event: MapMouseEvent & { features?: Array<{ properties: Record<string, unknown> }> }) => {
     const properties = event.features?.[0]?.properties;
@@ -275,6 +380,7 @@ export class TransportLayerController {
   private paint(key: keyof typeof SOURCES, collection: GeoJsonCollection) {
     this.data[key] = collection;
     (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(collection as never);
+    if (key === 'vehicles') this.trackFollowedVehicle();
   }
 
   /** Painting is the one place that knows both the geometry and the server's account of what it could not serve. */
@@ -317,7 +423,7 @@ export class TransportLayerController {
     }
   }
 
-  private clear(key: keyof typeof SOURCES) { this.requested.delete(key); this.aborters.get(key)?.abort(); this.notices.delete(key); this.data[key] = empty; (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(empty as never); if (key === 'vehicles') publishVehicleQuality(null); }
+  private clear(key: keyof typeof SOURCES) { this.requested.delete(key); this.aborters.get(key)?.abort(); this.notices.delete(key); this.data[key] = empty; (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(empty as never); if (key === 'vehicles') { this.followVehicleId = null; publishVehicleQuality(null); } }
 
   async refresh() {
     if (this.enabled.size === 0) return;

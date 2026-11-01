@@ -76,7 +76,7 @@ describe('vehicle data quality on the live map', () => {
     const layers = readFileSync(new URL('../src/map/transportLayers.ts', import.meta.url), 'utf8');
     const view = readFileSync(new URL('../src/views/TransportMapView.tsx', import.meta.url), 'utf8');
     assert.match(layers, /if \(key === 'vehicles'\) publishVehicleQuality\(summarizeVehicleQuality\(collection\)\)/, 'a loaded vehicles layer must publish its quality');
-    assert.match(layers, /if \(key === 'vehicles'\) publishVehicleQuality\(null\)/, 'a removed vehicles layer must remove the badge');
+    assert.match(layers, /if \(key === 'vehicles'\) \{[^{}]*publishVehicleQuality\(null\)/, 'a removed vehicles layer must remove the badge');
     assert.match(layers, /private teardown\(\) \{[\s\S]*?publishVehicleQuality\(null\);/, 'destroying the map must remove the badge');
     assert.match(layers, /detail\.textContent = \[vehicleQualityWord\(properties\)/, 'the popup must repeat the same level');
     assert.match(view, /<StatusBadge status=\{quality\.status\} label=\{quality\.label\}/, 'the map shows the badge');
