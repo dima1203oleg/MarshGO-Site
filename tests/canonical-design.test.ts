@@ -125,3 +125,19 @@ test('prefers-reduced-motion still neutralizes every animation and transition', 
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,160}animation-duration:\s*\.01ms !important/,
     'reduced-motion guard changed shape; verify it still overrides inline styles');
 });
+
+// The trip-details row used to be three hand-tuned Tailwind soups: a 32x24 px seat stepper and
+// two different paddings made the row read as three unrelated widgets.
+test('search trip details share one control family with thumb-sized steppers', async () => {
+  const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
+  const marketplace = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/ProductionMarketplace.tsx'), 'utf8');
+  assert.match(css, /\.search-screen \.journey-search-card \.trip-tile \{[\s\S]*?min-height: 3\.5rem;[\s\S]*?background: #f6f8fc;/,
+    'date, time and seats stopped sharing one surface, height and radius');
+  assert.match(css, /html\.dark \.search-screen \.journey-search-card \.trip-tile \{ background: #16202B; color: #F5F9FF; \}/,
+    'the dark theme must remap the same family, not each tile again');
+  assert.match(marketplace, /className="trip-tile trip-tile--stepper/, 'the seat stepper left the shared tile class');
+  assert.match(marketplace, /className="size-11[^"]*" aria-label="Менше пасажирів"/, 'seat steppers must be 44x44 pt, not 24 px wide');
+  assert.doesNotMatch(marketplace, /h-8 w-6/, 'a 24 px wide stepper is below the 44 pt minimum and regressed back');
+  // The 8.6rem radial circle behind «Куди їдемо?» was pure decoration and fought the headline.
+  assert.doesNotMatch(css, /\.home-intro::after \{[\s\S]{0,200}radial-gradient/, 'the decorative blob behind the search heading came back');
+});

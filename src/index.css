@@ -174,22 +174,10 @@ html.dark .app-header > div:first-child strong { color: #F5F9FF !important; }
   position: relative;
   overflow: hidden;
   margin: 0 -.25rem 1rem;
-  padding: 1.1rem 1rem 1.15rem;
-  border: 1px solid rgba(255,255,255,.75);
+  padding: 1.05rem 1rem 1.1rem;
+  border: 1px solid var(--mg-line);
   border-radius: 1.65rem;
-  background: linear-gradient(125deg, #e7f2ff 0%, #f8fbff 48%, #e8f4ff 100%);
-  box-shadow: inset 0 1px rgba(255,255,255,.9);
-}
-.home-screen .home-intro::after {
-  content: "";
-  position: absolute;
-  right: -1.35rem;
-  top: -.8rem;
-  width: 8.6rem;
-  height: 8.6rem;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,.9), rgba(64,151,255,.12) 65%, transparent 68%);
-  pointer-events: none;
+  background: #f2f7fd;
 }
 .journey-search-card {
   border-color: rgba(255,255,255,.94) !important;
@@ -197,8 +185,7 @@ html.dark .app-header > div:first-child strong { color: #F5F9FF !important; }
 }
 html.dark .search-screen .home-intro {
   border-color: rgba(83, 107, 134, .45);
-  background: linear-gradient(125deg, #10243a 0%, #111820 52%, #0d2035 100%);
-  box-shadow: inset 0 1px rgba(255,255,255,.035);
+  background: #102033;
 }
 html.dark .search-screen .home-greeting { color: #66B2FF; }
 html.dark .search-screen .home-title { color: #F5F9FF; }
@@ -234,6 +221,32 @@ html.dark .search-screen .journey-search-card [role="group"] > button {
 }
 html.dark .search-screen .journey-search-card .search-trip-details > button { color: #66B2FF; }
 html.dark .search-screen .journey-search-card .search-trip-details > div > button { color: #66B2FF; }
+/*
+ * Date, time and seat count are one control family, so they share a surface, a radius and a
+ * height instead of each carrying its own Tailwind soup. These rules are unlayered, which is
+ * why the fills and the paddings live here and nowhere else — utilities cannot override them.
+ */
+.search-screen .journey-search-card .trip-tile {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 3.5rem;
+  padding: .5rem .7rem;
+  border-radius: 1.05rem;
+  background: #f6f8fc;
+}
+.search-screen .journey-search-card .trip-tile--stepper { padding: .25rem .25rem .25rem .7rem; }
+.search-screen .journey-search-card .trip-tile small { font-size: 11px; font-weight: 600; line-height: 1.15; color: #5b6a80; }
+.search-screen .journey-search-card .trip-tile .trip-tile__value { font-size: 13px; font-weight: 800; line-height: 1.25; }
+.search-screen .journey-search-card .trip-tile button {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(148, 170, 196, .38);
+  background: #fff;
+}
+html.dark .search-screen .journey-search-card .trip-tile { background: #16202B; color: #F5F9FF; }
+html.dark .search-screen .journey-search-card .trip-tile small { color: #8FA0B3; }
+html.dark .search-screen .journey-search-card .trip-tile button { border-color: #263648; background: #111820; color: #66B2FF; }
 html.dark .search-screen .transport-types-inline > div > button {
   border-color: #536B86;
   background: #16202B;
@@ -543,8 +556,6 @@ html.dark .app-tabbar button[aria-current="page"] { color: #1687FF; }
   .production-app .transport-mode-grid { gap: .35rem; }
   .production-app .transport-mode-grid button { font-size: 9px; }
   .search-screen .journey-search-card .search-trip-details { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  .search-screen .journey-search-card .search-trip-details > button { grid-column: 1 / -1; }
-  .search-screen .journey-search-card .search-trip-details > div { grid-column: 1 / -1; justify-content: center; gap: .75rem; }
   .transport-types-inline > div:first-child { gap: .25rem; }
   .transport-types-inline > div:first-child h2 { white-space: nowrap; font-size: .8rem; }
 }
@@ -558,7 +569,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: #1687FF; }
   }
   .search-screen .home-intro { flex: none; margin: 0; padding: .65rem .85rem; border-radius: 1.2rem; }
   .search-screen .home-title { margin-top: 0 !important; font-size: 1.2rem; }
-  .search-screen .home-description { margin-top: .1rem !important; font-size: 10px; line-height: 1.3; }
+  .search-screen .home-description { margin-top: .1rem !important; font-size: 11px; line-height: 1.35; }
   .search-screen > .home-search-panel { flex: none; margin-top: 0 !important; }
   .search-screen .journey-search-card { padding: .7rem !important; }
   .search-screen .journey-search-card > .relative > [role="group"] { min-height: 3.65rem; padding-block: .55rem; }
@@ -1069,7 +1080,6 @@ html.dark .journey-search-card { background: var(--mg-surface-primary) !importan
 html.dark .maplibregl-ctrl-group { background: var(--mg-surface-primary); }
 html.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
 html.dark .home-screen .home-intro { background: linear-gradient(145deg, var(--mg-surface-primary), var(--mg-surface-secondary)) !important; border-color: var(--mg-border-subtle) !important; box-shadow: none !important; }
-html.dark .home-screen .home-intro::after { background: rgba(23,137,244,.18) !important; }
 html.dark .home-screen .home-title { color: var(--mg-ink-primary) !important; }
 html.dark .home-screen .home-description { color: var(--mg-ink-secondary) !important; }
 html.dark .home-screen .home-greeting { color: #8CC4FF !important; }
