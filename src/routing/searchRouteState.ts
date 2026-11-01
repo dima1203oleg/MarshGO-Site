@@ -61,6 +61,15 @@ export function buildSearchRoute(state: SearchRouteState): string {
   return `/journeys/search?${query.toString()}`;
 }
 
+/** The planner input and `kyivDateTimeInputToDate` only speak Kyiv wall time at
+ * minute precision, so a shared URL carrying seconds or a zone suffix must be
+ * reduced to that shape or «Знайти маршрут» silently does nothing. */
+function normalizeDeparture(value: string): string | null {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2}(?:\.\d{1,3})?)?$/.exec(value);
+  if (!match) return null;
+  return Number.isFinite(new Date(`${match[1]}T${match[2]}:00`).getTime()) ? `${match[1]}T${match[2]}` : null;
+}
+
 export function parseSearchRoute(search: string): SearchRouteState | null {
   const query = new URLSearchParams(search);
   const mode = query.get('mode');
@@ -79,12 +88,12 @@ export function parseSearchRoute(search: string): SearchRouteState | null {
     providerId: query.get('destinationProvider') ?? '',
   };
   const date = query.get('date') ?? '';
-  const departure = query.get('departure') ?? '';
+  const departure = normalizeDeparture(query.get('departure') ?? '');
 
   if ((mode !== 'offers' && mode !== 'planner') || !strategy || !strategies.has(strategy as SearchRouteState['strategy'])
     || !validPlace(origin) || !validPlace(destination) || !validDate(date)
     || !Number.isInteger(passengers) || passengers < 1 || passengers > 8
-    || !departure || departure.length > 32 || !Number.isFinite(new Date(departure).getTime())) return null;
+    || !departure) return null;
 
   return { origin, destination, date, passengers, departure, strategy: strategy as SearchRouteState['strategy'], mode };
 }
