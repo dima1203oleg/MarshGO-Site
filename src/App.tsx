@@ -157,7 +157,7 @@ function DemoApp() {
     <div className="min-h-screen bg-[#F5F8FD] flex flex-col font-sans selection:bg-[#1769F4] selection:text-white">
       {/* Offline Status Warning */}
       {!isOnline && (
-        <div className="bg-amber-600 text-white text-xs font-semibold px-4 py-2 text-center flex items-center justify-center gap-2 sticky top-0 z-50 shadow">
+        <div className="bg-amber-700 text-white text-xs font-semibold px-4 py-2 text-center flex items-center justify-center gap-2 sticky top-0 z-50 shadow">
           <WifiOff className="w-4 h-4 animate-pulse" />
           <span>Офлайн режим — відображаються збережені дані та маршрути.</span>
         </div>

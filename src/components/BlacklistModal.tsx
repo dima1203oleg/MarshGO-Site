@@ -133,7 +133,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
       >
         {/* Toast Alert */}
         {toastMessage && (
-          <div className="bg-emerald-600 text-white text-xs font-bold px-4 py-2 text-center animate-fadeIn">
+          <div className="bg-emerald-700 text-white text-xs font-bold px-4 py-2 text-center animate-fadeIn">
             {toastMessage}
           </div>
         )}
