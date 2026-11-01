@@ -1,7 +1,7 @@
 import { FormEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ArrowDownUp, ArrowLeft, ArrowRight, Ban, Bell, CalendarDays, CarFront, ChevronDown, ChevronRight,
-  CircleUserRound, Clock3, Compass, FileDown, Flag, Home, LogOut, MapPin, MessageCircle, Minus, Navigation, Pencil,
+  AlertCircle, ArrowDownUp, ArrowLeft, ArrowRight, Ban, Bell, CalendarDays, CarFront, ChevronDown, ChevronRight,
+  CircleUserRound, Clock3, Compass, Eye, EyeOff, FileDown, Flag, Home, LogOut, MapPin, MessageCircle, Minus, Navigation, Pencil,
   Plus, ScanLine, Search, ShieldCheck, Ticket, Users, X,
 } from 'lucide-react';
 
@@ -55,6 +55,43 @@ const demandRequirementLabels: Record<string, string> = { luggage: 'Багаж',
 
 /** Usable = level 1+ (plate and photo). Older servers only expose verification_status, so 'verified' also counts. */
 const vehicleUsable = (vehicle: ApiVehicle) => (vehicle.trust_level ?? 0) >= 1 || vehicle.verification_status === 'verified';
+
+/**
+ * Auth input: the placeholder alone is not a label, so every field carries a real one.
+ * A password reveal is the difference between a mistyped phone keyboard and a dead end.
+ */
+function AuthField({ id, label, value, onChange, type, autoComplete, placeholder, minLength, maxLength, invalid, describedBy }: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type: 'email' | 'password' | 'text';
+  autoComplete: string;
+  placeholder?: string;
+  minLength?: number;
+  maxLength?: number;
+  invalid?: boolean;
+  describedBy?: string;
+}) {
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = type === 'password';
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-[11px] font-bold uppercase tracking-[.14em] text-blue-100/80">{label}</label>
+      <div className="relative">
+        <input id={id} required type={isPassword && revealed ? 'text' : type} value={value} onChange={(event) => onChange(event.target.value)}
+          minLength={minLength} maxLength={maxLength} autoComplete={autoComplete} placeholder={placeholder}
+          aria-invalid={invalid || undefined} aria-describedby={describedBy}
+          className={`w-full rounded-xl border bg-white/10 px-4 py-3.5 text-[16px] text-white outline-none transition-[border-color,box-shadow] duration-[var(--mg-dur-fast)] placeholder:text-blue-100/55 focus:border-sky-300 focus:shadow-[0_0_0_3px_rgba(56,189,248,.26)] ${isPassword ? 'pr-12' : ''} ${invalid ? 'border-[#FF9CA7]/70' : 'border-white/20'}`} />
+        {isPassword && <button type="button" onClick={() => setRevealed((current) => !current)} aria-pressed={revealed}
+          aria-label={revealed ? 'Приховати пароль' : 'Показати пароль'}
+          className="mg-press absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-blue-100/80">
+          {revealed ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>}
+      </div>
+    </div>
+  );
+}
 
 export function ProductionMarketplace() {
   const [user, setUser] = useState<ApiUser | null>(null);
@@ -194,6 +231,7 @@ export function ProductionMarketplace() {
   const [deletionRequest, setDeletionRequest] = useState<ApiAccountDeletionRequest | null>(null);
   const [deletionBusy, setDeletionBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [authError, setAuthError] = useState('');
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [verificationTarget, setVerificationTarget] = useState<ApiVehicle | null>(null);
   const [registrationEvidence, setRegistrationEvidence] = useState<File | null>(null);
@@ -333,7 +371,7 @@ export function ProductionMarketplace() {
       setDeletionRequest(currentDeletionRequest);
     }).catch((error: unknown) => {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        setStatusMessage('Сервер не відповідає. Перевірте з’єднання та спробуйте увійти ще раз.');
+        setAuthError('Сервер не відповідає. Перевірте з’єднання та спробуйте увійти ще раз.');
       }
     }).finally(() => setLoading(false));
   }, [refreshBlockedUsers, refreshBookings, refreshJourneys, refreshMyOffers, refreshPassengerNavigationMatches, refreshVehicles]);
@@ -531,26 +569,26 @@ export function ProductionMarketplace() {
   }, [refreshUnreadConversations, selectedBooking?.id, tab]);
 
   const handleLogin = async (event: FormEvent) => {
-    event.preventDefault(); setBusy(true); setStatusMessage('');
+    event.preventDefault(); setBusy(true); setStatusMessage(''); setAuthError('');
     try {
       const currentUser = await productionApi.login(authEmail, authPassword);
       setUser(currentUser);
       const refreshedUser = await productionApi.me(); setUser(refreshedUser);
       await Promise.all([refreshBookings(), refreshJourneys(), refreshVehicles(), refreshBlockedUsers(), ...(refreshedUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(refreshedUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
       setShowLogin(false);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Помилка входу. Перевірте email та пароль.'); }
+    } catch (error) { setAuthError(error instanceof Error ? error.message : 'Помилка входу. Перевірте email та пароль.'); }
     finally { setBusy(false); }
   };
 
   const handleRegister = async (event: FormEvent) => {
-    event.preventDefault(); setBusy(true); setStatusMessage('');
+    event.preventDefault(); setBusy(true); setStatusMessage(''); setAuthError('');
     try {
       const currentUser = await productionApi.register({ email: authEmail, password: authPassword, displayName: authDisplayName });
       setUser(currentUser);
       const refreshedUser = await productionApi.me(); setUser(refreshedUser);
       await Promise.all([refreshBookings(), refreshJourneys(), refreshVehicles(), refreshBlockedUsers(), ...(refreshedUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(refreshedUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
       setShowLogin(false);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Помилка реєстрації. Перевірте дані.'); }
+    } catch (error) { setAuthError(error instanceof Error ? error.message : 'Помилка реєстрації. Перевірте дані.'); }
     finally { setBusy(false); }
   };
 
@@ -1382,12 +1420,12 @@ export function ProductionMarketplace() {
 
   if (loading) return <main className="grid min-h-[100svh] place-items-center bg-[#f5f8fd] text-sm text-slate-500">Завантажуємо захищену сесію…</main>;
   if (!user || showLogin) return (
-    <main className={`auth-screen relative flex min-h-[100svh] overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe ${authIntro ? 'auth-intro-screen' : ''} ${onboardingStep > 0 ? 'bg-[#f4f8ff] text-[#14243b]' : 'bg-[#081b35] text-white'} ${authIntro ? 'items-stretch' : onboardingStep > 0 ? 'h-[100svh] max-h-[100svh] items-stretch' : 'items-end sm:items-center sm:justify-center'}`}>
+    <main className={`auth-screen relative flex min-h-[100svh] overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe ${authIntro ? 'auth-intro-screen' : ''} ${onboardingStep > 0 ? 'bg-[#f4f8ff] text-[#14243b] dark:bg-[#0D1E36] dark:text-[#EAF1FA]' : 'bg-[#081b35] text-white'} ${authIntro ? 'items-stretch' : onboardingStep > 0 ? 'h-[100svh] max-h-[100svh] items-stretch' : 'items-end sm:items-center sm:justify-center'}`}>
       {authIntro && <img src="/images/welcome-kyiv-v1.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-[center_58%]" />}
-      <div className={`absolute inset-0 ${authIntro ? 'bg-[linear-gradient(180deg,rgba(4,17,37,.45)_0%,rgba(5,22,44,.08)_34%,rgba(5,15,29,.28)_57%,rgba(3,10,19,.9)_100%)]' : onboardingStep > 0 ? 'bg-[linear-gradient(180deg,#f4f8ff_0%,#ffffff_58%,#edf4ff_100%)]' : 'bg-[radial-gradient(ellipse_at_55%_35%,rgba(41,131,255,.65),transparent_48%),linear-gradient(180deg,#113d75_0%,#122f54_48%,#08121f_100%)]'}`} />
+      <div className={`absolute inset-0 ${authIntro ? 'bg-[linear-gradient(180deg,rgba(4,17,37,.45)_0%,rgba(5,22,44,.08)_34%,rgba(5,15,29,.28)_57%,rgba(3,10,19,.9)_100%)]' : onboardingStep > 0 ? 'bg-[linear-gradient(180deg,#f4f8ff_0%,#ffffff_58%,#edf4ff_100%)] dark:bg-[linear-gradient(180deg,#0D1E36_0%,#10263F_58%,#0B1B31_100%)]' : 'bg-[radial-gradient(ellipse_at_55%_35%,rgba(41,131,255,.65),transparent_48%),linear-gradient(180deg,#113d75_0%,#122f54_48%,#08121f_100%)]'}`} />
       {!authIntro && onboardingStep === 0 && <div className="absolute inset-x-0 bottom-0 h-[48%] bg-[linear-gradient(0deg,rgba(4,10,18,.88),transparent)]" />}
       <section className={`relative z-10 mx-auto flex w-full max-w-md flex-col ${authIntro ? 'min-h-[calc(100svh-env(safe-area-inset-top))] items-center pb-1 text-center' : 'pb-2'}`}>
-        {!authIntro && onboardingStep === 0 && <button onClick={() => { setAuthIntro(true); setShowLogin(false); setStatusMessage(''); }} className="mb-6 grid h-11 w-11 place-items-center rounded-full border border-white/25 bg-white/10" aria-label="Назад"><ArrowLeft size={19}/></button>}
+        {!authIntro && onboardingStep === 0 && <button onClick={() => { setAuthIntro(true); setShowLogin(false); setStatusMessage(''); setAuthError(''); }} className="mb-6 grid h-11 w-11 place-items-center rounded-full border border-white/25 bg-white/10" aria-label="Назад"><ArrowLeft size={19}/></button>}
         {authIntro ? <>
           <div className="mt-[max(3rem,10svh)] flex flex-col items-center drop-shadow-[0_2px_16px_rgba(4,12,28,.3)]">
             <BrandMark size="lg" className="mb-3 ring-1 ring-white/60 shadow-[0_0_38px_rgba(56,189,248,.42)]" />
@@ -1401,8 +1439,8 @@ export function ProductionMarketplace() {
             <p className="mt-3 max-w-sm text-sm leading-5 text-blue-50/90">Знайдіть попутку, сплануйте маршрут і домовтеся про поїздку в одному місці.</p>
           </div>
           <div className="w-full">
-            <button onClick={() => { setAuthIntro(false); setOnboardingStep(1); setShowLogin(false); }} className="w-full rounded-2xl bg-blue-600 px-5 py-[1.05rem] text-sm font-bold shadow-lg shadow-blue-950/45">Почати</button>
-            <button onClick={() => { setAuthIntro(false); setOnboardingStep(0); setShowLogin(true); }} className="mt-3 w-full rounded-2xl border border-white/50 bg-slate-950/25 px-5 py-3.5 text-sm font-semibold backdrop-blur-sm">У мене вже є акаунт</button>
+            <button onClick={() => { setAuthIntro(false); setOnboardingStep(1); setShowLogin(false); }} className="mg-press min-h-11 w-full rounded-2xl bg-[var(--mg-action)] px-5 py-[1.05rem] text-sm font-bold text-white shadow-lg shadow-blue-950/45 hover:bg-[var(--mg-action-hover)]">Почати</button>
+            <button onClick={() => { setAuthIntro(false); setOnboardingStep(0); setShowLogin(true); }} className="mg-press mt-3 min-h-11 w-full rounded-2xl border border-white/50 bg-slate-950/25 px-5 py-3.5 text-sm font-semibold backdrop-blur-sm">У мене вже є акаунт</button>
           </div>
         </> : onboardingStep > 0 ? <OnboardingSlides step={onboardingStep as 1 | 2 | 3} permissionMessage={onboardingPermissionMessage}
           onNext={() => setOnboardingStep(Math.min(3, onboardingStep + 1))} onBack={() => onboardingStep === 1 ? setAuthIntro(true) : setOnboardingStep(onboardingStep - 1)}
@@ -1410,22 +1448,23 @@ export function ProductionMarketplace() {
         <div className="mb-8 flex items-center gap-3"><BrandMark/><div><strong className="text-2xl tracking-tight">MARSH<span className="text-sky-400">GO</span></strong><p className="text-xs text-blue-100/80">Один маршрут. Усі способи доїхати.</p></div></div>
         {authMode === 'login' ? <>
           <h1 className="text-3xl font-extrabold">Вхід до MARSHGO</h1><p className="mt-2 text-sm text-blue-100/80">Увійдіть за email та паролем.</p>
-          <form onSubmit={handleLogin} className="mt-6 space-y-3">
-            <input required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Email адреса" autoComplete="email" />
-            <input required type="password" minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Пароль" autoComplete="current-password" />
-            <button disabled={busy} className="w-full rounded-2xl bg-blue-600 px-5 py-4 font-bold shadow-lg shadow-blue-900/40 disabled:opacity-60">{busy ? 'Входимо…' : 'Увійти'}</button>
+          <form onSubmit={handleLogin} aria-describedby={authError ? 'auth-error' : undefined} className="mt-6 space-y-3">
+            <AuthField id="login-email" label="Email" type="email" autoComplete="email" placeholder="name@example.com" value={authEmail} onChange={setAuthEmail} invalid={!!authError} describedBy={authError ? 'auth-error' : undefined} />
+            <AuthField id="login-password" label="Пароль" type="password" autoComplete="current-password" minLength={8} value={authPassword} onChange={setAuthPassword} invalid={!!authError} describedBy={authError ? 'auth-error' : undefined} />
+            <button type="submit" disabled={busy} className="mg-press mt-1 min-h-11 w-full rounded-2xl bg-[var(--mg-action)] px-5 py-4 font-bold text-white shadow-lg shadow-blue-950/40 hover:bg-[var(--mg-action-hover)] disabled:opacity-60">{busy ? 'Входимо…' : 'Увійти'}</button>
           </form>
-          <button type="button" onClick={() => { setAuthMode('register'); setStatusMessage(''); }} className="mt-3 w-full py-2 text-sm text-blue-100">Немає акаунта? Зареєструватися</button>
+          <button type="button" onClick={() => { setAuthMode('register'); setStatusMessage(''); setAuthError(''); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-sm text-blue-100 hover:text-white">Немає акаунта? Зареєструватися</button>
         </> : <>
           <h1 className="text-3xl font-extrabold">Реєстрація</h1><p className="mt-2 text-sm text-blue-100/80">Створіть акаунт MARSHGO.</p>
-          <form onSubmit={handleRegister} className="mt-6 space-y-3">
-            <input required minLength={2} maxLength={80} value={authDisplayName} onChange={(event) => setAuthDisplayName(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Ваше ім'я" autoComplete="name" />
-            <input required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Email адреса" autoComplete="email" />
-            <input required type="password" minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3.5 text-white outline-none placeholder:text-blue-100/55 focus:border-sky-300" placeholder="Пароль (мін. 8 символів)" autoComplete="new-password" />
-            <button disabled={busy} className="w-full rounded-2xl bg-blue-600 px-5 py-4 font-bold shadow-lg shadow-blue-900/40 disabled:opacity-60">{busy ? 'Реєструємо…' : 'Зареєструватися'}</button>
+          <form onSubmit={handleRegister} aria-describedby={authError ? 'auth-error' : undefined} className="mt-6 space-y-3">
+            <AuthField id="register-name" label="Ваше ім'я" type="text" autoComplete="name" minLength={2} maxLength={80} placeholder="Як вас називати водіям" value={authDisplayName} onChange={setAuthDisplayName} invalid={!!authError} describedBy={authError ? 'auth-error' : undefined} />
+            <AuthField id="register-email" label="Email" type="email" autoComplete="email" placeholder="name@example.com" value={authEmail} onChange={setAuthEmail} invalid={!!authError} describedBy={authError ? 'auth-error' : undefined} />
+            <AuthField id="register-password" label="Пароль" type="password" autoComplete="new-password" minLength={8} placeholder="Щонайменше 8 символів" value={authPassword} onChange={setAuthPassword} invalid={!!authError} describedBy={authError ? 'auth-error' : undefined} />
+            <button type="submit" disabled={busy} className="mg-press mt-1 min-h-11 w-full rounded-2xl bg-[var(--mg-action)] px-5 py-4 font-bold text-white shadow-lg shadow-blue-950/40 hover:bg-[var(--mg-action-hover)] disabled:opacity-60">{busy ? 'Реєструємо…' : 'Зареєструватися'}</button>
           </form>
-          <button type="button" onClick={() => { setAuthMode('login'); setStatusMessage(''); }} className="mt-3 w-full py-2 text-sm text-blue-100">Вже є акаунт? Увійти</button>
+          <button type="button" onClick={() => { setAuthMode('login'); setStatusMessage(''); setAuthError(''); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-sm text-blue-100 hover:text-white">Вже є акаунт? Увійти</button>
         </>}
+        {authError && <p id="auth-error" role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-[#FF9CA7]/45 bg-[rgba(255,90,106,.15)] px-3.5 py-3 text-sm leading-5 text-[#FFE2E6]"><AlertCircle size={16} className="mt-0.5 shrink-0 text-[#FF9CA7]"/><span className="min-w-0 flex-1">{authError}</span></p>}
         {statusMessage && <p role="status" className="mt-4 rounded-xl bg-white/10 p-3 text-sm text-white">{statusMessage}</p>}
         {!authIntro && <p className="mt-5 flex gap-2 text-xs leading-5 text-blue-100/70"><ShieldCheck size={16} className="shrink-0"/>Захищено шифруванням. Дані не передаються третім особам.</p>}
         </>}
@@ -1433,7 +1472,7 @@ export function ProductionMarketplace() {
     </main>
   );
 
-  if (notFound) return <main className="grid min-h-[70svh] place-items-center px-5 text-center"><div className="max-w-md rounded-3xl bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-600">404</p><h1 className="mt-2 text-2xl font-extrabold">Сторінку не знайдено</h1><p className="mt-2 text-sm text-slate-500">Перевірте адресу або поверніться до головної сторінки MARSHGO.</p><button onClick={goHome} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">На головну</button></div></main>;
+  if (notFound) return <main className="grid min-h-[70svh] place-items-center px-5 text-center"><div role="alert" className="max-w-md rounded-3xl bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">404</p><h1 className="mt-2 text-2xl font-extrabold">Сторінку не знайдено</h1><p className="mt-2 text-sm text-slate-500">Перевірте адресу або поверніться до головної сторінки MARSHGO.</p><button onClick={goHome} className="mg-press mt-5 min-h-11 rounded-xl bg-[var(--mg-action)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--mg-action-hover)]">На головну</button></div></main>;
 
   const status = statusMessage ? <div role="status" className="mx-auto mt-3 flex w-full max-w-xl items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800"><span className="min-w-0 flex-1">{statusMessage}</span><button type="button" aria-label="Закрити повідомлення" onClick={() => setStatusMessage('')} className="-mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-blue-100"><X size={16}/></button></div> : null;
   const unreadMessageCount = Object.values(unreadConversations).reduce((total, count) => total + count, 0);
