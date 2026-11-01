@@ -169,14 +169,29 @@ export function formatJourneyClock(value: string): string {
   }).format(new Date(value));
 }
 
+/** The first vehicle actually boarded; walking links to it but is not what the passenger catches. */
+function boardedLeg(journey: ApiJourney) {
+  const leg = journey.legs.find(item => item.mode !== 'WALK');
+  return leg && validTime(leg.departureAt) ? leg : null;
+}
+
+/**
+ * Ordering key for journeys the planner rates equally: the soonest departure wins.
+ * Unknown boarding sinks to the bottom instead of jumping the queue.
+ */
+export function journeyBoardingTime(journey: ApiJourney): number {
+  const leg = boardedLeg(journey);
+  return leg ? Date.parse(leg.departureAt!) : Number.MAX_SAFE_INTEGER;
+}
+
 /**
  * Alternatives that board the same long-distance vehicle share duration, price,
  * transfers and total waiting time, so their cards are indistinguishable unless
  * the clock of the first vehicle actually boarded is shown.
  */
 export function journeyBoardingNote(journey: ApiJourney): string {
-  const leg = journey.legs.find(item => item.mode !== 'WALK');
-  if (!leg || !validTime(leg.departureAt)) return '';
+  const leg = boardedLeg(journey);
+  if (!leg) return '';
   const label = leg.mode === 'COMMUNITY' ? 'Попутка' : journeyLegLabel(leg.mode, leg.transportType);
   return `${label} о ${formatJourneyClock(leg.departureAt)}`;
 }
