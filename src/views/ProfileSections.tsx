@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowLeft, CheckCircle2, ChevronDown, Clock3, XCircle, Shield,
   Download, Trash2, AlertTriangle, PhoneCall,
@@ -23,6 +23,13 @@ const typeLabel: Record<ApiVerificationRecord['verification_type'], string> = {
 
 const dateFormat = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeZone: 'Europe/Kyiv' });
 
+const gpsPermissionLabel: Record<PermissionState | 'unknown', string> = {
+  granted: 'Дозвіл надано',
+  prompt: 'Ще не запитували',
+  denied: 'Дозвіл вимкнено',
+  unknown: 'Статус невідомий',
+};
+
 const faq: Array<[string, string]> = [
   ['Як забронювати місце?', 'Знайдіть поїздку на головній або через пошук, відкрийте її та натисніть «Забронювати місце». Підтвердження з’явиться у вкладці «Поїздки».'],
   ['Як працює квиток MarshPass для посадки?', 'У «Поїздках» натисніть «Показати квиток для посадки». Водій скануватиме QR або підтвердить підписаний HMAC-токен під час вашої посадки в авто.'],
@@ -39,17 +46,64 @@ export function ProfileSections({
   vehicles,
   records,
   onLogoutAll,
+  onExportData,
+  onRequestDeletion,
+  onOpenSafetyReport,
 }: {
   section: ProfileSection;
   onBack: () => void;
   vehicles: ApiVehicle[];
   records: ApiVerificationRecord[];
   onLogoutAll: () => Promise<void>;
+  onExportData: () => Promise<void>;
+  onRequestDeletion: () => void;
+  onOpenSafetyReport: () => void;
 }) {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
-  const [locationConsent, setLocationConsent] = useState(true);
+  const [gpsPermission, setGpsPermission] = useState<PermissionState | 'unknown'>('unknown');
+  const [gpsNote, setGpsNote] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportNote, setExportNote] = useState('');
+
+  useEffect(() => {
+    let disposed = false;
+    navigator.permissions?.query({ name: 'geolocation' as PermissionName }).then((status) => {
+      if (disposed) return;
+      setGpsPermission(status.state);
+      status.addEventListener('change', () => setGpsPermission(status.state));
+    }).catch(() => undefined);
+    return () => { disposed = true; };
+  }, []);
+
+  const requestGpsPermission = () => {
+    setGpsNote('');
+    if (!navigator.geolocation) {
+      setGpsNote('Цей браузер не підтримує визначення місця.');
+      return;
+    }
+    setGpsNote('Запитуємо дозвіл у браузера…');
+    navigator.geolocation.getCurrentPosition(
+      () => setGpsNote('Дозвіл надано: MARSHGO може використовувати вашу позицію для маршрутів і зустрічі.'),
+      (error) => setGpsNote(error.code === error.PERMISSION_DENIED
+        ? 'Ви відхилили дозвіл. Увімкніть його в налаштуваннях сайту браузера.'
+        : 'Місце не визначилося. Спробуйте ще раз або введіть точку вручну.'),
+      { timeout: 10000, maximumAge: 60000 },
+    );
+  };
+
+  const exportPersonalData = async () => {
+    setExporting(true);
+    setExportNote('');
+    try {
+      await onExportData();
+    } catch {
+      setExportNote('Не вдалося сформувати файл. Спробуйте ще раз пізніше.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const title: Record<ProfileSection, string> = {
     documents: 'Документи та верифікація',
@@ -159,28 +213,27 @@ export function ProfileSections({
         <div className="space-y-3">
           <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <b className="text-sm text-[#0E1F35] dark:text-white">Точна GPS-геолокація</b>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   Використовується лише для побудови маршрутів та рандеву зустрічі. Дані не передаються рекламним мережам.
                 </p>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={locationConsent}
-                onClick={() => setLocationConsent(!locationConsent)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${
-                  locationConsent ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition ${
-                    locationConsent ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${gpsPermission === 'granted' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : gpsPermission === 'denied' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                {gpsPermissionLabel[gpsPermission]}
+              </span>
             </div>
+            <p className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+              Дозвіл видає браузер, а не MARSHGO. Вимкнути його можна в налаштуваннях доступу цього сайту.
+            </p>
+            <button
+              type="button"
+              onClick={requestGpsPermission}
+              className="mt-3 min-h-11 w-full rounded-xl bg-blue-600 px-4 text-xs font-bold text-white transition hover:bg-blue-700"
+            >
+              {gpsPermission === 'granted' ? 'Перевірити доступ ще раз' : 'Надати доступ до місця'}
+            </button>
+            {gpsNote && <p role="status" className="mt-2 text-xs text-slate-600 dark:text-slate-300">{gpsNote}</p>}
           </div>
 
           <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
@@ -195,27 +248,32 @@ export function ProfileSections({
             <div className="mt-3 space-y-2">
               <button
                 type="button"
-                onClick={() => window.open('/api/v1/users/me/export', '_blank')}
-                className="flex w-full items-center justify-between rounded-xl border border-slate-200 p-3 text-left text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                disabled={exporting}
+                onClick={() => void exportPersonalData()}
+                className="flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 p-3 text-left text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <span className="flex items-center gap-2">
                   <Download size={16} className="text-blue-600" />
-                  Завантажити копію моїх даних (JSON)
+                  {exporting ? 'Готуємо файл…' : 'Завантажити копію моїх даних (JSON)'}
                 </span>
                 <span className="text-[10px] text-slate-400">Експорт</span>
               </button>
+              {exportNote && <p role="status" className="text-[11px] text-rose-700 dark:text-rose-400">{exportNote}</p>}
 
               <button
                 type="button"
-                onClick={() => alert('Запит на видалення облікового запису зареєстровано. Протягом 14 днів дані буде безповоротно стерто.')}
-                className="flex w-full items-center justify-between rounded-xl border border-rose-200 p-3 text-left text-xs font-bold text-rose-700 transition hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                onClick={onRequestDeletion}
+                className="flex min-h-11 w-full items-center justify-between rounded-xl border border-rose-200 p-3 text-left text-xs font-bold text-rose-700 transition hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30"
               >
                 <span className="flex items-center gap-2">
                   <Trash2 size={16} className="text-rose-600" />
                   Подати запит на повне видалення профілю
                 </span>
-                <span className="text-[10px] text-rose-400">14 днів</span>
+                <span className="text-[10px] text-rose-400">Період очікування</span>
               </button>
+              <p className="text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                Запит підтверджується окремо й має період очікування зі скасуванням. Натискання кнопки саме по собі дані не стирає.
+              </p>
             </div>
           </div>
         </div>
@@ -231,23 +289,26 @@ export function ProfileSections({
             <p className="mt-1 text-xs text-rose-900/80 dark:text-rose-200/80 leading-relaxed">
               У разі виникнення загрози безпеці негайно зателефонуйте 102 або 112. Ви також можете надіслати сигнал тривоги команді безпеки MARSHGO.
             </p>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <a
                 href="tel:112"
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-rose-700"
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-600 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-rose-700"
               >
                 <PhoneCall size={14} />
                 Викликати 112
               </a>
               <button
                 type="button"
-                onClick={() => alert('Сигнал надіслано черговому координатору MARSHGO. Ми зв’яжемося з вами найближчим часом.')}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-rose-300 bg-white py-2.5 text-xs font-bold text-rose-700 shadow-sm transition hover:bg-rose-50 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-800"
+                onClick={onOpenSafetyReport}
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-300 bg-white px-3 text-xs font-bold text-rose-700 shadow-sm transition hover:bg-rose-50 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-800"
               >
                 <Shield size={14} />
-                Сигнал безпеки MARSHGO
+                Скарги та блокування
               </button>
             </div>
+            <p className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+              Скаргу надсилають із чату конкретної поїздки — там видно, на кого саме скаржаться. Окремої кнопки тривоги поза поїздкою в застосунку немає.
+            </p>
           </div>
 
           <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">

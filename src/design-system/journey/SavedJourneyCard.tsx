@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import type { ApiStoredJourney } from '../../services/productionApi';
 import { storedJourneyToApiJourney } from '../../routing/storedJourneyView';
+import { compactPlaceLabel, fullPlaceLabel } from '../../domain/placeLabel';
 import { passengersLabel } from '../../domain/plural';
 import { formatTransferCount } from '../../map/journeyRouteModel';
 import { journeyLegLabel } from '../../views/journeyLegLabel';
@@ -70,6 +71,8 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
   const endAt = clock(view.legs.at(-1)?.arrivalAt);
   const exception = journeyException(journey);
   const cancelledLegIds = new Set(journey.legs.filter((leg) => leg.state === 'CANCELLED').map((leg) => leg.id));
+  const routeTitle = `${compactPlaceLabel(journey.origin_name)} → ${compactPlaceLabel(journey.destination_name)}`;
+  const routeFullAddress = `${fullPlaceLabel(journey.origin_name)} → ${fullPlaceLabel(journey.destination_name)}`;
 
   const stripItems: JourneySegmentStripItem[] = segments.map((segment) => ({
     id: segment.id,
@@ -86,7 +89,7 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
     data-testid="saved-journey-card"
     className="relative isolate overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:border-[#20354A] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]"
   >
-    <button type="button" onClick={onOpen} aria-label={`Відкрити збережений маршрут: ${journey.origin_name} — ${journey.destination_name}, ${durationLabel}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`} className="absolute inset-0 z-0 h-full w-full rounded-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+    <button type="button" onClick={onOpen} aria-label={`Відкрити збережений маршрут: ${routeFullAddress}, ${durationLabel}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`} className="absolute inset-0 z-0 h-full w-full rounded-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
       <span className="sr-only">Карта й деталі маршруту</span>
     </button>
     <div className="pointer-events-none relative z-10 p-3">
@@ -94,8 +97,8 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${stateTone[journey.state] ?? 'bg-blue-50 text-blue-700 dark:bg-[#102746] dark:text-[#66B2FF]'}`}>{stateLabels[journey.state] ?? journey.state}</span>
         <span className="min-w-0 truncate text-right text-[11px] font-semibold text-slate-500 dark:text-slate-400">{departureLabel}{startAt ? ` · ${startAt}` : ''}</span>
       </div>
-      <h3 className="truncate text-[15px] font-extrabold leading-5 text-[#0E1F35] dark:text-[#F5F9FF]">
-        {journey.origin_name}<span aria-hidden="true" className="mx-1.5 text-[#0B63D6] dark:text-[#66B2FF]">→</span>{journey.destination_name}
+      <h3 className="truncate text-[15px] font-extrabold leading-5 text-[#0E1F35] dark:text-[#F5F9FF]" title={routeFullAddress}>
+        {routeTitle}
       </h3>
       <CanonicalRouteLip
         className="mt-1.5"
@@ -104,10 +107,11 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
         priceLabel={totalPrice}
         priceAccessibleLabel={`Загальна вартість: ${totalPrice === '—' ? 'невідома' : totalPrice}`}
         priceUnavailable={totalPrice === '—'}
+        priceCaption={totalPrice === '—' ? <span className="block max-w-[7.5rem] truncate text-[10px] font-semibold leading-4 text-slate-500 dark:text-slate-400">тариф невідомий</span> : undefined}
         distanceLabel={`${formatTransferCount(view.transfers)} · пішки ${formatJourneyDistance(view.walkingMeters)}`}
         summaryRowClassName="gap-2"
         items={stripItems}
-        ariaLabel={`Етапи збереженого маршруту: ${journey.origin_name} — ${journey.destination_name}`}
+        ariaLabel={`Етапи збереженого маршруту: ${routeTitle}`}
         actions={<span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#EAF3FF] text-[#0B63D6] dark:bg-[#102746] dark:text-[#66B2FF]"><ChevronRight size={17}/></span>}
         actionsClassName="shrink-0"
       />

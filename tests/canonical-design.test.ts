@@ -172,3 +172,68 @@ test('segment scroll cue ignores rounding and unknown fare explains itself', asy
   assert.match(panel, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
   assert.match(panel, /max-w-\[7\.5rem\] truncate/, 'the caption must not widen the summary row on 360 px phones');
 });
+
+// The profile used to hide the privacy and safety screens behind a menu that only listed three
+// entries, the FAQ told users to open them anyway, and their buttons fabricated outcomes:
+// an alert() claiming a data-wipe request was filed, an unauthenticated export GET, and a
+// switch that toggled local state while the browser owned the real permission.
+test('privacy and safety screens are reachable and only report real outcomes', async () => {
+  const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
+  const [marketplace, profile] = await Promise.all([
+    read('../src/views/ProductionMarketplace.tsx'),
+    read('../src/views/ProfileSections.tsx'),
+  ]);
+  assert.match(marketplace, /\['privacy','Приватність і геолокація'/, 'the privacy section must be in the profile menu');
+  assert.match(marketplace, /\['safety','Безпека та скарги'/, 'the safety section must be in the profile menu');
+  assert.match(marketplace, /onRequestDeletion=\{\(\)=>setConfirmDeletion\(true\)\}/,
+    'deletion has to open the real cooling-off dialog, not a message');
+  assert.doesNotMatch(profile, /alert\(/, 'an alert() is a fabricated outcome — the goal forbids fake success');
+  assert.doesNotMatch(profile, /window\.open\('\/api\/v1\/users\/me\/export'\)/,
+    'export must go through the authenticated download helper, not a bare GET in a new tab');
+  assert.match(profile, /navigator\.permissions\?\.query\(\{ name: 'geolocation'/,
+    'the GPS card reports the browser permission instead of a switch MARSHGO cannot enforce');
+  assert.match(profile, /Не вдалося сформувати файл/, 'a failed export has to say so on screen');
+});
+
+// A boarding ticket whose QR failed rendered an empty box under «Покажіть цей QR-код водієві»,
+// leaving the passenger at the car with no explanation and no way forward.
+test('boarding QR shows progress and an honest failure with a retry', async () => {
+  const qr = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/components/TicketQr.tsx'), 'utf8');
+  assert.match(qr, /if \(!dataUrl\) return <div aria-busy="true"/, 'the QR box needs a loading state instead of rendering nothing');
+  assert.match(qr, /QR-код не вдалося побудувати/, 'a failed QR must explain itself');
+  assert.match(qr, /Спробувати ще раз/, 'the passenger needs a retry, not a dead box');
+  assert.doesNotMatch(qr, /if \(!dataUrl\) return null;/, 'returning null hid the failure completely');
+});
+
+// The only dismiss control for every global message was a 16 px icon with no accessible name.
+test('global status messages have a labelled thumb-sized dismiss', async () => {
+  const marketplace = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/ProductionMarketplace.tsx'), 'utf8');
+  assert.match(marketplace, /aria-label="Закрити повідомлення" onClick=\{\(\) => setStatusMessage\(''\)\} className="-mr-2 grid h-11 w-11/,
+    'the status close button regressed to an unnamed 16 px target');
+});
+
+// A stage chip sliced in half by the viewport edge reads as a rendering bug, so the row fades at
+// the cut — but the fade must lift once the last chip is fully visible.
+test('segment ribbon fades only while chips are actually sliced', async () => {
+  const [strip, css] = await Promise.all([
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/design-system/journey/JourneySegmentStrip.tsx'), 'utf8'),
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8'),
+  ]);
+  assert.match(strip, /data-cue-at-end=\{scrollState\.atEnd \? 'true' : 'false'\}/,
+    'the viewport must expose whether the row is scrolled to its end');
+  assert.match(css, /\.journey-segment-tiles-viewport:not\(\[data-cue-at-end="true"\]\)[\s\S]{0,120}mask-image: linear-gradient\(to right/,
+    'the slice fade is CSS-driven and must lift at the end of the row');
+});
+
+// Trips rows, bookings and chat titles printed the raw 120-character geocoder label.
+test('trip and booking titles use the compact place label with the full address preserved', async () => {
+  const [marketplace, saved] = await Promise.all([
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/ProductionMarketplace.tsx'), 'utf8'),
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/design-system/journey/SavedJourneyCard.tsx'), 'utf8'),
+  ]);
+  assert.match(saved, /title=\{routeFullAddress\}/, 'the tooltip must still carry the complete address');
+  assert.match(saved, /compactPlaceLabel\(journey\.origin_name\)/, 'the saved card title reverted to the raw label');
+  assert.match(saved, /тариф невідомий/, 'a saved journey with an unknown fare has to caption the dash');
+  assert.match(marketplace, /compactPlaceLabel\(booking\.origin_name\)/, 'the booking card reverted to the raw label');
+  assert.match(marketplace, /compactPlaceLabel\(offer\.origin_name\)/, 'the offer rows reverted to the raw label');
+});

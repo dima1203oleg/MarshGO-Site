@@ -393,6 +393,14 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
 .journey-segment-tile-meta-value { font-weight: 700; }
 /* The scroll cue floats over the strip, so the last tile needs reserved space to stay readable. */
 .journey-segment-tiles:has(+ .journey-segment-scroll-cue) { padding-inline-end: 2.3rem; }
+/*
+ * A stage chip sliced in half by the viewport edge reads as a rendering bug. The fade says the row
+ * continues; it lifts at the end of the row, where nothing is sliced anymore.
+ */
+.journey-segment-tiles-viewport:not([data-cue-at-end="true"]) .journey-segment-tiles:has(+ .journey-segment-scroll-cue) {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3.4rem), transparent calc(100% - 1.1rem));
+  mask-image: linear-gradient(to right, #000 calc(100% - 3.4rem), transparent calc(100% - 1.1rem));
+}
 .journey-segment-scroll-cue {
   position: absolute;
   z-index: 2;

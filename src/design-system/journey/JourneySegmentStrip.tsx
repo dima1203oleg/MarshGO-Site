@@ -100,7 +100,7 @@ export function JourneySegmentStrip({
         }}
       />)}
     </div>
-    <div className="journey-segment-tiles-viewport">
+    <div className="journey-segment-tiles-viewport" data-cue-at-end={scrollState.atEnd ? 'true' : 'false'}>
       <div ref={scroller} id={scrollerId} className="journey-segment-tiles journey-result-segments no-scrollbar" role="list" aria-label={ariaLabel}>
         {items.map(item => {
           const selected = activeItemId === item.id;
