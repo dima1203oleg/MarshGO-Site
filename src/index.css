@@ -47,6 +47,9 @@ html.dark {
   --mg-surface-primary: #111820;
   --mg-surface-secondary: #16202B;
   --mg-surface-tint: #16202B;
+  /* --mg-action fills a control with white text; --mg-blue is the accent for text and strokes. */
+  --mg-action: #0B63D6;
+  --mg-action-hover: #0A57BC;
   --mg-surface-glass: rgba(11, 15, 20, .94);
   --mg-ink-primary: #F5F9FF;
   --mg-ink-secondary: #B6C2D0;
@@ -130,6 +133,8 @@ body {
   --mg-canvas: #f4f8fd;
   --mg-line: #e5edf7;
   --mg-surface-tint: #f6f8fc;
+  --mg-action: #0B63D6;
+  --mg-action-hover: #0950A8;
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
 }
 

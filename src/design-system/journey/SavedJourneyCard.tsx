@@ -112,7 +112,7 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
         summaryRowClassName="gap-2"
         items={stripItems}
         ariaLabel={`Етапи збереженого маршруту: ${routeTitle}`}
-        actions={<span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#EAF3FF] text-[#0B63D6] dark:bg-[#102746] dark:text-[#66B2FF]"><ChevronRight size={17}/></span>}
+        actions={<span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#EAF3FF] text-[var(--mg-blue)] dark:bg-[#102746] dark:text-[#66B2FF]"><ChevronRight size={17}/></span>}
         actionsClassName="shrink-0"
       />
       <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">

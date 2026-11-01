@@ -252,3 +252,22 @@ test('the default card surface is a component-layer rule driven by theme tokens'
   assert.match(marketplace, /bg-\[var\(--mg-surface-tint\)\]/, 'sub-surfaces must be tinted through the token');
   assert.doesNotMatch(marketplace, /bg-\[#f6f8fc\]/, 'a hardcoded light tint cannot flip with the theme');
 });
+
+// Three blues used to ship at once: #1687FF, #0877f9 and #0B63D6, hand-written per component.
+test('a single action blue comes from the token, never a per-component hex', async () => {
+  const files = [
+    'src/views/ProductionMarketplace.tsx',
+    'src/components/TransportTypesPanel.tsx',
+    'src/components/OnboardingSlides.tsx',
+    'src/components/MapLayersControl.tsx',
+    'src/views/ProductionNavigation.tsx',
+    'src/components/DriverPhotoCard.tsx',
+  ];
+  const sources = await Promise.all(files.map((file) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), '..', file), 'utf8')));
+  sources.forEach((source, index) => {
+    assert.doesNotMatch(source, /\b(?:bg|text|border|from|to)-\[#0[bB]63[dD]6\]/, `${files[index]} still hardcodes the action blue`);
+  });
+  const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
+  assert.equal((css.match(/--mg-action:/g) || []).length, 2, '--mg-action must be declared once per theme');
+  assert.equal((css.match(/--mg-blue:/g) || []).length, 2, '--mg-blue must be declared once per theme');
+});
