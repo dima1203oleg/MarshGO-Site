@@ -25,10 +25,10 @@ const stateLabels: Record<string, string> = {
 
 const stateTone: Record<string, string> = {
   READY: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
-  PARTIALLY_RESERVED: 'bg-blue-50 text-blue-700 dark:bg-[#102746] dark:text-[#66B2FF]',
-  ACTIVE: 'bg-blue-50 text-blue-700 dark:bg-[#102746] dark:text-[#66B2FF]',
-  COMPLETED: 'bg-slate-100 text-slate-600 dark:bg-[#16202B] dark:text-slate-300',
-  CANCELLED: 'bg-slate-100 text-slate-600 dark:bg-[#16202B] dark:text-slate-300',
+  PARTIALLY_RESERVED: 'bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]',
+  ACTIVE: 'bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]',
+  COMPLETED: 'bg-[var(--mg-surface-tint)] text-[var(--mg-muted)]',
+  CANCELLED: 'bg-[var(--mg-surface-tint)] text-[var(--mg-muted)]',
   REPLANNING: 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200',
   FAILED: 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200',
 };
@@ -94,7 +94,7 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
     </button>
     <div className="pointer-events-none relative z-10 p-3">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${stateTone[journey.state] ?? 'bg-blue-50 text-blue-700 dark:bg-[#102746] dark:text-[#66B2FF]'}`}>{stateLabels[journey.state] ?? journey.state}</span>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${stateTone[journey.state] ?? 'bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]'}`}>{stateLabels[journey.state] ?? journey.state}</span>
         <span className="min-w-0 truncate text-right text-[11px] font-semibold text-slate-500 dark:text-slate-400">{departureLabel}{startAt ? ` · ${startAt}` : ''}</span>
       </div>
       <h3 className="truncate text-[15px] font-extrabold leading-5 text-[#0E1F35] dark:text-[#F5F9FF]" title={routeFullAddress}>
@@ -112,7 +112,7 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
         summaryRowClassName="gap-2"
         items={stripItems}
         ariaLabel={`Етапи збереженого маршруту: ${routeTitle}`}
-        actions={<span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#EAF3FF] text-[var(--mg-blue)] dark:bg-[#102746] dark:text-[#66B2FF]"><ChevronRight size={17}/></span>}
+        actions={<span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]"><ChevronRight size={17}/></span>}
         actionsClassName="shrink-0"
       />
       <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">

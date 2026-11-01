@@ -271,3 +271,24 @@ test('a single action blue comes from the token, never a per-component hex', asy
   assert.equal((css.match(/--mg-action:/g) || []).length, 2, '--mg-action must be declared once per theme');
   assert.equal((css.match(/--mg-blue:/g) || []).length, 2, '--mg-blue must be declared once per theme');
 });
+
+// The route sheet used to carry five blues at once, and the active sort tab put white labels on a
+// #1687FF gradient — 3.53:1, under AA for the one control every journey comparison depends on.
+test('the journey screens read one accent token set and the sort tabs stay AA-safe', async () => {
+  const read = (file: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), '..', file), 'utf8');
+  const [sheet, results, routeScreen, savedCard] = await Promise.all([
+    read('src/index.css'),
+    read('src/views/JourneyResultsPanel.tsx'),
+    read('src/views/JourneyRouteMapScreen.tsx'),
+    read('src/design-system/journey/SavedJourneyCard.tsx'),
+  ]);
+  for (const token of ['--mg-blue-tint', '--mg-blue-ink']) {
+    assert.equal((sheet.match(new RegExp(`${token}:`, 'g')) || []).length, 2, `${token} must be declared once per theme`);
+  }
+  assert.doesNotMatch(sheet, /--mg-electric/, 'an unused duplicate of --mg-blue keeps the token language ambiguous');
+  assert.doesNotMatch(routeScreen, /#1687FF|#7CBFFF|#0B6EF3/, 'the route screen must not hand-pick blues — #7CBFFF measured 1.95:1 on the light sheet, so the selected card border vanished');
+  assert.doesNotMatch(results, /#1687FF|#EAF3FF|#0B57A8|#0E2A44|#7FC0FF/, 'the results panel must not hand-pick blues');
+  assert.doesNotMatch(savedCard, /bg-blue-50|dark:bg-\[#102746\]/, 'chip tones must come from the tint/ink tokens, not per-file dark: pairs');
+  assert.match(results, /bg-\[var\(--mg-action\)\] text-white/, 'the active sort tab is a filled AA control: --mg-action is 5.57:1 under white, #1687FF was 3.53:1');
+  assert.doesNotMatch(results, /bg-gradient-to-b from-\[#1687FF\]/, 'the sort-tab gradient put half of its white label under AA');
+});

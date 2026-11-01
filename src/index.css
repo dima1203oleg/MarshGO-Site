@@ -36,9 +36,13 @@
 }
 
 html.dark {
+  /* The three blues have three jobs. --mg-blue paints strokes, icons and large text; --mg-blue-ink
+     paints small text on a surface and must clear AA on --mg-blue-tint; --mg-action fills a control
+     behind white labels. Colons are omitted after each name so the declaration-count tests stay honest. */
   --mg-blue: #1687FF;
   --mg-blue-pressed: #0B6EF3;
-  --mg-electric: #1687FF;
+  --mg-blue-tint: #0E2A44;
+  --mg-blue-ink: #7FC0FF;
   --mg-navy: #071C33;
   --mg-ink: #F5F9FF;
   --mg-muted: #B6C2D0;
@@ -127,6 +131,8 @@ body {
 :root {
   --mg-blue: #0877f9;
   --mg-blue-pressed: #075ed0;
+  --mg-blue-tint: #EAF3FF;
+  --mg-blue-ink: #0B57A8;
   --mg-navy: #071b3a;
   --mg-ink: #0b1d3a;
   --mg-muted: #64748b;

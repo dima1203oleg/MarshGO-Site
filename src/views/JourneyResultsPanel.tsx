@@ -16,7 +16,7 @@ import { strategyJourneys } from './journeyStrategySelection';
 const FAVORITES_KEY = 'marshgo.saved-route-results.v1';
 
 const strategyConfig: Array<{ id: ApiJourneyStrategy; label: string; Icon: typeof Scale; tone: string }> = [
-  { id: 'BALANCED', label: 'Оптимальний', Icon: Scale, tone: 'text-[#1687FF]' },
+  { id: 'BALANCED', label: 'Оптимальний', Icon: Scale, tone: 'text-[var(--mg-blue)]' },
   { id: 'FASTEST', label: 'Найшвидший', Icon: Timer, tone: 'text-[#FF9A32]' },
   { id: 'CHEAPEST', label: 'Найдешевший', Icon: Coins, tone: 'text-[#1FCB78]' },
 ];
@@ -118,7 +118,7 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
         priceClassName="journey-result-total-price"
         priceUnavailable={totalPrice === '—'}
         priceCaption={totalPrice === '—' ? <span data-testid="journey-result-price-caption" className="block max-w-[7.5rem] truncate text-[10px] font-semibold leading-4 text-slate-500 dark:text-slate-400">тариф невідомий</span> : undefined}
-        summaryNote={index === 0 ? <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-[#EAF3FF] px-2 py-[3px] text-[10px] font-extrabold uppercase tracking-[.07em] text-[#0B57A8] dark:bg-[#0E2A44] dark:text-[#7FC0FF]"><Star size={10} className="shrink-0 fill-current" aria-hidden="true"/>Рекомендований</span> : undefined}
+        summaryNote={index === 0 ? <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-[var(--mg-blue-tint)] px-2 py-[3px] text-[10px] font-extrabold uppercase tracking-[.07em] text-[var(--mg-blue-ink)]"><Star size={10} className="shrink-0 fill-current" aria-hidden="true"/>Рекомендований</span> : undefined}
         actionsClassName="journey-result-actions flex shrink-0 items-center gap-1"
         summaryRowClassName="journey-result-header"
         actions={<>
@@ -159,7 +159,7 @@ export function JourneySearchPending({ startedAt }: { startedAt: number }) {
   const copy = searchPendingCopy(elapsedSeconds);
   return <section className="journey-results mt-3 space-y-2" aria-busy="true" data-testid="journey-search-pending">
     <p role="status" aria-live="polite" className="flex items-center gap-2 text-[13px] font-bold leading-5 text-slate-700 dark:text-slate-200">
-      <span className="mg-live-dot inline-block h-2 w-2 shrink-0 rounded-full bg-[#1687FF]" aria-hidden="true" />
+      <span className="mg-live-dot inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--mg-blue)]" aria-hidden="true" />
       <span className="tabular-nums">{copy.title}</span>
     </p>
     {copy.note && <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400">{copy.note}</p>}
@@ -228,7 +228,7 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
       {strategyConfig.map(({ id, label, Icon, tone }) => {
         const count = strategyJourneys(result, id).length;
         const active = activeStrategy === id;
-        return <button key={id} type="button" disabled={count === 0} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-[#1687FF] bg-gradient-to-b from-[#1687FF] to-[#0868DF] text-white shadow-[0_5px_14px_rgba(22,135,255,.25)]' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-[#20354A] dark:bg-[#0D1B28] dark:text-slate-200'}`}>
+        return <button key={id} type="button" disabled={count === 0} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : 'border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] hover:border-[var(--mg-blue)]'}`}>
           <Icon size={18} className={`shrink-0 ${active ? 'text-white' : tone}`} aria-hidden="true"/><span className="whitespace-nowrap text-[10px] font-extrabold leading-tight sm:text-[11px]">{label}</span>
         </button>;
       })}
