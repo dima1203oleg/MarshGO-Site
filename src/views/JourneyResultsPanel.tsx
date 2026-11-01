@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ArrowLeftRight, ChevronRight, Coins, Heart, Info, Scale, Star, Timer,
+  ArrowLeftRight, ChevronRight, Clock, Coins, Heart, Info, Scale, Star, Timer,
 } from 'lucide-react';
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
@@ -9,8 +9,8 @@ import { journeyLegCaveat } from './journeyLegLabel';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
-  formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, searchPendingCopy,
-  unavailableTransportNotices,
+  formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyBoardingNote,
+  searchPendingCopy, unavailableTransportNotices,
 } from './journeyResultPresentation';
 import { strategyJourneys } from './journeyStrategySelection';
 
@@ -89,7 +89,8 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
     color: segment.color,
   }));
   const startAt = journey.requestedDepartureAt ?? firstLeg.departureAt;
-  const openLabel = `Відкрити маршрут: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`;
+  const boardingLabel = journeyBoardingNote(journey);
+  const openLabel = `Відкрити маршрут: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}${boardingLabel ? `, ${boardingLabel}` : ''}`;
 
   const toggleSaved = () => {
     let ids: string[] = [];
@@ -144,10 +145,16 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
         stripClassName="mt-1.5 pointer-events-none"
         durationNote={waitingSeconds > 0 ? <span data-testid="journey-result-wait" className="text-[10px] font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">Очікування · {formatJourneyDuration(waitingSeconds)}</span> : undefined}
       />
+      {boardingLabel && (
+        <p data-testid="journey-result-boarding" className="mt-1 flex items-center gap-1 text-[10px] font-semibold leading-4 tabular-nums text-slate-600 dark:text-slate-300">
+          <Clock size={10} className="shrink-0" aria-hidden="true"/>
+          {boardingLabel}
+        </p>
+      )}
       {segments.map(segment => segment.leg && <span key={segment.id} className="sr-only">{formatJourneyDistance(segment.leg.distanceMeters)}</span>)}
       {caveats.length > 0 && <p className="journey-result-caveat mt-1 text-[10px] leading-4 text-amber-800 dark:text-amber-200">{caveats.join(' ')}</p>}
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
-      <span className="sr-only">Виїзд {formatJourneyClock(startAt)}, прибуття {formatJourneyClock(lastLeg.arrivalAt)}{waitingSeconds > 0 ? `, очікування ${formatJourneyDuration(waitingSeconds)}` : ''}.</span>
+      <span className="sr-only">Виїзд {formatJourneyClock(startAt)}, прибуття {formatJourneyClock(lastLeg.arrivalAt)}{waitingSeconds > 0 ? `, очікування ${formatJourneyDuration(waitingSeconds)}` : ''}{boardingLabel ? `, ${boardingLabel}` : ''}.</span>
     </div>
   </article>;
 }

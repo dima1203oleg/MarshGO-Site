@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ApiJourney } from '../src/services/productionApi';
 import {
-  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, searchPendingCopy, unavailableTransportNotices,
+  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyBoardingNote, searchPendingCopy, unavailableTransportNotices,
 } from '../src/views/journeyResultPresentation';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
@@ -186,5 +186,46 @@ describe('unavailableTransportNotices', () => {
 
   it('returns nothing when the search blocked nothing', () => {
     assert.deepEqual(unavailableTransportNotices([], []), []);
+  });
+});
+
+describe('journeyBoardingNote', () => {
+  // Shape copied from the real public Lviv -> Kyiv answer (2026-11-02): three
+  // journeys board the same 09:03Z train, so duration, price, transfers, walking
+  // and total waiting time are all equal and only the tram trip differs.
+  const sameTrainExceptTram = (tramDeparture: string) => journey({
+    id: `j-${tramDeparture}`,
+    totalDurationSeconds: 34548,
+    requestedDepartureAt: '2026-11-02T06:00:00.000Z',
+    transfers: 1,
+    walkingMeters: 3022,
+    legs: [
+      leg({ id: 'walk-1', mode: 'WALK', source: 'pedestrian-router', priceMinor: null,
+        departureAt: '2026-11-02T06:00:00.000Z', arrivalAt: '2026-11-02T06:02:24.000Z', durationSeconds: 144 }),
+      leg({ id: 'tram', mode: 'TRAM', departureAt: tramDeparture, arrivalAt: '2026-11-02T08:00:00.000Z', durationSeconds: 1200 }),
+      leg({ id: 'rail', mode: 'RAIL', departureAt: '2026-11-02T09:03:00.000Z', arrivalAt: '2026-11-02T14:59:00.000Z', durationSeconds: 21360 }),
+    ],
+  });
+
+  it('separates cards that are otherwise identical on every displayed metric', () => {
+    const notes = ['2026-11-02T06:21:00.000Z', '2026-11-02T06:33:00.000Z', '2026-11-02T08:08:00.000Z']
+      .map(departure => journeyBoardingNote(sameTrainExceptTram(departure)));
+    assert.deepEqual(notes, ['Трамвай о 08:21', 'Трамвай о 08:33', 'Трамвай о 10:08']);
+    assert.equal(new Set(notes).size, 3);
+  });
+
+  it('names the vehicle the passenger actually boards, in Kyiv time', () => {
+    const note = journeyBoardingNote(journey({ legs: [leg({ id: 'bus', mode: 'BUS', departureAt: '2026-10-13T08:10:00+03:00' })] }));
+    assert.equal(note, 'Автобус о 08:10');
+  });
+
+  it('stays silent for a walk-only journey instead of naming a vehicle', () => {
+    const note = journeyBoardingNote(journey({ legs: [leg({ id: 'walk', mode: 'WALK', source: 'pedestrian-router', priceMinor: null })] }));
+    assert.equal(note, '');
+  });
+
+  it('stays silent when the boarding time is not a real timestamp', () => {
+    const note = journeyBoardingNote(journey({ legs: [leg({ id: 'tram', mode: 'TRAM', departureAt: 'not-a-time' })] }));
+    assert.equal(note, '');
   });
 });

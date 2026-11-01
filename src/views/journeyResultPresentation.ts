@@ -170,6 +170,18 @@ export function formatJourneyClock(value: string): string {
 }
 
 /**
+ * Alternatives that board the same long-distance vehicle share duration, price,
+ * transfers and total waiting time, so their cards are indistinguishable unless
+ * the clock of the first vehicle actually boarded is shown.
+ */
+export function journeyBoardingNote(journey: ApiJourney): string {
+  const leg = journey.legs.find(item => item.mode !== 'WALK');
+  if (!leg || !validTime(leg.departureAt)) return '';
+  const label = leg.mode === 'COMMUNITY' ? 'Попутка' : journeyLegLabel(leg.mode, leg.transportType);
+  return `${label} о ${formatJourneyClock(leg.departureAt)}`;
+}
+
+/**
  * Journey search really does take tens of seconds on multi-provider corridors, so the wait
  * reports measured elapsed time. No percentage and no ETA: neither would be true.
  */
