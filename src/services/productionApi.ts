@@ -416,7 +416,13 @@ export type ApiProposalRevision = {
   departure_at: string; comment: string | null; created_at: string;
 };
 
-type ApiEnvelope<T> = { data: T };
+/** The freshness level the server declared for the features it served (ТЗ-MG-TRANSPORT-12). */
+export type LayerDataQuality = { level: string; counts?: Record<string, number>; oldestAgeMs?: number | null; newestAgeMs?: number | null; freshnessWindowMs?: number | null };
+export type TransportLayerMeta = { dataQuality?: LayerDataQuality | null; failedProviderCount?: number; truncated?: boolean };
+/** A map layer together with the server's own account of what it could not serve, so the client never has to guess. */
+export type TransportLayerResponse = { collection: GeoJsonCollection; dataQuality: LayerDataQuality | null; failedProviderCount: number; truncated: boolean };
+
+type ApiEnvelope<T> = { data: T; meta?: TransportLayerMeta | null };
 const apiBase = (typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE_URL) ?? (typeof process !== 'undefined' ? process.env?.VITE_API_BASE_URL : '') ?? '';
 let accessToken: string | null = null;
 let refreshInFlight: Promise<{ user: ApiUser; accessToken: string }> | null = null;
@@ -445,7 +451,7 @@ export class ProductionApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
+async function requestEnvelope<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<{ data: T; meta: TransportLayerMeta | null }> {
   const headers = new Headers(init.headers);
   const tokenUsed = accessToken;
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
@@ -457,16 +463,16 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
     throw new ProductionApiError(networkFailureMessage(typeof navigator === 'undefined' || navigator.onLine !== false), NETWORK_ERROR_CODE);
   }
-  const body = await response.json().catch(() => null) as { data?: T; error?: { code?: string; message?: string } } | null;
+  const body = await response.json().catch(() => null) as { data?: T; meta?: TransportLayerMeta | null; error?: { code?: string; message?: string } } | null;
   if (response.status === 401 && retryAuth && accessToken && !path.startsWith('/auth/')) {
-    if (tokenUsed !== accessToken) return request<T>(path, init, false);
+    if (tokenUsed !== accessToken) return requestEnvelope<T>(path, init, false);
     try {
-      refreshInFlight ??= request<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false)
-        .then((session) => { accessToken = session.accessToken; return session; })
+      refreshInFlight ??= requestEnvelope<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false)
+        .then((session) => { accessToken = session.data.accessToken; return session.data; })
         .finally(() => { refreshInFlight = null; });
       const session = await refreshInFlight;
       accessToken = session.accessToken;
-      return request<T>(path, init, false);
+      return requestEnvelope<T>(path, init, false);
     } catch {
       accessToken = null;
     }
@@ -477,8 +483,18 @@ async function request<T>(path: string, init: RequestInit = {}, retryAuth = true
     }
     throw new ProductionApiError(requestErrorMessage(response.status, body?.error?.message, body?.error?.code), body?.error?.code, response.status);
   }
-  if (response.status === 204) return undefined as T;
-  return (body as ApiEnvelope<T>).data;
+  if (response.status === 204) return { data: undefined as T, meta: null };
+  return { data: (body as ApiEnvelope<T>).data, meta: body?.meta ?? null };
+}
+
+async function request<T>(path: string, init: RequestInit = {}, retryAuth = true): Promise<T> {
+  return (await requestEnvelope<T>(path, init, retryAuth)).data;
+}
+
+/** Map layers must keep `meta`: it is the only proof of what the server could not serve. */
+async function requestLayer(path: string, signal?: AbortSignal): Promise<TransportLayerResponse> {
+  const { data, meta } = await requestEnvelope<GeoJsonCollection>(path, { signal });
+  return { collection: data, dataQuality: meta?.dataQuality ?? null, failedProviderCount: meta?.failedProviderCount ?? 0, truncated: meta?.truncated === true };
 }
 
 export const productionApi = {
@@ -620,17 +636,17 @@ export const productionApi = {
     }>>('/catalog/regions');
   },
   transportLayerAvailability() { return request<Array<{ id: string; available: boolean }>>('/transport/layers'); },
-  transportRoutes(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/routes?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
-  transportStops(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/stops?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
-  transportVehicles(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/vehicles?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
+  transportRoutes(bbox: string, types: string[], signal?: AbortSignal) { return requestLayer(`/transport/routes?bbox=${bbox}&types=${types.join(',')}`, signal); },
+  transportStops(bbox: string, types: string[], signal?: AbortSignal) { return requestLayer(`/transport/stops?bbox=${bbox}&types=${types.join(',')}`, signal); },
+  transportVehicles(bbox: string, types: string[], signal?: AbortSignal) { return requestLayer(`/transport/vehicles?bbox=${bbox}&types=${types.join(',')}`, signal); },
   transitStopArrivals(stopId: string, lat: number, lon: number, signal?: AbortSignal) {
     return request<{ stopId: string; lat: number; lon: number; arrivals: TransitArrival[] }>(
       `/transit/stops/${encodeURIComponent(stopId)}/arrivals?lat=${lat}&lon=${lon}`, { signal },
     );
   },
   transportCities(signal?: AbortSignal) { return request<ApiTransportCity[]>('/transport/cities', { signal }); },
-  transportMicromobility(bbox: string, types: string[], signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility?bbox=${bbox}&types=${types.join(',')}`, { signal }); },
-  transportMicromobilityGeofences(bbox: string, signal?: AbortSignal) { return request<GeoJsonCollection>(`/transport/micromobility/geofences?bbox=${encodeURIComponent(bbox)}`, { signal }); },
+  transportMicromobility(bbox: string, types: string[], signal?: AbortSignal) { return requestLayer(`/transport/micromobility?bbox=${bbox}&types=${types.join(',')}`, signal); },
+  transportMicromobilityGeofences(bbox: string, signal?: AbortSignal) { return requestLayer(`/transport/micromobility/geofences?bbox=${encodeURIComponent(bbox)}`, signal); },
   setNavigationDestination(id: string, input: { destination: [number, number]; destinationName: string }) {
     return request<ApiNavigationSession>(`/navigation/sessions/${id}/destination`, { method: 'PUT', body: JSON.stringify(input) });
   },

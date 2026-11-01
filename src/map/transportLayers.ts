@@ -1,10 +1,10 @@
 import type { GeoJSONSource, Map as MapLibreMap, MapMouseEvent } from 'maplibre-gl';
 import * as maplibregl from 'maplibre-gl';
-import { productionApi, type GeoJsonCollection } from '../services/productionApi';
+import { productionApi, type GeoJsonCollection, type TransportLayerResponse } from '../services/productionApi';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import { lineTypesFor, microTypesFor, transportLayerList, type TransportLayerId } from './transportLayerConfig';
 import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
-import { publishVehicleQuality, summarizeVehicleQuality, tagVehicleQuality, vehicleQualityWord } from './transportQuality';
+import { layerProvenanceNotice, publishVehicleQuality, summarizeVehicleQuality, tagVehicleQuality, vehicleQualityWord } from './transportQuality';
 export { cityTransportLayerIds, lineTypesFor, microTypesFor, transportLayerList } from './transportLayerConfig';
 export type { TransportLayerId } from './transportLayerConfig';
 
@@ -99,9 +99,11 @@ export class TransportLayerController {
   private data: Record<keyof typeof SOURCES, GeoJsonCollection> = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
   private aborters = new Map<string, AbortController>();
   private requested = new Map<keyof typeof SOURCES, string>();
+  /** What the server admitted about each painted layer, kept so a hint survives a cached replay. */
+  private notices = new Map<keyof typeof SOURCES, string>();
   /** Only geometry that does not move is replayable; vehicle, scooter and geofence positions are always refetched. */
   private readonly cacheable = new Set<keyof typeof SOURCES>(['routes', 'stops']);
-  private cache = new Map<string, { collection: GeoJsonCollection; at: number }>();
+  private cache = new Map<string, { response: TransportLayerResponse; at: number }>();
   private moveTimer: ReturnType<typeof setTimeout> | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private popup: maplibregl.Popup | null = null;
@@ -161,6 +163,7 @@ export class TransportLayerController {
     this.aborters.forEach((controller) => controller.abort()); this.aborters.clear(); this.requested.clear();
     this.popup?.remove(); this.popup = null;
     this.data = { routes: empty, stops: empty, vehicles: empty, micro: empty, zones: empty };
+    this.notices.clear();
     publishVehicleQuality(null);
     for (const id of ['mg-t-micro-zones-outline', 'mg-t-micro-zones-fill', 'mg-t-micro-count', 'mg-t-micro-clusters', 'mg-t-micro-points', 'mg-t-vehicle-label', 'mg-t-vehicles', 'mg-t-vehicle-halo', 'mg-t-stop-label', 'mg-t-stops', 'mg-t-route-label', 'mg-t-routes']) if (this.map.getLayer(id)) this.map.removeLayer(id);
     for (const id of Object.values(SOURCES)) if (this.map.getSource(id)) this.map.removeSource(id);
@@ -274,38 +277,47 @@ export class TransportLayerController {
     (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(collection as never);
   }
 
-  private remember(cacheKey: string | null, collection: GeoJsonCollection) {
+  /** Painting is the one place that knows both the geometry and the server's account of what it could not serve. */
+  private publish(key: keyof typeof SOURCES, response: TransportLayerResponse) {
+    const collection = key === 'vehicles' ? tagVehicleQuality(response.collection) : response.collection;
+    this.paint(key, collection);
+    if (key === 'vehicles') publishVehicleQuality(summarizeVehicleQuality(collection));
+    else {
+      const notice = layerProvenanceNotice(key, { featureCount: collection.features.length, failedProviderCount: response.failedProviderCount, truncated: response.truncated });
+      if (notice) this.notices.set(key, notice); else this.notices.delete(key);
+    }
+  }
+
+  private remember(cacheKey: string | null, response: TransportLayerResponse) {
     if (!cacheKey) return;
-    this.cache.set(cacheKey, { collection, at: Date.now() });
+    this.cache.set(cacheKey, { response, at: Date.now() });
     if (this.cache.size > STATIC_CACHE_LIMIT) this.cache.delete(this.cache.keys().next().value as string);
   }
 
-  private async load(key: keyof typeof SOURCES, task: (signal: AbortSignal) => Promise<GeoJsonCollection>, signature?: string) {
+  private async load(key: keyof typeof SOURCES, task: (signal: AbortSignal) => Promise<TransportLayerResponse>, signature?: string) {
     if (signature && this.requested.get(key) === signature) return;
     const cacheKey = signature && this.cacheable.has(key) ? `${key}|${signature}` : null;
     const fresh = cacheKey ? this.cache.get(cacheKey) : undefined;
     if (cacheKey && fresh && Date.now() - fresh.at < STATIC_CACHE_TTL_MS) {
       this.requested.set(key, signature as string);
-      this.paint(key, fresh.collection);
+      this.publish(key, fresh.response);
       return;
     }
     this.aborters.get(key)?.abort();
     if (signature) this.requested.set(key, signature);
     const controller = new AbortController(); this.aborters.set(key, controller);
     try {
-      const fetched = await task(controller.signal);
+      const response = await task(controller.signal);
       if (controller.signal.aborted) return;
-      const collection = key === 'vehicles' ? tagVehicleQuality(fetched) : fetched;
-      this.paint(key, collection);
-      this.remember(cacheKey, collection);
-      if (key === 'vehicles') publishVehicleQuality(summarizeVehicleQuality(collection));
+      this.publish(key, response);
+      this.remember(cacheKey, response);
     } catch (error) {
       if (signature && this.requested.get(key) === signature) this.requested.delete(key);
-      if (!controller.signal.aborted && !(error instanceof DOMException)) this.onHint('Не вдалося завантажити частину шарів. Спробуйте ще раз.');
+      if (!controller.signal.aborted && !(error instanceof DOMException)) this.notices.set(key, 'Не вдалося завантажити частину шарів. Спробуйте ще раз.');
     }
   }
 
-  private clear(key: keyof typeof SOURCES) { this.requested.delete(key); this.aborters.get(key)?.abort(); this.data[key] = empty; (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(empty as never); if (key === 'vehicles') publishVehicleQuality(null); }
+  private clear(key: keyof typeof SOURCES) { this.requested.delete(key); this.aborters.get(key)?.abort(); this.notices.delete(key); this.data[key] = empty; (this.map.getSource(SOURCES[key]) as GeoJSONSource | undefined)?.setData(empty as never); if (key === 'vehicles') publishVehicleQuality(null); }
 
   async refresh() {
     if (this.enabled.size === 0) return;
@@ -331,8 +343,15 @@ export class TransportLayerController {
         else this.clear('zones');
       } else { this.clear('micro'); this.clear('zones'); hints.push('велосипеди, самокати й каршерінг'); }
     } else { this.clear('micro'); this.clear('zones'); }
-    if (hints.length) this.onHint(`Наблизьте карту, щоб побачити: ${hints.join(', ')}.`);
     await Promise.all(tasks);
+    this.publishHint(hints);
+  }
+
+  /** One banner at a time: needing a closer zoom is more actionable than a layer with no coverage. */
+  private publishHint(zoomHints: string[]) {
+    if (zoomHints.length) { this.onHint(`Наблизьте карту, щоб побачити: ${zoomHints.join(', ')}.`); return; }
+    const notices = [...this.notices.values()];
+    this.onHint(notices.length ? notices.join(' ') : null);
   }
 
   async refreshVehicles() {

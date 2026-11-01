@@ -69,6 +69,29 @@ export function tagVehicleQuality(collection: GeoJsonCollection, now = Date.now(
   };
 }
 
+/**
+ * A silent layer is indistinguishable from a broken one, so the map says what the server actually
+ * reported. Nothing is inferred here: a failure is only named when the server counted a provider,
+ * and a viewport that is simply empty stays quiet instead of alarming the passenger.
+ */
+export type StaticLayerKey = 'routes' | 'stops' | 'micro' | 'zones';
+export type LayerProvenance = { featureCount: number; failedProviderCount: number; truncated: boolean };
+const LAYER_WORD: Record<StaticLayerKey, string> = {
+  routes: 'лінії маршрутів', stops: 'зупинки', micro: 'прокат велосипедів і самокатів', zones: 'зони руху прокату',
+};
+
+export function layerProvenanceNotice(key: StaticLayerKey, provenance: LayerProvenance): string | null {
+  const word = LAYER_WORD[key];
+  if (provenance.featureCount === 0) {
+    return provenance.failedProviderCount > 0
+      ? `Транспортні дані недоступні: «${word}» — не відповів жоден провайдер (${provenance.failedProviderCount}).`
+      : null;
+  }
+  if (provenance.failedProviderCount > 0) return `«${word}»: показано не всі дані — не відповіли провайдери (${provenance.failedProviderCount}).`;
+  if (provenance.truncated) return `«${word}»: область надто щільна, показано не всі об'єкти.`;
+  return null;
+}
+
 // ---- badge store: the map publishes, the transport view renders (mirrors the layer-selection store) ----
 let current: VehicleQuality | null = null;
 const listeners = new Set<(quality: VehicleQuality | null) => void>();

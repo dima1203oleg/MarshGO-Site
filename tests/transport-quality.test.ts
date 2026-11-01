@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
-  LIVE_POSITION_MAX_AGE_MS, getVehicleQuality, publishVehicleQuality, subscribeVehicleQuality,
+  LIVE_POSITION_MAX_AGE_MS, getVehicleQuality, layerProvenanceNotice, publishVehicleQuality, subscribeVehicleQuality,
   summarizeVehicleQuality, vehiclePositionAgeMs, vehicleQualityLevel, vehicleQualityWord,
 } from '../src/map/transportQuality';
 import type { GeoJsonCollection } from '../src/services/productionApi';
@@ -94,5 +94,43 @@ describe('vehicle data quality on the live map', () => {
     assert.doesNotMatch(layers, /cacheable[\s\S]{0,120}(vehicles|micro|zones)/, 'live vehicles, scooters and geofences must never be replayed from memory');
     assert.match(layers, /Date\.now\(\) - fresh\.at < STATIC_CACHE_TTL_MS/, 'a cached viewport must expire');
     assert.match(layers, /destroy\(\) \{ this\.teardown\(\); this\.cache\.clear\(\); \}/, 'leaving the map must free the cached geometry');
+  });
+});
+
+// The server tells the client how much of a layer it could not serve, but only if the layer request
+// keeps `meta`. Without it a passenger who switched a layer on and sees nothing cannot tell a feed
+// outage from an area that genuinely has no stops, so the map now says which one the server reported.
+describe('static layer provenance notices', () => {
+  it('names the outage instead of leaving a switched-on layer silent', () => {
+    const notice = layerProvenanceNotice('stops', { featureCount: 0, failedProviderCount: 2, truncated: false });
+    assert.match(notice ?? '', /не відповів жоден провайдер \(2\)/);
+    assert.match(notice ?? '', /зупинки/);
+  });
+
+  it('stays quiet for a viewport that is simply empty — absence of data is not an outage', () => {
+    assert.equal(layerProvenanceNotice('stops', { featureCount: 0, failedProviderCount: 0, truncated: false }), null);
+    assert.equal(layerProvenanceNotice('routes', { featureCount: 42, failedProviderCount: 0, truncated: false }), null);
+  });
+
+  it('admits a partially served layer and a capped one instead of implying completeness', () => {
+    assert.match(layerProvenanceNotice('micro', { featureCount: 9, failedProviderCount: 1, truncated: false }) ?? '', /показано не всі дані/);
+    assert.match(layerProvenanceNotice('routes', { featureCount: 600, failedProviderCount: 0, truncated: true }) ?? '', /показано не всі об'єкти/);
+  });
+
+  it('keeps the server account in the API contract', () => {
+    const api = readFileSync(new URL('../src/services/productionApi.ts', import.meta.url), 'utf8');
+    assert.match(api, /return \{ data: \(body as ApiEnvelope<T>\)\.data, meta: body\?\.meta \?\? null \};/, 'the envelope must survive unwrapping');
+    assert.match(api, /transportStops\(bbox: string, types: string\[\], signal\?: AbortSignal\) \{ return requestLayer\(/, 'a layer must be fetched with its meta');
+    assert.match(api, /transportMicromobilityGeofences\(bbox: string, signal\?: AbortSignal\) \{ return requestLayer\(/, 'geofences are a layer too');
+  });
+
+  it('records the notice when a layer is painted and publishes one banner', () => {
+    const layers = readFileSync(new URL('../src/map/transportLayers.ts', import.meta.url), 'utf8');
+    assert.match(layers, /layerProvenanceNotice\(key, \{ featureCount: collection\.features\.length, failedProviderCount: response\.failedProviderCount, truncated: response\.truncated \}\)/, 'the notice reads the server account, not the geometry alone');
+    assert.match(layers, /this\.publish\(key, fresh\.response\)/, 'a cached replay must restate the same notice');
+    assert.match(layers, /this\.notices\.set\(key, 'Не вдалося завантажити частину шарів\. Спробуйте ще раз\.'\)/, 'a failed request joins the same banner instead of being overwritten');
+    assert.match(layers, /await Promise\.all\(tasks\);\s*this\.publishHint\(hints\);/, 'the banner is composed after every layer answered');
+    assert.match(layers, /private clear\(key: keyof typeof SOURCES\) \{[\s\S]*?this\.notices\.delete\(key\)/, 'a layer the user switched off stops complaining');
+    assert.match(layers, /this\.notices\.clear\(\);[\s\S]*?publishVehicleQuality\(null\);/, 'tearing the map down clears the banner');
   });
 });
