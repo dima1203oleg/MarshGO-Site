@@ -46,3 +46,20 @@ export function cityTransportLayerIds(availability: Readonly<Record<string, bool
     .map((item) => item.id);
   return availability.STOPS === true ? [...publicTransport, 'STOPS'] : publicTransport;
 }
+
+/** Every layer the map can switch on, including the group and overlay ids the quick chips address. */
+export const allTransportLayerIds: TransportLayerId[] = [...transportLayerList.map((item) => item.id), 'PUBLIC_TRANSPORT', 'CITY_TRAIN', 'FUNICULAR', 'STOPS', 'RENTAL_POINTS'];
+
+/**
+ * Only a confirmed `true` retires a control. `null` means the availability probe has not answered, and
+ * greying out a layer that would have worked is its own kind of false statement.
+ */
+export const isLayerSelectable = (availability: Readonly<Record<string, boolean>> | null, id: TransportLayerId): boolean =>
+  availability === null || availability[id] === true;
+
+/** Layers the server confirmed it cannot serve; leaving one switched on paints an empty map with no reason. */
+export const unavailableLayerIds = (availability: Readonly<Record<string, boolean>>): TransportLayerId[] =>
+  allTransportLayerIds.filter((id) => availability[id] !== true);
+
+/** A failed probe only proves we could not check, so the wording must not claim the data is missing. */
+export const layerUnavailableNote = (probeFailed: boolean): string => probeFailed ? 'перевірка не вдалася' : 'немає даних';
