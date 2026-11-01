@@ -722,6 +722,13 @@ export function ProductionMarketplace() {
 
   useEffect(() => { setRoutePlaceActive(-1); }, [routePlaceSuggestions, routePlaceField]);
 
+  useEffect(() => {
+    if (!showCreateMenu) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setShowCreateMenu(false); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showCreateMenu]);
+
   const routePlaceKeyDown = (event: { key: string; preventDefault(): void }, field: 'origin' | 'destination') => {
     const listOpen = routePlaceField === field && routePlaceSuggestions.length > 0;
     const action = placeSuggestionKeyAction(event.key, listOpen, routePlaceActive);
@@ -1792,13 +1799,6 @@ export function ProductionMarketplace() {
       </div> : <p className="rounded-2xl bg-white p-5 text-sm text-slate-500">Відкритих заявок зараз немає.</p>}
     </div>
   );
-
-  useEffect(() => {
-    if (!showCreateMenu) return undefined;
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setShowCreateMenu(false); };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showCreateMenu]);
 
   const createMenu = showCreateMenu ? <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/35 p-3 sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowCreateMenu(false); }}><section role="dialog" aria-modal="true" aria-labelledby="create-menu-title" className="mg-rise w-full max-w-md rounded-[1.6rem] bg-white p-4 shadow-xl"><div className="mb-3 flex items-center justify-between"><h2 id="create-menu-title" className="font-extrabold">Швидкі дії</h2><button type="button" onClick={() => setShowCreateMenu(false)} aria-label="Закрити" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-600"><X size={20}/></button></div><div className="space-y-2">{([
     { label: 'Навігація', hint: 'Ведення до точки', icon: Navigation, pick: () => setTab('navigation') },
