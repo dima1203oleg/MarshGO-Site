@@ -237,3 +237,18 @@ test('trip and booking titles use the compact place label with the full address 
   assert.match(marketplace, /compactPlaceLabel\(booking\.origin_name\)/, 'the booking card reverted to the raw label');
   assert.match(marketplace, /compactPlaceLabel\(offer\.origin_name\)/, 'the offer rows reverted to the raw label');
 });
+
+// Cards used to be frozen by an unlayered rule, so every screen utility lost to it silently.
+test('the default card surface is a component-layer rule driven by theme tokens', async () => {
+  const [css, marketplace] = await Promise.all([
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8'),
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/ProductionMarketplace.tsx'), 'utf8'),
+  ]);
+  const cardBlock = css.match(/@layer components \{\s*\.production-app :is\(article, \[data-surface="card"\]\) \{([\s\S]{0,400}?)\n  \}/);
+  assert.ok(cardBlock, 'the card surface must live inside @layer components so screen utilities win');
+  assert.match(cardBlock[1], /background-color: var\(--color-marshgo-card\)/, 'the card background must come from the theme token');
+  assert.doesNotMatch(css, /html\.dark \.production-app :is\(article[^}]*!important/, 'a !important card override re-freezes the surface against the token');
+  assert.equal((css.match(/--mg-surface-tint:/g) || []).length, 2, 'the tint token must be defined once per theme');
+  assert.match(marketplace, /bg-\[var\(--mg-surface-tint\)\]/, 'sub-surfaces must be tinted through the token');
+  assert.doesNotMatch(marketplace, /bg-\[#f6f8fc\]/, 'a hardcoded light tint cannot flip with the theme');
+});

@@ -46,6 +46,7 @@ html.dark {
   --mg-line: #263648;
   --mg-surface-primary: #111820;
   --mg-surface-secondary: #16202B;
+  --mg-surface-tint: #16202B;
   --mg-surface-glass: rgba(11, 15, 20, .94);
   --mg-ink-primary: #F5F9FF;
   --mg-ink-secondary: #B6C2D0;
@@ -128,6 +129,7 @@ body {
   --mg-muted: #64748b;
   --mg-canvas: #f4f8fd;
   --mg-line: #e5edf7;
+  --mg-surface-tint: #f6f8fc;
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
 }
 
@@ -548,11 +550,21 @@ html.dark .app-tabbar button[aria-current="page"] { color: #1687FF; }
 .auth-screen h1 { text-wrap: balance; }
 .production-app :is(input, select, textarea) { accent-color: var(--mg-blue); }
 .production-app :is(article, [data-surface="card"]) { scroll-margin-bottom: 7rem; }
-.production-app article {
-  border: 1px solid var(--mg-line);
-  border-radius: 1.25rem;
-  background-color: #fff;
-  box-shadow: var(--mg-card-shadow);
+/*
+ * The default card surface lives in @layer components: unlayered rules beat every Tailwind layer,
+ * and this rule used to sit outside them, repainting every <article> white and forcing its own
+ * radius — a vehicle tile written as bg-[#f6f8fc] rounded-xl rendered as a plain white card.
+ * The surface now comes from --color-marshgo-card, which html.dark already flips, so no !important
+ * dark-mode override is needed here anymore; the canonical card radius is normalised further down.
+ */
+@layer components {
+  .production-app :is(article, [data-surface="card"]) {
+    border: 1px solid var(--mg-line);
+    border-radius: 1.25rem;
+    background-color: var(--color-marshgo-card);
+    color: var(--color-marshgo-text);
+    box-shadow: var(--mg-card-shadow);
+  }
 }
 .production-app :is(h1, h2, h3) { letter-spacing: -.025em; }
 .production-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
@@ -1320,7 +1332,6 @@ html.dark .home-popular-routes h2 { color: #F5F9FF !important; }
 html.dark .home-popular-route { border-color: #263648 !important; }
 
 /* Shared interaction and dark-surface polish from the production navigation. */
-html.dark .production-app article,
 html.dark .production-app .app-tabbar {
   background-color: var(--color-marshgo-card) !important;
   color: var(--color-marshgo-text);
