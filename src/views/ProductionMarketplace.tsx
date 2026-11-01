@@ -1835,7 +1835,7 @@ export function ProductionMarketplace() {
 
   const hideSharedHeader = tab === 'navigation' || Boolean(selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
 
-  const immersiveRouteView = Boolean(selectedRouteMap || (showResults && (tab === 'search' || tab === 'home')));
+  const immersiveRouteView = Boolean(selectedRouteMap);
   return <main className={`production-app min-h-[100svh] bg-[#f5f8fd] text-[#17243a] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[calc(5.3rem+env(safe-area-inset-bottom))]'}`}>
     {!hideSharedHeader && header}
     {isOffline && !hideSharedHeader && <div className="mx-auto w-full max-w-xl px-5"><p role="status" aria-live="polite" data-testid="offline-notice" className="mg-fade flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] font-bold leading-snug text-amber-900 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
