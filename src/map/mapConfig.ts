@@ -2,6 +2,7 @@ import type { StyleSpecification } from 'maplibre-gl';
 import type { MapTheme } from './MapAdapter';
 import { buildFallbackStyle } from './style/buildStyle';
 import { parseMapAssetManifest } from './style/manifest';
+import { darkenMapStyle } from './style/darkStyle';
 
 const styleUrl = (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim();
 const tileUrl = (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim();
@@ -24,6 +25,19 @@ export function schemeBasemapConfigured(): boolean { return Boolean(manifestUrl 
 /** Kept for older callers; this only describes the vector/scheme base map. */
 export const mapTilesConfigured = schemeBasemapConfigured;
 
+let darkStyleRequest: Promise<StyleSpecification> | null = null;
+
+function resolveDarkStyle(url: string): Promise<StyleSpecification> {
+  darkStyleRequest ??= fetch(url, { headers: { accept: 'application/json' } })
+    .then(response => {
+      if (!response.ok) throw new Error('MAP_STYLE_UNAVAILABLE');
+      return response.json() as Promise<StyleSpecification>;
+    })
+    .then(style => darkenMapStyle(style))
+    .catch(error => { darkStyleRequest = null; throw error; });
+  return darkStyleRequest;
+}
+
 export async function resolveMapAssets(theme: MapTheme) {
   if (manifestUrl) {
     const response = await fetch(manifestUrl, { headers: { accept: 'application/json' } });
@@ -33,5 +47,17 @@ export async function resolveMapAssets(theme: MapTheme) {
     if (!style) throw new Error('MAP_STYLE_MISSING');
     return { style, styles: manifest.styles, mapDataVersion: manifest.mapDataVersion, styleVersion: manifest.styleVersion };
   }
-  return { style: styleUrl || createFallbackMapStyle(theme), styles: undefined, mapDataVersion: undefined, styleVersion: undefined };
+  if (styleUrl) {
+    const styles: Partial<Record<MapTheme, string | StyleSpecification>> = { MARSHGO_LIGHT: styleUrl };
+    // The app can start in the light theme and switch later, so the dark
+    // recolour is resolved up front; otherwise setTheme falls back to the
+    // light style URL and the night map silently stays light.
+    try {
+      styles.MARSHGO_DARK = await resolveDarkStyle(styleUrl);
+    } catch {
+      if (theme === 'MARSHGO_DARK') throw new Error('MAP_STYLE_UNAVAILABLE');
+    }
+    return { style: styles[theme] ?? styleUrl, styles, mapDataVersion: undefined, styleVersion: undefined };
+  }
+  return { style: createFallbackMapStyle(theme), styles: undefined, mapDataVersion: undefined, styleVersion: undefined };
 }

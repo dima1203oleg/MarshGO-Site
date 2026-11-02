@@ -9,9 +9,10 @@ import { journeyLegCaveat } from './journeyLegLabel';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
-  formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyBoardingNote,
+  formatJourneyDurationTile, journeyBoardingNote,
   searchPendingCopy, unavailableTransportNotices,
 } from './journeyResultPresentation';
+import { journeyPriceDisplay, legPriceDisplay } from './cashFare';
 import { strategyJourneys } from './journeyStrategySelection';
 import { diagnosticsRequested, funnelLines, splitResultNotices } from './resultsDiagnostics';
 
@@ -76,17 +77,18 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
   const rankedStrategy = strategyConfig.find(item => journey.strategyRanks?.[item.id] === 1)?.id;
   const strategyItem = strategyConfig.find(item => item.id === (rankedStrategy ?? strategy)) ?? strategyConfig[0];
   const StrategyIcon = strategyItem.Icon;
-  const totalPrice = formatJourneyTotalPrice(journey);
+  const totalPrice = journeyPriceDisplay(journey).label;
+  const legPrice = (leg: ApiJourney['legs'][number] | undefined) => (leg ? legPriceDisplay(leg).value : '—');
   const stripItems: JourneySegmentStripItem[] = segments.map(segment => ({
     id: segment.id,
     mode: segment.mode,
     transportType: segment.leg?.transportType,
     label: segment.label,
     selectionLabel: segment.label + (segment.leg?.routeName ? ' ' + segment.leg.routeName : ''),
-    accessibilityLabel: segment.label + (segment.leg?.routeName ? ', маршрут ' + segment.leg.routeName : '') + ', ' + formatJourneyDuration(segment.durationSeconds) + ', ' + formatJourneySegmentPrice(segment, journey.currency ?? 'UAH'),
+    accessibilityLabel: segment.label + (segment.leg?.routeName ? ', маршрут ' + segment.leg.routeName : '') + ', ' + formatJourneyDuration(segment.durationSeconds) + ', ' + legPrice(segment.leg),
     durationSeconds: segment.durationSeconds,
     durationLabel: formatJourneyDurationTile(segment.durationSeconds),
-    priceLabel: formatJourneySegmentPrice(segment, journey.currency ?? 'UAH'),
+    priceLabel: legPrice(segment.leg),
     color: segment.color,
   }));
   const startAt = journey.requestedDepartureAt ?? firstLeg.departureAt;

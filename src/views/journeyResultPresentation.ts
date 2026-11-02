@@ -16,7 +16,7 @@ export type JourneyResultSegment = {
 
 const validTime = (value?: string) => value && Number.isFinite(Date.parse(value)) ? Date.parse(value) : null;
 
-function formatMoneyMinor(amountMinor: number, currency: string): string {
+export function formatMoneyMinor(amountMinor: number, currency: string): string {
   if (currency.toUpperCase() === 'UAH') {
     return `${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 0 }).format(amountMinor / 100)}\u00a0₴`;
   }

@@ -3,7 +3,7 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import type { CameraMode, ColoredRouteSegment, FocusedTransitMapOverlay, LiveTransitPosition, MapAdapter, MapStatus, MapTheme, RouteFitPadding, RouteWaypoint, ScreenPoint } from './MapAdapter';
+import type { CameraMode, ColoredRouteSegment, FocusedTransitMapOverlay, LiveTransitPosition, MapAdapter, MapAnnotation, MapStatus, MapTheme, RouteFitPadding, RouteWaypoint, ScreenPoint } from './MapAdapter';
 import { transitDirectionOffsetPx } from './MapAdapter';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
@@ -109,6 +109,7 @@ export class MapLibreAdapter implements MapAdapter {
   private marker: maplibregl.Marker | null = null;
   private liveTransitMarker: maplibregl.Marker | null = null;
   private liveTransitElement: HTMLDivElement | null = null;
+  private journeyLabelMarkers: maplibregl.Marker[] = [];
   private focusedTransitOverlay: FocusedTransitMapOverlay | null = null;
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
@@ -118,7 +119,7 @@ export class MapLibreAdapter implements MapAdapter {
   /** Shown when a layer needs a closer zoom or fails to load. */
   onTransportHint: (message: string | null) => void = () => undefined;
 
-  constructor(container: HTMLElement, style: string | StyleSpecification, private readonly onStatus: (status: MapStatus) => void, private readonly hasBasemap: boolean, private readonly styleUrls?: Partial<Record<MapTheme, string>>, initialTheme: MapTheme = 'MARSHGO_LIGHT') {
+  constructor(container: HTMLElement, style: string | StyleSpecification, private readonly onStatus: (status: MapStatus) => void, private readonly hasBasemap: boolean, private readonly styleUrls?: Partial<Record<MapTheme, string | StyleSpecification>>, initialTheme: MapTheme = 'MARSHGO_LIGHT') {
     this.theme = initialTheme;
     this.baseStyle = style;
     if (!pmtilesProtocolRegistered) { maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile); pmtilesProtocolRegistered = true; }
@@ -515,6 +516,119 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.getContainer().dataset.marshgoLiveTransitUpdatedAt = position.updatedAt;
   }
 
+  /**
+   * Boarding/alighting, walk, terminus, line and vehicle labels for the route
+   * sheet. Each label is an anchored DOM callout rather than a map symbol layer,
+   * because screen-sized pills must stay upright and legible at every zoom.
+   */
+  setJourneyLabels(labels: MapAnnotation[] | null) {
+    for (const marker of this.journeyLabelMarkers) marker.remove();
+    this.journeyLabelMarkers = [];
+    const entries = labels ?? [];
+    this.map.getContainer().dataset.marshgoJourneyLabelCount = String(entries.length);
+    for (const label of entries) {
+      if (!label.coordinates.every(Number.isFinite)) continue;
+      this.journeyLabelMarkers.push(new maplibregl.Marker({
+        element: this.buildJourneyLabelElement(label),
+        anchor: 'center',
+        pitchAlignment: 'viewport',
+        rotationAlignment: 'viewport',
+      }).setLngLat(label.coordinates).addTo(this.map));
+    }
+  }
+
+  private buildJourneyLabelElement(label: MapAnnotation): HTMLElement {
+    const element = document.createElement('div');
+    element.className = `mg-map-label mg-map-label--${label.kind.toLowerCase()}${label.tone ? ` mg-map-label--tone-${label.tone}` : ''}`;
+    element.setAttribute('role', 'img');
+    element.setAttribute('aria-label', [label.title, label.detail].filter(Boolean).join(', '));
+
+    const title = document.createElement('span');
+    title.className = 'mg-map-label__title';
+    title.textContent = label.title;
+    const detail = label.detail ? document.createElement('span') : null;
+    if (detail) {
+      detail.className = 'mg-map-label__detail';
+      detail.textContent = label.detail ?? '';
+    }
+
+    if (label.kind === 'WALK') {
+      const glyph = document.createElement('span');
+      glyph.className = 'mg-map-label__glyph';
+      glyph.setAttribute('aria-hidden', 'true');
+      glyph.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM9.8 8.1 7 22h2.1l1.9-7.4 2.3 2.1V22h2v-6.6l-2.2-2 .7-3.3 1.7 2.9 2.8 1.3.8-1.9-2.5-1.1-1.9-3.4c-.4-.8-1.3-1.2-2.2-1h-1.4L8.7 9.5l-.9 3.7 2 .5.6-3.2 1.3-.4Z"/></svg>';
+      const body = document.createElement('span');
+      body.className = 'mg-map-label__body';
+      body.append(title);
+      if (detail) body.append(detail);
+      element.append(glyph, body);
+      return element;
+    }
+
+    if (label.kind === 'BOARDING' || label.kind === 'ALIGHTING') {
+      element.append(title);
+      if (detail) {
+        detail.className = 'mg-map-label__caption';
+        element.append(detail);
+      }
+      return element;
+    }
+
+    if (label.kind === 'TERMINUS') {
+      const caption = document.createElement('span');
+      caption.className = 'mg-map-label__kicker';
+      caption.textContent = label.title;
+      if (detail) {
+        title.textContent = label.detail ?? '';
+        title.className = 'mg-map-label__title mg-map-label__title--strong';
+      }
+      element.append(caption, title);
+      return element;
+    }
+
+    if (label.kind === 'VEHICLE') {
+      const badge = document.createElement('span');
+      badge.className = 'mg-map-label__callout';
+      badge.textContent = label.title;
+      const pin = document.createElement('span');
+      pin.className = 'mg-map-label__pin';
+      pin.setAttribute('aria-hidden', 'true');
+      element.append(badge, pin);
+      if (detail) {
+        detail.className = 'mg-map-label__eta';
+        element.append(detail);
+      }
+      return element;
+    }
+
+    const badge = document.createElement('span');
+    badge.className = 'mg-map-label__callout';
+    badge.textContent = label.title;
+    const pin = document.createElement('span');
+    pin.className = 'mg-map-label__pin';
+    pin.setAttribute('aria-hidden', 'true');
+    element.append(badge, pin);
+    if (detail) element.append(detail);
+    return element;
+  }
+
+  /** Metric scale bar derived from the live camera, never a decorative constant. */
+  getScaleLabel(maxPixels = 88): { label: string; widthPx: number } | null {
+    const latitude = this.map.getCenter().lat;
+    const metersPerPixel = 156543.03392 * Math.cos(latitude * Math.PI / 180) / 2 ** this.map.getZoom();
+    if (!Number.isFinite(metersPerPixel) || metersPerPixel <= 0) return null;
+    const raw = metersPerPixel * maxPixels;
+    const base = 10 ** Math.floor(Math.log10(raw));
+    const step = [5, 2, 1].find(option => option * base <= raw) ?? 1;
+    const meters = step * base;
+    return {
+      label: meters >= 1000
+        ? `${(meters / 1000).toLocaleString('uk-UA', { maximumFractionDigits: 1 })} км`
+        : `${Math.round(meters)} м`,
+      widthPx: Math.max(18, Math.round(meters / metersPerPixel)),
+    };
+  }
+
   /** Draw the selected public-transit line context and its fresh fleet as batched GeoJSON. */
   setFocusedTransitOverlay(overlay: FocusedTransitMapOverlay | null) {
     this.focusedTransitOverlay = overlay;
@@ -667,7 +781,10 @@ export class MapLibreAdapter implements MapAdapter {
     if (layer === this.layer) return;
     this.layer = layer;
     this.theme = this.themeForLayer(layer);
-    const style = this.styleUrls?.[this.theme] ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) ?? this.baseStyle;
+    // The transformed dark vector style only replaces the simple basemap; the
+    // satellite layer keeps its own imagery style for this theme.
+    const themed = layer === 'simple' ? this.styleUrls?.[this.theme] : undefined;
+    const style = themed ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) ?? this.baseStyle;
     this.baseStyle = style;
     // A full style swap also removes custom sources/layers such as satellite imagery;
     // installLayers() restores route, transport, vehicle and rental overlays afterwards.
@@ -714,7 +831,8 @@ export class MapLibreAdapter implements MapAdapter {
     const nextTheme = this.themeForLayer(this.layer, theme);
     const changed = this.theme !== nextTheme;
     this.theme = nextTheme;
-    const style = this.styleUrls?.[this.theme] ?? (configuredMapStyleUrl ? styleForLayer(this.layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) : null);
+    const themed = this.layer === 'simple' ? this.styleUrls?.[this.theme] : undefined;
+    const style = themed ?? (configuredMapStyleUrl ? styleForLayer(this.layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) : null);
     if (changed && style) { this.baseStyle = style; this.map.setStyle(style); return; }
     this.applySatellitePalette();
     const colors = mapStyleTokens[this.theme];
@@ -735,6 +853,8 @@ export class MapLibreAdapter implements MapAdapter {
   destroy() {
     this.marker?.remove();
     this.liveTransitMarker?.remove();
+    for (const marker of this.journeyLabelMarkers) marker.remove();
+    this.journeyLabelMarkers = [];
     this.transport?.destroy();
     this.map.remove();
   }

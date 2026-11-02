@@ -4,17 +4,19 @@ export type RouteSheetHeights = Record<RouteSheetSnap, number>;
 export const ROUTE_SHEET_SNAPS: readonly RouteSheetSnap[] = ['collapsed', 'half', 'expanded'];
 
 /**
- * Snap points:
- * - collapsed around 29% viewport (summary & mode chips);
- * - half around 50-66% viewport (map context + route cards);
- * - expanded up to 88% viewport but always leaving a 200 px map strip, so the
- *   whole itinerary is readable while the route stays visible above the sheet.
+ * Snap points match the approved route-sheet composition:
+ * - collapsed keeps the summary and segment ribbon, so the map keeps the
+ *   lower part of the screen for the origin/destination context;
+ * - half is the canonical view: duration, price, ribbon and the single
+ *   primary action, exactly one screenful with no inner scrolling;
+ * - expanded adds the scrollable per-segment details while always leaving a
+ *   map strip at the top.
  */
 export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
   const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
-  const expanded = Math.min(840, viewport * 0.88, Math.max(0, viewport - 200));
-  const half = Math.min(660, Math.max(224, viewport * 0.5), Math.max(160, expanded - 48));
-  const collapsed = Math.min(246, Math.max(200, viewport * 0.29), Math.max(112, half - 48));
+  const expanded = Math.min(840, viewport * 0.9, Math.max(0, viewport - 172));
+  const half = Math.min(430, Math.max(300, viewport * 0.375));
+  const collapsed = Math.min(300, Math.max(248, viewport * 0.3), Math.max(180, half - 44));
   return { collapsed, half, expanded };
 }
 

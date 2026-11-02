@@ -9,6 +9,17 @@ export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; mode
 export type RouteWaypoint = { coordinate: Coordinate; kind: string; segmentIds?: string[] };
 export type ScreenPoint = { x: number; y: number };
 export type LiveTransitPosition = { coordinates: Coordinate; color: string; label: string; updatedAt: string };
+export type MapAnnotationKind = 'BOARDING' | 'ALIGHTING' | 'WALK' | 'TERMINUS' | 'ROUTE' | 'VEHICLE';
+export type MapAnnotationTone = 'green' | 'blue' | 'purple' | 'neutral';
+/** A DOM label anchored to a real coordinate of the itinerary or of the live overlay. */
+export type MapAnnotation = {
+  id: string;
+  kind: MapAnnotationKind;
+  coordinates: Coordinate;
+  title: string;
+  detail?: string;
+  tone?: MapAnnotationTone;
+};
 export type FocusedTransitMapOverlay = {
   color: string;
   transportType: string;
@@ -49,6 +60,8 @@ export interface MapAdapter {
   setActiveRouteSegment?(id: string | null): void;
   setLiveTransitPosition?(position: LiveTransitPosition | null): void;
   setFocusedTransitOverlay?(overlay: FocusedTransitMapOverlay | null): void;
+  setJourneyLabels?(labels: MapAnnotation[] | null): void;
+  getScaleLabel?(maxPixels?: number): { label: string; widthPx: number } | null;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
   focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;
   onRouteSegmentSelect: (id: string) => void;

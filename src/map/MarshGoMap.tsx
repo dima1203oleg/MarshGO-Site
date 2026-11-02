@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Coordinate } from '../../shared/navigation/contracts';
 import { resolveMapAssets, schemeBasemapConfigured } from './mapConfig';
-import type { ColoredRouteSegment, MapAdapter, MapStatus, MapTheme, RouteFitPadding, RouteWaypoint, ScreenPoint } from './MapAdapter';
+import type { ColoredRouteSegment, MapAdapter, MapAnnotation, MapStatus, MapTheme, RouteFitPadding, RouteWaypoint, ScreenPoint } from './MapAdapter';
 import { getMapLayer, getMapPerspective, styleForLayer, subscribeMapLayer, subscribeMapPerspective, type MapLayer } from './mapMode';
 import { getTransportLayers, subscribeTransportLayers } from './transportLayers';
 import { getMapDisplayPreferences, subscribeMapDisplayPreferences } from './mapLayerPreferences';
@@ -9,12 +9,12 @@ import { visibleTransportLayers } from './focusMode';
 import { configuredMapStyleUrl } from './mapConfig';
 import { themeService } from '../services/theme';
 
-type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: RouteWaypoint[]; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; focusMode?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
+type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: RouteWaypoint[]; routeLabels?: MapAnnotation[]; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; focusMode?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
 function themeForMapLayer(layer: MapLayer, dark: boolean): MapTheme {
   void layer;
   return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
 }
-export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPadding, activeRouteSegmentId = null, onRouteSegmentSelect, onRouteSegmentAmbiguous, vehicle, heading = null, theme, overlays = false, focusMode = false, onTransportHint, onStatus, onAdapter }: Props) {
+export function MarshGoMap({ route, routeSegments, routeWaypoints, routeLabels, routeFitPadding, activeRouteSegmentId = null, onRouteSegmentSelect, onRouteSegmentAmbiguous, vehicle, heading = null, theme, overlays = false, focusMode = false, onTransportHint, onStatus, onAdapter }: Props) {
   const container = useRef<HTMLDivElement | null>(null);
   const adapter = useRef<MapAdapter | null>(null);
   const syncOverlays = useRef<() => void>(() => undefined);
@@ -25,6 +25,7 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
   const routeRef = useRef(route);
   const routeSegmentsRef = useRef(routeSegments);
   const waypointsRef = useRef(routeWaypoints);
+  const labelsRef = useRef(routeLabels);
   const vehicleRef = useRef(vehicle);
   const headingRef = useRef(heading);
   routeSegmentSelect.current = onRouteSegmentSelect;
@@ -34,6 +35,7 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
   routeRef.current = route;
   routeSegmentsRef.current = routeSegments;
   waypointsRef.current = routeWaypoints;
+  labelsRef.current = routeLabels;
   vehicleRef.current = vehicle;
   headingRef.current = heading;
   const [layer, setLayer] = useState<MapLayer>(getMapLayer());
@@ -64,6 +66,7 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
       const latestRouteSegments = routeSegmentsRef.current;
       if (latestRouteSegments?.length) instance.setRouteSegments(latestRouteSegments); else instance.setRoute(routeRef.current);
       if (waypointsRef.current) instance.setWaypoints(waypointsRef.current);
+      if (labelsRef.current) instance.setJourneyLabels?.(labelsRef.current);
       if (vehicleRef.current) instance.setVehicle(vehicleRef.current, headingRef.current);
       const selectedSegmentId = activeSegment.current;
       instance.setActiveRouteSegment?.(selectedSegmentId);
@@ -74,6 +77,7 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeFitPaddi
   useEffect(() => { if (routeSegments?.length) adapter.current?.setRouteSegments?.(routeSegments); else adapter.current?.setRoute(route); adapter.current?.setActiveRouteSegment?.(activeRouteSegmentId); }, [route, routeSegments]);
   useEffect(() => { adapter.current?.setActiveRouteSegment?.(activeRouteSegmentId); }, [activeRouteSegmentId]);
   useEffect(() => { if (routeWaypoints) adapter.current?.setWaypoints(routeWaypoints); }, [routeWaypoints]);
+  useEffect(() => { adapter.current?.setJourneyLabels?.(routeLabels ?? null); }, [routeLabels]);
   useEffect(() => {
     if (!routeFitPadding) return;
     if (activeRouteSegmentId && adapter.current?.focusRouteSegment?.(activeRouteSegmentId, routeFitPadding)) return;
