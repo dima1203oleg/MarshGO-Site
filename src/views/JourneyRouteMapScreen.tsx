@@ -93,12 +93,13 @@ export function JourneyRouteMapScreen({
   journey,
   onBack,
   onBookOffer,
-  onNavigate,
+  onStartJourney,
 }: {
   journey: ApiJourney;
   onBack: () => void;
   onBookOffer?: (offerId: string, journeyId: string, journeyLegId: string) => void;
-  onNavigate?: (destination: { label: string; latitude: number; longitude: number }) => void;
+  /** Opens the active stage map for this itinerary; the route is never re-entered. */
+  onStartJourney?: () => void;
 }) {
   const model = useMemo(() => buildJourneyRouteMapModel(journey.legs), [journey.legs]);
   const timeline = useMemo(() => timelineFor(journey), [journey]);
@@ -376,7 +377,7 @@ export function JourneyRouteMapScreen({
           : liveJourneyRequestState === 'loading' ? 'Перевіряємо дані руху…'
             : liveJourney?.segments[0]?.reason === 'provider_unavailable' ? 'Джерело руху недоступне; лінію не домальовуємо'
               : liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' ? 'Немає свіжих позицій транспорту'
-                : model.missingShapeCount > 0 ? `${model.missingShapeCount} сегм. без геометрії джерела`
+                : model.missingShapeCount > 0 ? 'Частину маршруту без лінії на карті'
                   : model.approximateWalkCount > 0 ? 'Частина піших відрізків — оцінка' : '';
   const mapStatusIsWarning = mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured'
     || liveJourneyRequestState === 'failed' || liveJourney?.segments[0]?.reason === 'provider_unavailable'
@@ -475,7 +476,7 @@ export function JourneyRouteMapScreen({
     }
   };
 
-  const canStartNavigation = Boolean(lastLeg && onNavigate);
+  const canStartNavigation = Boolean(lastLeg && onStartJourney);
   const showChrome = sheetSnap !== 'expanded';
 
   return <main
@@ -624,7 +625,10 @@ export function JourneyRouteMapScreen({
             <strong className="text-[24px] font-black leading-8 tracking-tight tabular-nums">{firstLeg ? formatTime(firstLeg.departureAt) : '—'} <span aria-hidden="true" className="text-[var(--route-muted)]">→</span> {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}</strong>
             <span data-testid="canonical-route-duration" className="truncate text-[10.5px] font-bold tabular-nums text-[var(--route-muted)]">{formatDuration(allDuration)} · {formatSegmentCount(journey.legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</span>
           </span>
-          <strong aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`} className={`shrink-0 text-right text-[17px] font-extrabold tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
+          <span data-testid="route-total-fare" className="flex shrink-0 flex-col items-end leading-tight">
+            <strong aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`} className={`text-[17px] font-extrabold tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
+            {priceDisplay.cashOnly && totalPriceLabel !== '—' && <span className="text-[10px] font-bold text-[var(--route-muted)]">готівкою</span>}
+          </span>
         </div>
 
         <div className="mg-route-ribbon shrink-0 px-4 pb-1" role="list" aria-label="Етапи маршруту">
@@ -640,10 +644,6 @@ export function JourneyRouteMapScreen({
             </div>;
           })}
         </div>
-        {sheetSnap !== 'collapsed' && <p className="mg-route-ribbon__legend shrink-0 px-4 pb-1 text-[10px] font-semibold text-[var(--route-muted)]">
-          Шкала пропорційна часу кожного етапу · {formatDuration(allDuration)} = 100%
-        </p>}
-        {sheetSnap === 'expanded' && priceDisplay.cashOnly && <p className="shrink-0 px-4 pb-1 text-[10px] font-semibold text-[var(--route-subtle)]">Ціни — за тарифом міста для оплати готівкою; карткою може бути дешевше.</p>}
 
         {sheetSnap === 'expanded' && <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-2" data-testid="route-segment-list">
           <ol className="space-y-2 pt-2">
@@ -713,11 +713,6 @@ export function JourneyRouteMapScreen({
               </li>;
             })}
           </ol>
-
-          {model.missingShapeCount > 0 && <p className={`mt-2 rounded-xl border px-3 py-2 text-[10px] leading-4 ${isDark ? 'border-amber-300/20 bg-amber-300/5 text-amber-100' : 'border-amber-700/20 bg-amber-50 text-amber-900'}`}>
-            {model.missingShapeCount} сегм. без геометрії перевізника. Їх не з’єднуємо прямими лініями; карта показує лише підтверджені форми та точки з даних джерела.
-          </p>}
-          {mapStatus === 'unconfigured' && <p className={`mt-2 rounded-xl px-3 py-2 text-[10px] ${isDark ? 'bg-amber-300/10 text-amber-100' : 'bg-amber-50 text-amber-900'}`}>Для цієї карти не налаштовано базові тайли. Маршрутні геометрії залишаються доступними, якщо їх надав перевізник.</p>}
         </div>}
 
         <div className="mt-auto shrink-0 px-4 pb-3 pt-2">
@@ -730,7 +725,7 @@ export function JourneyRouteMapScreen({
           <button
             type="button"
             disabled={!canStartNavigation}
-            onClick={() => lastLeg && onNavigate?.({ label: lastLeg.destination.name, latitude: lastLeg.destination.coordinates[1], longitude: lastLeg.destination.coordinates[0] })}
+            onClick={() => onStartJourney?.()}
             className="mg-route-cta flex w-full items-center justify-center gap-3"
           >
             <Play size={20} fill="currentColor" aria-hidden="true"/>

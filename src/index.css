@@ -77,6 +77,7 @@ html.dark {
 /* The selected journey sheet follows the app theme while keeping the same canonical geometry. */
 .route-map-screen {
   --route-canvas: #F4F8FD;
+  --route-sheet: rgba(255, 255, 255, .97);
   --route-sheet-start: rgba(255, 255, 255, .98);
   --route-sheet-end: rgba(247, 250, 254, .99);
   --route-ink: #14243B;
@@ -113,6 +114,7 @@ html.dark {
 }
 .route-map-screen[data-theme="dark"] {
   --route-canvas: #070C14;
+  --route-sheet: #0E1522;
   --route-sheet-start: #0E1522;
   --route-sheet-end: #0B111B;
   --route-ink: #F2F6FC;

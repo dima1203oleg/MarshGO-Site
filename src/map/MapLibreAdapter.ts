@@ -132,7 +132,23 @@ export class MapLibreAdapter implements MapAdapter {
     // Phones with dpr 2.5–3 shade 6–9× the pixels of a dpr-2 frame; the extra
     // sharpness is invisible under a map, the GPU cost is not.
     const pixelRatio = Math.min(typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1, 2);
-    this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', center: [30.5234, 50.4501], zoom: 5, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false, pixelRatio });
+    this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', attributionControl: { compact: true }, center: [30.5234, 50.4501], zoom: 5, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false, pixelRatio });
+    // MapLibre opens the compact attribution until the first drag, and the credit
+    // only appears once the style/sources arrive. Collapse it as soon as those
+    // land (idempotent); tapping the ⓘ still reveals the full attribution.
+    const collapseAttribution = () => {
+      container.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show');
+    };
+    // Every style/source update can repopulate the credit and re-open the bar,
+    // so follow those events until the first idle, then stop listening and let
+    // the user toggle it freely.
+    this.map.on('styledata', collapseAttribution);
+    this.map.on('sourcedata', collapseAttribution);
+    this.map.once('idle', () => {
+      collapseAttribution();
+      this.map.off('styledata', collapseAttribution);
+      this.map.off('sourcedata', collapseAttribution);
+    });
     this.map.on('render', () => { container.dataset.marshgoMapIdle = 'false'; });
     this.map.on('resize', () => { container.dataset.marshgoMapIdle = 'false'; });
     this.map.on('idle', () => { container.dataset.marshgoMapIdle = 'true'; });
