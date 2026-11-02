@@ -1,22 +1,21 @@
-export type RouteSheetSnap = 'collapsed' | 'half' | 'expanded' | 'full-itinerary';
+export type RouteSheetSnap = 'collapsed' | 'half' | 'expanded';
 export type RouteSheetHeights = Record<RouteSheetSnap, number>;
 
-export const ROUTE_SHEET_SNAPS: readonly RouteSheetSnap[] = ['collapsed', 'half', 'expanded', 'full-itinerary'];
+export const ROUTE_SHEET_SNAPS: readonly RouteSheetSnap[] = ['collapsed', 'half', 'expanded'];
 
 /**
  * Snap points:
  * - collapsed around 29% viewport (summary & mode chips);
  * - half around 50-66% viewport (map context + route cards);
- * - expanded around 80-88% viewport (expanded stop lists, actions);
- * - full-itinerary around 92% viewport (full itinerary with top map strip preserved).
+ * - expanded up to 88% viewport but always leaving a 200 px map strip, so the
+ *   whole itinerary is readable while the route stays visible above the sheet.
  */
 export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
   const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
-  const expanded = Math.min(840, viewport * 0.88, Math.max(0, viewport - 112));
+  const expanded = Math.min(840, viewport * 0.88, Math.max(0, viewport - 200));
   const half = Math.min(660, Math.max(224, viewport * 0.5), Math.max(160, expanded - 48));
   const collapsed = Math.min(246, Math.max(200, viewport * 0.29), Math.max(112, half - 48));
-  const fullItinerary = Math.min(viewport - 48, Math.max(expanded + 24, Math.round(viewport * 0.92)));
-  return { collapsed, half, expanded, 'full-itinerary': fullItinerary };
+  return { collapsed, half, expanded };
 }
 
 export function nearestRouteSheetSnap(

@@ -106,8 +106,10 @@ export function JourneyRouteMapScreen({
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
   const [mapLayer, setCurrentMapLayer] = useState<MapLayer>(getMapLayer);
-  const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
-  const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 560 : routeSheetHeights(window.innerHeight).half);
+  // Details open on the full detent so every segment card keeps its lower
+  // rows (stops, caveats, fare) on screen; the map stays as a live strip.
+  const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('expanded');
+  const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 740 : routeSheetHeights(window.innerHeight).expanded);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
   const [dragging, setDragging] = useState(false);
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
@@ -230,13 +232,15 @@ export function JourneyRouteMapScreen({
       return { top: 100, left: 500, right: 40, bottom: 40, bearing: routeBearing };
     }
     return {
-      top: 120,
+      // At the full detent the address pill is hidden, so the route can use
+      // the whole strip between the floating controls and the sheet.
+      top: sheetSnap === 'expanded' ? 64 : 120,
       left: 22,
       right: 22,
       bottom: sheetHeight + 16,
       bearing: routeBearing,
     };
-  }, [isDesktop, routeBearing, sheetHeight]);
+  }, [isDesktop, routeBearing, sheetHeight, sheetSnap]);
 
   const chooseSegment = useCallback((id: string, expandForDetails = true) => {
     const leg = journey.legs.find(item => item.id === id);
@@ -277,8 +281,10 @@ export function JourneyRouteMapScreen({
   }, [activeSegmentId, dragging, journey.legs, mapPadding]);
 
   useEffect(() => {
-    if (sheetSnap === 'expanded') setExpandedSegments(new Set(journey.legs.filter(isScheduledRouteLeg).map(leg => leg.id)));
-  }, [sheetSnap, journey.legs]);
+    // Stop lists start collapsed: an auto-opened 8-stop card pushed every other
+    // segment card past the bottom of the sheet.
+    if (sheetSnap === 'collapsed') setExpandedSegments(new Set());
+  }, [sheetSnap]);
 
   const allDuration = journey.totalDurationSeconds;
   const hasMeasuredDistance = (leg: JourneyLeg): leg is JourneyLeg & { distanceMeters: number } => typeof leg.distanceMeters === 'number'
@@ -359,7 +365,7 @@ export function JourneyRouteMapScreen({
   };
   const cycleSheet = () => {
     if (suppressHandleClick.current) { suppressHandleClick.current = false; return; }
-    const next: RouteSheetSnap = sheetSnap === 'collapsed' ? 'half' : sheetSnap === 'half' ? 'expanded' : sheetSnap === 'expanded' ? 'full-itinerary' : 'collapsed';
+    const next: RouteSheetSnap = sheetSnap === 'collapsed' ? 'half' : sheetSnap === 'half' ? 'expanded' : 'collapsed';
     moveToSnap(next);
   };
   const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -390,7 +396,7 @@ export function JourneyRouteMapScreen({
     start.lastY = event.clientY;
     start.lastAt = now;
     const heights = routeSheetHeights(viewportHeight);
-    const nextHeight = Math.min(heights['full-itinerary'], Math.max(heights.collapsed, start.height + delta));
+    const nextHeight = Math.min(heights.expanded, Math.max(heights.collapsed, start.height + delta));
     sheetHeightRef.current = nextHeight;
     if (sheetElement.current) {
       // Keep a React commit between pointer events from restoring the snap
@@ -465,7 +471,7 @@ export function JourneyRouteMapScreen({
         onRouteSegmentAmbiguous={(ids, point) => {
           const validIds = ids.filter(id => journey.legs.some(leg => leg.id === id));
           if (validIds.length < 2) {
-            if (validIds[0]) chooseSegment(validIds[0]);
+            if (validIds[0]) chooseSegment(validIds[0], false);
             return;
           }
           setMapSegmentChoices({
@@ -504,11 +510,11 @@ export function JourneyRouteMapScreen({
           <button type="button" aria-label="Поділитися маршрутом" onClick={() => void shareRoute()} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur hover:bg-[var(--route-hover)]"><Share2 size={18}/></button>
         </div>
       </div>
-      <div role="group" aria-label={`Звідки: ${firstLeg?.origin.name ?? 'Початок'}. Куди: ${lastLeg?.destination.name ?? 'Кінець'}`} className="route-address-summary flex min-h-10 items-center gap-2 rounded-xl border border-[var(--route-border)] bg-[var(--route-floating)] px-3 py-2 text-[12px] font-extrabold text-[var(--route-ink)] shadow-lg backdrop-blur">
+      {sheetSnap !== 'expanded' && <div role="group" aria-label={`Звідки: ${firstLeg?.origin.name ?? 'Початок'}. Куди: ${lastLeg?.destination.name ?? 'Кінець'}`} className="route-address-summary flex min-h-10 items-center gap-2 rounded-xl border border-[var(--route-border)] bg-[var(--route-floating)] px-3 py-2 text-[12px] font-extrabold text-[var(--route-ink)] shadow-lg backdrop-blur">
         <span className="min-w-0 flex-1 truncate"><span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full bg-[var(--mg-blue)]"/>{firstLeg?.origin.name ?? 'Початок'}</span>
         <ArrowRight size={15} aria-hidden="true" className="shrink-0 text-[var(--route-muted)]"/>
         <span className="min-w-0 flex-1 truncate text-right"><span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full bg-[#E43F86]"/>{lastLeg?.destination.name ?? 'Кінець'}</span>
-      </div>
+      </div>}
     </header>
     <div className="absolute right-4 z-10 mx-auto flex max-w-3xl flex-col gap-2" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 6.5rem)' }}>
       <div className="flex shrink-0 flex-col gap-2">
@@ -679,7 +685,7 @@ export function JourneyRouteMapScreen({
           {missingShapes} сегм. без геометрії перевізника. Їх не з’єднуємо прямими лініями; карта показує лише підтверджені форми та точки з даних джерела.
         </p>}
         {mapStatus === 'unconfigured' && <p className={`mt-2 rounded-xl px-3 py-2 text-[10px] ${isDark ? 'bg-amber-300/10 text-amber-100' : 'bg-amber-50 text-amber-900'}`}>Для цієї карти не налаштовано базові тайли. Маршрутні геометрії залишаються доступними, якщо їх надав перевізник.</p>}
-        {(sheetSnap === 'expanded' || sheetSnap === 'full-itinerary') && <div className="grid grid-cols-3 gap-2 border-t border-[var(--route-border)] px-1 pt-2">
+        {sheetSnap === 'expanded' && <div className="grid grid-cols-3 gap-2 border-t border-[var(--route-border)] px-1 pt-2">
           <button type="button" aria-pressed={saved} onClick={toggleSaved} className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-[10px] font-bold"><Star size={15} fill={saved ? 'currentColor' : 'none'}/>{saved ? 'Збережено' : 'Зберегти'}</button>
           <button type="button" onClick={() => void shareRoute()} className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-[10px] font-bold"><Share2 size={15}/>Поділитися</button>
           <button type="button" disabled={!lastLeg || !onNavigate} onClick={() => lastLeg && onNavigate?.({ label: lastLeg.destination.name, latitude: lastLeg.destination.coordinates[1], longitude: lastLeg.destination.coordinates[0] })} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-[var(--mg-action)] text-[10px] font-extrabold text-white transition hover:bg-[var(--mg-action-hover)] disabled:opacity-45"><Navigation size={15}/>Навігація</button>

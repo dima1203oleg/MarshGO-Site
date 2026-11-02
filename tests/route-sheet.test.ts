@@ -1,24 +1,27 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { routeBearingForHorizontalFit } from '../src/map/routeOrientation';
-import { nearestRouteSheetSnap, routeSheetHeights, settleRouteSheetSnap } from '../src/views/routeSheet';
+import { nearestRouteSheetSnap, ROUTE_SHEET_SNAPS, routeSheetHeights, settleRouteSheetSnap } from '../src/views/routeSheet';
 
-test('route sheet snap points leave a visible map strip and keep an ordered range', () => {
+test('route sheet keeps three ordered detents with a live map strip', () => {
+  assert.deepEqual(ROUTE_SHEET_SNAPS, ['collapsed', 'half', 'expanded']);
   for (const viewport of [667, 844, 932]) {
     const heights = routeSheetHeights(viewport);
     assert.ok(heights.collapsed < heights.half);
     assert.ok(heights.half < heights.expanded);
-    assert.ok(heights.expanded < heights['full-itinerary']);
-    assert.ok(viewport - heights.expanded >= 112);
-    assert.ok(viewport - heights['full-itinerary'] >= 48);
+    assert.ok(viewport - heights.expanded >= 180);
     assert.ok(heights.collapsed >= 200);
   }
+  // On a typical phone the full detent must give the segment list extra room.
   assert.equal(routeSheetHeights(844).half, 422);
+  assert.equal(routeSheetHeights(844).expanded, 644);
+  assert.ok(routeSheetHeights(844).expanded - routeSheetHeights(844).half >= 200);
 });
 
 test('slow release chooses the nearest snap and a quick swipe advances one snap', () => {
   const heights = routeSheetHeights(844);
   assert.equal(nearestRouteSheetSnap((heights.collapsed + heights.half) / 2, heights), 'collapsed');
+  assert.equal(nearestRouteSheetSnap(heights.expanded + 40, heights), 'expanded');
   assert.equal(settleRouteSheetSnap(heights.collapsed + 40, 0.8, heights), 'half');
   assert.equal(settleRouteSheetSnap(heights.expanded - 40, -0.8, heights), 'half');
   assert.equal(settleRouteSheetSnap(heights.expanded - 10, 0.1, heights), 'expanded');
@@ -28,8 +31,8 @@ test('slow release chooses the nearest snap and a quick swipe advances one snap'
   assert.equal(settleRouteSheetSnap(heights.half + 4, -0.8, heights, 0.45, heights.collapsed), 'half');
   assert.equal(settleRouteSheetSnap(heights.expanded - 80, 0.1, heights, 0.45, heights.expanded), 'half');
   assert.equal(settleRouteSheetSnap(heights.expanded - 30, 0.1, heights, 0.45, heights.expanded), 'expanded');
-  assert.equal(settleRouteSheetSnap(heights.expanded + 40, 0.8, heights, 0.45, heights.expanded), 'full-itinerary');
-  assert.equal(settleRouteSheetSnap(heights['full-itinerary'] - 40, -0.8, heights, 0.45, heights['full-itinerary']), 'expanded');
+  assert.equal(settleRouteSheetSnap(heights.expanded + 40, 0.8, heights, 0.45, heights.expanded), 'expanded');
+  assert.equal(settleRouteSheetSnap(heights.expanded - 40, -0.8, heights, 0.45, heights.expanded), 'half');
 });
 
 test('route alignment rotates north-south routes sideways and leaves east-west routes north-up', () => {
