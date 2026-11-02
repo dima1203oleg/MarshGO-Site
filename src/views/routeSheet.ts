@@ -56,3 +56,68 @@ export function settleRouteSheetSnap(
   if (Math.abs(velocity) < velocityThreshold && Math.abs(displacement) < transitionThreshold) return nearest;
   return adjacent;
 }
+
+/**
+ * A pointermove stream on iOS arrives several times per displayed frame, and every unthrottled write
+ * to the sheet's height forces the MapLibre canvas underneath to relayout. This coalesces the newest
+ * value into a single write per animation frame and drops the ones the finger already superseded.
+ */
+export function createFrameWriter(
+  write: (value: number) => void,
+  request: (callback: () => void) => number = typeof requestAnimationFrame === 'function'
+    ? (callback) => requestAnimationFrame(callback)
+    : (callback) => setTimeout(callback, 16) as unknown as number,
+  cancel: (handle: number) => void = typeof cancelAnimationFrame === 'function'
+    ? (handle) => cancelAnimationFrame(handle)
+    : (handle) => clearTimeout(handle),
+): { schedule: (value: number) => void; flush: () => void; discard: () => void } {
+  let pending: number | null = null;
+  let handle: number | null = null;
+  const run = () => {
+    handle = null;
+    if (pending === null) return;
+    const value = pending;
+    pending = null;
+    write(value);
+  };
+  return {
+    schedule(value: number) {
+      pending = value;
+      if (handle === null) handle = request(run);
+    },
+    flush() {
+      if (handle !== null) { cancel(handle); handle = null; }
+      run();
+    },
+    discard() {
+      if (handle !== null) cancel(handle);
+      handle = null;
+      pending = null;
+    },
+  };
+}
+
+/** Live reading of the OS setting; the sheet uses it to drop its own easing without a CSS !important. */
+/**
+ * The sheet's snap curve from one place. During a drag there is nothing to interpolate — the
+ * finger *is* the animation — and under reduced motion a detent change must land instantly.
+ * The transition lives in the React style prop, and an inline style cannot be overridden by the
+ * CSS prefers-reduced-motion guard without !important, so the preference is folded in here.
+ */
+export function routeSheetTransition(dragging: boolean, reducedMotion: boolean, property = 'height'): string {
+  return dragging || reducedMotion ? 'none' : `${property} var(--mg-dur-base) var(--mg-ease-entrance)`;
+}
+
+export function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+export function subscribeReducedMotion(listener: (reduced: boolean) => void): () => void {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {};
+  const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const onChange = (event: MediaQueryListEvent) => listener(event.matches);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}

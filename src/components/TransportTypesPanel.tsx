@@ -46,7 +46,7 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
       Покриття маршрутів ще не перевірено; наявність провайдерів не підтверджена.
     </p>}
     {!compact && <p className="mb-3 text-xs leading-5 text-slate-500">Рівно 12 категорій у затвердженому порядку. Неактивні категорії залишаються видимими; «Пішки» додається автоматично до пересадок.</p>}
-    <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>
+    <div className={`transport-mode-grid grid ${compact ? 'gap-1.5' : 'gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>
     {!compact && allActive && <button type="button" onClick={() => setExpandedAll((value) => !value)} className="mt-3 text-xs font-bold text-[var(--mg-blue)]">{expandedAll ? 'Сховати провайдерів' : 'Налаштувати провайдерів'}</button>}
     {!compact && showProviders && <div className="mt-3 space-y-3" aria-label="Провайдери">
       <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Провайдери</h3>

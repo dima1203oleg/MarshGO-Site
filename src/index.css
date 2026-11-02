@@ -94,16 +94,21 @@
   --mg-z-sticky: 20;
   --mg-z-overlay: 40;
 
-  /* Type scale, from the sizes in use today. The legibility pass raises the
-     floor to 12 px in the mobile-ergonomics checkpoint; until then these
-     tokens mirror the current values so nothing drifts. */
-  --mg-type-micro: 11px;
-  --mg-type-caption: 11px;
+  /* Type scale. iPhone is the reference device, so the floor is 12 px: a 9–11 px caption on a
+     6.3-inch screen at arm's length is not secondary text, it is unreadable text. `--mg-type-name`
+     is the 14 px step the owner set for primary names (leg titles, route names, category labels). */
+  --mg-type-micro: 12px;
+  --mg-type-caption: 12px;
   --mg-type-label: 12px;
   --mg-type-body: 13px;
+  --mg-type-name: 14px;
   --mg-type-lead: 16px;
   --mg-type-title: 18px;
   --mg-type-headline: 20px;
+
+  /* Touch floor, declared once: Apple's Human Interface Guidelines and the owner's directive agree
+     that no visible control may be smaller than 44x44 pt. Used by the ergonomics guards below. */
+  --mg-touch: 2.75rem;
 
   /* Motion vocabulary: one shared set so screens feel alive without every
      component inventing its own duration; the reduced-motion guard wins. */
@@ -277,11 +282,15 @@ html.dark .app-header {
 html.dark .app-header > div:first-child strong { color: #F5F9FF !important; }
 .home-screen { padding-top: .35rem; }
 .transport-types-inline { margin-top: .7rem; }
-.transport-types-inline .transport-mode-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.transport-mode-grid {
+  /* Four fixed columns is what made a 12 px caption impossible: at 320 px each cell was 70 px,
+     so «Каршеринг» had to be written at 9 px to fit. auto-fit gives every category a real 76 px
+     floor and lets the row re-flow to 3 columns on the narrowest iPhone instead of shrinking text.
+     The grid owns its columns now, so the component's fixed grid-cols-* classes are gone. */
+  grid-template-columns: repeat(auto-fit, minmax(4.75rem, 1fr));
   gap: .4rem;
 }
-.transport-types-inline .transport-mode-grid button { min-height: 4.25rem; }
+.transport-mode-grid button { line-height: 1.15; }
 .home-screen .home-intro {
   position: relative;
   overflow: hidden;
@@ -348,7 +357,7 @@ html.dark .search-screen .journey-search-card .search-trip-details > div > butto
   background: #f6f8fc;
 }
 .search-screen .journey-search-card .trip-tile--stepper { padding: .25rem .25rem .25rem .7rem; }
-.search-screen .journey-search-card .trip-tile small { font-size: 11px; font-weight: 600; line-height: 1.15; color: #5b6a80; }
+.search-screen .journey-search-card .trip-tile small { font-size: var(--mg-type-caption); font-weight: 600; line-height: 1.15; color: #5b6a80; }
 .search-screen .journey-search-card .trip-tile .trip-tile__value { font-size: 13px; font-weight: 800; line-height: 1.25; }
 .search-screen .journey-search-card .trip-tile button {
   display: grid;
@@ -481,7 +490,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   justify-content: flex-start;
   gap: .25rem;
   color: #172638;
-  font-size: 10px;
+  font-size: var(--mg-type-label);
   font-weight: 700;
   line-height: 1.15;
 }
@@ -495,7 +504,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   overflow: hidden;
   padding-left: 1.25rem;
   color: #64748b;
-  font-size: 9.5px;
+  font-size: var(--mg-type-caption);
   font-weight: 500;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -556,11 +565,11 @@ html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background
 .journey-result-transfer-badge,
 .journey-result-save-visual { border: 1px solid #D9E2EC; }
 .journey-result-action-badge,
-.journey-result-transfer-badge { min-height: 2.5rem; }
-.journey-result-action-badge { width: 2.5rem; height: 2.5rem; }
-.journey-result-transfer-badge { min-width: 2.5rem; }
+.journey-result-transfer-badge { min-height: var(--mg-touch); }
+.journey-result-action-badge { width: var(--mg-touch); height: var(--mg-touch); }
+.journey-result-transfer-badge { min-width: var(--mg-touch); }
 .journey-result-save-button { margin-block: 0; background-color: transparent; }
-.journey-result-save-visual { display: grid; width: 2.5rem; height: 2.5rem; place-items: center; border-radius: 999px; background: transparent; }
+.journey-result-save-visual { display: grid; width: var(--mg-touch); height: var(--mg-touch); place-items: center; border-radius: 999px; background: transparent; }
 .journey-result-actions > span:last-child { width: 2.75rem; height: 2.75rem; }
 html.dark .journey-result-action-badge,
 html.dark .journey-result-transfer-badge,
@@ -583,21 +592,20 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   font-size: clamp(17px, 4.8vw, 20px);
   white-space: nowrap;
 }
-.journey-segment-tile-heading { font-size: 10px; }
+/* The sizes live in the token-driven rules above; only the geometry is re-tuned here. */
 .journey-segment-tile-icon { flex-basis: 1.125rem; }
-.journey-segment-tile-meta { padding-left: 1.25rem; font-size: 9.5px; text-align: left; }
+.journey-segment-tile-meta { padding-left: 1.25rem; text-align: left; }
 @media (min-width: 640px) {
   /* Five-leg routes fit without scrolling here, so every tile must share the
      width; overriding only the basis (as this rule once did) left them at 0 px. */
   .journey-segment-tile--scroll { flex: 1 1 0; }
 }
 @media (max-width: 479px) {
-  .journey-segment-tile-heading { gap: .125rem; font-size: clamp(9px, 2.4vw, 10px); }
+  .journey-segment-tile-heading { gap: .125rem; }
   .journey-segment-tile-icon { flex-basis: 1rem; }
   .journey-segment-tile:not(.journey-segment-tile--scroll) .journey-segment-tile-meta {
-    padding-left: 1.25rem;
+    padding-left: 1.125rem;
     text-align: left;
-    font-size: 9.5px;
   }
 }
 @media (max-width: 379px) {
@@ -682,15 +690,29 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
 .production-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
   border-radius: .9rem;
 }
-.production-app :is(.journey-search-card button, .journey-offer-card, button.w-full) { min-height: 2.75rem; }
-.production-app .app-tabbar button { min-width: 3.5rem; }
+/*
+ * The place fields were the shortest real controls on the search screen (182x24 px). The row around
+ * them is already 58 px, so the input box itself can reach the touch floor without growing the card.
+ */
+.journey-search-card input { min-height: var(--mg-touch); }
+.production-app :is(.journey-search-card button, .journey-offer-card, button.w-full) { min-height: var(--mg-touch); }
+.production-app .app-tabbar button { min-width: 3.5rem; min-height: var(--mg-touch); }
 .production-app [role="status"] { line-height: 1.45; }
+/*
+ * Reading floor, enforced once instead of at ~500 individual call sites.
+ * These arbitrary Tailwind sizes are written as `text-[11px]` utilities inside @layer utilities, so an
+ * unlayered .production-app rule beats them without !important and without touching a single component.
+ * The owner's iPhone target is 12–14 px; 10–11 px captions were the single largest readability defect
+ * measured on 393x852 (baseline: 11 of 11 result cards carried text under 12 px).
+ */
+.production-app :is(.text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[0\.72rem\]) {
+  font-size: var(--mg-type-label);
+}
 
 @media (max-width: 360px) {
   .production-app .app-tabbar button { min-width: 2.9rem; padding-inline: .35rem; }
   .production-app .journey-search-card { padding: .65rem; }
   .production-app .transport-mode-grid { gap: .35rem; }
-  .production-app .transport-mode-grid button { font-size: 9px; }
   .search-screen .journey-search-card .search-trip-details { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .transport-types-inline > div:first-child { gap: .25rem; }
   .transport-types-inline > div:first-child h2 { white-space: nowrap; font-size: .8rem; }
@@ -705,7 +727,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   }
   .search-screen .home-intro { flex: none; margin: 0; padding: .65rem .85rem; border-radius: 1.2rem; }
   .search-screen .home-title { margin-top: 0 !important; font-size: 1.2rem; }
-  .search-screen .home-description { margin-top: .1rem !important; font-size: 11px; line-height: 1.35; }
+  .search-screen .home-description { margin-top: .1rem !important; font-size: var(--mg-type-caption); line-height: 1.35; }
   .search-screen > .home-search-panel { flex: none; margin-top: 0 !important; }
   .search-screen .journey-search-card { padding: .7rem !important; }
   .search-screen .journey-search-card > .relative > [role="group"] { min-height: 3.65rem; padding-block: .55rem; }
@@ -848,7 +870,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     gap: 4px;
     padding: 4px 2px;
     border-radius: 16px;
-    font-size: 11px;
+    font-size: var(--mg-type-caption);
   }
   .app-tabbar-inner button:not(.app-create-button):hover { background: rgba(37, 99, 235, 0.05); }
   .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
@@ -857,7 +879,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     box-shadow: none;
   }
   .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg { color: var(--mg-blue); }
-  .app-tabbar-inner button:not(.app-create-button) > span { font-size: 11px; }
+  .app-tabbar-inner button:not(.app-create-button) > span { font-size: var(--mg-type-caption); }
   .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] > span { font-weight: 700; color: var(--mg-blue-ink); }
   .app-tabbar-inner .app-create-button {
     order: initial;
@@ -1474,7 +1496,7 @@ html.dark .app-tabbar { border-color: var(--mg-line) !important; }
 @media (max-width: 639px) and (max-height: 620px) {
   .home-canonical-banner { min-height: 5.75rem; padding: .5rem; }
   .home-canonical-banner h1 { font-size: 1rem; }
-  .home-canonical-banner p { margin-top: .1rem; font-size: .625rem; }
+  .home-canonical-banner p { margin-top: .1rem; font-size: var(--mg-type-caption); }
   .home-action-grid { grid-template-rows: repeat(2, 4.6rem); gap: .4rem; }
   .home-action-grid > .home-action-card { min-height: 0 !important; padding: .5rem; }
   .home-action-card > span:first-of-type { width: 1.75rem; height: 1.75rem; }
@@ -1484,6 +1506,12 @@ html.dark .app-tabbar { border-color: var(--mg-line) !important; }
   .home-trip-card { min-height: 3.1rem; padding: .35rem .6rem; }
   .home-trip-card > span:first-child { width: 2rem; height: 2rem; }
   .home-city-pill { min-height: 2.75rem; margin-bottom: .3rem; }
+  /* «Опублікувати поїздку» is the longest CTA label; at 320 px the 44 px banner dots left it 166 px and the
+     text wrapped to two lines inside the pill. Let the row wrap instead of the label: the pill keeps one line,
+     the dots stay 44 px targets and remain the only banner switcher. */
+  .home-canonical-banner > div:last-child { flex-wrap: wrap; column-gap: .4rem; }
+  .home-action-cta { white-space: nowrap; }
+  .home-canonical-banner > div:last-child > div:last-child { margin-inline-start: auto; }
 }
 /* Desktop keeps the canonical composition in a wider reading column. */
 @media (min-width: 1024px) {
@@ -1664,7 +1692,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
   flex-direction: column;
   gap: .25rem;
   color: var(--route-scale-ink);
-  font-size: 11px;
+  font-size: var(--mg-type-caption);
   font-weight: 800;
   letter-spacing: .01em;
   pointer-events: none;
@@ -1721,6 +1749,20 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
   box-shadow: 0 0 0 2px var(--route-ribbon-ring), 0 0 18px color-mix(in srgb, #8B3CE6 55%, transparent);
 }
 .mg-route-ribbon__pill:active { transform: scale(.97); }
+/*
+ * The ribbon pill is a genuine tap target but is only 26 px tall, and the row around it cannot grow
+ * without breaking the one-screenful half sheet. An invisible 44 px hit box centred on the pill gives
+ * the thumb the touch floor while the approved composition stays exactly as it is.
+ */
+.mg-route-ribbon__pill::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: var(--mg-touch);
+  transform: translateY(-50%);
+}
 .mg-route-ribbon__label {
   overflow: hidden;
   color: var(--route-ink);
@@ -1734,7 +1776,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
 .mg-route-ribbon__detail {
   overflow: hidden;
   color: var(--route-muted);
-  font-size: 10.5px;
+  font-size: var(--mg-type-caption);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -1798,7 +1840,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
   display: block;
   margin-top: 1px;
   color: var(--mg-label-muted);
-  font-size: 10.5px;
+  font-size: var(--mg-type-caption);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -1864,7 +1906,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
 .route-map-screen .mg-map-label__caption {
   max-width: 190px;
   color: var(--mg-label-ink);
-  font-size: 11.5px;
+  font-size: var(--mg-type-caption);
   font-weight: 800;
   line-height: 1.2;
   text-align: center;
@@ -1880,7 +1922,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
 }
 .route-map-screen .mg-map-label__kicker {
   color: var(--mg-label-muted);
-  font-size: 10px;
+  font-size: var(--mg-type-caption);
   font-weight: 700;
   line-height: 1.15;
 }
@@ -1902,7 +1944,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
   border-radius: 8px;
   background: var(--mg-callout-bg);
   color: var(--mg-callout-ink);
-  font-size: 11.5px;
+  font-size: var(--mg-type-caption);
   font-weight: 900;
   line-height: 1.2;
   box-shadow: var(--mg-label-shadow);
@@ -1922,11 +1964,22 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
   border-radius: 7px;
   background: #7B1BE0;
   color: #fff;
-  font-size: 10.5px;
+  font-size: var(--mg-type-caption);
   font-weight: 900;
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
   box-shadow: 0 4px 12px rgba(123, 27, 224, .5);
+}
+
+/*
+ * Dragging rewrites the sheet box every animation frame. Layout containment keeps that relayout
+ * inside the sheet, and the compositor hint exists only for the length of the gesture, so a resting
+ * sheet never holds a spare layer. Neither sheet screen keeps fixed descendants, so the
+ * containing-block change cannot move anything.
+ */
+[data-dragging="true"] {
+  contain: layout style;
+  will-change: height;
 }
 
 /* Keep map attribution above the sheet instead of behind it. */
@@ -1934,6 +1987,19 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
   .route-map-screen .maplibregl-ctrl-bottom-right {
     bottom: calc(var(--route-map-inset, 0px) + 10px);
   }
+}
+/*
+ * MapLibre ships its compact attribution ⓘ at 24x24 px, the smallest control anywhere in the
+ * passenger flow. The tappable element is the `summary` inside `.maplibregl-ctrl-attrib` (the
+ * classes are on different elements in this MapLibre version, so a compound selector never
+ * matched — caught by measuring the real page, not by reading the sheet). Element + two classes
+ * plus the app root beats MapLibre's own sheet without !important.
+ */
+.production-app .maplibregl-ctrl-attrib summary.maplibregl-ctrl-attrib-button,
+.route-map-screen .maplibregl-ctrl-attrib summary.maplibregl-ctrl-attrib-button {
+  width: var(--mg-touch);
+  height: var(--mg-touch);
+  background-position: center;
 }
 @media (min-width: 1024px) {
   .route-map-screen [data-testid="route-segment-list"] { max-height: 46vh; }
