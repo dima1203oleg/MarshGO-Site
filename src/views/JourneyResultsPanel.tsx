@@ -227,8 +227,12 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   if (result.partial && !result.partialReasons?.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
   if (result.partialReasons?.includes('walking_routing_unavailable')) notices.push({ tone: 'amber', text: 'Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.' });
   const preferenceTokens = result.unsupportedPreferences.filter(token => !token.startsWith('transportType:'));
-  if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${preferenceTokens.map(value => preferenceMessages[value] ?? value).join('; ')}.` });
-  if (result.providerErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${result.providerErrors.join('; ')}.` });
+  // Provider and preference messages arrive as full sentences (often already
+  // ending with a period); trim their terminal punctuation so the wrapper
+  // below adds exactly one period instead of rendering "маршрут..".
+  const sentenceList = (items: string[]) => items.map(item => item.trim().replace(/[.;]+$/, '')).filter(Boolean).join('; ');
+  if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${sentenceList(preferenceTokens.map(value => preferenceMessages[value] ?? value))}.` });
+  if (result.providerErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${sentenceList(result.providerErrors)}.` });
   if (result.resultsTruncated) notices.push({ tone: 'blue', text: `Показано до ${result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із ${result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.` });
   if (result.candidateGenerationTruncated) notices.push({ tone: 'amber', text: 'Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.' });
   unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
