@@ -1091,6 +1091,10 @@ html.dark :is(.bg-slate-50, .bg-\[\#f6f8fc\], .bg-\[\#F1F5F9\], .bg-\[\#f5f8fd\]
 html.dark :is(.bg-blue-50, .bg-\[\#EAF3FF\], .bg-\[\#E8F8F1\]) { background-color: rgba(22, 135, 255, .14) !important; }
 html.dark :is(.bg-emerald-50, .bg-\[\#F0FDF4\]) { background-color: rgba(44, 214, 125, .12) !important; }
 html.dark :is(.bg-amber-50, .bg-\[\#FFF4DB\]) { background-color: rgba(255, 176, 32, .12) !important; }
+/* The amber surfaces above collapse to a faint dark tint, so their brown ink has to flip with them:
+   measured on the public build, every warning badge sat at 2.4:1 against that tint. */
+html.dark :is(.bg-amber-50, .bg-\[\#FFF4DB\]) :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-\[\#8A5A12\], .text-\[\#AE6C00\]),
+html.dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-\[\#8A5A12\], .text-\[\#AE6C00\]):is(.bg-amber-50, .bg-\[\#FFF4DB\]) { color: #F3D38C !important; }
 html.dark :is(.bg-rose-50, .bg-red-50) { background-color: rgba(255, 90, 106, .12) !important; }
 html.dark :is(.text-\[\#0E1F35\], .text-\[\#081b35\], .text-slate-900, .text-slate-800, .text-slate-700, .text-\[\#14243B\]) { color: var(--mg-ink-primary) !important; }
 html.dark :is(.text-slate-600, .text-slate-500) { color: var(--mg-ink-secondary) !important; }
