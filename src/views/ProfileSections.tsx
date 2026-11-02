@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
   ArrowLeft, CheckCircle2, ChevronDown, Clock3, XCircle, Shield,
-  Download, Trash2, AlertTriangle, PhoneCall,
+  Download, Trash2, AlertTriangle, PhoneCall, ExternalLink,
 } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
-import type { ApiVehicle, ApiVerificationRecord } from '../services/productionApi';
+import { productionApi, type ApiTransportCity, type ApiVehicle, type ApiVerificationRecord } from '../services/productionApi';
 
-export type ProfileSection = 'documents' | 'settings' | 'privacy' | 'safety' | 'help';
+export type ProfileSection = 'documents' | 'settings' | 'privacy' | 'safety' | 'help' | 'sources';
 
 const statusMeta = {
   approved: { label: 'Підтверджено', tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300', Icon: CheckCircle2 },
@@ -22,6 +22,24 @@ const typeLabel: Record<ApiVerificationRecord['verification_type'], string> = {
 };
 
 const dateFormat = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeZone: 'Europe/Kyiv' });
+
+/**
+ * Provenance links were removed from the transport map, so the profile needs a thumb-sized,
+ * honest way out to the primary source. `rel="noreferrer"` keeps the token-free URL clean.
+ */
+function SourceLink({ href }: { href: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 px-3 text-[11px] font-bold text-blue-700 transition hover:bg-blue-50 dark:border-slate-700 dark:text-blue-300 dark:hover:bg-slate-800"
+    >
+      <ExternalLink size={14} aria-hidden="true" />
+      Першоджерело
+    </a>
+  );
+}
 
 const gpsPermissionLabel: Record<PermissionState | 'unknown', string> = {
   granted: 'Дозвіл надано',
@@ -66,6 +84,19 @@ export function ProfileSections({
   const [gpsNote, setGpsNote] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState('');
+  const [sourceCities, setSourceCities] = useState<ApiTransportCity[] | null>(null);
+  const [sourceNote, setSourceNote] = useState('');
+
+  // Provenance lives here instead of on the map: a passenger opens it to check where the data
+  // comes from, not while trying to read a route.
+  useEffect(() => {
+    if (section !== 'sources' || sourceCities !== null) return;
+    const controller = new AbortController();
+    void productionApi.transportCities(controller.signal)
+      .then(setSourceCities)
+      .catch(() => { if (!controller.signal.aborted) setSourceNote('Не вдалося отримати список джерел. Спробуйте ще раз пізніше.'); });
+    return () => controller.abort();
+  }, [section, sourceCities]);
 
   useEffect(() => {
     let disposed = false;
@@ -111,6 +142,7 @@ export function ProfileSections({
     privacy: 'Геолокація та приватність',
     safety: 'Безпека та скарги',
     help: 'Допомога та FAQ',
+    sources: 'Джерела транспортних даних',
   };
 
   const vehicleName = (id: string | null) => {
@@ -237,9 +269,9 @@ export function ProfileSections({
           </div>
 
           <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
-            <b className="text-sm text-[#0E1F35] dark:text-white">Ефемерне збереження Рандеву</b>
+            <b className="text-sm text-[#0E1F35] dark:text-white">Точка зустрічі зберігається тимчасово</b>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Координати зустрічі зберігаються в оперативному Redis-кеші з TTL 120 секунд і безповоротно стираються після завершення або скасування поїздки.
+              Маршрут зустрічі тримається близько двох хвилин і стирається, щойно поїздку завершено або скасовано. Після цього ваші координати ніде не залишаються.
             </p>
           </div>
 
@@ -345,6 +377,40 @@ export function ProfileSections({
               )}
             </div>
           ))}
+        </div>
+      )}
+      {section === 'sources' && (
+        <div className="space-y-3">
+          <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+            Розклади, зупинки й живий рух MARSHGO бере не з повітря: нижче — відкриті джерела по кожному місту та умови їхнього використання.
+          </p>
+          {sourceNote && <p role="status" className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{sourceNote}</p>}
+          {!sourceCities && !sourceNote && <p role="status" aria-busy="true" className="text-xs text-slate-500 dark:text-slate-400">Завантажуємо джерела…</p>}
+          {sourceCities?.length === 0 && <p className="text-xs text-slate-500 dark:text-slate-400">Зараз підключених джерел немає — тож і маршрутів із реальним розкладом поки не буде.</p>}
+          {sourceCities?.map((city) => {
+            const fallbackHref = city.sourceUrl;
+            return <div key={city.id} data-testid="profile-source-city" className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
+              <div className="flex items-start justify-between gap-3">
+                <b className="text-sm text-[#0E1F35] dark:text-white">{city.name}</b>
+                <span className="shrink-0 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{city.routeCount} маршрутів · {city.stopCount} зупинок</span>
+              </div>
+              <p className="mt-1 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                {city.realtimeAvailable ? 'Живий рух підключений' : 'Лише статичний розклад'} · {city.licenses.length ? city.licenses.join(', ') : 'умови використання уточнюються'}
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {city.providers.map((provider) => {
+                  const href = provider.sourceRef ?? fallbackHref;
+                  return <li key={`${city.id}-${provider.name}-${href ?? 'no-ref'}`} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-700 dark:text-slate-200">
+                    <span className="min-w-0 flex-1"><b className="font-bold">{provider.name}</b><small className="block text-[11px] text-slate-500 dark:text-slate-400">{provider.sourceType}{provider.license ? ` · ${provider.license}` : ''}</small></span>
+                    {href && <SourceLink href={href}/>}
+                  </li>;
+                })}
+                {city.providers.length === 0 && (fallbackHref
+                  ? <li><SourceLink href={fallbackHref}/></li>
+                  : <li className="text-[11px] text-slate-500 dark:text-slate-400">Первинне джерело цього міста не опубліковане.</li>)}
+              </ul>
+            </div>;
+          })}
         </div>
       )}
     </div>

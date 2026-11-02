@@ -375,7 +375,7 @@ export function JourneyRouteMapScreen({
       : mapStatus === 'unconfigured' ? 'Базові тайли карти не налаштовані'
         : liveJourneyRequestState === 'failed' ? 'Не вдалося оновити рух; показано розклад'
           : liveJourneyRequestState === 'loading' ? 'Перевіряємо дані руху…'
-            : liveJourney?.segments[0]?.reason === 'provider_unavailable' ? 'Джерело руху недоступне; лінію не домальовуємо'
+            : liveJourney?.segments[0]?.reason === 'provider_unavailable' ? 'Джерело руху недоступне'
               : liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' ? 'Немає свіжих позицій транспорту'
                 : model.missingShapeCount > 0 ? 'Частину маршруту без лінії на карті'
                   : model.approximateWalkCount > 0 ? 'Частина піших відрізків — оцінка' : '';

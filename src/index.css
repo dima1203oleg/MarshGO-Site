@@ -485,26 +485,17 @@ html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background
 .route-map-screen[data-theme="dark"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #f4f8fd !important; }
 .route-map-screen[data-theme="dark"] .journey-segment-tile-meta { color: #9aabbd !important; }
 .journey-result-card-content > .journey-segment-strip { margin-top: .25rem; }
-.journey-result-action-badge,
 .journey-result-transfer-badge,
 .journey-result-save-visual { border: 1px solid #D9E2EC; }
-.journey-result-action-badge,
-.journey-result-transfer-badge { min-height: 2.5rem; }
-.journey-result-action-badge { width: 2.5rem; height: 2.5rem; }
-.journey-result-transfer-badge { min-width: 2.5rem; }
+.journey-result-transfer-badge { min-height: 2.5rem; min-width: 2.5rem; }
 .journey-result-save-button { margin-block: 0; background-color: transparent; }
 .journey-result-save-visual { display: grid; width: 2.5rem; height: 2.5rem; place-items: center; border-radius: 999px; background: transparent; }
 .journey-result-actions > span:last-child { width: 2.75rem; height: 2.75rem; }
-html.dark .journey-result-action-badge,
 html.dark .journey-result-transfer-badge,
 html.dark .journey-result-save-visual { border-color: #223C52 !important; }
 html.dark .journey-result-save-button { background-color: transparent !important; }
-.journey-result-action-badge[data-strategy="BALANCED"] { background-color: #EAF3FF; color: #1687FF; }
-.journey-result-action-badge[data-strategy="FASTEST"] { background-color: #FFF3E5; color: #E87919; }
-.journey-result-action-badge[data-strategy="CHEAPEST"] { background-color: #E9FBF1; color: #10A765; }
-html.dark .journey-result-action-badge[data-strategy="BALANCED"] { background-color: rgba(22,135,255,.16) !important; color: #42A5FF !important; }
-html.dark .journey-result-action-badge[data-strategy="FASTEST"] { background-color: rgba(232,121,25,.16) !important; color: #FFAB5C !important; }
-html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-color: rgba(16,167,101,.16) !important; color: #36D98B !important; }
+/* The strategy badge used to repeat the tab the passenger already tapped, so it needed six
+   theme rules of its own; only the transfer count and the save action remain. */
 .journey-result-card-content > .journey-segment-strip .journey-segment-scroll-cue { right: -.3rem; }
 .journey-result-card-content .journey-result-duration {
   max-width: 100%;
