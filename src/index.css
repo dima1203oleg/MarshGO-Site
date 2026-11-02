@@ -1877,6 +1877,105 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
 @media (min-width: 1024px) {
   .route-map-screen [data-testid="route-segment-list"] { max-height: 46vh; }
 }
+/* ----- Route details motion and selection cues ---------------------------
+   Everything here answers "what did my tap just do?" and disappears under
+   the global prefers-reduced-motion guard. */
+
+/* Save/share used to confirm only to screen readers; now the rider sees it. */
+.route-toast {
+  border: 1px solid var(--route-control-border);
+  background: var(--route-floating);
+  color: var(--route-ink);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  animation: mg-toast-in var(--mg-dur-base) var(--mg-ease-entrance) both;
+}
+@keyframes mg-toast-in {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The screen arrives in layers: header from the top edge, sheet from below. */
+.route-map-screen > header { animation: mg-slide-down var(--mg-dur-base) var(--mg-ease-entrance) both; }
+.route-map-screen > section[data-testid="route-bottom-sheet"] { animation: mg-sheet-in var(--mg-dur-slow) var(--mg-ease-entrance) both; }
+@keyframes mg-sheet-in { from { transform: translate3d(0, 26px, 0); } to { transform: none; } }
+.route-details-head { animation: mg-slide-down var(--mg-dur-base) var(--mg-ease-entrance) both; }
+
+/* A single nudge teaches that the handle drags; it never loops. */
+.route-sheet-grabber__handle { animation: mg-grabber-hint 1.1s var(--mg-ease-standard) .9s 2 both; }
+@keyframes mg-grabber-hint {
+  0%, 100% { transform: none; }
+  40% { transform: translateY(-3px) scaleX(1.12); }
+  70% { transform: translateY(1px) scaleX(1.06); }
+}
+
+/* A focused leg pings like radar so the change reads in peripheral vision
+   while the camera rotates; the ping is pure opacity/transform. */
+.mg-route-ribbon__pill { position: relative; }
+.mg-route-ribbon__pill.is-active::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--route-ribbon-ring);
+  border-radius: 999px;
+  pointer-events: none;
+  animation: mg-ring-ping 2.4s var(--mg-ease-standard) infinite;
+}
+@keyframes mg-ring-ping {
+  0% { opacity: .75; transform: scale(.96); }
+  70%, 100% { opacity: 0; transform: scale(1.12); }
+}
+.mg-route-ribbon__item { transition: opacity var(--mg-dur-base) var(--mg-ease-standard); }
+.mg-route-ribbon__item.is-muted { opacity: .48; }
+
+/* The focused segment card keeps a slow halo; the rest recede via opacity. */
+.mg-route-segment { position: relative; }
+.mg-route-segment[data-active="true"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(22, 135, 255, .5);
+  pointer-events: none;
+  animation: mg-segment-halo 2.8s var(--mg-ease-standard) infinite;
+}
+@keyframes mg-segment-halo { 0%, 100% { opacity: .3; } 50% { opacity: .95; } }
+
+.route-stops-chevron { transition: transform var(--mg-dur-base) var(--mg-ease-entrance); }
+.route-stops-chevron.is-open { transform: rotate(180deg); }
+
+/* Reset control appears with a focused leg, so it announces itself once. */
+.route-map-control.is-reset { animation: mg-pop var(--mg-dur-slow) var(--mg-ease-entrance) both; }
+
+/* A slow sheen keeps the primary action the brightest thing on the screen
+   without animating layout or paint-heavy properties. */
+.mg-route-cta { position: relative; overflow: hidden; }
+.mg-route-cta:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  transform: skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .22), transparent);
+  pointer-events: none;
+  animation: mg-cta-sheen 4.4s var(--mg-ease-standard) infinite;
+}
+@keyframes mg-cta-sheen {
+  0%, 52% { transform: translateX(0) skewX(-18deg); opacity: 0; }
+  58% { opacity: 1; }
+  100% { transform: translateX(320%) skewX(-18deg); opacity: 0; }
+}
+
+/* The origin→destination arrow drifts forward now and then. */
+.route-address-summary > svg { animation: mg-arrow-nudge 3.4s var(--mg-ease-standard) infinite; }
+@keyframes mg-arrow-nudge {
+  0%, 86%, 100% { transform: none; }
+  92% { transform: translateX(3px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .route-map-scale,
   .mg-route-ribbon__pill,
@@ -1885,5 +1984,19 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
   .route-header-icon,
   .route-map-control {
     transition: none !important;
+  }
+  .route-map-screen > header,
+  .route-map-screen > section[data-testid="route-bottom-sheet"],
+  .route-details-head,
+  .route-sheet-grabber__handle,
+  .route-toast,
+  .mg-route-ribbon__pill.is-active::after,
+  .mg-route-segment[data-active="true"]::after,
+  .mg-route-cta:not(:disabled)::after,
+  .route-address-summary > svg,
+  .mg-route-segment,
+  .mg-stagger {
+    animation: none !important;
+    animation-delay: 0ms !important;
   }
 }

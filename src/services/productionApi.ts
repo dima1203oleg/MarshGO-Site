@@ -1,6 +1,7 @@
 import { routeResultSchema, type RouteRequest, type RouteResult } from '../../shared/navigation/contracts';
 import { NavigationProviderError } from '../../shared/navigation/errors';
 import { NETWORK_ERROR_CODE, networkFailureMessage, requestErrorMessage } from './requestErrorMessage';
+import { normalizePlaceQuery } from './placeQuery';
 import type { TransitZoneGeometry, VehiclePriority } from '../map/transportVisualZones';
 
 export interface TransitArrival {
@@ -586,7 +587,9 @@ export const productionApi = {
     );
   },
   suggestPlaces(query: string) {
-    return request<ApiPlace[]>(`/places/suggest?q=${encodeURIComponent(query)}`);
+    const normalized = normalizePlaceQuery(query);
+    if (!normalized) return Promise.resolve<ApiPlace[]>([]);
+    return request<ApiPlace[]>(`/places/suggest?q=${encodeURIComponent(normalized)}`);
   },
   reverseGeocode(latitude: number, longitude: number) {
     return request<ApiPlace>(`/places/reverse?lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`);

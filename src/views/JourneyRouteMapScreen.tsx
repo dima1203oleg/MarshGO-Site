@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Clock3, Heart, Layers, Navigation, Play, Share2,
+  ArrowLeft, ArrowRight, ChevronDown, Clock3, Heart, Layers, Navigation, Play, Share2, X,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from '../map/journeyRouteModel';
+import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
+import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
 import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
@@ -137,6 +139,19 @@ export function JourneyRouteMapScreen({
 
   useEffect(() => themeService.subscribe((_theme, dark) => setIsDark(dark)), []);
 
+  // A confirmation the rider can actually see: the sheet covers the screen, so the
+  // toast floats just above it and clears itself instead of needing a dismiss tap.
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(''), 2800);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
+
+  const haptic = (ms: number | number[]) => {
+    // iOS Safari has no Vibration API; the call is a no-op there, not a promise.
+    try { navigator.vibrate?.(ms); } catch { /* ignored */ }
+  };
+
   const selectedLeg = activeSegmentId ? journey.legs.find(leg => leg.id === activeSegmentId) : undefined;
   const liveLeg = selectedLeg && isScheduledRouteLeg(selectedLeg) ? selectedLeg : primaryLeg ?? undefined;
   const liveLegId = liveLeg?.id ?? null;
@@ -229,29 +244,70 @@ export function JourneyRouteMapScreen({
       top: 124,
       left: 26,
       right: 26,
-      // Fit against the half detent, not the live sheet height: expanding the
-      // details leaves only a thin strip, and fitting the whole route into it
-      // zooms out to a city-wide view with no visible streets.
-      bottom: routeSheetHeights(viewportHeight).half + chipHeight + 12,
+      // Follow the sheet's resting height: pulling the sheet down uncovers more
+      // map, so the route refits wider instead of staying pinned to the half
+      // detent. The expanded detent is skipped when fitting (thin strip), so its
+      // height never reaches this padding.
+      bottom: sheetHeight + chipHeight + 12,
     };
-  }, [isDesktop, viewportHeight]);
+  }, [isDesktop, sheetHeight]);
 
   const routeLinePoints = useMemo(() => {
-    const points = model.routeSegments.flatMap(segment => segment.coordinates);
-    for (const route of liveSegment?.lineRoutes ?? []) {
-      // The whole published line is the context: what the tram rides before
-      // boarding and after alighting stays in frame, like the approved mockup.
-      points.push(...route.coordinates);
-      if (route.zones?.beforeBoarding) points.push(...route.zones.beforeBoarding);
-      if (route.zones?.afterAlighting) points.push(...route.zones.afterAlighting);
-    }
-    return points;
+    const itinerary = model.routeSegments.flatMap(segment => segment.coordinates);
+    const lineRoutes = liveSegment?.lineRoutes ?? [];
+    const contextLines = lineRoutes.flatMap(route => [
+      route.coordinates,
+      ...(route.zones?.beforeBoarding ? [route.zones.beforeBoarding] : []),
+      ...(route.zones?.afterAlighting ? [route.zones.afterAlighting] : []),
+    ]);
+    // The camera frames the ride plus the nearby part of its line; the published
+    // line can run tens of kilometres past it, and fitting that turns the
+    // itinerary into a dot on a city-wide map with no readable streets.
+    return corridorFitPoints(itinerary, contextLines);
   }, [liveSegment, model.routeSegments]);
+
+  // A live poll replaces every object even when the geometry is identical, so
+  // the fit is keyed on the coordinates themselves: otherwise the camera flies
+  // a fresh fitBounds animation every 15 s while the rider reads the sheet.
+  const routeFitKey = useMemo(() => {
+    if (routeLinePoints.length < 2) return `points:${routeLinePoints.length}`;
+    const bounds = boundsOf(routeLinePoints);
+    return bounds
+      ? `${routeLinePoints.length}:${bounds.map(value => value.toFixed(5)).join(',')}`
+      : `points:${routeLinePoints.length}`;
+  }, [routeLinePoints]);
+
+  // A selected leg is framed on its own: the ride plus a short stretch of the
+  // published line on both sides, rotated so the leg runs up the screen and the
+  // taller viewport edge gives it the longest possible drawn length.
+  const segmentFocus = useMemo(() => {
+    const segment = activeSegmentId ? model.routeSegments.find(item => item.id === activeSegmentId) : undefined;
+    if (!segment || segment.coordinates.length < 2) return null;
+    const live = liveJourney?.segments.find(item => item.legId === segment.id);
+    const contextLines = (live?.lineRoutes ?? []).flatMap(route => [
+      route.coordinates,
+      ...(route.zones?.beforeBoarding ? [route.zones.beforeBoarding] : []),
+      ...(route.zones?.afterAlighting ? [route.zones.afterAlighting] : []),
+    ]);
+    const points = corridorFitPoints(segment.coordinates, contextLines, 0.5);
+    const bounds = boundsOf(points);
+    const bearing = extentMeters(segment.coordinates) > 120 ? principalBearing(segment.coordinates) : null;
+    return {
+      points,
+      bearing,
+      key: `${segment.id}:${points.length}:${bearing === null ? 'flat' : bearing.toFixed(1)}:${bounds?.map(value => value.toFixed(5)).join(',') ?? ''}`,
+    };
+  }, [activeSegmentId, liveJourney, model.routeSegments]);
+
+  // Keyed on content so a live poll that repeats the same geometry does not
+  // replay the camera animation while the rider is reading the sheet.
+  const segmentFocusKey = segmentFocus?.key ?? null;
 
   const showWholeRoute = useCallback(() => {
     setActiveSegmentId(null);
-    if (routeLinePoints.length >= 2) mapAdapter.current?.focusCoordinates?.(routeLinePoints, mapPadding, 15.2);
-    else mapAdapter.current?.fitRoute(mapPadding);
+    const padding = { ...mapPadding, bearing: 0 };
+    if (routeLinePoints.length >= 2) mapAdapter.current?.focusCoordinates?.(routeLinePoints, padding, 15.2);
+    else mapAdapter.current?.fitRoute(padding);
   }, [mapPadding, routeLinePoints]);
 
   useEffect(() => {
@@ -262,9 +318,17 @@ export function JourneyRouteMapScreen({
     // At the details detent only a thin map strip remains; refitting would
     // squeeze the whole itinerary into a few pixels.
     if (sheetSnap === 'expanded') return;
-    if (routeLinePoints.length >= 2) adapter.focusCoordinates?.(routeLinePoints, mapPadding, 15.2);
+    if (segmentFocus) {
+      adapter.focusCoordinates?.(
+        segmentFocus.points,
+        segmentFocus.bearing === null ? { ...mapPadding, bearing: 0 } : { ...mapPadding, bearing: segmentFocus.bearing },
+        17,
+      );
+      return;
+    }
+    if (routeLinePoints.length >= 2) adapter.focusCoordinates?.(routeLinePoints, { ...mapPadding, bearing: 0 }, 15.2);
     else adapter.fitRoute(mapPadding);
-  }, [activeSegmentId, dragging, mapAdapterReady, mapPadding, routeLinePoints, sheetSnap]);
+  }, [activeSegmentId, dragging, mapAdapterReady, mapPadding, routeFitKey, segmentFocusKey, sheetSnap]);
 
   useEffect(() => {
     if (sheetSnap === 'expanded') return;
@@ -276,6 +340,7 @@ export function JourneyRouteMapScreen({
   const chooseSegment = useCallback((id: string) => {
     setMapSegmentChoices(null);
     setActiveSegmentId(current => current === id ? null : id);
+    haptic(8);
     requestAnimationFrame(() => segmentCards.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
   }, []);
 
@@ -323,6 +388,7 @@ export function JourneyRouteMapScreen({
     sheetHeightRef.current = nextHeight;
     setSheetSnap(next);
     setSheetHeight(nextHeight);
+    haptic(6);
   };
   const cycleSheet = () => {
     if (suppressHandleClick.current) { suppressHandleClick.current = false; return; }
@@ -481,7 +547,7 @@ export function JourneyRouteMapScreen({
     </header>}
 
     <div className="absolute right-4 z-10 flex flex-col gap-2" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 8.2rem)' }}>
-      {sheetSnap === 'half' && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className="route-map-control grid h-11 w-11 place-items-center rounded-full"><Navigation size={19}/></button>}
+      {(sheetSnap === 'half' || activeSegmentId) && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className={`route-map-control grid h-11 w-11 place-items-center rounded-full${activeSegmentId ? ' is-reset' : ''}`}><Navigation size={19}/></button>}
       <button type="button" aria-label={`Шар карти: ${mapLayers[mapLayer].label}. Перемкнути`} title={`Шар карти: ${mapLayers[mapLayer].label}`} onClick={() => {
         const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
         setCurrentMapLayer(next); setMapLayer(next);
@@ -494,12 +560,16 @@ export function JourneyRouteMapScreen({
     </div>}
 
     {showChrome && liveLeg && <div className="pointer-events-none absolute inset-x-0 z-10 mx-auto flex max-w-3xl justify-center px-4" style={{ bottom: sheetHeight + 10, transition: dragging ? 'none' : 'bottom var(--mg-dur-base) var(--mg-ease-entrance)' }}>
-      <button type="button" onClick={() => chooseSegment(liveLeg.id)} aria-pressed={activeSegmentId === liveLeg.id} className="pointer-events-auto route-mode-chip flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2 text-left">
+      <button type="button" onClick={() => chooseSegment(liveLeg.id)} aria-pressed={activeSegmentId === liveLeg.id} aria-label={activeSegmentId === liveLeg.id ? `${legLabel(liveLeg)} — натисніть, щоб показати весь маршрут` : `${legLabel(liveLeg)} — натисніть, щоб наблизити цей відрізок`} className="pointer-events-auto route-mode-chip flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2 text-left">
         <span className="route-mode-chip__icon grid h-9 w-9 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: journeyModeColor(liveLeg.mode, liveLeg.transportType) }}>
           <TransportIcon mode={liveLeg.mode} transportType={liveLeg.transportType} size={19} strokeWidth={2.3}/>
         </span>
         <span className="min-w-0 flex-1 truncate text-[15px] font-black">{legLabel(liveLeg)}</span>
-        <span className="shrink-0 rounded-full px-2 py-1 text-[10px] font-extrabold tabular-nums text-[var(--route-muted)]">{liveSegment?.status === 'LIVE' ? 'ЗА РУХОМ' : 'ЗА РОЗКЛАДОМ'}</span>
+        {activeSegmentId === liveLeg.id
+          ? <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--route-hover)] text-[var(--route-muted)]"><X size={15} strokeWidth={2.6}/></span>
+          : liveSegment?.status === 'LIVE'
+            ? <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-extrabold tabular-nums text-[var(--route-muted)]"><i aria-hidden="true" className="mg-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"/>ЗА РУХОМ</span>
+            : <span className="shrink-0 rounded-full px-2 py-1 text-[10px] font-extrabold tabular-nums text-[var(--route-muted)]">ЗА РОЗКЛАДОМ</span>}
       </button>
     </div>}
 
@@ -528,9 +598,9 @@ export function JourneyRouteMapScreen({
         }}
         aria-controls="route-sheet-content"
         aria-keyshortcuts="ArrowUp ArrowDown Home End"
-        className="route-sheet-grabber flex h-9 w-full shrink-0 touch-none items-center justify-center"
+        className="route-sheet-grabber flex h-11 w-full shrink-0 touch-none items-center justify-center"
       >
-        <span className="h-1.5 w-12 rounded-full bg-[var(--route-grabber)]"/>
+        <span className="route-sheet-grabber__handle h-1.5 w-12 rounded-full bg-[var(--route-grabber)]"/>
       </button>
 
       <div id="route-sheet-content" className="flex min-h-0 flex-1 flex-col">
@@ -561,7 +631,7 @@ export function JourneyRouteMapScreen({
           {ribbonItems.map(item => {
             const selected = activeSegmentId === item.id;
             const walk = item.leg.mode === 'WALK';
-            return <div key={item.id} role="listitem" className="mg-route-ribbon__item" style={{ flexGrow: Math.max(1, Math.round(item.durationSeconds / 60)) }}>
+            return <div key={item.id} role="listitem" className={`mg-route-ribbon__item${activeSegmentId && !selected ? ' is-muted' : ''}`} style={{ flexGrow: Math.max(1, Math.round(item.durationSeconds / 60)) }}>
               <button type="button" onClick={() => chooseSegment(item.id)} aria-pressed={selected} aria-label={`Вибрати етап: ${item.label}, ${item.detail}`} className={`mg-route-ribbon__pill${selected ? ' is-active' : ''}`} style={{ backgroundColor: walk ? 'var(--route-ribbon-walk)' : item.color }}>
                 <TransportIcon mode={item.leg.mode} transportType={item.leg.transportType} size={17} strokeWidth={2.4}/>
               </button>
@@ -577,7 +647,7 @@ export function JourneyRouteMapScreen({
 
         {sheetSnap === 'expanded' && <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-2" data-testid="route-segment-list">
           <ol className="space-y-2 pt-2">
-            {timeline.map(item => {
+            {timeline.map((item, index) => {
               if (item.kind === 'WAIT') return <li key={item.id} className="rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2 text-xs text-[var(--route-muted)]">
                 <span className="inline-flex items-center gap-2"><Clock3 size={14} className="text-[var(--route-subtle)]"/>Очікування · {formatDuration(item.durationSeconds)}</span>
               </li>;
@@ -597,8 +667,8 @@ export function JourneyRouteMapScreen({
                 data-testid="journey-route-segment"
                 data-segment-id={leg.id}
                 data-active={selected}
-                className={`overflow-hidden rounded-[1rem] border bg-[var(--route-card)] transition-[border-color,box-shadow,opacity] duration-200 ${selected ? 'border-[var(--mg-blue)] shadow-[0_0_0_1px_rgba(22,135,255,.45),0_0_24px_rgba(22,135,255,.16)]' : 'border-[var(--route-border)]'}`}
-                style={{ borderLeftWidth: 4, borderLeftColor: color, opacity: activeSegmentId && !selected ? 0.68 : 1, ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}) }}
+                className={`mg-rise mg-stagger mg-route-segment overflow-hidden rounded-[1rem] border bg-[var(--route-card)] transition-[border-color,box-shadow,opacity] duration-200 ${selected ? 'border-[var(--mg-blue)] shadow-[0_0_0_1px_rgba(22,135,255,.45),0_0_24px_rgba(22,135,255,.16)]' : 'border-[var(--route-border)]'}`}
+                style={{ borderLeftWidth: 4, borderLeftColor: color, opacity: activeSegmentId && !selected ? 0.68 : 1, ['--mg-stagger-i' as string]: index, ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}) }}
               >
                 <div className="flex items-start gap-2 p-2">
                   <button type="button" onClick={() => chooseSegment(leg.id)} aria-pressed={selected} aria-label={`Вибрати сегмент: ${legLabel(leg)}`} className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]">
@@ -618,7 +688,7 @@ export function JourneyRouteMapScreen({
                     <b className="text-xs tabular-nums" style={{ color: isDark ? color : '#14243B' }}>{price.value}</b>
                     {price.caption && <span className="text-[10px] font-semibold text-[var(--route-muted)]">{price.caption}</span>}
                     {scheduled && <button type="button" aria-label={`${expanded ? 'Згорнути' : 'Розгорнути'} зупинки: ${journeyLegLabel(leg.mode, leg.transportType)}`} aria-expanded={expanded} onClick={() => toggleExpanded(leg.id)} className="grid h-11 w-11 place-items-center rounded-lg text-[var(--route-muted)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
-                      {expanded ? <ChevronUp size={17}/> : <ChevronDown size={17}/>}
+                      <ChevronDown size={17} className={`route-stops-chevron${expanded ? ' is-open' : ''}`}/>
                     </button>}
                   </div>
                 </div>
@@ -669,6 +739,8 @@ export function JourneyRouteMapScreen({
         </div>
       </div>
     </section>
-    {feedback && <p role="status" className="sr-only">{feedback}</p>}
+    <div aria-live="polite" className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-6" style={{ bottom: 'calc(var(--route-map-inset) + 10px)', transition: dragging ? 'none' : 'bottom var(--mg-dur-base) var(--mg-ease-entrance)' }}>
+      {feedback && <p key={feedback} role="status" className="route-toast max-w-full truncate rounded-full px-4 py-2.5 text-[12.5px] font-extrabold">{feedback}</p>}
+    </div>
   </main>;
 }

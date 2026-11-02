@@ -109,7 +109,7 @@ export class MapLibreAdapter implements MapAdapter {
   private marker: maplibregl.Marker | null = null;
   private liveTransitMarker: maplibregl.Marker | null = null;
   private liveTransitElement: HTMLDivElement | null = null;
-  private journeyLabelMarkers: maplibregl.Marker[] = [];
+  private journeyLabelMarkers = new Map<string, { marker: maplibregl.Marker; key: string }>();
   private focusedTransitOverlay: FocusedTransitMapOverlay | null = null;
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
@@ -129,7 +129,10 @@ export class MapLibreAdapter implements MapAdapter {
     container.dataset.marshgoCameraRequestId = '0';
     container.dataset.marshgoCameraSettledId = '0';
     container.dataset.marshgoCameraMoving = 'false';
-    this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', center: [30.5234, 50.4501], zoom: 5, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false });
+    // Phones with dpr 2.5–3 shade 6–9× the pixels of a dpr-2 frame; the extra
+    // sharpness is invisible under a map, the GPU cost is not.
+    const pixelRatio = Math.min(typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1, 2);
+    this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', center: [30.5234, 50.4501], zoom: 5, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false, pixelRatio });
     this.map.on('render', () => { container.dataset.marshgoMapIdle = 'false'; });
     this.map.on('resize', () => { container.dataset.marshgoMapIdle = 'false'; });
     this.map.on('idle', () => { container.dataset.marshgoMapIdle = 'true'; });
@@ -522,18 +525,30 @@ export class MapLibreAdapter implements MapAdapter {
    * because screen-sized pills must stay upright and legible at every zoom.
    */
   setJourneyLabels(labels: MapAnnotation[] | null) {
-    for (const marker of this.journeyLabelMarkers) marker.remove();
-    this.journeyLabelMarkers = [];
-    const entries = labels ?? [];
+    // Reconcile by id: recreating every callout on each live poll removes and
+    // re-adds a dozen DOM nodes, which flickers them and re-runs layout. Only
+    // labels whose content actually changed are rebuilt.
+    const entries = (labels ?? []).filter(label => label.coordinates.every(Number.isFinite));
     this.map.getContainer().dataset.marshgoJourneyLabelCount = String(entries.length);
+    const seen = new Set<string>();
     for (const label of entries) {
-      if (!label.coordinates.every(Number.isFinite)) continue;
-      this.journeyLabelMarkers.push(new maplibregl.Marker({
+      seen.add(label.id);
+      const key = `${label.kind}:${label.tone ?? ''}:${label.title}:${label.detail ?? ''}:${label.coordinates[0].toFixed(5)},${label.coordinates[1].toFixed(5)}`;
+      const existing = this.journeyLabelMarkers.get(label.id);
+      if (existing?.key === key) continue;
+      existing?.marker.remove();
+      const marker = new maplibregl.Marker({
         element: this.buildJourneyLabelElement(label),
         anchor: 'center',
         pitchAlignment: 'viewport',
         rotationAlignment: 'viewport',
-      }).setLngLat(label.coordinates).addTo(this.map));
+      }).setLngLat(label.coordinates).addTo(this.map);
+      this.journeyLabelMarkers.set(label.id, { marker, key });
+    }
+    for (const [id, entry] of this.journeyLabelMarkers) {
+      if (seen.has(id)) continue;
+      entry.marker.remove();
+      this.journeyLabelMarkers.delete(id);
     }
   }
 
@@ -853,8 +868,8 @@ export class MapLibreAdapter implements MapAdapter {
   destroy() {
     this.marker?.remove();
     this.liveTransitMarker?.remove();
-    for (const marker of this.journeyLabelMarkers) marker.remove();
-    this.journeyLabelMarkers = [];
+    for (const { marker } of this.journeyLabelMarkers.values()) marker.remove();
+    this.journeyLabelMarkers.clear();
     this.transport?.destroy();
     this.map.remove();
   }
