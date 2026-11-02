@@ -46,7 +46,7 @@ const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((m
 
 type Tab = ProductionTab;
 const formatMoney = (minor: number, currency: string) => new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(minor / 100);
-import { carpoolDepartureDateLabel, carpoolOffersFromOtherDate } from './carpoolDatePresentation';
+import { carpoolDepartureDateLabel, carpoolOffersFromOtherDate, showsCarpoolSorter } from './carpoolDatePresentation';
 
 const formatDate = (value: string, options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }) => new Intl.DateTimeFormat('uk-UA', { ...options, timeZone: 'Europe/Kyiv' }).format(new Date(value));
 const todayKyiv = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv' }).format(new Date());
@@ -1605,7 +1605,7 @@ export function ProductionMarketplace() {
   const returnToSearch = () => { setShowResults(false); setTab('search'); };
 
   const carpoolSection = <>
-    <div className="no-scrollbar mb-4 flex items-center gap-2 overflow-x-auto pb-1"><span className="shrink-0 text-[11px] font-semibold text-[#526477] dark:text-[#B4C0CF]">Сортувати:</span>{([['earliest','Найраніше'],['cheapest','Найдешевше'],['fastest','Найшвидше']] as const).map(([key,label])=><button key={key} type="button" aria-pressed={offerSort===key} onClick={()=>setOfferSort(key)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition-colors min-h-11 ${offerSort===key?'border-[var(--mg-action)] bg-[#EAF3FF] text-[var(--mg-blue-ink)]':'border-[#E5EDF7] bg-white text-[#526477] dark:text-[#B4C0CF]'}`}>{label}</button>)}</div>
+    {showsCarpoolSorter(sortedOffers.length, journeyResult !== null) && <div className="no-scrollbar mb-4 flex items-center gap-2 overflow-x-auto pb-1"><span className="shrink-0 text-[11px] font-semibold text-[#526477] dark:text-[#B4C0CF]">Сортувати:</span>{([['earliest','Найраніше'],['cheapest','Найдешевше'],['fastest','Найшвидше']] as const).map(([key,label])=><button key={key} type="button" aria-pressed={offerSort===key} onClick={()=>setOfferSort(key)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition-colors min-h-11 ${offerSort===key?'border-[var(--mg-action)] bg-[#EAF3FF] text-[var(--mg-blue-ink)]':'border-[#E5EDF7] bg-white text-[#526477] dark:text-[#B4C0CF]'}`}>{label}</button>)}</div>}
     <div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Попутки MARSHGO</h2><span className="text-xs text-[#526477] dark:text-[#B4C0CF]">{offers.length} варіантів</span></div>
     {carpoolOffersFromOtherDate(offers) && <p role="status" className="mb-3 rounded-2xl bg-[#FFF4DB] px-4 py-3 text-xs font-bold text-[#8A5A12]">На обрану дату попуток немає — показуємо пропозиції з сусідніх дат. Перевірте дату перед бронюванням.</p>}
     {offers.length ? <div className="space-y-3">{sortedOffers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center dark:bg-[#111820]"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає попуток за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
