@@ -1,5 +1,6 @@
 import type { MapLayer, MapPerspective } from './mapMode';
 import type { MapDisplayPreferences } from './mapLayerPreferences';
+import type { TransitZoneGeometry, VehiclePriorityLevel } from './transportVisualZones';
 import type { Coordinate } from '../../shared/navigation/contracts';
 export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 'failed';
 export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK';
@@ -11,8 +12,25 @@ export type LiveTransitPosition = { coordinates: Coordinate; color: string; labe
 export type FocusedTransitMapOverlay = {
   color: string;
   transportType: string;
-  lineRoutes: Array<{ id: string; direction: string; directionId?: string | null; coordinates: Coordinate[] }>;
-  vehicles: Array<{ id: string; coordinates: Coordinate; updatedAt: string; routeLabel: string; emphasized: boolean }>;
+  lineRoutes: Array<{
+    id: string;
+    direction: string;
+    directionId?: string | null;
+    coordinates: Coordinate[];
+    /** 'leg_only' means the provider gave us only the ridden slice, so zones A and C are unknown. */
+    geometryScope?: 'full_route' | 'leg_only';
+    zones?: TransitZoneGeometry | null;
+  }>;
+  vehicles: Array<{
+    id: string;
+    coordinates: Coordinate;
+    updatedAt: string;
+    routeLabel: string;
+    emphasized: boolean;
+    priorityLevel?: VehiclePriorityLevel;
+    etaSeconds?: number | null;
+    etaConfidence?: 'OBSERVED' | 'PREDICTED' | 'NONE';
+  }>;
 };
 
 /** Screen-space separation keeps opposing transit directions legible without editing feed geometry. */

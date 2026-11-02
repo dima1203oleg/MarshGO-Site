@@ -1,6 +1,7 @@
 import { routeResultSchema, type RouteRequest, type RouteResult } from '../../shared/navigation/contracts';
 import { NavigationProviderError } from '../../shared/navigation/errors';
 import { NETWORK_ERROR_CODE, networkFailureMessage, requestErrorMessage } from './requestErrorMessage';
+import type { TransitZoneGeometry, VehiclePriority } from '../map/transportVisualZones';
 
 export interface TransitArrival {
   stopId: string;
@@ -305,8 +306,8 @@ export type ApiJourneyLive = {
     legId: string;
     status: 'LIVE' | 'SCHEDULED' | 'UNVERIFIED';
     reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
-    lineRoutes?: Array<{ id: string; providerId: string; routeId: string; name: string; direction: string; directionId: string | null; geometrySource: 'gtfs_shape' | 'official_geojson'; coordinates: [number, number][] }>;
-    vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean; etaSeconds?: number | null }>;
+    lineRoutes?: Array<{ id: string; providerId: string; routeId: string; name: string; direction: string; directionId: string | null; geometrySource: 'gtfs_shape' | 'official_geojson'; coordinates: [number, number][]; geometryScope?: 'full_route' | 'leg_only'; zones?: TransitZoneGeometry | null }>;
+    vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean; etaSeconds?: number | null; priority?: VehiclePriority | null; etaConfidence?: 'OBSERVED' | 'PREDICTED' | 'NONE' }>;
   }>;
 };
 export type ApiJourneySearchResult = {

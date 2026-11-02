@@ -12,6 +12,7 @@ import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
 import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
 import { routeBearingForHorizontalFit } from '../map/routeOrientation';
+import { priorityLevelOf } from '../map/transportVisualZones';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
 import {
   formatJourneyDuration as formatDuration,
@@ -175,13 +176,23 @@ export function JourneyRouteMapScreen({
     mapAdapter.current?.setFocusedTransitOverlay?.({
       color: journeyModeColor(leg.mode, leg.transportType),
       transportType: leg.transportType ?? leg.mode,
-      lineRoutes: live.lineRoutes ?? [],
+      lineRoutes: (live.lineRoutes ?? []).map(route => ({
+        id: route.id,
+        direction: route.direction,
+        directionId: route.directionId,
+        coordinates: route.coordinates,
+        geometryScope: route.geometryScope,
+        zones: route.zones ?? null,
+      })),
       vehicles: (live.vehicles ?? []).map(vehicle => ({
         id: vehicle.id,
         coordinates: vehicle.coordinates,
         updatedAt: vehicle.updatedAt,
         routeLabel: leg.routeName ?? journeyLegLabel(leg.mode, leg.transportType),
         emphasized: vehicle.emphasized,
+        priorityLevel: priorityLevelOf(vehicle),
+        etaSeconds: vehicle.etaSeconds ?? null,
+        etaConfidence: vehicle.etaConfidence ?? 'NONE',
       })),
     });
   }, [activeSegmentId, journey.legs, liveJourney, mapAdapterReady]);
@@ -325,6 +336,19 @@ export function JourneyRouteMapScreen({
       : approximateMicromobility > 0 ? 'Орієнтовну траєкторію велосипеда чи самоката не показано як дорогу'
       : missingShapes > 0 ? 'Є сегменти без геометрії джерела'
       : approximateWalkCount > 0 ? 'Пунктиром позначені орієнтовні піші відрізки' : 'Маршрут на карті');
+  const selectedLiveRouteGeometry = selectedLiveSegment?.lineRoutes?.find(route => route.zones?.passengerSegment.length) ?? null;
+  const selectedLiveZoneCount = selectedLiveRouteGeometry?.geometryScope === 'leg_only' ? 1 : [
+    selectedLiveRouteGeometry?.zones?.beforeBoarding,
+    selectedLiveRouteGeometry?.zones?.passengerSegment,
+    selectedLiveRouteGeometry?.zones?.afterAlighting,
+  ].filter(zone => (zone?.length ?? 0) >= 2).length;
+  const selectedLiveVehicleLevels = (selectedLiveSegment?.vehicles ?? []).map(vehicle => priorityLevelOf(vehicle));
+  const selectedLiveApproachingCount = selectedLiveVehicleLevels.filter(level => level === 'L2' || level === 'L3' || level === 'L4').length;
+  const selectedLiveNearestEtaSeconds = (selectedLiveSegment?.vehicles ?? []).reduce<number | null>((nearest, vehicle) => {
+    const eta = vehicle.etaSeconds;
+    if (typeof eta !== 'number' || !Number.isFinite(eta) || eta <= 0) return nearest;
+    return nearest === null || eta < nearest ? eta : nearest;
+  }, null);
 
   const heightForSnap = (snap: RouteSheetSnap) => snapHeight(snap);
   const moveToSnap = (next: RouteSheetSnap) => {
@@ -495,6 +519,34 @@ export function JourneyRouteMapScreen({
         }} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur"><Layers size={19}/></button>
       </div>
     </div>
+
+    {selectedLiveLeg && selectedLiveSegment && isScheduledRouteLeg(selectedLiveLeg) && (selectedLiveZoneCount > 0 || selectedLiveVehicleLevels.length > 0) && (
+      <div
+        data-testid="transit-zone-legend"
+        role="note"
+        aria-label={`Легенда карти: ${[
+          'яскрава лінія — ваш відрізок',
+          selectedLiveRouteGeometry?.zones?.beforeBoarding ? 'тонка лінія до вашої зупинки' : 'геометрію до посадки фід не підтвердив',
+          selectedLiveRouteGeometry?.zones?.afterAlighting ? 'тонка лінія після висадки' : 'геометрію після висадки фід не підтвердив',
+          selectedLiveApproachingCount > 0
+            ? `активні маркери — ${selectedLiveApproachingCount} борті, що ще встигають до вашої зупинки${selectedLiveNearestEtaSeconds !== null ? `, найближчий за ${formatDuration(selectedLiveNearestEtaSeconds)}` : ''}`
+            : 'свіжих підтверджених позицій на лінії немає',
+        ].join('. ')}.` }
+        data-zone-count={selectedLiveZoneCount}
+        data-approaching-count={selectedLiveApproachingCount}
+        className="pointer-events-none absolute inset-x-0 z-10 mx-auto flex max-w-3xl px-4"
+        style={{ bottom: sheetHeight + 12 }}
+      >
+        <div className="flex flex-col gap-1 rounded-2xl border border-[var(--route-border)] bg-[var(--route-floating)] px-3 py-2 text-[11px] font-extrabold text-[var(--route-ink)] shadow-lg backdrop-blur">
+          <span className="flex items-center gap-2"><span className="h-[6px] w-7 rounded-full" style={{ background: journeyModeColor(selectedLiveLeg.mode, selectedLiveLeg.transportType) }} aria-hidden="true"/>{`Ваш відрізок · ${selectedLiveLeg.routeName ?? journeyLegLabel(selectedLiveLeg.mode, selectedLiveLeg.transportType)}`}</span>
+          {selectedLiveRouteGeometry?.zones?.beforeBoarding && <span className="flex items-center gap-2 text-[var(--route-muted)]"><span className="h-[3px] w-7 rounded-full opacity-45" style={{ background: journeyModeColor(selectedLiveLeg.mode, selectedLiveLeg.transportType) }} aria-hidden="true"/>До вашої зупинки</span>}
+          {selectedLiveRouteGeometry?.zones?.afterAlighting && <span className="flex items-center gap-2 text-[var(--route-muted)]"><span className="h-[3px] w-7 rounded-full opacity-25" style={{ background: journeyModeColor(selectedLiveLeg.mode, selectedLiveLeg.transportType) }} aria-hidden="true"/>Після висадки</span>}
+          <span className="text-[var(--route-muted)]">{selectedLiveApproachingCount > 0
+            ? `${selectedLiveApproachingCount} на лінії встигають до вашої зупинки${selectedLiveNearestEtaSeconds !== null ? ` · найшвидший за ${formatDuration(selectedLiveNearestEtaSeconds)}` : ''}`
+            : 'Підтверджених свіжих позицій на лінії немає'}</span>
+        </div>
+      </div>
+    )}
 
     <section
       ref={sheetElement}

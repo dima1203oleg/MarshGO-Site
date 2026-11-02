@@ -7,7 +7,8 @@ import type { CameraMode, ColoredRouteSegment, FocusedTransitMapOverlay, LiveTra
 import { transitDirectionOffsetPx } from './MapAdapter';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
-import type { FillLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
+import type { ExpressionSpecification, FillLayerSpecification, LineLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
+import { VEHICLE_PRIORITY_TOKENS, ZONE_LINE_TOKENS, priorityLevelOf, zoneArrowsFor, zoneFeaturesFor, type TransitZone, type VehiclePriorityLevel } from './transportVisualZones';
 import { isBasemapConfigured, PERSPECTIVE_PITCH, satelliteAttribution, satelliteTiles, styleForLayer, type MapLayer, type MapPerspective } from './mapMode';
 import { TransportLayerController, type TransportLayerId } from './transportLayers';
 import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
@@ -58,6 +59,31 @@ function transitIconName(transportType: string): string {
   if (normalized.includes('train') || normalized.includes('rail')) return 'marshgo-transit-train';
   if (normalized.includes('minibus') || normalized.includes('marshrutka')) return 'marshgo-transit-minibus';
   return 'marshgo-transit-bus';
+}
+
+/** A north-pointing chevron; the layer rotates it by the real travel bearing of the geometry. */
+function zoneArrowGlyph(): ImageData {
+  const canvas = document.createElement('canvas');
+  canvas.width = 44; canvas.height = 44;
+  const context = canvas.getContext('2d');
+  if (!context) return new ImageData(44, 44);
+  context.lineJoin = 'round';
+  context.beginPath();
+  context.moveTo(22, 9); context.lineTo(33, 27); context.lineTo(22, 21); context.lineTo(11, 27);
+  context.closePath();
+  context.lineWidth = 7;
+  context.strokeStyle = '#0B2034';
+  context.stroke();
+  context.fillStyle = '#FFFFFF';
+  context.fill();
+  return context.getImageData(0, 0, 44, 44);
+}
+
+function priorityExpression(key: 'radius' | 'haloRadius' | 'opacity' | 'haloOpacity' | 'iconSize'): ExpressionSpecification {
+  const value = (level: VehiclePriorityLevel) => VEHICLE_PRIORITY_TOKENS[level][key];
+  return ['match', ['get', 'priorityLevel'],
+    'L0', value('L0'), 'L1', value('L1'), 'L2', value('L2'), 'L3', value('L3'), 'L4', value('L4'),
+    value('L1')] as unknown as ExpressionSpecification;
 }
 
 export class MapLibreAdapter implements MapAdapter {
@@ -173,14 +199,20 @@ export class MapLibreAdapter implements MapAdapter {
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-transit-context')) this.map.addSource('marshgo-transit-context', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-transit-fleet')) this.map.addSource('marshgo-transit-fleet', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!this.map.getSource('marshgo-transit-zones')) this.map.addSource('marshgo-transit-zones', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!this.map.getSource('marshgo-transit-zone-arrows')) this.map.addSource('marshgo-transit-zone-arrows', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     const transitImages = [
       ['marshgo-transit-bus', 'bus'], ['marshgo-transit-minibus', 'minibus'],
       ['marshgo-transit-tram', 'tram'], ['marshgo-transit-trolleybus', 'trolleybus'], ['marshgo-transit-train', 'train'],
     ] as const;
     for (const [name, kind] of transitImages) if (!this.map.hasImage(name)) this.map.addImage(name, transitGlyph(kind), { pixelRatio: 2 });
+    if (!this.map.hasImage('marshgo-zone-arrow')) this.map.addImage('marshgo-zone-arrow', zoneArrowGlyph(), { pixelRatio: 2 });
     const confirmedRouteFilter = ['!=', ['get', 'approximate'], true] as maplibregl.FilterSpecification;
     if (!this.map.getLayer('marshgo-transit-context')) this.map.addLayer({
       id: 'marshgo-transit-context', type: 'line', source: 'marshgo-transit-context',
+      // A line whose zones are known is drawn by the zone layers instead, so the
+      // same geometry never gets two overlapping strokes.
+      filter: ['!=', ['get', 'hasZones'], true],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': ['get', 'modeColor'],
@@ -188,6 +220,31 @@ export class MapLibreAdapter implements MapAdapter {
         'line-opacity': 0.32,
         // Separate opposing directions at screen scale. Keep the provider's
         // geographic coordinates untouched; the selected itinerary stays centered.
+        'line-offset': ['get', 'directionOffsetPx'],
+      },
+    });
+    const zoneLineLayer = (id: string, zone: TransitZone): LineLayerSpecification => ({
+      id, type: 'line', source: 'marshgo-transit-zones',
+      filter: ['==', ['get', 'zone'], zone],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['get', 'modeColor'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, ZONE_LINE_TOKENS[zone].width[0], 15, ZONE_LINE_TOKENS[zone].width[1]],
+        'line-opacity': ZONE_LINE_TOKENS[zone].opacity,
+        'line-offset': ['get', 'directionOffsetPx'],
+      },
+    });
+    if (!this.map.getLayer('marshgo-transit-zone-before')) this.map.addLayer(zoneLineLayer('marshgo-transit-zone-before', 'A'));
+    if (!this.map.getLayer('marshgo-transit-zone-after')) this.map.addLayer(zoneLineLayer('marshgo-transit-zone-after', 'C'));
+    if (!this.map.getLayer('marshgo-transit-zone-ride-glow')) this.map.addLayer({
+      id: 'marshgo-transit-zone-ride-glow', type: 'line', source: 'marshgo-transit-zones',
+      filter: ['==', ['get', 'zone'], 'B'] as maplibregl.FilterSpecification,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['get', 'modeColor'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, ZONE_LINE_TOKENS.B.width[0] + 8, 15, ZONE_LINE_TOKENS.B.width[1] + 11],
+        'line-opacity': 0.3,
+        'line-blur': 7,
         'line-offset': ['get', 'directionOffsetPx'],
       },
     });
@@ -231,22 +288,34 @@ export class MapLibreAdapter implements MapAdapter {
       this.map.on('mouseleave', 'marshgo-route-hit-target', () => { this.map.getCanvas().style.cursor = ''; });
     }
     if (!this.map.getLayer('marshgo-waypoints')) this.map.addLayer({ id: 'marshgo-waypoints', type: 'circle', source: 'marshgo-waypoints', paint: { 'circle-radius': ['match', ['get', 'kind'], 'STOP', 4, 'TRANSFER', 6, 'SELF_LOCATION', 7, 'OTHER_LOCATION', 7, 8], 'circle-color': ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'STOP', '#D6E4F3', 'TRANSFER', '#FFFFFF', 'SELF_LOCATION', '#0878F9', 'OTHER_LOCATION', '#8B5CF6', colors.route], 'circle-stroke-color': ['match', ['get', 'kind'], 'TRANSFER', '#1687FF', 'SELF_LOCATION', '#FFFFFF', 'OTHER_LOCATION', '#FFFFFF', colors.routeCasing], 'circle-stroke-width': ['match', ['get', 'kind'], 'STOP', 1.5, 'SELF_LOCATION', 2.5, 'OTHER_LOCATION', 2.5, 3] } });
+    if (!this.map.getLayer('marshgo-transit-zone-arrows')) this.map.addLayer({
+      id: 'marshgo-transit-zone-arrows', type: 'symbol', source: 'marshgo-transit-zone-arrows',
+      layout: {
+        'icon-image': 'marshgo-zone-arrow',
+        'icon-size': ['match', ['get', 'zone'], 'B', 0.42, 0.34] as unknown as ExpressionSpecification,
+        'icon-rotation-alignment': 'map',
+        'icon-rotate': ['get', 'bearingDegrees'] as unknown as ExpressionSpecification,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: { 'icon-opacity': ['match', ['get', 'zone'], 'B', 0.95, 0.6] as unknown as ExpressionSpecification },
+    });
     if (!this.map.getLayer('marshgo-transit-fleet-halo')) this.map.addLayer({
       id: 'marshgo-transit-fleet-halo', type: 'circle', source: 'marshgo-transit-fleet',
-      paint: { 'circle-radius': ['case', ['==', ['get', 'emphasized'], true], 15, 8], 'circle-color': ['get', 'modeColor'],
-        'circle-opacity': ['case', ['==', ['get', 'emphasized'], true], 0.42, 0.13], 'circle-blur': 0.35 },
+      paint: { 'circle-radius': priorityExpression('haloRadius'), 'circle-color': ['get', 'modeColor'],
+        'circle-opacity': priorityExpression('haloOpacity'), 'circle-blur': 0.35 },
     });
     if (!this.map.getLayer('marshgo-transit-fleet')) this.map.addLayer({
       id: 'marshgo-transit-fleet', type: 'circle', source: 'marshgo-transit-fleet',
-      paint: { 'circle-radius': ['case', ['==', ['get', 'emphasized'], true], 13, 8], 'circle-color': ['get', 'modeColor'],
-        'circle-opacity': ['case', ['==', ['get', 'emphasized'], true], 0.96, 0.44], 'circle-stroke-color': '#FFFFFF',
-        'circle-stroke-width': ['case', ['==', ['get', 'emphasized'], true], 2.5, 1.25] },
+      paint: { 'circle-radius': priorityExpression('radius'), 'circle-color': ['get', 'modeColor'],
+        'circle-opacity': priorityExpression('opacity'), 'circle-stroke-color': '#FFFFFF',
+        'circle-stroke-width': ['match', ['get', 'priorityLevel'], 'L4', 2.5, 'L3', 2.25, 'L2', 2, 1.25] as unknown as ExpressionSpecification },
     });
     if (!this.map.getLayer('marshgo-transit-fleet-icon')) this.map.addLayer({
       id: 'marshgo-transit-fleet-icon', type: 'symbol', source: 'marshgo-transit-fleet',
-      layout: { 'icon-image': ['get', 'iconName'], 'icon-size': ['case', ['==', ['get', 'emphasized'], true], 0.38, 0.23],
+      layout: { 'icon-image': ['get', 'iconName'], 'icon-size': priorityExpression('iconSize'),
         'icon-allow-overlap': true, 'icon-ignore-placement': true },
-      paint: { 'icon-opacity': ['case', ['==', ['get', 'emphasized'], true], 1, 0.58] },
+      paint: { 'icon-opacity': priorityExpression('opacity') },
     });
     if (!this.map.getLayer('marshgo-vehicle-halo')) this.map.addLayer({ id: 'marshgo-vehicle-halo', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 13, 'circle-color': colors.vehicle, 'circle-opacity': 0.2 } });
     if (!this.map.getLayer('marshgo-vehicle')) this.map.addLayer({ id: 'marshgo-vehicle', type: 'circle', source: 'marshgo-vehicle', paint: { 'circle-radius': 8, 'circle-color': colors.vehicle, 'circle-stroke-color': colors.routeCasing, 'circle-stroke-width': 3 } });
@@ -455,26 +524,54 @@ export class MapLibreAdapter implements MapAdapter {
   private updateFocusedTransitOverlay() {
     const lineSource = this.map.getSource('marshgo-transit-context') as maplibregl.GeoJSONSource | undefined;
     const fleetSource = this.map.getSource('marshgo-transit-fleet') as maplibregl.GeoJSONSource | undefined;
+    const zonesSource = this.map.getSource('marshgo-transit-zones') as maplibregl.GeoJSONSource | undefined;
+    const arrowsSource = this.map.getSource('marshgo-transit-zone-arrows') as maplibregl.GeoJSONSource | undefined;
     const overlay = this.focusedTransitOverlay;
-    lineSource?.setData({ type: 'FeatureCollection', features: (overlay?.lineRoutes ?? []).filter(route => route.coordinates.length >= 2).map((route, index) => ({
+    const modeColor = overlay?.color ?? '#1687FF';
+    const routes = (overlay?.lineRoutes ?? []).filter(route => route.coordinates.length >= 2);
+    const zonesForRoute = routes.map(route => zoneFeaturesFor(route.zones, route.geometryScope));
+    lineSource?.setData({ type: 'FeatureCollection', features: routes.map((route, index) => ({
       type: 'Feature' as const,
       properties: {
-        modeColor: overlay?.color ?? '#1687FF', direction: route.direction, routeId: route.id,
+        modeColor, direction: route.direction, routeId: route.id,
         directionId: route.directionId ?? null,
         directionOffsetPx: transitDirectionOffsetPx(route.directionId, index),
+        hasZones: zonesForRoute[index]!.length > 0,
       },
       geometry: { type: 'LineString' as const, coordinates: route.coordinates },
     })) });
-    const iconName = transitIconName(overlay?.transportType ?? 'bus');
-    fleetSource?.setData({ type: 'FeatureCollection', features: (overlay?.vehicles ?? []).filter(vehicle => vehicle.coordinates.every(Number.isFinite)).map(vehicle => ({
+    const zoneFeatures = routes.flatMap((route, index) => {
+      const directionOffsetPx = transitDirectionOffsetPx(route.directionId, index);
+      return zonesForRoute[index]!.map(zone => ({
+        type: 'Feature' as const,
+        properties: { zone: zone.zone, modeColor, routeId: route.id, directionOffsetPx },
+        geometry: { type: 'LineString' as const, coordinates: zone.coordinates },
+      }));
+    });
+    zonesSource?.setData({ type: 'FeatureCollection', features: zoneFeatures });
+    const arrowFeatures = routes.flatMap((route, index) => zoneArrowsFor(zonesForRoute[index]!).map(arrow => ({
       type: 'Feature' as const,
-      properties: { id: vehicle.id, modeColor: overlay?.color ?? '#1687FF', iconName, emphasized: vehicle.emphasized, updatedAt: vehicle.updatedAt },
+      properties: { zone: arrow.zone, bearingDegrees: Math.round(arrow.bearingDegrees) },
+      geometry: { type: 'Point' as const, coordinates: arrow.coordinates },
+    })));
+    arrowsSource?.setData({ type: 'FeatureCollection', features: arrowFeatures });
+    const iconName = transitIconName(overlay?.transportType ?? 'bus');
+    const fleetLevels = (overlay?.vehicles ?? []).map(vehicle => priorityLevelOf(vehicle));
+    fleetSource?.setData({ type: 'FeatureCollection', features: (overlay?.vehicles ?? []).map((vehicle, index) => ({
+      type: 'Feature' as const,
+      properties: {
+        id: vehicle.id, modeColor, iconName, emphasized: vehicle.emphasized,
+        priorityLevel: fleetLevels[index] ?? 'L1', updatedAt: vehicle.updatedAt,
+      },
       geometry: { type: 'Point' as const, coordinates: vehicle.coordinates },
-    })) });
+    })).filter(feature => feature.geometry.coordinates.every(Number.isFinite)) });
     const container = this.map.getContainer();
     container.dataset.marshgoTransitFleetCount = String(overlay?.vehicles.length ?? 0);
     container.dataset.marshgoTransitFleetEmphasizedCount = String(overlay?.vehicles.filter(vehicle => vehicle.emphasized).length ?? 0);
+    container.dataset.marshgoTransitFleetActiveCount = String(fleetLevels.filter(level => level === 'L2' || level === 'L3' || level === 'L4').length);
     container.dataset.marshgoTransitLineDirectionCount = String(overlay?.lineRoutes.length ?? 0);
+    container.dataset.marshgoTransitZoneCount = String(zoneFeatures.length);
+    container.dataset.marshgoTransitZoneArrowCount = String(arrowFeatures.length);
   }
 
   /** The driver's puck: a blue arrow that points where the car is heading, lying flat on the (tilted) road like in Apple Maps. */
