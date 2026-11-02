@@ -10,9 +10,10 @@ describe('live map basemap states', () => {
     assert.match(view(), /Не налаштовано базову карту/);
   });
 
-  it('keeps a missing basemap separate from a network failure', () => {
+  it('keeps a missing basemap separate from a network failure and promises nothing it cannot show', () => {
     const notice = view().split(/\n/).find((line) => line.includes("status === 'unconfigured'"));
     assert.ok(notice, 'the transport map must render an unconfigured notice');
     assert.doesNotMatch(notice, /Перевірте мережу/, 'a misconfigured build is not the passenger\'s network');
+    assert.doesNotMatch(notice, /видно|доступн/, 'the notice must not claim overlays survive the missing basemap');
   });
 });
