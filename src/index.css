@@ -1273,7 +1273,9 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 /* Canonical home follows the owner reference: mountain cover, account trip card,
    four color-coded square actions, popular routes, above the fixed tab bar. */
 .home-hero--canonical { min-height: 0; overflow: hidden; }
-.home-canonical-banner { height: clamp(8.25rem, 18svh, 9rem); min-height: 8.25rem; }
+/* The banner is a content box, not a poster: a fixed height with overflow:hidden
+   silently cut the publish CTA in half on 390×844. Keep the rhythm as a floor. */
+.home-canonical-banner { min-height: clamp(8.25rem, 18svh, 9rem); }
 .home-action-grid { flex: 0 0 auto; grid-template-rows: repeat(2, clamp(6.2rem, 12.5svh, 6.8rem)); gap: .5rem; }
 /* Four saturated blocks compete for attention and force white-on-color microcopy.
    One filled primary action plus three tinted siblings keeps the colour coding
@@ -1373,13 +1375,13 @@ html.dark .app-tabbar { border-color: var(--mg-line) !important; }
   .journey-offer-card { scroll-margin-top: 5rem; }
 }
 @media (max-width: 639px) and (max-height: 740px) {
-  .home-canonical-banner { height: 8rem; min-height: 8rem; padding: .7rem; }
+  .home-canonical-banner { min-height: 8rem; padding: .7rem; }
   .home-action-grid { grid-template-rows: repeat(2, 5.9rem); }
   .home-trip-card { min-height: 4.25rem; padding-block: .6rem; }
   .home-popular-routes { display: none; }
 }
 @media (max-width: 639px) and (max-height: 620px) {
-  .home-canonical-banner { height: 5.75rem; min-height: 5.75rem; padding: .5rem; }
+  .home-canonical-banner { min-height: 5.75rem; padding: .5rem; }
   .home-canonical-banner h1 { font-size: 1rem; }
   .home-canonical-banner p { margin-top: .1rem; font-size: .625rem; }
   .home-action-grid { grid-template-rows: repeat(2, 4.6rem); gap: .4rem; }
@@ -1395,7 +1397,7 @@ html.dark .app-tabbar { border-color: var(--mg-line) !important; }
 /* Desktop keeps the canonical composition in a wider reading column. */
 @media (min-width: 1024px) {
   .home-hero--canonical { max-width: 800px; padding-inline: 24px; }
-  .home-canonical-banner { height: 12rem; }
+  .home-canonical-banner { min-height: 12rem; }
   .home-action-grid { grid-template-rows: repeat(2, 9rem); }
   .home-popular-route { height: 5rem; }
 
@@ -1469,8 +1471,8 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
 
 @media (max-width: 639px) {
   .app-header { padding-top: max(.5rem, env(safe-area-inset-top, 0px)); }
-  .home-canonical-banner,
   .home-marshpass-slot { height: clamp(8.75rem, 18svh, 9.5rem); min-height: 8.75rem; }
+  .home-canonical-banner { min-height: clamp(8.75rem, 18svh, 9.5rem); }
   .home-banner { padding: .7rem .8rem; }
   .home-hero--canonical > .home-action-grid {
     grid-template-rows: auto auto;
