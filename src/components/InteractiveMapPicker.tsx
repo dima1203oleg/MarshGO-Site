@@ -224,7 +224,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             onClick={() => setActiveSlot('destination')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
               activeSlot === 'destination'
-                ? 'bg-emerald-600 text-white shadow-md'
+                ? 'bg-emerald-700 text-white shadow-md'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -468,7 +468,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 onClick={() => handleSetAsDestination(selectedPopupCity.name)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                   destination === selectedPopupCity.name
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-emerald-700 text-white'
                     : 'bg-white/10 hover:bg-emerald-600 text-slate-200'
                 }`}
               >

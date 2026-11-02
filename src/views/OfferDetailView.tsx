@@ -143,7 +143,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
               {activePhotoIndex + 1} / {photos.length}
             </div>
             {isCommunity && (
-              <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-bold shadow-md">
+              <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-emerald-700 text-white text-xs font-bold shadow-md">
                 Приватна попутка Community
               </div>
             )}
@@ -474,7 +474,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
             </p>
             <button
               onClick={() => onViewBooking(bookingSuccess.id)}
-              className="mt-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition"
+              className="mt-2 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-700 text-white font-bold text-xs transition"
             >
               Переглянути квиток та контакти
             </button>

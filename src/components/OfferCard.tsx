@@ -120,7 +120,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({
           </div>
 
           {isCommunity && (
-            <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-600 text-white">
+            <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-700 text-white">
               0% комісії
             </div>
           )}

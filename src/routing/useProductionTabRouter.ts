@@ -5,11 +5,13 @@ export function useProductionTabRouter() {
   const [route, setRoute] = useState(() => productionRouteForPath(window.location.pathname));
   const [tab, setTabState] = useState<ProductionTab>(() => productionRouteForPath(window.location.pathname)?.tab ?? 'home');
   const [notFound, setNotFound] = useState(() => productionRouteForPath(window.location.pathname) === null);
+  const [locationKey, setLocationKey] = useState(() => `${window.location.pathname}${window.location.search}`);
   const tabRef = useRef(tab);
 
   useEffect(() => {
     const onPopState = () => {
       const next = productionRouteForPath(window.location.pathname);
+      setLocationKey(`${window.location.pathname}${window.location.search}`);
       setRoute(next);
       setNotFound(next === null);
       if (next) {
@@ -30,6 +32,7 @@ export function useProductionTabRouter() {
     if (window.location.pathname !== path || window.location.search || window.location.hash) {
       window.history.pushState({ marshgoRoute: true }, '', path);
     }
+    setLocationKey(`${window.location.pathname}${window.location.search}`);
     setRoute(productionRouteForPath(path));
   }, []);
 
@@ -44,6 +47,7 @@ export function useProductionTabRouter() {
     const next = productionRouteForPath(path.split(/[?#]/, 1)[0] ?? '/');
     if (!next) return false;
     window.history.pushState({ marshgoRoute: true }, '', path);
+    setLocationKey(`${window.location.pathname}${window.location.search}`);
     setRoute(next);
     setNotFound(false);
     tabRef.current = next.tab;
@@ -51,5 +55,5 @@ export function useProductionTabRouter() {
     return true;
   }, []);
 
-  return { tab, setTab, activateTab, route, setRoutePath, notFound, goHome: () => setTab('home') };
+  return { tab, setTab, activateTab, route, locationKey, setRoutePath, notFound, goHome: () => setTab('home') };
 }

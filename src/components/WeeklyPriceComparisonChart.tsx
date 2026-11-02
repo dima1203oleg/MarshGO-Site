@@ -199,7 +199,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                     {/* Price tooltip above bar */}
                     <div className="mb-1 text-center">
                       {day.isCheapest && (
-                        <span className="hidden sm:inline-block text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-1 py-0.2 rounded mb-0.5 whitespace-nowrap">
+                        <span className="hidden sm:inline-block text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-1 py-0.2 rounded mb-0.5 whitespace-nowrap">
                           Хіт
                         </span>
                       )}

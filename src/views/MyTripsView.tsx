@@ -153,7 +153,7 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
                         e.stopPropagation();
                         setActiveRatingBooking(b);
                       }}
-                      className="px-3 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold flex items-center gap-1.5 transition active:scale-95"
+                      className="flex min-h-11 items-center gap-1.5 rounded-lg bg-amber-50 px-3 text-amber-800 border border-amber-300 font-bold transition active:scale-95"
                     >
                       <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
                       <span>{b.status === 'completed' ? 'Залишити відгук' : 'Завершити та оцінити'}</span>

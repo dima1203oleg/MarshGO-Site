@@ -315,7 +315,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 onClick={() => setIsSubscribeModalOpen(true)}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 active:scale-95 ${
                   isSubscribed
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-200'
+                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs ring-2 ring-emerald-200'
                     : 'bg-[#F5F8FD] hover:bg-blue-50 text-slate-700 hover:text-[#1769F4] border-slate-200'
                 }`}
                 title={isSubscribed ? 'Ви підписані на оновлення цього маршруту' : 'Підписатися на оновлення за цим маршрутом'}

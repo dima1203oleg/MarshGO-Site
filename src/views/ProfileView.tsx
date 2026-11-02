@@ -278,7 +278,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onDeleteVehicle(veh.id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                            className="grid min-h-11 min-w-11 place-items-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
                             title="Видалити авто з гаража"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
