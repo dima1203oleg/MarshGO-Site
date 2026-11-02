@@ -326,6 +326,21 @@ export type ApiJourneySearchResult = {
   blockedProviders: string[];
   unsupportedPreferences: string[];
   providerErrors: string[];
+  completeness?: {
+    providersQueried: number;
+    providersSucceeded: number;
+    providersFailed: number;
+    modesAvailable: string[];
+    modesUnavailable: Array<{ mode: string; available: boolean; requested: boolean; reason: string }>;
+    candidatesGenerated: number;
+    candidatesValidated: number;
+    candidatesRejected: number;
+    candidatesDeduplicated: number;
+    resultsReturned: number;
+    searchTruncated: boolean;
+    searchComplete: boolean;
+    transitSearchFailed: boolean;
+  };
 };
 export type ApiStoredJourney = {
   id: string;

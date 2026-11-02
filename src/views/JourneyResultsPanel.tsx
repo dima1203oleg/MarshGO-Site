@@ -222,7 +222,7 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   };
 
   // Transport-type tokens are availability facts, not preferences: they get their own honest lines.
-  const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences);
+  const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences, result.completeness);
   const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
   if (result.partial && !result.partialReasons?.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
   if (result.partialReasons?.includes('walking_routing_unavailable')) notices.push({ tone: 'amber', text: 'Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.' });

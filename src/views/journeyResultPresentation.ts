@@ -228,14 +228,26 @@ const transportBlockReasons: Record<string, string> = {
 
 export type UnavailableTransportNotice = { mode: string; text: string };
 
+/** Only the per-category facts are needed here, so the block is typed structurally. */
+type CompletenessLike = { modesUnavailable?: Array<{ mode: string; requested: boolean; reason: string }> } | undefined;
+
+const completenessReasons: Record<string, string> = {
+  no_routed_provider_in_corridor: 'у цьому коридорі немає жодного підключеного розкладу',
+  no_source_declares_this_category: 'жодне підключене джерело не оголошує цей вид транспорту',
+  transit_search_failed: 'розкладний пошук тимчасово не працював, тому наявність цього виду не вдалося перевірити',
+};
+
 /**
  * The server reports a mode as unsupported when the passenger asked for it but no adapter had data
  * in this corridor. `blockedProviders` lists every uncovered mode, including ones nobody chose, so
  * it is only a reason lookup here — otherwise a bus-only search would lecture about metro and taxis.
+ * The completeness block already separates asked-for from never-declared categories, so when the
+ * server sends it, it wins: an outage is then worded as unverified instead of as absent.
  */
 export function unavailableTransportNotices(
   blockedProviders: readonly string[] = [],
   unsupportedPreferences: readonly string[] = [],
+  completeness?: CompletenessLike,
 ): UnavailableTransportNotice[] {
   const reasons = new Map<string, string>();
   for (const token of blockedProviders) {
@@ -244,6 +256,13 @@ export function unavailableTransportNotices(
   }
 
   const byMode = new Map<string, UnavailableTransportNotice>();
+  for (const entry of completeness?.modesUnavailable ?? []) {
+    if (!entry.requested || byMode.has(entry.mode)) continue;
+    byMode.set(entry.mode, {
+      mode: entry.mode,
+      text: `${transportModeNames[entry.mode] ?? 'Цей вид транспорту'}: ${completenessReasons[entry.reason] ?? 'недоступно в цьому пошуку'}.`,
+    });
+  }
   for (const token of unsupportedPreferences) {
     const modeMatch = /^transportType:([a-z_]+):([a-z0-9_-]+)$/i.exec(token);
     if (!modeMatch || byMode.has(modeMatch[1])) continue;
