@@ -9,6 +9,7 @@ import { MapLayersControl } from '../components/MapLayersControl';
 import { schemePreviewAttribution, schemePreviewTiles } from '../map/mapConfig';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
 import { isDuplicateLocationFix, WebGeolocationProvider, validateLocationFix } from '../platform/LocationProvider';
+import { currentPlaceBias } from '../platform/placeBias';
 import { NavigationStore } from '../navigation/NavigationStore';
 import { canonicalRoute } from '../navigation/canonicalRoute';
 import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
@@ -380,7 +381,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const searchDestination = async () => {
     setBusy(true); setSuggestions([]); setDestination(null);
     try {
-      const found = await productionApi.suggestPlaces(destinationText.trim());
+      const found = await productionApi.suggestPlaces(destinationText.trim(), liveFix ? { latitude: liveFix[1], longitude: liveFix[0] } : await currentPlaceBias());
       setSuggestions(found);
       if (!found.length) setGpsMessage('Місце не знайдено. Уточніть назву й оберіть результат геокодера.');
     } catch (error) { setGpsMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
@@ -493,7 +494,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const searchTopDestination = async () => {
     setBusy(true); setTopSuggestions([]);
     try {
-      const found = await productionApi.suggestPlaces(topQuery.trim());
+      const found = await productionApi.suggestPlaces(topQuery.trim(), liveFix ? { latitude: liveFix[1], longitude: liveFix[0] } : await currentPlaceBias());
       setTopSuggestions(found);
       if (!found.length) setGpsMessage('Місце не знайдено. Уточніть назву й оберіть результат геокодера.');
     } catch (error) { setGpsMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }

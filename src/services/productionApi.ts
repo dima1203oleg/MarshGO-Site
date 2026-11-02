@@ -569,8 +569,9 @@ export const productionApi = {
       '/offers', { method: 'POST', body: JSON.stringify(input) },
     );
   },
-  suggestPlaces(query: string) {
-    return request<ApiPlace[]>(`/places/suggest?q=${encodeURIComponent(query)}`);
+  suggestPlaces(query: string, bias?: { latitude: number; longitude: number }) {
+    const locality = bias ? `&lat=${encodeURIComponent(String(bias.latitude))}&lon=${encodeURIComponent(String(bias.longitude))}` : '';
+    return request<ApiPlace[]>(`/places/suggest?q=${encodeURIComponent(query)}${locality}`);
   },
   reverseGeocode(latitude: number, longitude: number) {
     return request<ApiPlace>(`/places/reverse?lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`);

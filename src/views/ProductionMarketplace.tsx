@@ -32,6 +32,7 @@ import { useProductionTabRouter } from '../routing/useProductionTabRouter';
 import { pathForProductionEntity, type ProductionTab } from '../routing/productionRoutes';
 import { buildSearchRoute, parseSearchRoute } from '../routing/searchRouteState';
 import { activePlaceOptionId, moveActivePlaceIndex, placeSuggestionKeyAction } from '../routing/placeSuggestionKeyboard';
+import { currentPlaceBias } from '../platform/placeBias';
 import { parseSharedNavigationDestination } from '../routing/navigationShare';
 import { navigationDestinationName } from '../navigation/destinationName';
 import { JourneyResultsPanel, JourneySearchPending } from './JourneyResultsPanel';
@@ -669,7 +670,7 @@ export function ProductionMarketplace() {
     const query = field === 'origin' ? origin.trim() : destination.trim();
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setRoutePlaceField(field); setRoutePlaceSuggestions([]); setPlaceSearchBusy(true); setStatusMessage('');
-    try { setRoutePlaceSuggestions(await productionApi.suggestPlaces(query)); }
+    try { setRoutePlaceSuggestions(await productionApi.suggestPlaces(query, await currentPlaceBias())); }
     catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
     finally { setPlaceSearchBusy(false); }
   };
@@ -710,10 +711,13 @@ export function ProductionMarketplace() {
       return;
     }
     let cancelled = false;
+    const lookup = async () => {
+      const places = await productionApi.suggestPlaces(query, await currentPlaceBias());
+      if (!cancelled) setRoutePlaceSuggestions(places);
+    };
     const timer = window.setTimeout(() => {
       setPlaceSearchBusy(true);
-      void productionApi.suggestPlaces(query)
-        .then((places) => { if (!cancelled) setRoutePlaceSuggestions(places); })
+      void lookup()
         .catch((error: unknown) => {
           if (!cancelled) setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.');
         })
@@ -998,7 +1002,7 @@ export function ProductionMarketplace() {
     const query = field === 'origin' ? demandOriginText.trim() : demandDestinationText.trim();
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setPlaceField(field); setPlaceSearchBusy(true); setPlaceSuggestions([]); setStatusMessage('');
-    try { setPlaceSuggestions(await productionApi.suggestPlaces(query)); }
+    try { setPlaceSuggestions(await productionApi.suggestPlaces(query, await currentPlaceBias())); }
     catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
     finally { setPlaceSearchBusy(false); }
   };
@@ -1007,7 +1011,7 @@ export function ProductionMarketplace() {
     const query = field === 'origin' ? offerOriginText.trim() : offerDestinationText.trim();
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setOfferPlaceField(field); setOfferPlaceSuggestions([]); setPlaceSearchBusy(true); setStatusMessage('');
-    try { setOfferPlaceSuggestions(await productionApi.suggestPlaces(query)); }
+    try { setOfferPlaceSuggestions(await productionApi.suggestPlaces(query, await currentPlaceBias())); }
     catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
     finally { setPlaceSearchBusy(false); }
   };
