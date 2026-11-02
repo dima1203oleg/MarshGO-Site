@@ -38,11 +38,30 @@ import {
  * and the «Далі» control all come from the itinerary's own legs and schedule.
  * No position is invented when the feed has no fresh vehicle.
  */
-export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourney; onExit: () => void }) {
+export function JourneyActiveNavigation({ journey, onExit, initialLegIndex = null, onStageChange }: {
+  journey: ApiJourney;
+  onExit: () => void;
+  /**
+   * The stage the passenger had reached before a reload or a cold relaunch.
+   * Without it the start stage is derived from the schedule, as before.
+   */
+  initialLegIndex?: number | null;
+  /** Reports the current stage so the owner of this screen can persist it. */
+  onStageChange?: (legIndex: number) => void;
+}) {
   const legs = journey.legs;
   const model = useMemo(() => buildJourneyRouteMapModel(legs), [legs]);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [legIndex, setLegIndex] = useState(() => activeNavigationStartIndex(legs, Date.now()));
+  const [legIndex, setLegIndex] = useState(() => {
+    const scheduledStart = activeNavigationStartIndex(legs, Date.now());
+    // A resumed journey continues where the passenger left it; a stage that no
+    // longer exists in this itinerary is ignored rather than guessed at.
+    if (initialLegIndex === null || legs.length === 0 || !Number.isInteger(initialLegIndex)) return scheduledStart;
+    return Math.min(Math.max(initialLegIndex, 0), legs.length - 1);
+  });
+  const stageChange = useRef(onStageChange);
+  stageChange.current = onStageChange;
+  useEffect(() => { stageChange.current?.(legIndex); }, [legIndex]);
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
   const [mapLayer, setCurrentMapLayer] = useState<MapLayer>(getMapLayer);
