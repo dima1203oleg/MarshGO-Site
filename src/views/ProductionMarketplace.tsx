@@ -1450,7 +1450,7 @@ export function ProductionMarketplace() {
   if (!user || showLogin) return (
     <main className={`auth-screen relative flex min-h-[100svh] overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe ${authIntro ? 'auth-intro-screen' : ''} ${onboardingStep > 0 ? 'bg-[#f4f8ff] text-[#14243b] dark:bg-[#0D1E36] dark:text-[#EAF1FA]' : 'bg-[#081b35] text-white'} ${authIntro ? 'items-stretch' : onboardingStep > 0 ? 'h-[100svh] max-h-[100svh] items-stretch' : 'items-end sm:items-center sm:justify-center'}`}>
       {authIntro && <img src="/images/welcome-kyiv-v1.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-[center_58%]" />}
-      <div className={`absolute inset-0 ${authIntro ? 'bg-[linear-gradient(180deg,rgba(4,17,37,.45)_0%,rgba(5,22,44,.08)_34%,rgba(5,15,29,.28)_57%,rgba(3,10,19,.9)_100%)]' : onboardingStep > 0 ? 'bg-[linear-gradient(180deg,#f4f8ff_0%,#ffffff_58%,#edf4ff_100%)] dark:bg-[linear-gradient(180deg,#0D1E36_0%,#10263F_58%,#0B1B31_100%)]' : 'bg-[radial-gradient(ellipse_at_55%_35%,rgba(41,131,255,.65),transparent_48%),linear-gradient(180deg,#113d75_0%,#122f54_48%,#08121f_100%)]'}`} />
+      <div className={`absolute inset-0 ${authIntro ? 'bg-[linear-gradient(180deg,rgba(4,17,37,.45)_0%,rgba(5,22,44,.08)_34%,rgba(5,15,29,.42)_52%,rgba(3,10,19,.94)_100%)]' : onboardingStep > 0 ? 'bg-[linear-gradient(180deg,#f4f8ff_0%,#ffffff_58%,#edf4ff_100%)] dark:bg-[linear-gradient(180deg,#0D1E36_0%,#10263F_58%,#0B1B31_100%)]' : 'bg-[radial-gradient(ellipse_at_55%_35%,rgba(41,131,255,.65),transparent_48%),linear-gradient(180deg,#113d75_0%,#122f54_48%,#08121f_100%)]'}`} />
       {!authIntro && onboardingStep === 0 && <div className="absolute inset-x-0 bottom-0 h-[48%] bg-[linear-gradient(0deg,rgba(4,10,18,.88),transparent)]" />}
       <section className={`relative z-10 mx-auto flex w-full max-w-md flex-col ${authIntro ? 'min-h-[calc(100svh-env(safe-area-inset-top))] items-center pb-1 text-center' : 'pb-2'}`}>
         {!authIntro && onboardingStep === 0 && <button onClick={() => { setAuthIntro(true); setShowLogin(false); setStatusMessage(''); setAuthError(''); }} className="mb-6 grid h-11 w-11 place-items-center rounded-full border border-white/25 bg-white/10" aria-label="Назад"><ArrowLeft size={19}/></button>}
@@ -1458,17 +1458,17 @@ export function ProductionMarketplace() {
           <div className="mt-[max(3rem,10svh)] flex flex-col items-center drop-shadow-[0_2px_16px_rgba(4,12,28,.3)]">
             <BrandMark size="lg" className="mb-3 ring-1 ring-white/60 shadow-[0_0_38px_rgba(56,189,248,.42)]" />
             <strong className="text-[2rem] font-extrabold tracking-tight">MARSH<span className="text-sky-400">GO</span></strong>
-            <p className="mt-1 text-xs text-white/85">Один маршрут. Усі способи доїхати.</p>
-            <p className="mt-1 text-[10px] text-white/75">Попутки · міські поїздки · подорожі Україною</p>
+            <p className="mt-1 text-base font-semibold text-white">Один маршрут. Усі способи доїхати.</p>
+            <p className="mt-1 text-sm font-medium text-white/90">Попутки · міські поїздки · подорожі Україною</p>
           </div>
           <div className="mt-auto w-full pb-5 pt-8 text-left drop-shadow-[0_2px_12px_rgba(0,0,0,.55)]">
             <p className="text-[11px] font-bold uppercase tracking-[.27em] text-blue-100">Україна ближче</p>
             <h1 className="mt-2 text-[2.15rem] font-extrabold leading-[1.08] tracking-tight">Усі способи<br/>доїхати — в одному<br/>застосунку.</h1>
-            <p className="mt-3 max-w-sm text-sm leading-5 text-blue-50/90">Знайдіть попутку, сплануйте маршрут і домовтеся про поїздку в одному місці.</p>
+            <p className="mt-3 max-w-sm text-base leading-6 text-white/95">Знайдіть попутку, сплануйте маршрут і домовтеся про поїздку в одному місці.</p>
           </div>
           <div className="w-full">
-            <button onClick={() => { setAuthIntro(false); setOnboardingStep(1); setShowLogin(false); }} className="mg-press min-h-11 w-full rounded-2xl bg-[var(--mg-action)] px-5 py-[1.05rem] text-sm font-bold text-white shadow-lg shadow-blue-950/45 hover:bg-[var(--mg-action-hover)]">Почати</button>
-            <button onClick={() => { setAuthIntro(false); setOnboardingStep(0); setShowLogin(true); }} className="mg-press mt-3 min-h-11 w-full rounded-2xl border border-white/50 bg-slate-950/25 px-5 py-3.5 text-sm font-semibold backdrop-blur-sm">У мене вже є акаунт</button>
+            <button onClick={() => { setAuthIntro(false); setOnboardingStep(1); setShowLogin(false); }} className="mg-press min-h-14 w-full rounded-full bg-[var(--mg-action)] px-5 text-base font-bold text-white shadow-lg shadow-blue-950/45 hover:bg-[var(--mg-action-hover)]">Почати</button>
+            <button onClick={() => { setAuthIntro(false); setOnboardingStep(0); setShowLogin(true); }} className="mg-press mt-3 min-h-12 w-full rounded-full border border-white/60 bg-slate-950/45 px-5 text-base font-semibold backdrop-blur-sm">У мене вже є акаунт</button>
           </div>
         </> : onboardingStep > 0 ? <OnboardingSlides step={onboardingStep as 1 | 2 | 3} permissionMessage={onboardingPermissionMessage}
           onNext={() => setOnboardingStep(Math.min(3, onboardingStep + 1))} onBack={() => onboardingStep === 1 ? setAuthIntro(true) : setOnboardingStep(onboardingStep - 1)}
