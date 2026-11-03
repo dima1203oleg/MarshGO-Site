@@ -54,6 +54,7 @@ html.dark {
   /* --mg-action fills a control with white text; --mg-blue is the accent for text and strokes. */
   --mg-action: #0B63D6;
   --mg-action-hover: #0A57BC;
+  --mg-action-shadow: 0 12px 28px rgba(11, 99, 214, .45);
   --mg-surface-glass: rgba(11, 15, 20, .94);
   --mg-ink-primary: #F5F9FF;
   --mg-ink-secondary: #B6C2D0;
@@ -173,6 +174,7 @@ body {
   --mg-surface-tint: #f6f8fc;
   --mg-action: #0B63D6;
   --mg-action-hover: #0950A8;
+  --mg-action-shadow: 0 12px 28px rgba(11, 99, 214, .28);
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
 }
 
@@ -1689,22 +1691,22 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
 .mg-route-cta {
   min-height: 56px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #A21CFF 0%, #7C1BE3 100%);
+  background: var(--mg-action);
   color: #fff;
   font-size: 20px;
   font-weight: 900;
   letter-spacing: -.01em;
-  box-shadow: 0 12px 28px rgba(139, 60, 230, .42), inset 0 1px 0 rgba(255, 255, 255, .28);
+  box-shadow: var(--mg-action-shadow), inset 0 1px 0 rgba(255, 255, 255, .28);
   transition: transform .16s var(--mg-ease-entrance), filter .16s ease, box-shadow .16s ease;
   touch-action: manipulation;
 }
 .mg-route-cta:active { transform: scale(.985); filter: brightness(1.06); }
 .mg-route-cta:disabled { opacity: .5; box-shadow: none; }
-.mg-route-cta:focus-visible { outline: 3px solid rgba(162, 28, 255, .55); outline-offset: 3px; }
+.mg-route-cta:focus-visible { outline: 2px solid var(--mg-blue); outline-offset: 3px; }
 
 .mg-route-book {
-  border: 1px solid color-mix(in srgb, #A855F7 55%, transparent);
-  background: color-mix(in srgb, #A855F7 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mg-blue) 55%, transparent);
+  background: color-mix(in srgb, var(--mg-blue) 14%, transparent);
   color: var(--route-ink);
   transition: background-color .16s ease, transform .16s var(--mg-ease-entrance);
 }
