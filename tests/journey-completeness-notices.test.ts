@@ -91,6 +91,12 @@ describe('stop walk reach notice', () => {
 const scheduleFallback = 'Львівавтодор — розклад (GTFS): GTFS-Realtime відхилено (оновлення тимчасово недоступні); використовується розклад';
 const pedestrianRejection = 'Частину варіантів відхилено: фактичний час або відстань пішохідного шляху не дозволяє здійснити маршрут.';
 const routerBudget = 'Пішохідний маршрутизатор обмежив пошук 32 маршрутами; частину альтернатив не перевірено.';
+const walkEstimated = 'Пішохідний маршрутизатор не повернув підтверджений шлях для частини варіантів; їхні піші ділянки залишено як оцінку.';
+const communityPruned = 'Пішохідний маршрутизатор не підтвердив шлях до точки посадки/висадки попутки; такі комбінації приховано.';
+const transfersUnverified = 'Частину додаткових мультимодальних пересадок не вдалося перевірити; основні результати залишено без непідтверджених комбінацій.';
+const feedUnavailable = 'Львівавтодор — розклад (GTFS): розклад тимчасово недоступний';
+const transitSearchFailed = 'GTFS-пошук тимчасово недоступний: черга заповнена; інші типи маршрутів перевіряються окремо';
+const scooterZones = 'Самокати: зони завершення поїздки тимчасово недоступні';
 
 describe('provider error notices', () => {
   it('keeps each provider fact on its own line instead of one umbrella outage claim', () => {
@@ -108,8 +114,28 @@ describe('provider error notices', () => {
     assert.match(notices[0]!.text, /маршрут\.$/);
   });
 
-  it('reserves the failure tone for errors that did not fall back to the printed schedule', () => {
-    const [notice] = providerErrorNotices([routerBudget]);
-    assert.equal(notice!.tone, 'rose');
+  it('does not paint a working search in the error colour', () => {
+    // Measured 2026-11-03: a live Lviv search returned four confirmed journeys and carried exactly
+    // this line, which the old rule rendered rose — a red outage under a normal result list.
+    const measured = providerErrorNotices([pedestrianRejection]);
+    assert.equal(measured.length, 1, 'the disclosure is still shown, only not as an outage');
+    assert.equal(measured[0]!.tone, 'amber');
+    for (const internal of [routerBudget, walkEstimated, communityPruned, transfersUnverified]) {
+      const [notice] = providerErrorNotices([internal]);
+      assert.equal(notice!.tone, 'amber', `${internal.slice(0, 40)}… must not read as an error`);
+    }
+  });
+
+  it('keeps the error colour for data that really did not arrive', () => {
+    for (const outage of [feedUnavailable, transitSearchFailed, scooterZones]) {
+      const [notice] = providerErrorNotices([outage]);
+      assert.equal(notice!.tone, 'rose', outage);
+    }
+    // A fallback to the printed schedule is a degraded success even though the sentence mentions
+    // unavailable updates; the outage test above must not be won by that substring alone.
+    assert.equal(providerErrorNotices([scheduleFallback])[0]!.tone, 'amber');
+    // One search can carry both, and each keeps its own colour.
+    const mixed = providerErrorNotices([pedestrianRejection, feedUnavailable]);
+    assert.deepEqual(mixed.map(notice => notice.tone), ['amber', 'rose']);
   });
 });

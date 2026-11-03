@@ -254,6 +254,21 @@ export function stopWalkReachNotice(
 }
 
 /**
+ * A line from `providerErrors` is an outage only when it names data that did not arrive —
+ * "розклад тимчасово недоступний", "відкриті дані тимчасово недоступні" — or when a realtime feed
+ * failed while the printed schedule is still being served. Everything else in that array is the
+ * engine disclosing its own pruning or estimation (walk budgets, rejected connections, unverified
+ * transfers) next to journeys that did load, so it is a degraded success, not a failure.
+ * Unknown wording therefore defaults to the caution tone: the sentence still shows in full, it is
+ * only not shouted at in the error colour.
+ */
+function isProviderOutage(text: string): boolean {
+  const line = text.toLocaleLowerCase('uk-UA');
+  if (line.includes('використовується розклад')) return false;
+  return line.includes('недоступн');
+}
+
+/**
  * Each provider error already arrives as a passenger sentence. Gluing them into one
  * "розклади тимчасово недоступні" claim misreads a realtime fallback — the printed schedule was
  * used — as an outage, and repeats a terminal period when the server text already ends with one.
@@ -267,7 +282,7 @@ export function providerErrorNotices(providerErrors: readonly string[] = []): Ar
     const text = `${trimmed}.`;
     if (seen.has(text)) continue;
     seen.add(text);
-    notices.push({ tone: trimmed.includes('використовується розклад') ? 'amber' : 'rose', text });
+    notices.push({ tone: isProviderOutage(trimmed) ? 'rose' : 'amber', text });
   }
   return notices;
 }
