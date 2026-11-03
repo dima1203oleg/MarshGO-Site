@@ -16,5 +16,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - name: Test suite (tsx --test tests/*.test.ts)
+        run: npm test
       - run: npm run build
       - run: npm run check:bundle
