@@ -232,7 +232,12 @@ export type UnavailableTransportNotice = { mode: string; text: string };
 type CompletenessLike = { modesUnavailable?: Array<{ mode: string; requested: boolean; reason: string }> } | undefined;
 
 /** The stop distances are only measured while the search is blocked, so they may be absent elsewhere. */
-type WalkReachLike = { nearestOriginStopMeters?: number | null; nearestDestinationStopMeters?: number | null } | undefined;
+type WalkReachLike = {
+  nearestOriginStopMeters?: number | null;
+  nearestDestinationStopMeters?: number | null;
+  walkReachExtended?: true;
+  journeysWithExtendedReach?: number;
+} | undefined;
 
 /**
  * Zero transit routes from a mid-block pin means "no stop within the walk radius", not "no routes exist":
@@ -244,13 +249,38 @@ export function stopWalkReachNotice(
 ): string | null {
   if (!partialReasons.includes('no_stop_within_walking_distance')) return null;
   const advice = 'Перемістіть точку ближче до зупинки — тоді розкладні рейси зможуть зʼявитися.';
+  const sides = walkReachSides(completeness);
+  if (sides.length === 0) return advice;
+  return `Поруч немає зупинки в межах пішого доступу: найближча — ${sides.join(' і ')}. ${advice}`;
+}
+
+function walkReachSides(completeness: WalkReachLike): string[] {
   const sides: string[] = [];
   const origin = completeness?.nearestOriginStopMeters;
   const destination = completeness?.nearestDestinationStopMeters;
   if (typeof origin === 'number' && Number.isFinite(origin)) sides.push(`${formatJourneyDistance(origin)} від початку`);
   if (typeof destination === 'number' && Number.isFinite(destination)) sides.push(`${formatJourneyDistance(destination)} від призначення`);
-  if (sides.length === 0) return advice;
-  return `Поруч немає зупинки в межах пішого доступу: найближча — ${sides.join(' і ')}. ${advice}`;
+  return sides;
+}
+
+/**
+ * The other reach case is a success with a cost: nothing sat inside the standard walking shed, so the
+ * engine planned from the nearest stop anyway and the passenger now faces a longer walk than usual. Saying
+ * only "move the pin" here would be wrong — routes were found — and saying nothing leaves a two-kilometre
+ * final walk looking like a normal part of the trip. The count the server sends counts validated
+ * candidates, not the cards on screen, so the sentence stays about the search and points at the walk shown
+ * on each card instead of claiming how many of the visible journeys are affected.
+ */
+export function extendedWalkReachNotice(
+  partialReasons: readonly string[] = [],
+  completeness?: WalkReachLike,
+): string | null {
+  if (completeness?.walkReachExtended !== true) return null;
+  // A blocked search already tells the passenger to move the pin; two opposite advices would cancel out.
+  if (partialReasons.includes('no_stop_within_walking_distance')) return null;
+  const sides = walkReachSides(completeness);
+  const where = sides.length ? `найближча зупинка — ${sides.join(' і ')}. ` : '';
+  return `Розкладні рейси починаються й закінчуються пішки довше, ніж зазвичай: ${where}жодної зупинки у звичному пішому радіусі не було, тому планувальник узяв найближчу. Перевірте піші відрізки на картках — вони показані фактичною довжиною.`;
 }
 
 /**

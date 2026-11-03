@@ -2,7 +2,7 @@
 // call a failed transit search "no routes here". Fixtures below are synthetic, not live feeds.
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { providerErrorNotices, stopWalkReachNotice, unavailableTransportNotices } from '../src/views/journeyResultPresentation';
+import { extendedWalkReachNotice, providerErrorNotices, stopWalkReachNotice, unavailableTransportNotices } from '../src/views/journeyResultPresentation';
 
 const unavailable = (mode: string, reason: string, requested = true) => ({ mode, available: false, requested, reason });
 
@@ -84,6 +84,54 @@ describe('stop walk reach notice', () => {
     const text = stopWalkReachNotice([token], { nearestDestinationStopMeters: 1244 })!;
     assert.doesNotMatch(text, /маршрутів (немає|не існує)|немає маршрутів/);
     assert.match(text, /в межах пішого доступу/);
+  });
+});
+
+// SITE-3.1: `walk_reach_extended` is a success with a price — routes were found, but from a stop outside
+// the standard shed, so the passenger walks longer than usual. The numbers mirror the measured live Lviv
+// response (nearest stop 1 243.57 m, 80 validated candidates, one journey returned); they are fixtures.
+describe('extended walk reach notice', () => {
+  const reason = 'walk_reach_extended';
+  const extended = {
+    walkReachExtended: true as const,
+    nearestOriginStopMeters: null,
+    nearestDestinationStopMeters: 1243.57,
+    journeysWithExtendedReach: 80,
+  };
+
+  it('fires on the extended fact alone, not on a bare distance', () => {
+    assert.equal(extendedWalkReachNotice([], {}), null);
+    assert.equal(extendedWalkReachNotice([], { nearestDestinationStopMeters: 1243 }), null);
+    assert.equal(extendedWalkReachNotice(), null);
+    assert.ok(extendedWalkReachNotice([reason], extended));
+  });
+
+  it('names only the side that sat outside the shed', () => {
+    const text = extendedWalkReachNotice([reason], extended)!;
+    assert.match(text, /1,2 км від призначення/);
+    assert.doesNotMatch(text, /від початку/);
+    assert.doesNotMatch(text, /NaN/);
+  });
+
+  it('does not tell a passenger with routes on screen to move the pin', () => {
+    const text = extendedWalkReachNotice([reason], extended)!;
+    assert.doesNotMatch(text, /Перемістіть точку/);
+    assert.doesNotMatch(text, /маршрутів (немає|не існує)|немає маршрутів/);
+    assert.match(text, /довше, ніж зазвичай/);
+  });
+
+  it('yields to the blocked notice, which gives the opposite advice', () => {
+    assert.equal(extendedWalkReachNotice(['no_stop_within_walking_distance'], extended), null);
+    assert.ok(stopWalkReachNotice(['no_stop_within_walking_distance'], extended));
+  });
+
+  // journeysWithExtendedReach counts validated candidates, not the cards a passenger sees (measured: 80
+  // candidates against 1 returned journey), so quoting it in the passenger line would be a false claim.
+  it('never quotes the candidate count as if it were a number of shown routes', () => {
+    assert.doesNotMatch(extendedWalkReachNotice([reason], extended)!, /80/);
+    const withoutNumbers = extendedWalkReachNotice([reason], { walkReachExtended: true })!;
+    assert.match(withoutNumbers, /піші відрізки/);
+    assert.doesNotMatch(withoutNumbers, /undefined|NaN|км від/);
   });
 });
 

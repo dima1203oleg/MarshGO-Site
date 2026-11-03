@@ -50,3 +50,15 @@ test('an empty carpool block disappears only when transit already answered', () 
   assert.equal(showsCarpoolSection(0, false), true);
   assert.equal(showsCarpoolSection(3, true), true);
 });
+
+// SITE-3.1 diagnostics. The live Lviv search measured 80 extended-reach candidates against 1 returned
+// journey, so the funnel must keep the two numbers apart instead of printing one as the other.
+test('the funnel keeps extended-reach candidates apart from journeys actually returned', () => {
+  const extended = {
+    ...searchResult,
+    completeness: { ...searchResult.completeness, walkReachExtended: true, journeysWithExtendedReach: 80 },
+  } as unknown as ApiJourneySearchResult;
+  const lines = funnelLines(extended).join('\n');
+  assert.match(lines, /Піший радіус розширено: кандидатів із зайвим плечем 80 · віддано 4/);
+  assert.doesNotMatch(funnelLines(searchResult).join('\n'), /Піший радіус/);
+});

@@ -10,7 +10,7 @@ import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
   formatJourneyDurationTile, journeyBoardingNote,
-  searchPendingCopy, providerErrorNotices, stopWalkReachNotice, unavailableTransportNotices,
+  searchPendingCopy, providerErrorNotices, stopWalkReachNotice, extendedWalkReachNotice, unavailableTransportNotices,
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay } from './cashFare';
 import { strategyJourneys } from './journeyStrategySelection';
@@ -227,10 +227,12 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   // Transport-type tokens are availability facts, not preferences: they get their own honest lines.
   const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences, result.completeness);
   const walkReach = stopWalkReachNotice(result.partialReasons ?? [], result.completeness);
+  const extendedReach = extendedWalkReachNotice(result.partialReasons ?? [], result.completeness);
   const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
   if (result.partial && !result.partialReasons?.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
   if (result.partialReasons?.includes('walking_routing_unavailable')) notices.push({ tone: 'amber', text: 'Піші ділянки частини варіантів показано як оцінку: пішохідний маршрутизатор не підтвердив для них реальний шлях.' });
   if (walkReach) notices.push({ tone: 'amber', text: walkReach });
+  if (extendedReach) notices.push({ tone: 'amber', text: extendedReach });
   const preferenceTokens = result.unsupportedPreferences.filter(token => !token.startsWith('transportType:'));
   if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${preferenceTokens.map(value => preferenceMessages[value] ?? value).join('; ')}.` });
   providerErrorNotices(result.providerErrors).forEach(notice => notices.push(notice));
