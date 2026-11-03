@@ -36,7 +36,7 @@ npm run lint:all  → eslint src scripts shared vite.config.ts eslint.config.js,
 | D-01 | Назви 12 категорій транспорту рендеряться на **9 px** на вузьких смартфонах | `src/index.css:626` | P0 |
 | D-02 | Всі 4 підписи глобальної навігації — **10 px** | `src/views/ProductionMarketplace.tsx:1822` | P0 |
 | D-03 | Селектор сегмента маршруту — **26 px** заввишки | `src/index.css:1651-1656`, `src/views/JourneyRouteMapScreen.tsx:637` | P0 |
-| D-04 | три CTA водійської відповіді — **10 px і ~36 px** | `src/views/ProductionNavigation.tsx:573,574,576` | P0 |
+| D-04 | три CTA водійської відповіді — **10 px** (висота 44 px, спростовано в CP2) | `src/views/ProductionNavigation.tsx:573,574,576` | P0 |
 | D-05 | ETA на карті й рядок тривалості маршруту — **10.5 px** | `src/index.css:1868`, `src/views/JourneyRouteMapScreen.tsx:626` | P0 |
 | D-06 | Помилки показуються тією самою синьою «status»-плашкою, що й інформація | `src/views/ProductionMarketplace.tsx:1505` | P0 |
 | D-07 | Dark-тема — шар `!important`-перевизначень, а не токени | `src/index.css` (201 `!important`, 158 рядків `html.dark`) | P0 |
@@ -155,11 +155,20 @@ npm run lint:all  → eslint src scripts shared vite.config.ts eslint.config.js,
   юніт-тест, що `routeMapInsets()` рахує нову висоту.
 - **Підтвердження.** `height: 26px` прочитано особою перевіркою.
 
-### D-04 · Водійські CTA на 10 px і ~36 px
+### D-04 · Водійські CTA на 10 px (висота — спростовано, див. нижче)
 
 - **Що не так.** Три первинні дії життєвого циклу поїздки (призупинити
   навігацію, підтвердити інтерес, відкрити заявку й запропонувати ціну) —
-  `py-2 text-[10px] font-bold`, тобто і текст 10 px, і висота ≈36 px.
+  `py-2 text-[10px] font-bold`, тобто текст 10 px.
+- **Поправка з CP2 (частину твердження спростовано читанням CSS).** «висота
+  ≈36 px» не витримує перевірки: `src/index.css:618`
+  `.production-app :is(.journey-search-card button, .journey-offer-card,
+  button.w-full) { min-height: 2.75rem; }` застосовується і до цих трьох кнопок —
+  всі вони мають `w-full`, а `ProductionNavigation` рендериться всередині того
+  самого `<main className="production-app">` (`ProductionMarketplace.tsx:47`,
+  `:1846`, `:1851`). Отже на базисі висота вже 44 px. Твердження залишається
+  чинним лише для кеглю; остаточний висновок — за виміром у браузері (CP3), а не
+  за цим рядком.
 - **Де.** [src/views/ProductionNavigation.tsx:573](file:///Users/dima1203/Desktop/marshgo-design3/src/views/ProductionNavigation.tsx#L573), [`:574`](file:///Users/dima1203/Desktop/marshgo-design3/src/views/ProductionNavigation.tsx#L574), [`:576`](file:///Users/dima1203/Desktop/marshgo-design3/src/views/ProductionNavigation.tsx#L576).
   Поруч ті самі статусні рядки 10 px: `:575`, `:576` (не кнопки, а підтвердження стану).
 - **Як відтворити.** Акаунт водія з верифікованим авто → `/navigate` → сесія
@@ -528,6 +537,10 @@ picker — обгортка над ним.
   (підрахунок за точним рядком у базисі; розбіжність — через варіанти з
   opacity-модифікаторами в попередньому методі).
 - ❌ «`MapLibreAdapter.ts` — 645 LOC». У базисі 893 LOC.
+- ❌ «Водійські CTA мають висоту ~36 px» (мій власний рядок D-04, знятий на CP2).
+  Глобальна підлога `.production-app … button.w-full { min-height: 2.75rem }`
+  (`index.css:618`) уже дає 44 px; залишається лише кегль 10 px. Повна історія
+  виправлення — у блоці D-04.
 
 Метод, який дав ці виправлення, зафіксований у `evidence/measure-debt.sh`,
 тож сперечати числа можна перезапуском, а не пам'яттю.
