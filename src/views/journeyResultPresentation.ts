@@ -279,8 +279,8 @@ export function extendedWalkReachNotice(
   // A blocked search already tells the passenger to move the pin; two opposite advices would cancel out.
   if (partialReasons.includes('no_stop_within_walking_distance')) return null;
   const sides = walkReachSides(completeness);
-  const where = sides.length ? `найближча зупинка — ${sides.join(' і ')}. ` : '';
-  return `Розкладні рейси починаються й закінчуються пішки довше, ніж зазвичай: ${where}жодної зупинки у звичному пішому радіусі не було, тому планувальник узяв найближчу. Перевірте піші відрізки на картках — вони показані фактичною довжиною.`;
+  const where = sides.length ? sides.join(' і ') : 'поза пішим радіусом';
+  return `Піший підхід довший за звичайне: найближча зупинка — ${where}. Планувальник узяв її — перевірте піші відрізки на картках.`;
 }
 
 /**

@@ -117,7 +117,17 @@ describe('extended walk reach notice', () => {
     const text = extendedWalkReachNotice([reason], extended)!;
     assert.doesNotMatch(text, /Перемістіть точку/);
     assert.doesNotMatch(text, /маршрутів (немає|не існує)|немає маршрутів/);
-    assert.match(text, /довше, ніж зазвичай/);
+    assert.match(text, /довший за звичайне/);
+  });
+
+  // The first render on a real phone was caught starting a sentence with a lowercase letter after a
+  // period, because the distance fragment was spliced between two fixed sentences.
+  it('reads as one written sentence whatever the numbers do', () => {
+    for (const completeness of [extended, { walkReachExtended: true as const },
+      { walkReachExtended: true as const, nearestOriginStopMeters: 850, nearestDestinationStopMeters: 1244 }]) {
+      const text = extendedWalkReachNotice([reason], completeness)!;
+      assert.doesNotMatch(text, /\. [а-яєії]/, text);
+    }
   });
 
   it('yields to the blocked notice, which gives the opposite advice', () => {
