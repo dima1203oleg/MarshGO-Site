@@ -341,6 +341,13 @@ export type ApiJourneySearchResult = {
     searchTruncated: boolean;
     searchComplete: boolean;
     transitSearchFailed: boolean;
+    /** Present only when every queried feed missed a side at its walk radius. */
+    nearestOriginStopMeters?: number | null;
+    nearestDestinationStopMeters?: number | null;
+    /** The transit journeys were planned from the closest stop although it sits outside the standard walking shed. */
+    walkReachExtended?: true;
+    /** Validated candidates (not necessarily returned ones) built on that extended walk. */
+    journeysWithExtendedReach?: number;
   };
 };
 export type ApiStoredJourney = {

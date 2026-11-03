@@ -231,6 +231,92 @@ export type UnavailableTransportNotice = { mode: string; text: string };
 /** Only the per-category facts are needed here, so the block is typed structurally. */
 type CompletenessLike = { modesUnavailable?: Array<{ mode: string; requested: boolean; reason: string }> } | undefined;
 
+/** The stop distances are only measured while the search is blocked, so they may be absent elsewhere. */
+type WalkReachLike = {
+  nearestOriginStopMeters?: number | null;
+  nearestDestinationStopMeters?: number | null;
+  walkReachExtended?: true;
+  journeysWithExtendedReach?: number;
+} | undefined;
+
+/**
+ * Zero transit routes from a mid-block pin means "no stop within the walk radius", not "no routes exist":
+ * the server names the nearest stop per side only in that blocked case, and the advice is to move the pin.
+ */
+export function stopWalkReachNotice(
+  partialReasons: readonly string[] = [],
+  completeness?: WalkReachLike,
+): string | null {
+  if (!partialReasons.includes('no_stop_within_walking_distance')) return null;
+  const advice = 'Перемістіть точку ближче до зупинки — тоді розкладні рейси зможуть зʼявитися.';
+  const sides = walkReachSides(completeness);
+  if (sides.length === 0) return advice;
+  return `Поруч немає зупинки в межах пішого доступу: найближча — ${sides.join(' і ')}. ${advice}`;
+}
+
+function walkReachSides(completeness: WalkReachLike): string[] {
+  const sides: string[] = [];
+  const origin = completeness?.nearestOriginStopMeters;
+  const destination = completeness?.nearestDestinationStopMeters;
+  if (typeof origin === 'number' && Number.isFinite(origin)) sides.push(`${formatJourneyDistance(origin)} від початку`);
+  if (typeof destination === 'number' && Number.isFinite(destination)) sides.push(`${formatJourneyDistance(destination)} від призначення`);
+  return sides;
+}
+
+/**
+ * The other reach case is a success with a cost: nothing sat inside the standard walking shed, so the
+ * engine planned from the nearest stop anyway and the passenger now faces a longer walk than usual. Saying
+ * only "move the pin" here would be wrong — routes were found — and saying nothing leaves a two-kilometre
+ * final walk looking like a normal part of the trip. The count the server sends counts validated
+ * candidates, not the cards on screen, so the sentence stays about the search and points at the walk shown
+ * on each card instead of claiming how many of the visible journeys are affected.
+ */
+export function extendedWalkReachNotice(
+  partialReasons: readonly string[] = [],
+  completeness?: WalkReachLike,
+): string | null {
+  if (completeness?.walkReachExtended !== true) return null;
+  // A blocked search already tells the passenger to move the pin; two opposite advices would cancel out.
+  if (partialReasons.includes('no_stop_within_walking_distance')) return null;
+  const sides = walkReachSides(completeness);
+  const where = sides.length ? sides.join(' і ') : 'поза пішим радіусом';
+  return `Піший підхід довший за звичайне: найближча зупинка — ${where}. Планувальник узяв її — перевірте піші відрізки на картках.`;
+}
+
+/**
+ * A line from `providerErrors` is an outage only when it names data that did not arrive —
+ * "розклад тимчасово недоступний", "відкриті дані тимчасово недоступні" — or when a realtime feed
+ * failed while the printed schedule is still being served. Everything else in that array is the
+ * engine disclosing its own pruning or estimation (walk budgets, rejected connections, unverified
+ * transfers) next to journeys that did load, so it is a degraded success, not a failure.
+ * Unknown wording therefore defaults to the caution tone: the sentence still shows in full, it is
+ * only not shouted at in the error colour.
+ */
+function isProviderOutage(text: string): boolean {
+  const line = text.toLocaleLowerCase('uk-UA');
+  if (line.includes('використовується розклад')) return false;
+  return line.includes('недоступн');
+}
+
+/**
+ * Each provider error already arrives as a passenger sentence. Gluing them into one
+ * "розклади тимчасово недоступні" claim misreads a realtime fallback — the printed schedule was
+ * used — as an outage, and repeats a terminal period when the server text already ends with one.
+ */
+export function providerErrorNotices(providerErrors: readonly string[] = []): Array<{ tone: 'rose' | 'amber'; text: string }> {
+  const notices: Array<{ tone: 'rose' | 'amber'; text: string }> = [];
+  const seen = new Set<string>();
+  for (const error of providerErrors) {
+    const trimmed = error.trim().replace(/[.;]+$/, '');
+    if (!trimmed) continue;
+    const text = `${trimmed}.`;
+    if (seen.has(text)) continue;
+    seen.add(text);
+    notices.push({ tone: isProviderOutage(trimmed) ? 'rose' : 'amber', text });
+  }
+  return notices;
+}
+
 const completenessReasons: Record<string, string> = {
   no_routed_provider_in_corridor: 'у цьому коридорі немає жодного підключеного розкладу',
   no_source_declares_this_category: 'жодне підключене джерело не оголошує цей вид транспорту',

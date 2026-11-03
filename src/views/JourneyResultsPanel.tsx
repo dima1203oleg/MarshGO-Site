@@ -10,7 +10,7 @@ import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
   formatJourneyDurationTile, journeyBoardingNote,
-  searchPendingCopy, unavailableTransportNotices,
+  searchPendingCopy, providerErrorNotices, stopWalkReachNotice, extendedWalkReachNotice, unavailableTransportNotices,
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay } from './cashFare';
 import { strategyJourneys } from './journeyStrategySelection';
@@ -226,12 +226,16 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
 
   // Transport-type tokens are availability facts, not preferences: they get their own honest lines.
   const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences, result.completeness);
+  const walkReach = stopWalkReachNotice(result.partialReasons ?? [], result.completeness);
+  const extendedReach = extendedWalkReachNotice(result.partialReasons ?? [], result.completeness);
   const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
   if (result.partial && !result.partialReasons?.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
   if (result.partialReasons?.includes('walking_routing_unavailable')) notices.push({ tone: 'amber', text: 'Піші ділянки частини варіантів показано як оцінку: пішохідний маршрутизатор не підтвердив для них реальний шлях.' });
+  if (walkReach) notices.push({ tone: 'amber', text: walkReach });
+  if (extendedReach) notices.push({ tone: 'amber', text: extendedReach });
   const preferenceTokens = result.unsupportedPreferences.filter(token => !token.startsWith('transportType:'));
   if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${preferenceTokens.map(value => preferenceMessages[value] ?? value).join('; ')}.` });
-  if (result.providerErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${result.providerErrors.join('; ')}.` });
+  providerErrorNotices(result.providerErrors).forEach(notice => notices.push(notice));
   if (result.resultsTruncated) notices.push({ tone: 'blue', text: `Показано до ${result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із ${result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.` });
   if (result.candidateGenerationTruncated) notices.push({ tone: 'amber', text: 'Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.' });
   unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
@@ -278,7 +282,7 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
         <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{result.journeys.length
           ? 'Спробуйте інший режим або змініть умови пошуку.'
-          : 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>
+          : walkReach ?? 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>
         {unavailable.length > 0 && <ul className="mx-auto mt-3 max-w-sm space-y-1.5 text-left">
           {unavailable.map(notice => <li key={notice.mode} className="flex gap-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
             <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400"/>

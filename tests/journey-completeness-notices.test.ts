@@ -2,7 +2,7 @@
 // call a failed transit search "no routes here". Fixtures below are synthetic, not live feeds.
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { unavailableTransportNotices } from '../src/views/journeyResultPresentation';
+import { extendedWalkReachNotice, providerErrorNotices, stopWalkReachNotice, unavailableTransportNotices } from '../src/views/journeyResultPresentation';
 
 const unavailable = (mode: string, reason: string, requested = true) => ({ mode, available: false, requested, reason });
 
@@ -45,5 +45,155 @@ describe('completeness notices', () => {
     );
     assert.equal(notices.length, 1);
     assert.match(notices[0]!.text, /Тролейбуси: немає жодного підключеного джерела/);
+  });
+});
+
+// EMPTY-HONESTY-1: a mid-block pin with no stop inside the walk radius is a reachability fact,
+// not "no routes exist". Fixtures below are synthetic (the 1244 m value mirrors a real Lviv measurement).
+describe('stop walk reach notice', () => {
+  const token = 'no_stop_within_walking_distance';
+
+  it('stays silent when the blocked-reason token is absent', () => {
+    assert.equal(stopWalkReachNotice([], { nearestOriginStopMeters: 1244 }), null);
+    assert.equal(stopWalkReachNotice(['walking_routing_unavailable'], {}), null);
+    assert.equal(stopWalkReachNotice(), null);
+  });
+
+  it('names both sides when both distances arrived', () => {
+    const text = stopWalkReachNotice([token], { nearestOriginStopMeters: 850, nearestDestinationStopMeters: 1244 });
+    assert.equal(text, 'Поруч немає зупинки в межах пішого доступу: найближча — 850 м від початку і 1,2 км від призначення. Перемістіть точку ближче до зупинки — тоді розкладні рейси зможуть зʼявитися.');
+  });
+
+  it('mentions only the side whose distance is present', () => {
+    const text = stopWalkReachNotice([token], { nearestDestinationStopMeters: 1244 });
+    assert.match(text!, /1,2 км від призначення/);
+    assert.doesNotMatch(text!, /від початку/);
+    const originOnly = stopWalkReachNotice([token], { nearestOriginStopMeters: 1244, nearestDestinationStopMeters: null });
+    assert.match(originOnly!, /1,2 км від початку/);
+    assert.doesNotMatch(originOnly!, /від призначення/);
+  });
+
+  it('gives the advice without any distance when no numbers arrived', () => {
+    const text = stopWalkReachNotice([token], { nearestOriginStopMeters: null });
+    assert.equal(text, 'Перемістіть точку ближче до зупинки — тоді розкладні рейси зможуть зʼявитися.');
+    assert.doesNotMatch(stopWalkReachNotice([token])!, /км|від початку|від призначення/);
+    assert.doesNotMatch(stopWalkReachNotice([token], { nearestOriginStopMeters: Number.NaN })!, /NaN/);
+  });
+
+  it('never claims routes do not exist — it says the stop is out of walk reach', () => {
+    const text = stopWalkReachNotice([token], { nearestDestinationStopMeters: 1244 })!;
+    assert.doesNotMatch(text, /маршрутів (немає|не існує)|немає маршрутів/);
+    assert.match(text, /в межах пішого доступу/);
+  });
+});
+
+// SITE-3.1: `walk_reach_extended` is a success with a price — routes were found, but from a stop outside
+// the standard shed, so the passenger walks longer than usual. The numbers mirror the measured live Lviv
+// response (nearest stop 1 243.57 m, 80 validated candidates, one journey returned); they are fixtures.
+describe('extended walk reach notice', () => {
+  const reason = 'walk_reach_extended';
+  const extended = {
+    walkReachExtended: true as const,
+    nearestOriginStopMeters: null,
+    nearestDestinationStopMeters: 1243.57,
+    journeysWithExtendedReach: 80,
+  };
+
+  it('fires on the extended fact alone, not on a bare distance', () => {
+    assert.equal(extendedWalkReachNotice([], {}), null);
+    assert.equal(extendedWalkReachNotice([], { nearestDestinationStopMeters: 1243 }), null);
+    assert.equal(extendedWalkReachNotice(), null);
+    assert.ok(extendedWalkReachNotice([reason], extended));
+  });
+
+  it('names only the side that sat outside the shed', () => {
+    const text = extendedWalkReachNotice([reason], extended)!;
+    assert.match(text, /1,2 км від призначення/);
+    assert.doesNotMatch(text, /від початку/);
+    assert.doesNotMatch(text, /NaN/);
+  });
+
+  it('does not tell a passenger with routes on screen to move the pin', () => {
+    const text = extendedWalkReachNotice([reason], extended)!;
+    assert.doesNotMatch(text, /Перемістіть точку/);
+    assert.doesNotMatch(text, /маршрутів (немає|не існує)|немає маршрутів/);
+    assert.match(text, /довший за звичайне/);
+  });
+
+  // The first render on a real phone was caught starting a sentence with a lowercase letter after a
+  // period, because the distance fragment was spliced between two fixed sentences.
+  it('reads as one written sentence whatever the numbers do', () => {
+    for (const completeness of [extended, { walkReachExtended: true as const },
+      { walkReachExtended: true as const, nearestOriginStopMeters: 850, nearestDestinationStopMeters: 1244 }]) {
+      const text = extendedWalkReachNotice([reason], completeness)!;
+      assert.doesNotMatch(text, /\. [а-яєії]/, text);
+    }
+  });
+
+  it('yields to the blocked notice, which gives the opposite advice', () => {
+    assert.equal(extendedWalkReachNotice(['no_stop_within_walking_distance'], extended), null);
+    assert.ok(stopWalkReachNotice(['no_stop_within_walking_distance'], extended));
+  });
+
+  // journeysWithExtendedReach counts validated candidates, not the cards a passenger sees (measured: 80
+  // candidates against 1 returned journey), so quoting it in the passenger line would be a false claim.
+  it('never quotes the candidate count as if it were a number of shown routes', () => {
+    assert.doesNotMatch(extendedWalkReachNotice([reason], extended)!, /80/);
+    const withoutNumbers = extendedWalkReachNotice([reason], { walkReachExtended: true })!;
+    assert.match(withoutNumbers, /піші відрізки/);
+    assert.doesNotMatch(withoutNumbers, /undefined|NaN|км від/);
+  });
+});
+
+// Synthetic strings copied from a live Lviv search response; they are fixtures, not live evidence.
+const scheduleFallback = 'Львівавтодор — розклад (GTFS): GTFS-Realtime відхилено (оновлення тимчасово недоступні); використовується розклад';
+const pedestrianRejection = 'Частину варіантів відхилено: фактичний час або відстань пішохідного шляху не дозволяє здійснити маршрут.';
+const routerBudget = 'Пішохідний маршрутизатор обмежив пошук 32 маршрутами; частину альтернатив не перевірено.';
+const walkEstimated = 'Пішохідний маршрутизатор не повернув підтверджений шлях для частини варіантів; їхні піші ділянки залишено як оцінку.';
+const communityPruned = 'Пішохідний маршрутизатор не підтвердив шлях до точки посадки/висадки попутки; такі комбінації приховано.';
+const transfersUnverified = 'Частину додаткових мультимодальних пересадок не вдалося перевірити; основні результати залишено без непідтверджених комбінацій.';
+const feedUnavailable = 'Львівавтодор — розклад (GTFS): розклад тимчасово недоступний';
+const transitSearchFailed = 'GTFS-пошук тимчасово недоступний: черга заповнена; інші типи маршрутів перевіряються окремо';
+const scooterZones = 'Самокати: зони завершення поїздки тимчасово недоступні';
+
+describe('provider error notices', () => {
+  it('keeps each provider fact on its own line instead of one umbrella outage claim', () => {
+    const notices = providerErrorNotices([scheduleFallback, pedestrianRejection, routerBudget]);
+    assert.equal(notices.length, 3);
+    assert.ok(!notices.some(notice => /Деякі розклади тимчасово недоступні/.test(notice.text)));
+    assert.equal(notices[0]!.tone, 'amber');
+    assert.match(notices[0]!.text, /використовується розклад/);
+  });
+
+  it('never doubles a terminal period and never keeps an empty or repeated line', () => {
+    const notices = providerErrorNotices([pedestrianRejection, `${pedestrianRejection} `, '', '  ']);
+    assert.equal(notices.length, 1);
+    assert.doesNotMatch(notices[0]!.text, /\.\.|[.;]\.$/);
+    assert.match(notices[0]!.text, /маршрут\.$/);
+  });
+
+  it('does not paint a working search in the error colour', () => {
+    // Measured 2026-11-03: a live Lviv search returned four confirmed journeys and carried exactly
+    // this line, which the old rule rendered rose — a red outage under a normal result list.
+    const measured = providerErrorNotices([pedestrianRejection]);
+    assert.equal(measured.length, 1, 'the disclosure is still shown, only not as an outage');
+    assert.equal(measured[0]!.tone, 'amber');
+    for (const internal of [routerBudget, walkEstimated, communityPruned, transfersUnverified]) {
+      const [notice] = providerErrorNotices([internal]);
+      assert.equal(notice!.tone, 'amber', `${internal.slice(0, 40)}… must not read as an error`);
+    }
+  });
+
+  it('keeps the error colour for data that really did not arrive', () => {
+    for (const outage of [feedUnavailable, transitSearchFailed, scooterZones]) {
+      const [notice] = providerErrorNotices([outage]);
+      assert.equal(notice!.tone, 'rose', outage);
+    }
+    // A fallback to the printed schedule is a degraded success even though the sentence mentions
+    // unavailable updates; the outage test above must not be won by that substring alone.
+    assert.equal(providerErrorNotices([scheduleFallback])[0]!.tone, 'amber');
+    // One search can carry both, and each keeps its own colour.
+    const mixed = providerErrorNotices([pedestrianRejection, feedUnavailable]);
+    assert.deepEqual(mixed.map(notice => notice.tone), ['amber', 'rose']);
   });
 });
