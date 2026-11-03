@@ -66,22 +66,53 @@ export function legPriceDisplay(leg: Leg): LegPriceDisplay {
 }
 
 /**
+ * Where the printed amount comes from. This is the difference between "коштує
+ * 60 ₴" and "60 ₴ ви віддаєте кондукторові": a cash rider and a card rider pay
+ * different amounts for the same journey, and the planner quotes the cheaper
+ * one, so an unqualified number is read as the price of the ticket product.
+ */
+export type JourneyPriceSource = 'cash' | 'mixed' | 'api' | 'unknown';
+
+export type JourneyPriceDisplay = {
+  label: string;
+  source: JourneyPriceSource;
+  /** The words under the amount that say who is being paid. Empty when the number needs no qualifier. */
+  caption: string;
+};
+
+/**
  * The journey total a rider actually pays. Published city cash tariffs carry no
  * approximation mark; a journey priced only by the planner keeps the honest "≈"
  * from the API and its coverage caveats.
  */
-export function journeyPriceDisplay(journey: ApiJourney): { label: string; cashOnly: boolean } {
+export function journeyPriceDisplay(journey: ApiJourney): JourneyPriceDisplay {
   const cash = summarizeLegPrices(journey.legs);
-  if (cash.totalMinor === null) return { label: '—', cashOnly: cash.cashLegCount > 0 };
-  // Mixed journeys still sum the cash part; a planner-only quote stays as the API stated it.
-  if (cash.cashLegCount > 0) return { label: formatMoneyMinor(cash.totalMinor, journey.currency ?? 'UAH'), cashOnly: true };
-  return { label: formatJourneyTotalPrice(journey), cashOnly: false };
+  if (cash.totalMinor === null) {
+    return { label: '—', source: 'unknown', caption: cash.cashLegCount > 0 ? 'частково невідомий тариф' : 'тариф невідомий' };
+  }
+  // A mixed journey pays part in the vehicle and part to a private carrier, so
+  // neither "готівкою" alone nor the planner's product price describes it.
+  if (cash.cashLegCount > 0 && cash.quotedLegCount === 0) {
+    return { label: formatMoneyMinor(cash.totalMinor, journey.currency ?? 'UAH'), source: 'cash', caption: 'готівкою' };
+  }
+  if (cash.cashLegCount > 0) {
+    const amount = formatMoneyMinor(cash.totalMinor, journey.currency ?? 'UAH');
+    const exact = journey.confirmedPriceMinor !== null || journey.priceStatus === 'LOCKED';
+    return { label: exact ? amount : `≈ ${amount}`, source: 'mixed', caption: 'частина готівкою' };
+  }
+  return { label: formatJourneyTotalPrice(journey), source: 'api', caption: '' };
 }
 
 /** Totals use the same per-leg cash amounts, so the summary never disagrees with the cards. */
-export function summarizeLegPrices(legs: Leg[]): { totalMinor: number | null; cashLegCount: number } {
+export function summarizeLegPrices(legs: Leg[]): {
+  totalMinor: number | null;
+  cashLegCount: number;
+  /** Legs priced by the planner quote rather than by a published cash tariff. */
+  quotedLegCount: number;
+} {
   let total = 0;
   let cashLegCount = 0;
+  let quotedLegCount = 0;
   for (const leg of legs) {
     if (leg.mode === 'WALK') continue;
     const cash = cashFareForLeg(leg);
@@ -91,8 +122,11 @@ export function summarizeLegPrices(legs: Leg[]): { totalMinor: number | null; ca
       continue;
     }
     if (leg.fareIncludedByPreviousSegment) continue;
-    if (leg.priceMinor === null || !Number.isFinite(leg.priceMinor)) return { totalMinor: null, cashLegCount };
+    if (leg.priceMinor === null || !Number.isFinite(leg.priceMinor)) {
+      return { totalMinor: null, cashLegCount, quotedLegCount };
+    }
     total += leg.priceMinor;
+    quotedLegCount += 1;
   }
-  return { totalMinor: total, cashLegCount };
+  return { totalMinor: total, cashLegCount, quotedLegCount };
 }

@@ -626,8 +626,8 @@ export function JourneyRouteMapScreen({
             <span data-testid="canonical-route-duration" className="truncate text-[10.5px] font-bold tabular-nums text-[var(--route-muted)]">{formatDuration(allDuration)} · {formatSegmentCount(journey.legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</span>
           </span>
           <span data-testid="route-total-fare" className="flex shrink-0 flex-col items-end leading-tight">
-            <strong aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`} className={`text-[17px] font-extrabold tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
-            {priceDisplay.cashOnly && totalPriceLabel !== '—' && <span className="text-[10px] font-bold text-[var(--route-muted)]">готівкою</span>}
+            <strong aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : `${totalPriceLabel}${priceDisplay.caption ? ` ${priceDisplay.caption}` : ''}`}`} className={`text-[17px] font-extrabold tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
+            {priceDisplay.caption && totalPriceLabel !== '—' && <span data-testid="route-total-fare-caption" className="text-[10px] font-bold text-[var(--route-muted)]">{priceDisplay.caption}</span>}
           </span>
         </div>
 
