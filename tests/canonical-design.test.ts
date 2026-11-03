@@ -47,6 +47,20 @@ test('route-result segment tiles stay at or above the 9 px legibility floor', as
   assert.deepEqual(undersized, []);
 });
 
+// Five-leg routes switch to the wide-detail tiles; overriding only their flex-basis
+// left every tile at 1 px, so the ribbon under the line rendered as an empty bar.
+test('wide screens keep five-leg ribbon tiles sharing the full width', async () => {
+  const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
+  const blocks = [...css.matchAll(/@media \(min-width: 640px\) \{([\s\S]*?)\n\}/g)];
+  const rule = blocks
+    .flatMap(([, body]) => [...body.matchAll(/\.journey-segment-tile--scroll \{([^}]*)\}/g)])
+    .at(-1);
+  assert.ok(rule, 'the wide-screen tile override went missing');
+  const flex = rule![1].match(/flex:\s*([\d.]+)\s+([\d.]+)\s+([^;]+)/);
+  assert.ok(flex, 'wide-screen tiles must declare the flex shorthand, not a bare basis');
+  assert.ok(Number(flex![1]) > 0, `wide-screen tiles must grow, got flex-grow ${flex![1]}`);
+});
+
 const legibleSurfaces = [
   'src/views/JourneyRouteMapScreen.tsx',
   'src/views/TransportMapView.tsx',

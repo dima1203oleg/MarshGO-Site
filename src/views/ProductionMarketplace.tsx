@@ -14,6 +14,7 @@ import { TransportTypesPanel } from '../components/TransportTypesPanel';
 import { DepartureDateTimePicker } from '../components/DepartureDateTimePicker';
 import { HomeHero } from './HomeHero';
 import { SavedJourneyCard } from '../design-system/journey/SavedJourneyCard';
+import { isBookingSection, showsBookingList, showsSavedRoutes, tripsTabSubtitle, tripsTabs, type TripsSection } from './tripsSections';
 import { PlanTripChoice } from './PlanTripChoice';
 import { OnboardingSlides } from '../components/OnboardingSlides';
 import { DriverPhotoCard } from '../components/DriverPhotoCard';
@@ -32,10 +33,12 @@ import { useProductionTabRouter } from '../routing/useProductionTabRouter';
 import { pathForProductionEntity, type ProductionTab } from '../routing/productionRoutes';
 import { buildSearchRoute, parseSearchRoute } from '../routing/searchRouteState';
 import { activePlaceOptionId, moveActivePlaceIndex, placeSuggestionKeyAction } from '../routing/placeSuggestionKeyboard';
+import { currentPlaceBias } from '../platform/placeBias';
 import { parseSharedNavigationDestination } from '../routing/navigationShare';
 import { navigationDestinationName } from '../navigation/destinationName';
 import { JourneyResultsPanel, JourneySearchPending } from './JourneyResultsPanel';
 import { JourneyRouteMapScreen } from './JourneyRouteMapScreen';
+import { JourneyActiveNavigation } from './JourneyActiveNavigation';
 const MobilityAdminPanel = lazy(() => import('./MobilityAdminPanel').then((module) => ({ default: module.MobilityAdminPanel })));
 const ProfileSections = lazy(() => import('./ProfileSections').then((module) => ({ default: module.ProfileSections })));
 const MapPointPicker = lazy(() => import('../components/MapPointPicker').then((module) => ({ default: module.MapPointPicker })));
@@ -45,7 +48,8 @@ const ProductionNavigation = lazy(() => import('./ProductionNavigation').then((m
 
 type Tab = ProductionTab;
 const formatMoney = (minor: number, currency: string) => new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(minor / 100);
-import { carpoolDepartureDateLabel, carpoolOffersFromOtherDate } from './carpoolDatePresentation';
+import { carpoolDepartureDateLabel, carpoolOffersFromOtherDate, showsCarpoolSorter } from './carpoolDatePresentation';
+import { showsCarpoolSection } from './resultsDiagnostics';
 
 const formatDate = (value: string, options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }) => new Intl.DateTimeFormat('uk-UA', { ...options, timeZone: 'Europe/Kyiv' }).format(new Date(value));
 const todayKyiv = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv' }).format(new Date());
@@ -193,7 +197,7 @@ export function ProductionMarketplace() {
   const [confirmDeletion, setConfirmDeletion] = useState(false);
   const [editingOffer, setEditingOffer] = useState<ApiOffer | null>(null);
   const [vehicleToDelete, setVehicleToDelete] = useState<ApiVehicle | null>(null);
-  const [tripsSection, setTripsSection] = useState<'active' | 'upcoming' | 'past' | 'requests'>('upcoming');
+  const [tripsSection, setTripsSection] = useState<TripsSection>('upcoming');
   const tripsSectionChosen = useRef(false);
   const [providerGroups, setProviderGroups] = useState<Awaited<ReturnType<typeof productionApi.providersByTransport>> | null>(null);
   useEffect(() => {
@@ -208,6 +212,7 @@ export function ProductionMarketplace() {
   const [restoredSearchMode, setRestoredSearchMode] = useState<'offers' | 'planner' | null>(null);
   const [selectedOffer, setSelectedOffer] = useState<ApiOffer | null>(null);
   const [selectedJourney, setSelectedJourney] = useState<ApiStoredJourney | null>(null);
+  const [activeJourneyNavigation, setActiveJourneyNavigation] = useState<ApiJourney | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<ApiBooking | null>(null);
   const [visibleBookingTicket, setVisibleBookingTicket] = useState<{ bookingId: string; token: string } | null>(null);
   const [ticketTokenRevealed, setTicketTokenRevealed] = useState(false);
@@ -669,7 +674,7 @@ export function ProductionMarketplace() {
     const query = field === 'origin' ? origin.trim() : destination.trim();
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setRoutePlaceField(field); setRoutePlaceSuggestions([]); setPlaceSearchBusy(true); setStatusMessage('');
-    try { setRoutePlaceSuggestions(await productionApi.suggestPlaces(query)); }
+    try { setRoutePlaceSuggestions(await productionApi.suggestPlaces(query, await currentPlaceBias())); }
     catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
     finally { setPlaceSearchBusy(false); }
   };
@@ -710,10 +715,13 @@ export function ProductionMarketplace() {
       return;
     }
     let cancelled = false;
+    const lookup = async () => {
+      const places = await productionApi.suggestPlaces(query, await currentPlaceBias());
+      if (!cancelled) setRoutePlaceSuggestions(places);
+    };
     const timer = window.setTimeout(() => {
       setPlaceSearchBusy(true);
-      void productionApi.suggestPlaces(query)
-        .then((places) => { if (!cancelled) setRoutePlaceSuggestions(places); })
+      void lookup()
         .catch((error: unknown) => {
           if (!cancelled) setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.');
         })
@@ -998,7 +1006,7 @@ export function ProductionMarketplace() {
     const query = field === 'origin' ? demandOriginText.trim() : demandDestinationText.trim();
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setPlaceField(field); setPlaceSearchBusy(true); setPlaceSuggestions([]); setStatusMessage('');
-    try { setPlaceSuggestions(await productionApi.suggestPlaces(query)); }
+    try { setPlaceSuggestions(await productionApi.suggestPlaces(query, await currentPlaceBias())); }
     catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
     finally { setPlaceSearchBusy(false); }
   };
@@ -1007,7 +1015,7 @@ export function ProductionMarketplace() {
     const query = field === 'origin' ? offerOriginText.trim() : offerDestinationText.trim();
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setOfferPlaceField(field); setOfferPlaceSuggestions([]); setPlaceSearchBusy(true); setStatusMessage('');
-    try { setOfferPlaceSuggestions(await productionApi.suggestPlaces(query)); }
+    try { setOfferPlaceSuggestions(await productionApi.suggestPlaces(query, await currentPlaceBias())); }
     catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
     finally { setPlaceSearchBusy(false); }
   };
@@ -1600,19 +1608,20 @@ export function ProductionMarketplace() {
 
   const resultsOriginLabel = searchOriginPlace?.label ?? origin;
   const resultsDestinationLabel = searchDestinationPlace?.label ?? destination;
-  const displayRoute = `${resultsOriginLabel} → ${resultsDestinationLabel}`;
+  const displayRoute = `${compactPlaceLabel(resultsOriginLabel)} → ${compactPlaceLabel(resultsDestinationLabel)}`;
+  const fullRoute = `${fullPlaceLabel(resultsOriginLabel)} → ${fullPlaceLabel(resultsDestinationLabel)}`;
   const returnToSearch = () => { setShowResults(false); setTab('search'); };
 
-  const carpoolSection = <>
-    <div className="no-scrollbar mb-4 flex items-center gap-2 overflow-x-auto pb-1"><span className="shrink-0 text-[11px] font-semibold text-[#526477] dark:text-[#B4C0CF]">Сортувати:</span>{([['earliest','Найраніше'],['cheapest','Найдешевше'],['fastest','Найшвидше']] as const).map(([key,label])=><button key={key} type="button" aria-pressed={offerSort===key} onClick={()=>setOfferSort(key)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition-colors min-h-11 ${offerSort===key?'border-[var(--mg-action)] bg-[#EAF3FF] text-[var(--mg-blue-ink)]':'border-[#E5EDF7] bg-white text-[#526477] dark:text-[#B4C0CF]'}`}>{label}</button>)}</div>
+  const carpoolSection = showsCarpoolSection(offers.length, journeyResult !== null) ? <>
+    {showsCarpoolSorter(sortedOffers.length, journeyResult !== null) && <div className="no-scrollbar mb-4 flex items-center gap-2 overflow-x-auto pb-1"><span className="shrink-0 text-[11px] font-semibold text-[#526477] dark:text-[#B4C0CF]">Сортувати:</span>{([['earliest','Найраніше'],['cheapest','Найдешевше'],['fastest','Найшвидше']] as const).map(([key,label])=><button key={key} type="button" aria-pressed={offerSort===key} onClick={()=>setOfferSort(key)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition-colors min-h-11 ${offerSort===key?'border-[var(--mg-action)] bg-[#EAF3FF] text-[var(--mg-blue-ink)]':'border-[#E5EDF7] bg-white text-[#526477] dark:text-[#B4C0CF]'}`}>{label}</button>)}</div>}
     <div className="mb-3 flex items-center justify-between"><h2 className="font-bold">Попутки MARSHGO</h2><span className="text-xs text-[#526477] dark:text-[#B4C0CF]">{offers.length} варіантів</span></div>
     {carpoolOffersFromOtherDate(offers) && <p role="status" className="mb-3 rounded-2xl bg-[#FFF4DB] px-4 py-3 text-xs font-bold text-[#8A5A12]">На обрану дату попуток немає — показуємо пропозиції з сусідніх дат. Перевірте дату перед бронюванням.</p>}
     {offers.length ? <div className="space-y-3">{sortedOffers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center dark:bg-[#111820]"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає попуток за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
-  </>;
+  </> : null;
   const resultsScreen = <main className="journey-results mx-auto flex min-h-[100svh] w-full max-w-xl flex-col px-4 pb-3 pt-[max(.45rem,env(safe-area-inset-top))] text-[#0B1730] dark:text-[#F5F9FF]">
     <header className="journey-results-header mb-2 flex min-h-12 items-center gap-2 border-b border-slate-100 pb-1.5 dark:border-slate-800">
       <button type="button" onClick={returnToSearch} aria-label="Назад до пошуку" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-slate-700 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800"><ArrowLeft size={19}/></button>
-      <p title={displayRoute} className="line-clamp-2 min-w-0 flex-1 break-words text-[11px] font-bold leading-[14px]"><span className="text-[#526477] dark:text-[#B4C0CF]">Маршрут: </span>{displayRoute}</p>
+      <p title={fullRoute} className="line-clamp-2 min-w-0 flex-1 break-words text-[11px] font-bold leading-[14px]"><span className="text-[#526477] dark:text-[#B4C0CF]">Маршрут: </span>{displayRoute}</p>
       <button type="button" onClick={returnToSearch} aria-label="Змінити маршрут пошуку" title="Змінити маршрут" className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 text-[10px] font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:text-slate-100 dark:hover:border-blue-500 dark:hover:text-blue-300"><Pencil size={12}/>Змінити</button>
     </header>
     {journeyResult ? <><JourneyResultsPanel result={journeyResult} onOpenMap={setSelectedRouteMap}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt}/> : restoredSearchMode === 'planner' ? <><div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]"><Compass className="mx-auto text-blue-600"/><p className="mt-2 font-bold">Параметри маршруту відновлено</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Оновіть план, щоб перевірити актуальні пропозиції.</p>{statusMessage ? <p role="alert" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-bold leading-snug text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">{statusMessage}</p> : null}<button onClick={()=>void searchJourney()} className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Знайти маршрут</button></div>{carpoolSection}</> : carpoolSection}
@@ -1625,12 +1634,13 @@ export function ProductionMarketplace() {
   const sectionBookings = route?.kind === 'booking' && route.entityId ? visibleBookings : visibleBookings.filter((booking) => bookingSection(booking) === tripsSection);
   const tripSectionCounts = { active: visibleBookings.filter((b) => bookingSection(b) === 'active').length, upcoming: visibleBookings.filter((b) => bookingSection(b) === 'upcoming').length, past: visibleBookings.filter((b) => bookingSection(b) === 'past').length };
 
-  const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">Ваші бронювання</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div><div role="tablist" aria-label="Розділи поїздок" className="mb-4 grid grid-cols-4 gap-1 rounded-2xl bg-[#EEF3F9] p-1 text-xs dark:bg-[#0C1D30]">{([['active','Активні'],['upcoming','Майбутні'],['past','Минулі'],['requests','Запити']] as const).map(([key,label])=><button key={key} type="button" role="tab" aria-selected={tripsSection===key} onClick={()=>{tripsSectionChosen.current=true;setTripsSection(key);}} className={`flex min-h-11 items-center justify-center rounded-xl px-3 py-2 font-bold transition-colors ${tripsSection===key?'bg-white text-[var(--mg-blue-ink)] shadow-sm':'text-[#526477] dark:text-[#B4C0CF]'}`}>{label}{key!=='requests'&&tripSectionCounts[key]>0?` · ${tripSectionCounts[key]}`:''}</button>)}</div>
-    {(tripsSection === 'upcoming' || tripsSection === 'past') && journeys.length > 0 && <section className="mb-5" aria-label="Збережені маршрути"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Збережені маршрути</h2><button onClick={() => void refreshJourneys().catch(error => setStatusMessage(error instanceof Error ? error.message : 'Маршрути недоступні.'))} className="min-h-11 rounded-lg px-2 text-xs font-bold text-[var(--mg-blue-ink)] dark:text-[#66B2FF]">Оновити</button></div><div className="space-y-2.5">{journeys.map(journey => <SavedJourneyCard key={journey.id} journey={journey} departureLabel={formatDate(journey.requested_departure_at, { day: 'numeric', month: 'short' })} onOpen={() => setRoutePath(pathForProductionEntity('journey', journey.id))}/>)}</div></section>}
+  const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">{tripsTabSubtitle[tripsSection]}</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div><div role="tablist" aria-label="Розділи поїздок" className="no-scrollbar mb-4 flex gap-1 overflow-x-auto rounded-2xl bg-[#EEF3F9] p-1 text-xs dark:bg-[#0C1D30]">{tripsTabs.map(([key, label]) => { const count = isBookingSection(key) ? tripSectionCounts[key] : 0; return <button key={key} type="button" role="tab" aria-selected={tripsSection===key} onClick={()=>{tripsSectionChosen.current=true;setTripsSection(key);}} className={`flex min-h-11 shrink-0 items-center justify-center rounded-xl px-3 py-2 font-bold transition-colors ${tripsSection===key?'bg-white text-[var(--mg-blue-ink)] shadow-sm':'text-[#526477] dark:text-[#B4C0CF]'}`}>{label}{count>0?` · ${count}`:''}</button>; })}</div>
+    {showsSavedRoutes(tripsSection) && journeys.length > 0 && <section className="mb-5" aria-label="Збережені маршрути"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Збережені маршрути</h2><button onClick={() => void refreshJourneys().catch(error => setStatusMessage(error instanceof Error ? error.message : 'Маршрути недоступні.'))} className="min-h-11 rounded-lg px-2 text-xs font-bold text-[var(--mg-blue-ink)] dark:text-[#66B2FF]">Оновити</button></div><div className="space-y-2.5">{journeys.map(journey => <SavedJourneyCard key={journey.id} journey={journey} departureLabel={formatDate(journey.requested_departure_at, { day: 'numeric', month: 'short' })} onOpen={() => setRoutePath(pathForProductionEntity('journey', journey.id))}/>)}</div></section>}
+    {showsSavedRoutes(tripsSection) && !journeys.length && <p className="rounded-2xl bg-white p-5 text-sm text-slate-500">Збережених маршрутів немає. Збережіть маршрут із екрана результатів пошуку.</p>}
     {tripsSection === 'requests' && <section className="mb-5" aria-label="Запити"><div className="space-y-2"><button type="button" onClick={()=>setTab('my-demands')} className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm"><span><b className="block text-sm text-[#0E1F35]">Мої запити на поїздку</b><small className="text-xs text-slate-500">{myDemands.length ? `${myDemands.length} — переглянути пропозиції водіїв` : 'Створіть запит кнопкою «+»'}</small></span><ChevronRight size={17} className="text-slate-400"/></button>{user.roles.includes('driver')&&<button type="button" onClick={()=>setTab('requests')} className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm"><span><b className="block text-sm text-[#0E1F35]">Запити пасажирів</b><small className="text-xs text-slate-500">Відкриті запити, на які можна запропонувати ціну</small></span><ChevronRight size={17} className="text-slate-400"/></button>}</div></section>}
     {tripsSection === 'upcoming' && user.roles.includes('driver')&&<section className="mb-5"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Мої оголошення</h2><button onClick={()=>void refreshMyOffers().catch(error=>setStatusMessage(error instanceof Error?error.message:'Оголошення недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div>{upcomingOffers.length?<div className="space-y-2">{upcomingOffers.map((offer)=><article key={offer.id} className="rounded-2xl p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><b className="min-w-0 truncate" title={`${fullPlaceLabel(offer.origin_name)} → ${fullPlaceLabel(offer.destination_name)}`}>{compactPlaceLabel(offer.origin_name)} → {compactPlaceLabel(offer.destination_name)}</b><span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{offerStatusLabel[offer.status??'published']??offer.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(offer.departure_at)} · {offer.available_seats}/{offer.total_seats} місць</p><p className="mt-1 text-xs font-bold text-blue-700">{formatMoney(offer.price_per_seat_minor,offer.currency)} за місце{offer.duration_s?` · ${Math.floor(offer.duration_s/3600)} год ${Math.round(offer.duration_s%3600/60)} хв`:''}</p><button type="button" onClick={()=>setEditingOffer(offer)} className="mt-3 w-full rounded-xl bg-[#EAF3FF] py-2.5 text-xs font-bold text-[var(--mg-blue)]">Редагувати або скасувати</button></article>)}</div>:<p className="rounded-2xl bg-white p-4 text-sm text-slate-500">Запланованих поїздок немає. Створіть поїздку через «Запланувати поїздку».</p>}</section>}
     {tripsSection === 'past' && pastOffers.length>0 && <section className="mb-5"><h2 className="mb-2 font-extrabold">Мої минулі оголошення</h2><div className="space-y-2">{pastOffers.map((offer)=><article key={offer.id} className="rounded-2xl p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><b className="min-w-0 truncate" title={`${fullPlaceLabel(offer.origin_name)} → ${fullPlaceLabel(offer.destination_name)}`}>{compactPlaceLabel(offer.origin_name)} → {compactPlaceLabel(offer.destination_name)}</b><span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{offerStatusLabel[offer.status??'']??offer.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(offer.departure_at)} · {formatMoney(offer.price_per_seat_minor,offer.currency)} за місце</p></article>)}</div></section>}
-    {tripsSection === 'requests' && !(route?.kind === 'booking') ? null : sectionBookings.length ? <div className="space-y-3">{sectionBookings.map((booking)=>{
+    {!showsBookingList(tripsSection) && !(route?.kind === 'booking' && tripsSection !== 'saved') ? null : sectionBookings.length ? <div className="space-y-3">{sectionBookings.map((booking)=>{
       const statusLabel: Record<string, string> = { confirmed: 'Підтверджено', boarding: 'Посадка', in_progress: 'У дорозі', completed: 'Завершено', cancelled: 'Скасовано' };
       const rendezvous = rendezvousSessions[booking.id];
       const rendezvousStatus: Record<string, string> = { SCHEDULED: 'Очікує часу зустрічі', ACTIVE: 'Обмін місцем активний', DRIVER_APPROACHING: 'Водій наближається', PASSENGER_APPROACHING: 'Пасажир прямує до точки', DRIVER_WAITING: 'Водій на місці', PASSENGER_WAITING: 'Пасажир на місці', BOTH_NEARBY: 'Обидва підтвердили прибуття', BOARDING: 'Посадка розпочалася', CANCELLED: 'Обмін місцем завершено', COMPLETED: 'Зустріч завершена', EXPIRED: 'Час зустрічі минув' };
@@ -1706,7 +1716,7 @@ export function ProductionMarketplace() {
   </div>;
 
   const profileScreen = <div className="mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">Обліковий запис</p><h1 className="mt-1 text-2xl font-extrabold">Профіль</h1></div>
-    <div className="flex items-center gap-4 rounded-[1.4rem] bg-white p-5 shadow-sm"><span className="grid h-14 w-14 shrink-0 overflow-hidden place-items-center rounded-full bg-blue-100 text-xl font-extrabold text-blue-700 dark:bg-[var(--mg-blue-tint)] dark:text-[var(--mg-blue-ink)]">{user.driver_photo_url?<img src={user.driver_photo_url} alt="" className="h-full w-full object-cover"/>:user.display_name.slice(0,1).toUpperCase()}</span><div className="min-w-0 flex-1"><b className="text-lg">{user.display_name}</b><p className="text-sm text-slate-500">{user.phone_e164}</p><p className="mt-1 flex items-center gap-1 text-xs text-emerald-700">{user.is_verified ? <><ShieldCheck size={14}/> Номер підтверджено</> : 'Профіль не верифіковано'}</p></div></div>
+    <div className="flex items-center gap-4 rounded-[1.4rem] bg-white p-5 shadow-sm"><span className="grid h-14 w-14 shrink-0 overflow-hidden place-items-center rounded-full bg-blue-100 text-xl font-extrabold text-blue-700 dark:bg-[var(--mg-blue-tint)] dark:text-[var(--mg-blue-ink)]">{user.driver_photo_url?<img src={user.driver_photo_url} alt="" className="h-full w-full object-cover"/>:user.display_name.slice(0,1).toUpperCase()}</span><div className="min-w-0 flex-1"><b className="text-lg">{user.display_name}</b><p className="text-sm text-slate-500">{user.phone_e164}</p><p className={`mt-1 flex items-center gap-1 text-xs ${user.is_verified ? 'text-emerald-700' : 'text-[#526477] dark:text-[#B4C0CF]'}`}>{user.is_verified ? <><ShieldCheck size={14}/> Номер підтверджено</> : 'Профіль не верифіковано'}</p></div></div>
     <DriverPhotoCard photoUrl={user.driver_photo_url} isDriver={user.roles.includes('driver')} onChange={(url, message) => { setUser((current) => current ? { ...current, driver_photo_url: url } : current); setStatusMessage(message); }}/>
     <div className="mt-4 rounded-[1.4rem] bg-white p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><div><h2 className="font-extrabold">Мій автомобіль</h2><p className="text-xs text-slate-500">Авто, прив’язані до вашого акаунта</p></div><button onClick={()=>user.roles.includes('driver')?setShowVehicleForm(true):setStatusMessage('Спершу активуйте роль водія.')} className="grid h-11 w-11 place-items-center rounded-full bg-blue-50 text-blue-700" aria-label="Додати авто"><Plus size={19}/></button></div>
       {vehicles.length ? <div className="space-y-2">{vehicles.map(vehicleCard)}</div> : <p className="rounded-xl bg-[var(--mg-surface-tint)] p-3 text-sm text-[#526477] dark:text-[#B4C0CF]">Автомобілів ще не додано.</p>}
@@ -1822,23 +1832,22 @@ export function ProductionMarketplace() {
     journey={journey}
     onBack={onClose}
     onBookOffer={(offerId, journeyId, journeyLegId) => { onClose(); void openJourneyOffer(offerId, journeyId, journeyLegId); }}
-    onNavigate={({ label, latitude, longitude }) => {
-      setNavInitialDestination({ label, latitude, longitude, providerId: 'journey-destination' });
-      setNavAutoStart(true);
-      onClose();
-      setTab('navigation');
-    }}
+    // One tap: the selected itinerary becomes the active navigation map. The
+    // route screen stays behind it, so exiting restores the same journey and
+    // no destination is ever asked for again.
+    onStartJourney={() => setActiveJourneyNavigation(journey)}
   />;
 
-  const screen = selectedRouteMap ? routeMapScreen(selectedRouteMap, () => setSelectedRouteMap(null))
+  const screen = activeJourneyNavigation ? <JourneyActiveNavigation journey={activeJourneyNavigation} onExit={() => setActiveJourneyNavigation(null)} />
+    : selectedRouteMap ? routeMapScreen(selectedRouteMap, () => setSelectedRouteMap(null))
     : selectedJourney ? routeMapScreen(storedJourneyToApiJourney(selectedJourney), () => { setSelectedJourney(null); setTab('trips'); })
     : selectedOffer ? <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>{setSelectedOffer(null);setJourneyBookingLink(null);setTab('search');}} className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div><p className="text-xs text-slate-500">Деталі поїздки</p><h1 className="font-extrabold">{selectedOffer.origin_name.split(',')[0]} → {selectedOffer.destination_name.split(',')[0]}</h1></div></div><div className="mb-3"><Suspense fallback={null}><OfferRoutePreview offer={selectedOffer}/></Suspense></div><div className="mb-3 overflow-hidden rounded-[1.4rem]"><VehiclePhoto url={selectedOffer.vehicle_photo_url} alt={`Авто водія ${selectedOffer.driver_name}`}/></div><div className="rounded-[1.5rem] bg-white p-5 shadow-sm"><span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700">COMMUNITY · Попутка</span><div className="mt-5 grid grid-cols-2 gap-4"><div><small className="text-slate-400">Відправлення</small><p className="mt-1 text-xl font-extrabold">{formatDate(selectedOffer.departure_at,{hour:'2-digit',minute:'2-digit'})}</p><b>{selectedOffer.origin_name.split(',')[0]}</b></div><div className="text-right"><small className="text-slate-400">Прибуття</small><p className="mt-1 text-xl font-extrabold">{selectedOffer.arrival_at?formatDate(selectedOffer.arrival_at,{hour:'2-digit',minute:'2-digit'}):'—'}</p><b>{selectedOffer.destination_name.split(',')[0]}</b></div></div><div className="my-4 border-t border-slate-100"/><ol aria-label="Маршрут поїздки" className="relative ml-1 space-y-5 border-l-2 border-dashed border-[#BBD7FB] pl-5"><li className="relative"><span className="absolute -left-[1.72rem] top-1 h-3 w-3 rounded-full border-2 border-white bg-[var(--mg-action)] shadow"/><p className="text-sm font-extrabold text-[#0E1F35]">{formatDate(selectedOffer.departure_at,{hour:'2-digit',minute:'2-digit'})} · {selectedOffer.origin_name.split(',')[0]}</p><p className="text-[11px] text-slate-400">Посадка</p></li>{selectedOffer.distance_m&&selectedOffer.duration_s?<li className="text-[11px] font-semibold text-[var(--mg-muted)]">{(selectedOffer.distance_m/1000).toFixed(0)} км · {Math.floor(selectedOffer.duration_s/3600)} год {Math.round((selectedOffer.duration_s%3600)/60)} хв дорогою</li>:null}<li className="relative"><span className="absolute -left-[1.72rem] top-1 h-3 w-3 rounded-full border-2 border-white bg-[#EF4444] shadow"/><p className="text-sm font-extrabold text-[#0E1F35]">{selectedOffer.arrival_at?formatDate(selectedOffer.arrival_at,{hour:'2-digit',minute:'2-digit'}):'—'} · {selectedOffer.destination_name.split(',')[0]}</p><p className="text-[11px] text-slate-400">Висадка</p></li></ol><div className="my-4 border-t border-slate-100"/><p className="flex items-center gap-3 text-sm"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">{selectedOffer.driver_name.slice(0,1)}</span><span><b>{selectedOffer.driver_name}</b><small className="block text-[var(--mg-muted)]">{selectedOffer.review_count?`★ ${Number(selectedOffer.average_rating).toFixed(1)} · ${selectedOffer.review_count} відгуків`:'Новий водій'}</small></span></p><div className="mt-5 flex justify-between text-sm"><span className="text-slate-500">Вільні місця</span><b>{detailOfferBlocked?'—':selectedOffer.available_seats}</b></div>{detailOfferBlocked&&<p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800">{OFFER_NO_LONGER_BOOKABLE_TEXT}</p>}<div className="mt-3 flex justify-between text-sm"><span className="text-slate-500">Вартість за {seats} {seats===1?'місце':'місця'}</span><b className="text-lg">{formatMoney(selectedOffer.price_per_seat_minor*seats,selectedOffer.currency)}</b></div><p className="mt-1 text-right text-[10px] text-slate-400">MARSHGO Community · комісія платформи 0%</p><button data-testid="offer-book-button" data-offer-id={selectedOffer.id} disabled={busy||detailOfferBlocked||selectedOffer.available_seats<seats} title={detailOfferBlocked?'Ця поїздка більше недоступна для бронювання':selectedOffer.available_seats<seats?'Недостатньо вільних місць для такої кількості пасажирів':''} onClick={()=>{setStatusMessage('');setBookingToConfirm(selectedOffer);}} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{detailOfferBlocked?'Недоступно для бронювання':selectedOffer.available_seats<seats?'Недостатньо місць':'Забронювати місце'}<ArrowRight size={17}/></button></div></div> : tab==='navigation' ? null : tab==='map' ? <Suspense fallback={<main className="grid min-h-[100svh] place-items-center bg-[#f5f8fd] text-sm text-slate-500">Завантажуємо карту…</main>}><TransportMapView onBack={()=>setTab('search')}/></Suspense> : tab==='plan' ? planScreen : tab==='home' ? (showResults ? resultsScreen : homeScreen) : tab==='search' ? (showResults ? resultsScreen : searchScreen) : tab==='trips' ? tripsScreen : tab==='chat' ? chatScreen : tab==='profile' ? (profileSection ? <Suspense fallback={profileSectionPending}><ProfileSections section={profileSection} onBack={()=>setProfileSection(null)} vehicles={vehicles} records={verificationRecords} onLogoutAll={logoutAllDevices} onExportData={downloadPersonalData} onRequestDeletion={()=>setConfirmDeletion(true)} onOpenSafetyReport={()=>{setProfileSection(null);setTab('trips');}}/></Suspense> : profileScreen) : tab==='admin' ? adminDashboard : tab==='demand' ? demandFormScreen : tab==='offer-new' ? offerFormScreen : tab==='requests' ? requestsScreen : myDemandsScreen;
 
   const navigationOverlay = navigationMounted ? <Suspense fallback={null}><ProductionNavigation isPresented={tab === 'navigation'} onSessionActiveChange={onNavigationSessionActiveChange} autoStart={navAutoStart} initialDestination={navInitialDestination} onAddVehicle={() => { setNavAutoStart(false); setNavInitialDestination(null); setTab('profile'); }} onBack={() => { setNavAutoStart(false); setNavInitialDestination(null); setTab('home'); }} onOpenDemand={(demandId, candidateId) => void openNavigationDemand(demandId, candidateId)}/></Suspense> : null;
 
-  const hideSharedHeader = tab === 'navigation' || Boolean(selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
+  const hideSharedHeader = tab === 'navigation' || Boolean(activeJourneyNavigation || selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
 
-  const immersiveRouteView = Boolean(selectedRouteMap);
+  const immersiveRouteView = Boolean(activeJourneyNavigation || selectedRouteMap);
   return <main className={`production-app min-h-[100svh] bg-[#f5f8fd] text-[#17243a] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[calc(5.3rem+env(safe-area-inset-bottom))]'}`}>
     {!hideSharedHeader && header}
     {isOffline && !hideSharedHeader && <div className="mx-auto w-full max-w-xl px-5"><p role="status" aria-live="polite" data-testid="offline-notice" className="mg-fade flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] font-bold leading-snug text-amber-900 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">

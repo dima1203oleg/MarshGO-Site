@@ -79,6 +79,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
         <span> · {selectedCity.licenses.length ? selectedCity.licenses.join(', ') : 'умови використання уточнюються'}</span>
       </p>}
       {status === 'failed' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">Не вдалося завантажити карту. Перевірте мережу.</p>}
+      {status === 'unconfigured' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">Не налаштовано базову карту — фон мапи порожній.</p>}
     </div>
     <div className="absolute right-4 top-1/2 z-[500] -translate-y-1/2"><MapLayersControl overlays/></div>
   </main>;

@@ -1,5 +1,6 @@
 import type { MapLayer, MapPerspective } from './mapMode';
 import type { MapDisplayPreferences } from './mapLayerPreferences';
+import type { TransitZoneGeometry, VehiclePriorityLevel } from './transportVisualZones';
 import type { Coordinate } from '../../shared/navigation/contracts';
 export type MapStatus = 'unconfigured' | 'loading' | 'available' | 'degraded' | 'failed';
 export type MapTheme = 'MARSHGO_LIGHT' | 'MARSHGO_DARK';
@@ -8,11 +9,39 @@ export type ColoredRouteSegment = { id?: string; coordinates: Coordinate[]; mode
 export type RouteWaypoint = { coordinate: Coordinate; kind: string; segmentIds?: string[] };
 export type ScreenPoint = { x: number; y: number };
 export type LiveTransitPosition = { coordinates: Coordinate; color: string; label: string; updatedAt: string };
+export type MapAnnotationKind = 'BOARDING' | 'ALIGHTING' | 'WALK' | 'TERMINUS' | 'ROUTE' | 'VEHICLE';
+export type MapAnnotationTone = 'green' | 'blue' | 'purple' | 'neutral';
+/** A DOM label anchored to a real coordinate of the itinerary or of the live overlay. */
+export type MapAnnotation = {
+  id: string;
+  kind: MapAnnotationKind;
+  coordinates: Coordinate;
+  title: string;
+  detail?: string;
+  tone?: MapAnnotationTone;
+};
 export type FocusedTransitMapOverlay = {
   color: string;
   transportType: string;
-  lineRoutes: Array<{ id: string; direction: string; directionId?: string | null; coordinates: Coordinate[] }>;
-  vehicles: Array<{ id: string; coordinates: Coordinate; updatedAt: string; routeLabel: string; emphasized: boolean }>;
+  lineRoutes: Array<{
+    id: string;
+    direction: string;
+    directionId?: string | null;
+    coordinates: Coordinate[];
+    /** 'leg_only' means the provider gave us only the ridden slice, so zones A and C are unknown. */
+    geometryScope?: 'full_route' | 'leg_only';
+    zones?: TransitZoneGeometry | null;
+  }>;
+  vehicles: Array<{
+    id: string;
+    coordinates: Coordinate;
+    updatedAt: string;
+    routeLabel: string;
+    emphasized: boolean;
+    priorityLevel?: VehiclePriorityLevel;
+    etaSeconds?: number | null;
+    etaConfidence?: 'OBSERVED' | 'PREDICTED' | 'NONE';
+  }>;
 };
 
 /** Screen-space separation keeps opposing transit directions legible without editing feed geometry. */
@@ -31,6 +60,8 @@ export interface MapAdapter {
   setActiveRouteSegment?(id: string | null): void;
   setLiveTransitPosition?(position: LiveTransitPosition | null): void;
   setFocusedTransitOverlay?(overlay: FocusedTransitMapOverlay | null): void;
+  setJourneyLabels?(labels: MapAnnotation[] | null): void;
+  getScaleLabel?(maxPixels?: number): { label: string; widthPx: number } | null;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
   focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;
   onRouteSegmentSelect: (id: string) => void;

@@ -1,22 +1,23 @@
-export type RouteSheetSnap = 'collapsed' | 'half' | 'expanded' | 'full-itinerary';
+export type RouteSheetSnap = 'collapsed' | 'half' | 'expanded';
 export type RouteSheetHeights = Record<RouteSheetSnap, number>;
 
-export const ROUTE_SHEET_SNAPS: readonly RouteSheetSnap[] = ['collapsed', 'half', 'expanded', 'full-itinerary'];
+export const ROUTE_SHEET_SNAPS: readonly RouteSheetSnap[] = ['collapsed', 'half', 'expanded'];
 
 /**
- * Snap points:
- * - collapsed around 29% viewport (summary & mode chips);
- * - half around 50-66% viewport (map context + route cards);
- * - expanded around 80-88% viewport (expanded stop lists, actions);
- * - full-itinerary around 92% viewport (full itinerary with top map strip preserved).
+ * Snap points match the approved route-sheet composition:
+ * - collapsed keeps the summary and segment ribbon, so the map keeps the
+ *   lower part of the screen for the origin/destination context;
+ * - half is the canonical view: duration, price, ribbon and the single
+ *   primary action, exactly one screenful with no inner scrolling;
+ * - expanded adds the scrollable per-segment details while always leaving a
+ *   map strip at the top.
  */
 export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
   const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
-  const expanded = Math.min(840, viewport * 0.88, Math.max(0, viewport - 112));
-  const half = Math.min(660, Math.max(224, viewport * 0.5), Math.max(160, expanded - 48));
-  const collapsed = Math.min(246, Math.max(200, viewport * 0.29), Math.max(112, half - 48));
-  const fullItinerary = Math.min(viewport - 48, Math.max(expanded + 24, Math.round(viewport * 0.92)));
-  return { collapsed, half, expanded, 'full-itinerary': fullItinerary };
+  const expanded = Math.min(840, viewport * 0.9, Math.max(0, viewport - 172));
+  const half = Math.min(430, Math.max(300, viewport * 0.375));
+  const collapsed = Math.min(300, Math.max(248, viewport * 0.3), Math.max(180, half - 44));
+  return { collapsed, half, expanded };
 }
 
 export function nearestRouteSheetSnap(
