@@ -21,7 +21,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <button
           onClick={() => onNavigate('home')}
           className={`flex flex-col items-center justify-center py-1 transition-colors ${
-            currentView === 'home' || currentView === 'search' ? 'text-[#1769F4]' : 'text-[#62718A]'
+            currentView === 'home' || currentView === 'search' ? 'text-[var(--mg-blue-ink)]' : 'text-[#62718A]'
           }`}
         >
           <Search className="w-5 h-5" />
@@ -33,7 +33,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           onClick={() => onNavigate(isDriver ? 'driver-requests' : 'demand-new')}
           className={`flex flex-col items-center justify-center py-1 transition-colors ${
             currentView === 'demand-new' || currentView === 'driver-requests'
-              ? 'text-[#1769F4]'
+              ? 'text-[var(--mg-blue-ink)]'
               : 'text-[#62718A]'
           }`}
         >
@@ -45,7 +45,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <div className="flex items-center justify-center -mt-5">
           <button
             onClick={onOpenActionDrawer}
-            className="w-13 h-13 rounded-full bg-[#1769F4] text-white flex items-center justify-center shadow-lg shadow-[#1769F4]/30 hover:bg-[#1358CE] active:scale-95 transition-transform border-4 border-white"
+            className="w-13 h-13 rounded-full bg-[var(--mg-action)] text-white flex items-center justify-center shadow-lg shadow-[color:var(--mg-action)]/30 hover:bg-[#1358CE] active:scale-95 transition-transform border-4 border-white"
             aria-label="Створити поїздку або запит"
           >
             <Plus className="w-7 h-7 stroke-[2.5]" />
@@ -56,7 +56,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <button
           onClick={() => onNavigate('trips')}
           className={`flex flex-col items-center justify-center py-1 transition-colors ${
-            currentView === 'trips' ? 'text-[#1769F4]' : 'text-[#62718A]'
+            currentView === 'trips' ? 'text-[var(--mg-blue-ink)]' : 'text-[#62718A]'
           }`}
         >
           <Clock className="w-5 h-5" />
@@ -67,7 +67,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <button
           onClick={() => onNavigate(isDriver ? 'driver' : 'profile')}
           className={`flex flex-col items-center justify-center py-1 transition-colors ${
-            currentView === 'profile' || currentView === 'driver' ? 'text-[#1769F4]' : 'text-[#62718A]'
+            currentView === 'profile' || currentView === 'driver' ? 'text-[var(--mg-blue-ink)]' : 'text-[#62718A]'
           }`}
         >
           <UserIcon className="w-5 h-5" />

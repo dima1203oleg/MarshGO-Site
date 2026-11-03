@@ -113,7 +113,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-[#F5F8FD]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-100 text-[#1769F4]">
+            <div className="p-2 rounded-xl bg-blue-100 text-[var(--mg-blue-ink)]">
               <BellRing className="w-5 h-5" />
             </div>
             <div>
@@ -150,15 +150,15 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
         ) : (
           <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
             {/* Route Summary Badge */}
-            <div className="bg-[#EFF6FF] border border-blue-200 rounded-2xl p-4 flex items-center justify-between gap-3">
+            <div className="bg-[#EFF6FF] border border-[var(--mg-border-subtle)] rounded-2xl p-4 flex items-center justify-between gap-3">
               <div className="space-y-1">
-                <span className="text-[10px] font-extrabold text-[#1769F4] uppercase tracking-wider">
+                <span className="text-[10px] font-extrabold text-[var(--mg-blue-ink)] uppercase tracking-wider">
                   Обраний напрямок:
                 </span>
                 <div className="text-sm font-extrabold text-[#14243B] flex items-center gap-2">
                   <span>{searchParams.origin || 'Звідки'}</span>
                   <span className="text-slate-400">→</span>
-                  <span className="text-[#1769F4]">{searchParams.destination || 'Куди'}</span>
+                  <span className="text-[var(--mg-blue-ink)]">{searchParams.destination || 'Куди'}</span>
                 </div>
                 <div className="text-xs text-[#62718A] flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -181,7 +181,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: 'push', label: 'Push-сповіщення', icon: <Bell className="w-4 h-4 text-[#1769F4]" />, desc: 'У браузері миттєво' },
+                  { id: 'push', label: 'Push-сповіщення', icon: <Bell className="w-4 h-4 text-[var(--mg-blue-ink)]" />, desc: 'У браузері миттєво' },
                   { id: 'telegram', label: 'Telegram Бот', icon: <Send className="w-4 h-4 text-sky-500" />, desc: '@MarshGoBot' },
                   { id: 'sms', label: 'SMS сповіщення', icon: <Smartphone className="w-4 h-4 text-emerald-600" />, desc: 'На мобільний номер' },
                   { id: 'email', label: 'Email лист', icon: <Mail className="w-4 h-4 text-purple-600" />, desc: 'Детальний звіт' }
@@ -194,7 +194,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
                       onClick={() => toggleChannel(ch.id as any)}
                       className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition ${
                         isChecked
-                          ? 'border-[#1769F4] bg-blue-50/60 ring-2 ring-[#1769F4]/20'
+                          ? 'border-[var(--mg-blue)] bg-blue-50/60 ring-2 ring-[var(--mg-blue)]/20'
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
@@ -220,7 +220,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
                 onChange={(e) => setContactInfo(e.target.value)}
                 placeholder="+380... або email/нікнейм"
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-[#14243B] font-medium focus:outline-none focus:border-[#1769F4] bg-slate-50 focus:bg-white transition"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-[#14243B] font-medium focus:outline-none focus:border-[var(--mg-blue)] bg-slate-50 focus:bg-white transition"
               />
             </div>
 
@@ -232,12 +232,12 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
                     type="checkbox"
                     checked={enablePriceFilter}
                     onChange={(e) => setEnablePriceFilter(e.target.checked)}
-                    className="w-4 h-4 rounded text-[#1769F4] focus:ring-[#1769F4] accent-[#1769F4]"
+                    className="w-4 h-4 rounded text-[var(--mg-blue-ink)] focus:ring-[var(--mg-blue)] accent-[var(--mg-action)]"
                   />
                   <span>Сповіщати лише якщо ціна не перевищує ліміт</span>
                 </label>
                 {enablePriceFilter && (
-                  <span className="text-xs font-extrabold text-[#1769F4]">{maxPrice} грн</span>
+                  <span className="text-xs font-extrabold text-[var(--mg-blue-ink)]">{maxPrice} грн</span>
                 )}
               </div>
 
@@ -250,7 +250,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
                     step={50}
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1769F4]"
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[var(--mg-action)]"
                   />
                   <div className="flex items-center justify-between text-[10px] text-slate-400">
                     <span>від 300 грн</span>
@@ -280,7 +280,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
                       onClick={() => toggleCategory(cat.id)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
                         isCatSelected
-                          ? 'bg-[#1769F4] text-white border-[#1769F4]'
+                          ? 'bg-[var(--mg-action)] text-white border-[var(--mg-blue)]'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
@@ -315,7 +315,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
               <button
                 type="submit"
                 disabled={channels.length === 0}
-                className="px-6 py-2.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white font-bold text-xs shadow-md shadow-[#1769F4]/20 transition flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white font-bold text-xs shadow-md shadow-[color:var(--mg-action)]/20 transition flex items-center gap-2 disabled:opacity-50"
               >
                 <Bell className="w-4 h-4" />
                 <span>{existingSubscription ? 'Зберегти зміни' : 'Підтвердити підписку'}</span>

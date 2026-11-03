@@ -200,7 +200,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             onClick={() => setActiveSlot('origin')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
               activeSlot === 'origin'
-                ? 'bg-[#1769F4] text-white shadow-md'
+                ? 'bg-[var(--mg-action)] text-white shadow-md'
                 : 'text-slate-300 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -446,7 +446,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         {selectedPopupCity && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-[#081B35]/95 backdrop-blur-md p-3 rounded-2xl border border-white/20 shadow-2xl z-30 flex items-center gap-3 animate-fadeIn">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#1769F4]" />
+              <div className="w-3 h-3 rounded-full bg-[var(--mg-action)]" />
               <span className="font-extrabold text-sm text-white">{selectedPopupCity.name}</span>
             </div>
 
@@ -456,8 +456,8 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 onClick={() => handleSetAsOrigin(selectedPopupCity.name)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                   origin === selectedPopupCity.name
-                    ? 'bg-[#1769F4] text-white'
-                    : 'bg-white/10 hover:bg-[#1769F4] text-slate-200'
+                    ? 'bg-[var(--mg-action)] text-white'
+                    : 'bg-white/10 hover:bg-[var(--mg-action)] text-slate-200'
                 }`}
               >
                 Вибрати як «Звідки»
@@ -535,7 +535,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
             type="button"
             onClick={onConfirm}
             disabled={!origin || !destination}
-            className="w-full md:w-auto px-5 py-2 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white text-xs font-bold shadow-md shadow-[#1769F4]/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full md:w-auto px-5 py-2 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white text-xs font-bold shadow-md shadow-[color:var(--mg-action)]/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span>Знайти поїздки</span>
             <ArrowRight className="w-3.5 h-3.5" />

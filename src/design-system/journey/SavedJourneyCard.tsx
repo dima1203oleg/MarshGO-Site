@@ -87,9 +87,9 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
 
   return <article
     data-testid="saved-journey-card"
-    className="relative isolate overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:border-[#20354A] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]"
+    className="relative isolate overflow-hidden rounded-[var(--mg-radius-lg)] border border-slate-200 bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:border-[#20354A] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]"
   >
-    <button type="button" onClick={onOpen} aria-label={`Відкрити збережений маршрут: ${routeFullAddress}, ${durationLabel}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`} className="absolute inset-0 z-0 h-full w-full rounded-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+    <button type="button" onClick={onOpen} aria-label={`Відкрити збережений маршрут: ${routeFullAddress}, ${durationLabel}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`} className="absolute inset-0 z-0 h-full w-full rounded-[var(--mg-radius-lg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]">
       <span className="sr-only">Карта й деталі маршруту</span>
     </button>
     <div className="pointer-events-none relative z-10 p-3">

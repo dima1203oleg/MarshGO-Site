@@ -109,7 +109,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#1769F4] to-[#38BDF8] text-white flex items-center justify-center shrink-0 shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[var(--mg-blue-500)] to-[#38BDF8] text-white flex items-center justify-center shrink-0 shadow-md">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
@@ -191,7 +191,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
 
         <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200/60 dark:border-slate-700/50">
           <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
-            <Award className="w-3 h-3 text-blue-500" />
+            <Award className="w-3 h-3 text-[var(--mg-blue)]" />
             <span>Успішні рейси</span>
           </div>
           <div className="text-sm font-extrabold text-[#14243B] dark:text-white mt-0.5">
@@ -225,7 +225,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
         <button
           type="button"
           onClick={() => setShowBreakdown(!showBreakdown)}
-          className="w-full flex items-center justify-between text-xs font-bold text-[#1769F4] dark:text-sky-400 hover:opacity-80 transition py-1"
+          className="w-full flex items-center justify-between text-xs font-bold text-[var(--mg-blue-ink)] dark:text-sky-400 hover:opacity-80 transition py-1"
         >
           <span className="flex items-center gap-1.5">
             <Info className="w-3.5 h-3.5" />
@@ -236,7 +236,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
 
         {/* Detailed Breakdown Panel */}
         {showBreakdown && (
-          <div className="mt-3 p-3.5 rounded-xl bg-blue-50/60 dark:bg-[#0A1A30] border border-blue-200/60 dark:border-[#1E3A8A]/50 text-xs space-y-2.5 animate-fadeIn">
+          <div className="mt-3 p-3.5 rounded-xl bg-blue-50/60 dark:bg-[#0A1A30] border border-[var(--mg-border-subtle)]/60 dark:border-[#1E3A8A]/50 text-xs space-y-2.5 animate-fadeIn">
             <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
               Індекс довіри MARSHGO розраховується автоматичним алгоритмом на основі підтверджених відгуків після кожної поїздки:
             </p>
@@ -256,7 +256,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
               </li>
             </ul>
 
-            <div className="pt-2 border-t border-blue-200/40 dark:border-blue-900/40 flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold">
+            <div className="pt-2 border-t border-[var(--mg-border-subtle)]/40 dark:border-blue-900/40 flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold">
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
               <span>Водії з рівнем &gt; 90% отримують пріоритет у видачі пошуку та швидше бронювання!</span>
             </div>

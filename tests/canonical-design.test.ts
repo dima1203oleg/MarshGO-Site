@@ -126,10 +126,14 @@ test('journey search enters the results screen and shows a pending panel while p
 
 // Moving this onto a CSS class would strand the imperative style.transition='none' the drag
 // handlers set, and the sheet would stop snapping back with animation.
+// CP4 widened the condition to the reduced-motion preference, which an inline transition cannot
+// inherit from the CSS media guard without !important, and CP4's own measurement moved the drag
+// out of React state. Both live behind one helper now. The invariant this test protects is
+// unchanged: the curve stays in the style prop and comes from the motion tokens, never a literal.
 test('route sheet snap uses the motion tokens without leaving the style prop', async () => {
   const sheet = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/JourneyRouteMapScreen.tsx'), 'utf8');
   assert.doesNotMatch(sheet, /280ms cubic-bezier/, 'the sheet snap reverted to an off-system curve');
-  assert.match(sheet, /style=\{\{[\s\S]{0,120}transition: dragging \? 'none' : `height var\(--mg-dur-base\) var\(--mg-ease-entrance\)`/,
+  assert.match(sheet, /style=\{\{[\s\S]{0,120}transition: routeSheetTransition\(draggingRef\.current, reducedMotion\)/,
     'sheet snap must keep its transition in the React style prop, on the motion tokens');
 });
 
@@ -145,9 +149,9 @@ test('prefers-reduced-motion still neutralizes every animation and transition', 
 test('search trip details share one control family with thumb-sized steppers', async () => {
   const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
   const marketplace = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/ProductionMarketplace.tsx'), 'utf8');
-  assert.match(css, /\.search-screen \.journey-search-card \.trip-tile \{[\s\S]*?min-height: 3\.5rem;[\s\S]*?background: #f6f8fc;/,
+  assert.match(css, /\.search-screen \.journey-search-card \.trip-tile \{[\s\S]*?min-height: 3\.5rem;[\s\S]*?border-radius: var\(--mg-radius-lg\);[\s\S]*?background: var\(--mg-surface-secondary\);/,
     'date, time and seats stopped sharing one surface, height and radius');
-  assert.match(css, /html\.dark \.search-screen \.journey-search-card \.trip-tile \{ background: #16202B; color: #F5F9FF; \}/,
+  assert.match(css, /html\.dark \.search-screen \.journey-search-card \.trip-tile \{ background: var\(--mg-surface-secondary\); color: var\(--mg-ink-primary\); \}/,
     'the dark theme must remap the same family, not each tile again');
   assert.match(marketplace, /className="trip-tile trip-tile--stepper/, 'the seat stepper left the shared tile class');
   assert.match(marketplace, /className="size-11[^"]*" aria-label="Менше пасажирів"/, 'seat steppers must be 44x44 pt, not 24 px wide');
@@ -165,7 +169,7 @@ test('result cards mark the ranked pick instead of faking a selection state', as
     'the rank-1 journey must be exposed as data, not as an ad-hoc class');
   assert.match(panel, /Рекомендований/, 'the stronger-looking card has to say why it looks different');
   assert.doesNotMatch(panel, /ring-blue-100/, 'a selection ring on an unselected card is a false affordance');
-  assert.match(css, /\.journey-result-card\[data-top-pick="true"\] \{ border-color: #B9D8F7; \}/,
+  assert.match(css, /\.journey-result-card\[data-top-pick="true"\] \{ border-color: var\(--mg-blue-200\); \}/,
     'the light theme lost its one-notch accent border for the ranked pick');
   assert.doesNotMatch(css, /\.journey-result-card:first-of-type \{[\s\S]{0,80}border-color: #1687FF/,
     'position-based border styling came back; it highlighted the first card in every tab');

@@ -130,7 +130,7 @@ export function RendezvousLocationMap({ session, currentUserIsDriver, onArrived 
   const passengerApproach = approaches?.passenger.approach;
 
   return <div data-testid="rendezvous-location-map" className={expanded
-    ? 'fixed inset-0 z-[100] flex h-[100dvh] flex-col overflow-y-auto bg-white dark:bg-[#0A1D2D]'
+    ? 'fixed inset-0 z-[var(--mg-z-sheet)] flex h-[100dvh] flex-col overflow-y-auto bg-white dark:bg-[#0A1D2D]'
     : 'mt-3 overflow-hidden rounded-2xl border border-blue-100 bg-white dark:bg-[#0A1D2D]'}>
     {expanded && <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 pt-[max(.75rem,env(safe-area-inset-top))] dark:border-slate-800">
       <div><h2 className="text-sm font-extrabold text-slate-900 dark:text-white">Точка зустрічі</h2><p className="text-xs text-slate-500 dark:text-slate-400">Спільне наближення до посадки</p></div>

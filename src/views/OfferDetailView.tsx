@@ -96,7 +96,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[#1769F4] transition"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[var(--mg-blue-ink)] transition"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Назад до результатів</span>
@@ -113,7 +113,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
               }`}
               title="Поділитися поїздкою"
             >
-              {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Share2 className="w-3.5 h-3.5 text-[#1769F4]" />}
+              {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Share2 className="w-3.5 h-3.5 text-[var(--mg-blue-ink)]" />}
               <span>{isCopied ? 'Скопійовано!' : 'Поділитися'}</span>
             </button>
 
@@ -157,7 +157,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
                   key={idx}
                   onClick={() => setActivePhotoIndex(idx)}
                   className={`w-20 h-14 rounded-lg overflow-hidden shrink-0 border-2 transition ${
-                    activePhotoIndex === idx ? 'border-[#1769F4]' : 'border-transparent opacity-70 hover:opacity-100'
+                    activePhotoIndex === idx ? 'border-[var(--mg-blue)]' : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
                   <img src={ph} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -183,7 +183,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
               <div className="text-left sm:text-right">
                 <div className="text-xs font-semibold text-slate-500">Вартість внеску:</div>
                 <div className="flex items-baseline sm:justify-end gap-1">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-[#1769F4] tabular-nums">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--mg-blue-ink)] tabular-nums">
                     {offer.priceAmount}
                   </span>
                   <span className="text-sm font-bold text-slate-600">грн</span>
@@ -199,7 +199,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
                 className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition active:scale-95 border ${
                   isCopied
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                    : 'bg-blue-50 hover:bg-blue-100 text-[#1769F4] border-blue-200'
+                    : 'bg-blue-50 hover:bg-blue-100 text-[var(--mg-blue-ink)] border-[var(--mg-border-subtle)]'
                 }`}
               >
                 {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Share2 className="w-3.5 h-3.5" />}
@@ -246,7 +246,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
             <button
               type="button"
               onClick={() => setIsFuelCalculatorOpen(true)}
-              className="p-2.5 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-[#1769F4] font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
+              className="p-2.5 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-[var(--mg-blue-ink)] font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
             >
               <Calculator className="w-4 h-4 shrink-0" />
               <span>Розрахунок пального</span>
@@ -270,7 +270,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
           <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-200">
             {/* Origin */}
             <div className="relative">
-              <div className="absolute -left-6 top-1 w-4 h-4 rounded-full bg-[#1769F4] border-2 border-white shadow-sm" />
+              <div className="absolute -left-6 top-1 w-4 h-4 rounded-full bg-[var(--mg-action)] border-2 border-white shadow-sm" />
               <div className="font-bold text-sm text-[#14243B]">
                 {new Date(offer.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {offer.origin}
               </div>
@@ -304,7 +304,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
           <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[#1769F4]" />
+                <MapPin className="w-4 h-4 text-[var(--mg-blue-ink)]" />
                 <h4 className="text-xs font-extrabold text-[#14243B] dark:text-white uppercase tracking-wider">
                   Огляд маршруту
                 </h4>
@@ -315,8 +315,8 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
 
             {/* Waypoint details cards below the map */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900 flex items-start gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#1769F4] text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+              <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-[var(--mg-border-subtle)]/60 dark:border-blue-900 flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-[var(--mg-action)] text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                   А
                 </span>
                 <div>
@@ -344,7 +344,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs text-[#14243B]">
             <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-medium">
-              <Wind className="w-4 h-4 text-[#1769F4]" />
+              <Wind className="w-4 h-4 text-[var(--mg-blue-ink)]" />
               <span>Кондиціонер</span>
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 font-medium">
@@ -371,7 +371,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
         </div>
 
         {/* Booking Confirmation Box (FLOW A) */}
-        <div className="bg-white rounded-2xl border-2 border-[#1769F4] p-5 shadow-lg space-y-4">
+        <div className="bg-white rounded-2xl border-2 border-[var(--mg-blue)] p-5 shadow-lg space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-base text-[#14243B]">Підтвердження бронювання</h3>
             <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded">
@@ -393,7 +393,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
                     onClick={() => setSelectedSeats(num)}
                     className={`w-9 h-9 rounded-xl font-bold text-xs transition ${
                       selectedSeats === num
-                        ? 'bg-[#1769F4] text-white shadow-sm'
+                        ? 'bg-[var(--mg-action)] text-white shadow-sm'
                         : 'bg-white text-slate-700 border border-slate-200'
                     }`}
                   >
@@ -409,14 +409,14 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
             <label className="block text-xs font-bold text-[#14243B]">Спосіб оплати:</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
-                paymentMethod === 'cash_to_driver' ? 'border-[#1769F4] bg-[#F5F8FD]' : 'border-slate-200'
+                paymentMethod === 'cash_to_driver' ? 'border-[var(--mg-blue)] bg-[#F5F8FD]' : 'border-slate-200'
               }`}>
                 <input
                   type="radio"
                   name="payment"
                   checked={paymentMethod === 'cash_to_driver'}
                   onChange={() => setPaymentMethod('cash_to_driver')}
-                  className="text-[#1769F4]"
+                  className="text-[var(--mg-blue-ink)]"
                 />
                 <div>
                   <div className="font-bold text-[#14243B]">Готівкою водію</div>
@@ -425,14 +425,14 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
               </label>
 
               <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
-                paymentMethod === 'online_sandbox' ? 'border-[#1769F4] bg-[#F5F8FD]' : 'border-slate-200'
+                paymentMethod === 'online_sandbox' ? 'border-[var(--mg-blue)] bg-[#F5F8FD]' : 'border-slate-200'
               }`}>
                 <input
                   type="radio"
                   name="payment"
                   checked={paymentMethod === 'online_sandbox'}
                   onChange={() => setPaymentMethod('online_sandbox')}
-                  className="text-[#1769F4]"
+                  className="text-[var(--mg-blue-ink)]"
                 />
                 <div>
                   <div className="font-bold text-[#14243B]">Онлайн (Тестовий режим)</div>
@@ -455,7 +455,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
 
             <button
               onClick={handleConfirmBooking}
-              className="px-8 py-3 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white font-bold text-sm shadow-lg shadow-[#1769F4]/20 transition active:scale-95"
+              className="px-8 py-3 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white font-bold text-sm shadow-lg shadow-[color:var(--mg-action)]/20 transition active:scale-95"
             >
               Забронювати поїздку
             </button>

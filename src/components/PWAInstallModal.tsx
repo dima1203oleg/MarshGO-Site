@@ -24,7 +24,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
         {/* Header */}
         <div className="p-5 bg-[#081B35] text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#1769F4] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-[var(--mg-action)] flex items-center justify-center">
               <Download className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -63,13 +63,13 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
               <div className="flex items-start gap-3 text-xs text-[#14243B]">
                 <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center shrink-0 font-bold">1</div>
                 <div>
-                  Натисніть кнопку <span className="font-semibold">«Поділитися»</span> (значок <Share className="w-3.5 h-3.5 inline text-[#1769F4]" /> внизу Safari).
+                  Натисніть кнопку <span className="font-semibold">«Поділитися»</span> (значок <Share className="w-3.5 h-3.5 inline text-[var(--mg-blue-ink)]" /> внизу Safari).
                 </div>
               </div>
               <div className="flex items-start gap-3 text-xs text-[#14243B]">
                 <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center shrink-0 font-bold">2</div>
                 <div>
-                  Прокрутіть меню та виберіть <span className="font-semibold">«На початковий екран»</span> (<PlusSquare className="w-3.5 h-3.5 inline text-[#1769F4]" />).
+                  Прокрутіть меню та виберіть <span className="font-semibold">«На початковий екран»</span> (<PlusSquare className="w-3.5 h-3.5 inline text-[var(--mg-blue-ink)]" />).
                 </div>
               </div>
               <div className="flex items-start gap-3 text-xs text-[#14243B]">
@@ -85,7 +85,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
                 onInstall();
                 onClose();
               }}
-              className="w-full py-3 rounded-xl bg-[#1769F4] text-white font-semibold text-sm hover:bg-[#1358CE] shadow-md shadow-[#1769F4]/20 transition"
+              className="w-full py-3 rounded-xl bg-[var(--mg-action)] text-white font-semibold text-sm hover:bg-[#1358CE] shadow-md shadow-[color:var(--mg-action)]/20 transition"
             >
               Встановити в 1 клік
             </button>

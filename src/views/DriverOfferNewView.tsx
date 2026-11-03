@@ -133,7 +133,7 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[#1769F4] transition"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[var(--mg-blue-ink)] transition"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Назад</span>
@@ -165,7 +165,7 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
         <div className="bg-white rounded-2xl border border-[#DFE7F1] p-4 sm:p-5 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Car className="w-4 h-4 text-[#1769F4]" />
+              <Car className="w-4 h-4 text-[var(--mg-blue-ink)]" />
               <h3 className="font-extrabold text-sm text-[#14243B]">
                 Оберіть автомобіль для поїздки:
               </h3>
@@ -173,7 +173,7 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
             <button
               type="button"
               onClick={() => setIsAddVehicleModalOpen(true)}
-              className="text-xs font-bold text-[#1769F4] hover:underline flex items-center gap-1"
+              className="text-xs font-bold text-[var(--mg-blue-ink)] hover:underline flex items-center gap-1"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Додати авто</span>
@@ -191,7 +191,7 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
                   onClick={() => handleSelectVehicle(veh)}
                   className={`p-3 rounded-xl border cursor-pointer transition relative flex flex-col justify-between ${
                     isSelected
-                      ? 'border-[#1769F4] bg-blue-50/60 ring-2 ring-[#1769F4]/20 shadow-xs'
+                      ? 'border-[var(--mg-blue)] bg-blue-50/60 ring-2 ring-[var(--mg-blue)]/20 shadow-xs'
                       : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'
                   }`}
                 >
@@ -215,7 +215,7 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
                   </div>
 
                   {isSelected && (
-                    <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#1769F4] text-white flex items-center justify-center shadow-xs">
+                    <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[var(--mg-action)] text-white flex items-center justify-center shadow-xs">
                       <Check className="w-3 h-3 stroke-[3]" />
                     </div>
                   )}
@@ -320,7 +320,7 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
                     onClick={() => setAvailableSeats(s)}
                     className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
                       availableSeats === s
-                        ? 'bg-[#1769F4] text-white shadow-xs'
+                        ? 'bg-[var(--mg-action)] text-white shadow-xs'
                         : 'bg-[#F5F8FD] text-slate-700 hover:bg-slate-200'
                     }`}
                   >
@@ -365,7 +365,7 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full py-3.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white font-bold text-sm shadow-md shadow-[#1769F4]/20 transition flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white font-bold text-sm shadow-md shadow-[color:var(--mg-action)]/20 transition flex items-center justify-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>Опублікувати поїздку на {currentVehicle.make}</span>

@@ -30,7 +30,7 @@ export const MapPreview: React.FC<MapPreviewProps> = ({
       ) : (
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
           <div className="max-w-sm">
-            <MapPin className="mx-auto mb-3 h-8 w-8 text-blue-600" aria-hidden="true" />
+            <MapPin className="mx-auto mb-3 h-8 w-8 text-[var(--mg-blue)]" aria-hidden="true" />
             <p className="text-sm font-semibold text-slate-800">{origin} <span className="text-slate-400">→</span> {destination}</p>
             <p className="mt-2 text-xs text-slate-500">Карта маршруту з’явиться, коли сервер надасть дорожню геометрію.</p>
           </div>

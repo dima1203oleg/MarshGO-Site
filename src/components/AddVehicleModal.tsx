@@ -152,7 +152,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-[#1769F4] dark:text-sky-400 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-[var(--mg-blue-ink)] dark:text-sky-400 flex items-center justify-center shrink-0">
               <Car className="w-5 h-5" />
             </div>
             <div>
@@ -196,7 +196,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   onClick={() => handleSelectPreset(preset)}
                   className={`p-2 rounded-xl border text-left transition ${
                     make === preset.make && model === preset.model
-                      ? 'border-[#1769F4] bg-blue-50 dark:bg-blue-950/60 ring-2 ring-blue-200 dark:ring-blue-900 font-bold text-[#1769F4] dark:text-sky-300'
+                      ? 'border-[var(--mg-blue)] bg-blue-50 dark:bg-blue-950/60 ring-2 ring-blue-200 dark:ring-blue-900 font-bold text-[var(--mg-blue-ink)] dark:text-sky-300'
                       : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
                   }`}
                 >
@@ -219,7 +219,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 value={make}
                 onChange={(e) => setMake(e.target.value)}
                 placeholder="Наприклад: Toyota, Renault, Mercedes"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-semibold"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[var(--mg-blue)] text-[#14243B] dark:text-white font-semibold"
               />
             </div>
 
@@ -233,7 +233,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder="Наприклад: Camry, Megane, Vito"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-semibold"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[var(--mg-blue)] text-[#14243B] dark:text-white font-semibold"
               />
             </div>
           </div>
@@ -250,7 +250,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 max="2026"
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-semibold"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[var(--mg-blue)] text-[#14243B] dark:text-white font-semibold"
               />
             </div>
 
@@ -263,7 +263,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
                 placeholder="Сріблястий"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-semibold"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[var(--mg-blue)] text-[#14243B] dark:text-white font-semibold"
               />
             </div>
 
@@ -274,7 +274,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
               <select
                 value={seats}
                 onChange={(e) => setSeats(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-bold"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[var(--mg-blue)] text-[#14243B] dark:text-white font-bold"
               >
                 <option value={1}>1 місце</option>
                 <option value={2}>2 місця</option>
@@ -306,7 +306,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   onClick={() => setBodyType(t.id as any)}
                   className={`p-2 rounded-xl border text-center transition font-semibold ${
                     bodyType === t.id
-                      ? 'bg-[#1769F4] text-white border-[#1769F4] shadow-xs'
+                      ? 'bg-[var(--mg-action)] text-white border-[var(--mg-blue)] shadow-xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                   }`}
                 >
@@ -327,7 +327,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 value={licensePlateFull}
                 onChange={(e) => setLicensePlateFull(e.target.value.toUpperCase())}
                 placeholder="AA 1234 BB"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-mono font-bold uppercase"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[var(--mg-blue)] text-[#14243B] dark:text-white font-mono font-bold uppercase"
               />
               <span className="text-[10px] text-slate-400 mt-0.5 block">
                 Буде приховано для захисту приватності до бронювання
@@ -343,7 +343,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 value={photoUrl}
                 onChange={(e) => setPhotoUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-mono text-[11px]"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[var(--mg-blue)] text-[#14243B] dark:text-white font-mono text-[11px]"
               />
             </div>
           </div>
@@ -374,7 +374,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   type="checkbox"
                   checked={airConditioning}
                   onChange={(e) => setAirConditioning(e.target.checked)}
-                  className="rounded text-[#1769F4] focus:ring-0"
+                  className="rounded text-[var(--mg-blue-ink)] focus:ring-0"
                 />
                 <span className="text-slate-700 dark:text-slate-300 font-semibold">Кондиціонер / Клімат</span>
               </label>
@@ -384,7 +384,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   type="checkbox"
                   checked={phoneCharging}
                   onChange={(e) => setPhoneCharging(e.target.checked)}
-                  className="rounded text-[#1769F4] focus:ring-0"
+                  className="rounded text-[var(--mg-blue-ink)] focus:ring-0"
                 />
                 <span className="text-slate-700 dark:text-slate-300 font-semibold">Зарядка (Type-C / Lightning)</span>
               </label>
@@ -394,7 +394,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   type="checkbox"
                   checked={luggageAllowed}
                   onChange={(e) => setLuggageAllowed(e.target.checked)}
-                  className="rounded text-[#1769F4] focus:ring-0"
+                  className="rounded text-[var(--mg-blue-ink)] focus:ring-0"
                 />
                 <span className="text-slate-700 dark:text-slate-300 font-semibold">Місце для багажу</span>
               </label>
@@ -404,7 +404,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   type="checkbox"
                   checked={childSeat}
                   onChange={(e) => setChildSeat(e.target.checked)}
-                  className="rounded text-[#1769F4] focus:ring-0"
+                  className="rounded text-[var(--mg-blue-ink)] focus:ring-0"
                 />
                 <span className="text-slate-700 dark:text-slate-300 font-semibold">Дитяче крісло / Бустер</span>
               </label>
@@ -414,7 +414,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   type="checkbox"
                   checked={petsAllowed}
                   onChange={(e) => setPetsAllowed(e.target.checked)}
-                  className="rounded text-[#1769F4] focus:ring-0"
+                  className="rounded text-[var(--mg-blue-ink)] focus:ring-0"
                 />
                 <span className="text-slate-700 dark:text-slate-300 font-semibold">Можна з тваринами</span>
               </label>
@@ -432,7 +432,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-bold bg-[#1769F4] hover:bg-[#1358CE] text-white shadow-md active:scale-95 transition flex items-center gap-1.5"
+              className="px-5 py-2 rounded-xl text-xs font-bold bg-[var(--mg-action)] hover:bg-[#1358CE] text-white shadow-md active:scale-95 transition flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Зберегти авто в гараж</span>

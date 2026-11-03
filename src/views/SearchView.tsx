@@ -273,7 +273,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 <h1 className="text-base sm:text-lg font-bold text-[#14243B] flex items-center gap-2">
                   <span>{searchParams.origin || 'Звідки'}</span>
                   <span className="text-slate-400">→</span>
-                  <span className="text-[#1769F4]">{searchParams.destination || 'Куди'}</span>
+                  <span className="text-[var(--mg-blue-ink)]">{searchParams.destination || 'Куди'}</span>
                 </h1>
                 <div className="text-xs text-[#62718A] flex items-center gap-3 mt-0.5">
                   <span>{searchParams.date || 'Сьогодні'}</span>
@@ -316,7 +316,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 active:scale-95 ${
                   isSubscribed
                     ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs ring-2 ring-emerald-200'
-                    : 'bg-[#F5F8FD] hover:bg-blue-50 text-slate-700 hover:text-[#1769F4] border-slate-200'
+                    : 'bg-[#F5F8FD] hover:bg-blue-50 text-slate-700 hover:text-[var(--mg-blue-ink)] border-slate-200'
                 }`}
                 title={isSubscribed ? 'Ви підписані на оновлення цього маршруту' : 'Підписатися на оновлення за цим маршрутом'}
               >
@@ -329,14 +329,14 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 onClick={() => setShowFilterDrawer(!showFilterDrawer)}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${
                   activeFiltersCount > 0 || showFilterDrawer
-                    ? 'bg-[#1769F4] text-white border-[#1769F4] shadow-xs'
+                    ? 'bg-[var(--mg-action)] text-white border-[var(--mg-blue)] shadow-xs'
                     : 'bg-[#F5F8FD] text-slate-700 border-slate-200 hover:bg-slate-200'
                 }`}
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 <span>Фільтри</span>
                 {activeFiltersCount > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-white text-[#1769F4] text-[10px] font-black flex items-center justify-center">
+                  <span className="w-4 h-4 rounded-full bg-white text-[var(--mg-blue-ink)] text-[10px] font-black flex items-center justify-center">
                     {activeFiltersCount}
                   </span>
                 )}
@@ -348,7 +348,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 onClick={() => setShowMobileMap(!showMobileMap)}
                 className="lg:hidden px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5"
               >
-                {showMobileMap ? <List className="w-4 h-4" /> : <Map className="w-4 h-4 text-[#1769F4]" />}
+                {showMobileMap ? <List className="w-4 h-4" /> : <Map className="w-4 h-4 text-[var(--mg-blue-ink)]" />}
                 <span>{showMobileMap ? 'Список' : 'Карта'}</span>
               </button>
 
@@ -359,7 +359,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   onClick={() => setSortBy('cheapest')}
                   className={`px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 ${
                     sortBy === 'cheapest'
-                      ? 'bg-[#1769F4] text-white shadow-xs'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                   }`}
                 >
@@ -371,7 +371,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   onClick={() => setSortBy('fastest')}
                   className={`px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 ${
                     sortBy === 'fastest'
-                      ? 'bg-[#1769F4] text-white shadow-xs'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                   }`}
                 >
@@ -383,7 +383,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   onClick={() => setSortBy('reliable')}
                   className={`px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 ${
                     sortBy === 'reliable'
-                      ? 'bg-[#1769F4] text-white shadow-xs'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                   }`}
                 >
@@ -405,7 +405,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   onClick={() => handleToggleType(type.id)}
                   className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
                     isChecked
-                      ? 'bg-[#1769F4] text-white shadow-xs'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs'
                       : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'
                   }`}
                 >
@@ -423,7 +423,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 {/* 1. Departure Time Filter */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-[#14243B]">
-                    <Clock className="w-4 h-4 text-[#1769F4]" />
+                    <Clock className="w-4 h-4 text-[var(--mg-blue-ink)]" />
                     <span>Час відправлення:</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
@@ -431,7 +431,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                       onClick={() => setTimeFilter('all')}
                       className={`p-2 rounded-lg font-semibold transition text-center ${
                         timeFilter === 'all'
-                          ? 'bg-[#1769F4] text-white shadow-xs'
+                          ? 'bg-[var(--mg-action)] text-white shadow-xs'
                           : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                       }`}
                     >
@@ -441,7 +441,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                       onClick={() => setTimeFilter('morning')}
                       className={`p-2 rounded-lg font-semibold transition text-center ${
                         timeFilter === 'morning'
-                          ? 'bg-[#1769F4] text-white shadow-xs'
+                          ? 'bg-[var(--mg-action)] text-white shadow-xs'
                           : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                       }`}
                     >
@@ -451,7 +451,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                       onClick={() => setTimeFilter('day')}
                       className={`p-2 rounded-lg font-semibold transition text-center ${
                         timeFilter === 'day'
-                          ? 'bg-[#1769F4] text-white shadow-xs'
+                          ? 'bg-[var(--mg-action)] text-white shadow-xs'
                           : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                       }`}
                     >
@@ -461,7 +461,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                       onClick={() => setTimeFilter('evening')}
                       className={`p-2 rounded-lg font-semibold transition text-center ${
                         timeFilter === 'evening'
-                          ? 'bg-[#1769F4] text-white shadow-xs'
+                          ? 'bg-[var(--mg-action)] text-white shadow-xs'
                           : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                       }`}
                     >
@@ -489,7 +489,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                     step="50"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1769F4]"
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[var(--mg-action)]"
                   />
 
                   {/* Price presets */}
@@ -497,28 +497,28 @@ export const SearchView: React.FC<SearchViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setMaxPrice(550)}
-                      className={`px-2 py-0.5 rounded border ${maxPrice === 550 ? 'bg-[#1769F4] text-white' : 'bg-white border-slate-200'}`}
+                      className={`px-2 py-0.5 rounded border ${maxPrice === 550 ? 'bg-[var(--mg-action)] text-white' : 'bg-white border-slate-200'}`}
                     >
                       до 550 грн
                     </button>
                     <button
                       type="button"
                       onClick={() => setMaxPrice(900)}
-                      className={`px-2 py-0.5 rounded border ${maxPrice === 900 ? 'bg-[#1769F4] text-white' : 'bg-white border-slate-200'}`}
+                      className={`px-2 py-0.5 rounded border ${maxPrice === 900 ? 'bg-[var(--mg-action)] text-white' : 'bg-white border-slate-200'}`}
                     >
                       до 900 грн
                     </button>
                     <button
                       type="button"
                       onClick={() => setMaxPrice(1400)}
-                      className={`px-2 py-0.5 rounded border ${maxPrice === 1400 ? 'bg-[#1769F4] text-white' : 'bg-white border-slate-200'}`}
+                      className={`px-2 py-0.5 rounded border ${maxPrice === 1400 ? 'bg-[var(--mg-action)] text-white' : 'bg-white border-slate-200'}`}
                     >
                       до 1400 грн
                     </button>
                     <button
                       type="button"
                       onClick={() => setMaxPrice(2000)}
-                      className={`px-2 py-0.5 rounded border ${maxPrice === 2000 ? 'bg-[#1769F4] text-white' : 'bg-white border-slate-200'}`}
+                      className={`px-2 py-0.5 rounded border ${maxPrice === 2000 ? 'bg-[var(--mg-action)] text-white' : 'bg-white border-slate-200'}`}
                     >
                       Всі ціни
                     </button>
@@ -564,7 +564,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={handleResetFilters}
-                    className="text-[#1769F4] font-semibold hover:underline flex items-center gap-1"
+                    className="text-[var(--mg-blue-ink)] font-semibold hover:underline flex items-center gap-1"
                   >
                     <span>Скинути фільтри ({activeFiltersCount})</span>
                   </button>
@@ -596,7 +596,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <div
                   className={`p-2.5 rounded-xl shrink-0 ${
-                    isSubscribed ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-50 text-[#1769F4]'
+                    isSubscribed ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-50 text-[var(--mg-blue-ink)]'
                   }`}
                 >
                   <Bell className={`w-5 h-5 ${isSubscribed ? 'fill-emerald-600' : ''}`} />
@@ -628,7 +628,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-2 w-full sm:w-auto justify-center ${
                   isSubscribed
                     ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-[#1769F4] hover:bg-[#1358CE] text-white shadow-sm shadow-[#1769F4]/20'
+                    : 'bg-[var(--mg-action)] hover:bg-[#1358CE] text-white shadow-sm shadow-[color:var(--mg-action)]/20'
                 }`}
               >
                 <Bell className="w-3.5 h-3.5" />
@@ -639,7 +639,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
             {/* Quick Sorting Chips Bar directly above results */}
             <div className="flex items-center justify-between gap-2 flex-wrap bg-white dark:bg-[#0D1E36] p-2.5 sm:p-3 rounded-2xl border border-[#DFE7F1] dark:border-[#1D3455] shadow-xs">
               <div className="flex items-center gap-1.5 text-xs text-[#14243B] dark:text-white font-extrabold shrink-0">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#1769F4]" />
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--mg-blue-ink)]" />
                 <span>Сортування:</span>
               </div>
 
@@ -649,7 +649,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   onClick={() => setSortBy('cheapest')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 ${
                     sortBy === 'cheapest'
-                      ? 'bg-[#1769F4] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
                       : 'bg-[#F5F8FD] dark:bg-[#122542] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
                   }`}
                 >
@@ -662,7 +662,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   onClick={() => setSortBy('fastest')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 ${
                     sortBy === 'fastest'
-                      ? 'bg-[#1769F4] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
                       : 'bg-[#F5F8FD] dark:bg-[#122542] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
                   }`}
                 >
@@ -675,7 +675,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   onClick={() => setSortBy('reliable')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 ${
                     sortBy === 'reliable'
-                      ? 'bg-[#1769F4] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
                       : 'bg-[#F5F8FD] dark:bg-[#122542] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
                   }`}
                 >
@@ -688,7 +688,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   onClick={() => setSortBy('optimal')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 ${
                     sortBy === 'optimal'
-                      ? 'bg-[#1769F4] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
                       : 'bg-[#F5F8FD] dark:bg-[#122542] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
                   }`}
                 >
@@ -749,7 +749,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowOnlyFavorites(false)}
-                    className="px-5 py-2.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white text-xs font-bold shadow-md shadow-[#1769F4]/20 transition"
+                    className="px-5 py-2.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white text-xs font-bold shadow-md shadow-[color:var(--mg-action)]/20 transition"
                   >
                     Показати всі {sortedOffers.length} варіантів
                   </button>
@@ -782,7 +782,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
                   <button
                     onClick={() => onCreateDemandFromSearch(searchParams)}
-                    className="px-6 py-2.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white text-xs font-bold shadow-md shadow-[#1769F4]/20 transition inline-flex items-center gap-2"
+                    className="px-6 py-2.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white text-xs font-bold shadow-md shadow-[color:var(--mg-action)]/20 transition inline-flex items-center gap-2"
                   >
                     <PlusCircle className="w-4 h-4" />
                     <span>Опублікувати запит з моїм бюджетом</span>
@@ -791,7 +791,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsSubscribeModalOpen(true)}
-                    className="px-5 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-[#1769F4] text-xs font-bold hover:bg-blue-100 transition inline-flex items-center gap-2"
+                    className="px-5 py-2.5 rounded-xl border border-[var(--mg-border-subtle)] bg-blue-50 text-[var(--mg-blue-ink)] text-xs font-bold hover:bg-blue-100 transition inline-flex items-center gap-2"
                   >
                     <Bell className="w-4 h-4" />
                     <span>Підписатися на оновлення</span>
@@ -802,14 +802,14 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
             {/* Bottom Rescue / Custom Request Banner */}
             {sortedOffers.length > 0 && (
-              <div className="bg-[#EFF6FF] rounded-2xl border border-blue-200 p-4 flex items-center justify-between gap-3">
+              <div className="bg-[#EFF6FF] rounded-2xl border border-[var(--mg-border-subtle)] p-4 flex items-center justify-between gap-3">
                 <div className="text-xs">
                   <div className="font-bold text-[#14243B]">Не підходить час або вартість?</div>
                   <div className="text-[#62718A]">Опублікуйте свій запит — водії зроблять зустрічні пропозиції.</div>
                 </div>
                 <button
                   onClick={() => onCreateDemandFromSearch(searchParams)}
-                  className="px-3.5 py-2 rounded-xl bg-[#1769F4] text-white font-bold text-xs hover:bg-[#1358CE] transition shrink-0"
+                  className="px-3.5 py-2 rounded-xl bg-[var(--mg-action)] text-white font-bold text-xs hover:bg-[#1358CE] transition shrink-0"
                 >
                   Створити запит
                 </button>

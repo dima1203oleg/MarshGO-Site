@@ -42,7 +42,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#1769F4] text-white flex items-center justify-center font-bold text-xs">
+              <div className="w-8 h-8 rounded-full bg-[var(--mg-action)] text-white flex items-center justify-center font-bold text-xs">
                 ОК
               </div>
               <div>
@@ -82,7 +82,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               <div
                 className={`max-w-[85%] sm:max-w-md p-3.5 rounded-2xl text-xs space-y-2 ${
                   isMe
-                    ? 'bg-[#1769F4] text-white rounded-tr-xs shadow-sm'
+                    ? 'bg-[var(--mg-action)] text-white rounded-tr-xs shadow-sm'
                     : 'bg-white text-[#14243B] border border-slate-200 rounded-tl-xs shadow-sm'
                 }`}
               >
@@ -118,12 +118,12 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Введіть повідомлення водієві..."
-            className="flex-1 p-3 rounded-xl border border-slate-300 text-xs bg-[#F5F8FD] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1769F4]"
+            className="flex-1 p-3 rounded-xl border border-slate-300 text-xs bg-[#F5F8FD] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--mg-blue)]"
           />
           <button
             type="submit"
             disabled={!inputText.trim()}
-            className="p-3 rounded-xl bg-[#1769F4] text-white hover:bg-[#1358CE] disabled:opacity-50 transition active:scale-95 shrink-0"
+            className="p-3 rounded-xl bg-[var(--mg-action)] text-white hover:bg-[#1358CE] disabled:opacity-50 transition active:scale-95 shrink-0"
             aria-label="Надіслати"
           >
             <Send className="w-4 h-4" />

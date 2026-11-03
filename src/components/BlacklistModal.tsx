@@ -278,7 +278,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                             <span
                               className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
                                 item.role === 'driver'
-                                  ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300'
+                                  ? 'bg-blue-100 text-blue-800 border-[var(--mg-border-subtle)] dark:bg-blue-950 dark:text-blue-300'
                                   : 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300'
                               }`}
                             >
@@ -488,7 +488,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
 
         {/* Modal Footer Policy Note */}
         <div className="p-3.5 bg-slate-50 dark:bg-[#0A1A30] border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-          <Info className="w-4 h-4 text-[#1769F4] shrink-0" />
+          <Info className="w-4 h-4 text-[var(--mg-blue-ink)] shrink-0" />
           <span>
             Користувачі не сповіщаються про потрапляння у ваш чорний список. Пропозиції заблокованих водіїв виключаються з видачі пошуку.
           </span>

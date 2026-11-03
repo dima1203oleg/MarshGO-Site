@@ -126,7 +126,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               onClick={() => dispatch({ type: 'SWITCH_ROLE', role: 'passenger' })}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
                 isPassenger
-                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 text-[var(--mg-blue)] dark:text-blue-400 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400'
               }`}
             >
@@ -138,7 +138,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               onClick={() => dispatch({ type: 'SWITCH_ROLE', role: 'driver' })}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
                 !isPassenger
-                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 text-[var(--mg-blue)] dark:text-blue-400 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400'
               }`}
             >
@@ -263,7 +263,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
           {/* Active View Header */}
           <div className="mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-extrabold tracking-wider uppercase text-blue-600 dark:text-blue-400">
+              <p className="text-[11px] font-extrabold tracking-wider uppercase text-[var(--mg-blue)] dark:text-blue-400">
                 Поточний стан ({isPassenger ? 'Режим пасажира' : 'Режим водія'})
               </p>
               <h2 className="text-xl font-black text-slate-900 dark:text-white">
@@ -335,7 +335,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
 
                 <div className="space-y-1.5 text-xs">
                   <div className="flex items-start gap-2">
-                    <MapPin size={14} className="text-blue-500 mt-0.5 shrink-0" />
+                    <MapPin size={14} className="text-[var(--mg-blue)] mt-0.5 shrink-0" />
                     <div>
                       <span className="font-semibold text-slate-700 dark:text-slate-300">Точка посадки:</span>
                       <p className="text-slate-600 dark:text-slate-400">{state.trip.pickup.label}</p>
@@ -361,12 +361,12 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                   </div>
                   <div>
                     <span className="text-slate-400">Вартість DEMO:</span>
-                    <p className="font-black text-sm text-blue-600 dark:text-blue-400">{state.trip.priceUah} ₴</p>
+                    <p className="font-black text-sm text-[var(--mg-blue)] dark:text-blue-400">{state.trip.priceUah} ₴</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-xs text-blue-800 dark:text-blue-200">
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-[var(--mg-border-subtle)] dark:border-blue-900 text-xs text-blue-800 dark:text-blue-200">
                 <p className="font-bold mb-1">Що робить пасажир?</p>
                 <p>Пасажир переглядає деталі поїздки та бронює 1 місце з фіксованою ціною попутки.</p>
               </div>
@@ -374,7 +374,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               <button
                 type="button"
                 onClick={() => dispatch({ type: 'SUBMIT_REQUEST' })}
-                className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-md hover:bg-blue-700 active:scale-[0.99] transition-all"
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-md hover:bg-[var(--mg-action-hover)] active:scale-[0.99] transition-all"
               >
                 <span>Надіслати запит на бронювання (1 місце)</span>
                 <ArrowRight size={16} />
@@ -428,7 +428,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               <button
                 type="button"
                 onClick={() => dispatch({ type: 'PROMPT_GPS' })}
-                className="w-full py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow"
+                className="w-full py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-[var(--mg-action-hover)] transition-all flex items-center justify-center gap-2 shadow"
               >
                 <span>Перейти до узгодження обміну GPS</span>
                 <ArrowRight size={16} />
@@ -440,7 +440,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
           {state.stage === 'GPS_CONSENT_PENDING' && (
             <div className="space-y-4">
               <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/40 space-y-3">
-                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-sm">
+                <div className="flex items-center gap-2 text-[var(--mg-blue)] dark:text-blue-400 font-bold text-sm">
                   <ShieldCheck size={18} />
                   <span>Приватність та згода на геолокацію</span>
                 </div>
@@ -578,7 +578,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               <button
                 type="button"
                 onClick={() => dispatch({ type: 'DRIVER_ARRIVED' })}
-                className="w-full py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-all shadow"
+                className="w-full py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-[var(--mg-action-hover)] transition-all shadow"
               >
                 Водій прибув на орієнтир (Симуляція)
               </button>
@@ -603,7 +603,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
 
               {/* Dynamic ETA & Distance Cards */}
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40">
+                <div className="p-3 rounded-2xl border border-[var(--mg-border-subtle)] dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40">
                   <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 font-bold mb-1">
                     <Car size={14} />
                     <span>Водій до точки</span>
@@ -663,7 +663,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               <button
                 type="button"
                 onClick={() => dispatch({ type: 'DRIVER_ARRIVED' })}
-                className="w-full py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-all shadow"
+                className="w-full py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-[var(--mg-action-hover)] transition-all shadow"
               >
                 Водій прибув у точку зустрічі
               </button>
@@ -705,7 +705,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               <button
                 type="button"
                 onClick={() => dispatch({ type: 'ENTER_PIN', pin: '' })}
-                className="w-full py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-all shadow flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-[var(--mg-action-hover)] transition-all shadow flex items-center justify-center gap-2"
               >
                 <QrCode size={16} />
                 <span>Верифікувати посадку (Ввести PIN / QR)</span>
@@ -716,7 +716,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
           {/* STAGE 7: BOARDING_HANDSHAKE */}
           {state.stage === 'BOARDING_HANDSHAKE' && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-2">
+              <div className="rounded-2xl border border-[var(--mg-border-subtle)] dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-2">
                 <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-bold text-sm">
                   <Shield size={16} />
                   <span>Безпечна посадка пасажира</span>
@@ -734,7 +734,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
 
                 {isPassenger ? (
                   <div className="inline-block py-2 px-6 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-800">
-                    <span className="font-mono text-3xl font-black tracking-widest text-blue-600 dark:text-blue-400">
+                    <span className="font-mono text-3xl font-black tracking-widest text-[var(--mg-blue)] dark:text-blue-400">
                       {state.trip.verificationPin}
                     </span>
                   </div>
@@ -763,7 +763,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                   <button
                     type="button"
                     onClick={() => dispatch({ type: 'CONFIRM_BOARDING_QR' })}
-                    className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 underline"
+                    className="text-xs font-bold text-[var(--mg-blue)] dark:text-blue-400 flex items-center gap-1 underline"
                   >
                     <QrCode size={13} />
                     <span>Відсканувати QR замість PIN</span>
@@ -786,7 +786,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
           {/* STAGE 8: IN_TRANSIT */}
           {state.stage === 'IN_TRANSIT' && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-2">
+              <div className="rounded-2xl border border-[var(--mg-border-subtle)] dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-bold text-sm">
                     <Navigation size={16} className="animate-pulse" />
@@ -914,7 +914,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                       comment: reviewComment,
                     });
                   }}
-                  className="w-full py-3 px-4 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors shadow"
+                  className="w-full py-3 px-4 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-[var(--mg-action-hover)] transition-colors shadow"
                 >
                   Зберегти відгук та записати в історію
                 </button>
@@ -939,7 +939,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 space-y-2 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="font-bold">{state.trip.pickup.label} → {state.trip.destination.label}</span>
-                  <span className="font-black text-blue-600 dark:text-blue-400">{state.trip.priceUah} ₴</span>
+                  <span className="font-black text-[var(--mg-blue)] dark:text-blue-400">{state.trip.priceUah} ₴</span>
                 </div>
                 <p className="text-slate-500 text-[11px]">Водій: {state.trip.driver.name} ({state.trip.vehicle.make} {state.trip.vehicle.model})</p>
                 <div className="flex items-center gap-1 text-amber-500 font-bold">
@@ -993,7 +993,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                 {state.historyLog.length === 0 && <p className="text-slate-400">Подій ще немає</p>}
                 {state.historyLog.map((log, idx) => (
                   <div key={idx} className="border-b border-slate-200/50 dark:border-slate-700/50 pb-1">
-                    <span className="text-blue-500 font-bold">{log.fromStage} → {log.toStage}</span>: {log.action}
+                    <span className="text-[var(--mg-blue)] font-bold">{log.fromStage} → {log.toStage}</span>: {log.action}
                   </div>
                 ))}
               </div>
@@ -1006,7 +1006,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
           {/* Map Overlay Badge */}
           <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5">
             <div className="flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm text-xs font-bold">
-              <Compass size={14} className="text-blue-500" />
+              <Compass size={14} className="text-[var(--mg-blue)]" />
               <span>Львів: Малоголосківська ↔ Наукова</span>
             </div>
             <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur px-2.5 py-1 rounded-lg border text-[11px] text-slate-500 font-mono">

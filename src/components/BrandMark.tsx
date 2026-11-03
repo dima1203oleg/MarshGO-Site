@@ -6,7 +6,7 @@ type BrandMarkProps = {
 const sizeClasses = {
   sm: 'h-9 w-9 rounded-xl',
   md: 'h-12 w-12 rounded-2xl',
-  lg: 'h-[4.4rem] w-[4.4rem] rounded-[1.4rem]',
+  lg: 'h-[4.4rem] w-[4.4rem] rounded-[var(--mg-radius-2xl)]',
 } satisfies Record<NonNullable<BrandMarkProps['size']>, string>;
 
 /** Shared MARSHGO app mark used by the web and Capacitor iOS shell. */

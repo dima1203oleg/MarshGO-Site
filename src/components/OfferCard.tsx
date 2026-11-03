@@ -53,7 +53,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({
     },
     bus: {
       label: 'Автобус',
-      badgeClass: 'bg-blue-50 text-[#1769F4] border-blue-200',
+      badgeClass: 'bg-blue-50 text-[var(--mg-blue-ink)] border-[var(--mg-border-subtle)]',
       icon: <Car className="w-3.5 h-3.5" />
     },
     transfer: {
@@ -85,7 +85,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({
   return (
     <div
       onClick={() => onSelect(offer.id)}
-      className="bg-white rounded-2xl border border-[#DFE7F1] p-4 sm:p-5 hover:border-[#1769F4] hover:shadow-md transition-all cursor-pointer group"
+      className="bg-white rounded-2xl border border-[#DFE7F1] p-4 sm:p-5 hover:border-[var(--mg-blue)] hover:shadow-md transition-all cursor-pointer group"
     >
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Vehicle / Carrier Photo Thumbnail or Procedural Route Cover */}
@@ -286,7 +286,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                 {/* Departure (Origin) */}
                 <div className="flex items-start gap-2.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#1769F4] mt-1 shrink-0 ring-4 ring-blue-100" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--mg-action)] mt-1 shrink-0 ring-4 ring-blue-100" />
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="font-extrabold text-sm text-[#14243B] tabular-nums">{timeFormatted}</span>
@@ -322,7 +322,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({
               {/* Transit Highway & Speed Metrics calculated from Distance & Vehicle Type */}
               <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between flex-wrap gap-2 text-[11px]">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 bg-blue-50 text-[#1769F4] px-2.5 py-1 rounded-lg border border-blue-200/60 font-bold">
+                  <div className="flex items-center gap-1.5 bg-blue-50 text-[var(--mg-blue-ink)] px-2.5 py-1 rounded-lg border border-[var(--mg-border-subtle)]/60 font-bold">
                     <Clock className="w-3.5 h-3.5 shrink-0" />
                     <span>Час в дорозі: <strong>{travelTime.durationFormatted}</strong></span>
                   </div>
@@ -338,7 +338,7 @@ export const OfferCard: React.FC<OfferCardProps> = ({
                   className="flex items-center gap-1.5 text-[10px] text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200"
                   title={`Розраховано на основі відстані ${offer.distanceKm} км для транспортного засобу: ${travelTime.vehicleTypeLabel}`}
                 >
-                  <Car className="w-3 h-3 text-[#1769F4]" />
+                  <Car className="w-3 h-3 text-[var(--mg-blue-ink)]" />
                   <span>{travelTime.vehicleTypeLabel} (~{travelTime.averageSpeedKmH} км/год)</span>
                 </div>
               </div>
@@ -350,15 +350,15 @@ export const OfferCard: React.FC<OfferCardProps> = ({
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1 font-medium text-[#14243B]">
                 <Users className="w-3.5 h-3.5 text-slate-400" />
-                <span>Вільних місць: <strong className="text-[#1769F4]">{offer.availableSeats}</strong> з {offer.totalSeats}</span>
+                <span>Вільних місць: <strong className="text-[var(--mg-blue-ink)]">{offer.availableSeats}</strong> з {offer.totalSeats}</span>
               </div>
               <div className="hidden sm:flex items-center gap-1.5 text-slate-500 font-medium">
-                <Clock className="w-3.5 h-3.5 text-[#1769F4]" />
+                <Clock className="w-3.5 h-3.5 text-[var(--mg-blue-ink)]" />
                 <span>Орієнтовно {travelTime.durationFormatted}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 text-[#1769F4] font-semibold group-hover:translate-x-1 transition-transform">
+            <div className="flex items-center gap-1 text-[var(--mg-blue-ink)] font-semibold group-hover:translate-x-1 transition-transform">
               <span>Деталі рейсу</span>
               <ChevronRight className="w-4 h-4" />
             </div>

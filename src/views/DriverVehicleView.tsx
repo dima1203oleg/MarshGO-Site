@@ -62,7 +62,7 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[#1769F4] transition"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[var(--mg-blue-ink)] transition"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Назад до кабінету</span>
@@ -87,7 +87,7 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
                     isSelected
-                      ? 'bg-[#1769F4] text-white shadow-xs'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
                 >
@@ -104,7 +104,7 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
           <button
             type="button"
             onClick={() => setIsAddVehicleModalOpen(true)}
-            className="text-xs font-bold text-[#1769F4] hover:underline flex items-center gap-1 shrink-0 px-2"
+            className="text-xs font-bold text-[var(--mg-blue-ink)] hover:underline flex items-center gap-1 shrink-0 px-2"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Додати авто</span>
@@ -145,7 +145,7 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
 
                 {/* Primary Badge */}
                 {photo.isPrimary ? (
-                  <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#1769F4] text-white shadow">
+                  <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[10px] font-extrabold bg-[var(--mg-action)] text-white shadow">
                     Головне
                   </span>
                 ) : (
@@ -177,9 +177,9 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
                 <button
                   key={i}
                   onClick={() => handleAddSample(sample)}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-[#1769F4] transition shrink-0 flex items-center gap-1.5"
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-[var(--mg-blue)] transition shrink-0 flex items-center gap-1.5"
                 >
-                  <Plus className="w-3 h-3 text-[#1769F4]" />
+                  <Plus className="w-3 h-3 text-[var(--mg-blue-ink)]" />
                   <span>{sample.label}</span>
                 </button>
               ))}

@@ -46,7 +46,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
               <img
                 src={user.avatar}
                 alt={user.name}
-                className="w-14 h-14 rounded-full object-cover border-2 border-[#1769F4]"
+                className="w-14 h-14 rounded-full object-cover border-2 border-[var(--mg-blue)]"
                 referrerPolicy="no-referrer"
               />
               <div>
@@ -91,11 +91,11 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
         <div className="bg-white rounded-2xl border border-[#DFE7F1] p-5 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Car className="w-5 h-5 text-[#1769F4]" />
+              <Car className="w-5 h-5 text-[var(--mg-blue-ink)]" />
               <div className="flex items-center gap-2">
                 <h2 className="font-extrabold text-base text-[#14243B]">Основне авто</h2>
                 {vehicleCount > 1 && (
-                  <span className="text-[11px] font-bold bg-blue-50 text-[#1769F4] px-2 py-0.5 rounded-full border border-blue-100">
+                  <span className="text-[11px] font-bold bg-blue-50 text-[var(--mg-blue-ink)] px-2 py-0.5 rounded-full border border-blue-100">
                     Гараж: {vehicleCount} авто
                   </span>
                 )}
@@ -103,7 +103,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
             </div>
             <button
               onClick={() => onNavigate('driver-vehicle')}
-              className="text-xs font-semibold text-[#1769F4] hover:underline flex items-center gap-1"
+              className="text-xs font-semibold text-[var(--mg-blue-ink)] hover:underline flex items-center gap-1"
             >
               <span>Гараж та фото ({vehicle.photos.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -154,9 +154,9 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
           {/* Action 1: Demands Feed */}
           <div
             onClick={() => onNavigate('driver-requests')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-[#1769F4] hover:shadow-md cursor-pointer transition space-y-3 group"
+            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-[var(--mg-blue)] hover:shadow-md cursor-pointer transition space-y-3 group"
           >
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#1769F4] flex items-center justify-center group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[var(--mg-blue-ink)] flex items-center justify-center group-hover:scale-105 transition-transform">
               <Users className="w-5 h-5" />
             </div>
             <div>
@@ -165,7 +165,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
                 Переглядайте попит, пропонуйте свою ціну або погоджуйтеся на бюджет.
               </p>
             </div>
-            <div className="text-xs font-semibold text-[#1769F4] flex items-center gap-1">
+            <div className="text-xs font-semibold text-[var(--mg-blue-ink)] flex items-center gap-1">
               <span>Відкрити біржу</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </div>
@@ -199,7 +199,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
             onClick={() => onNavigate('navigation')}
             className="bg-[#081B35] p-5 rounded-2xl border border-slate-700 text-white hover:shadow-lg cursor-pointer transition space-y-3 group"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#1769F4] text-white flex items-center justify-center group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-xl bg-[var(--mg-action)] text-white flex items-center justify-center group-hover:scale-105 transition-transform">
               <Compass className="w-5 h-5" />
             </div>
             <div>
@@ -237,7 +237,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsFuelCalcOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#1769F4] font-bold text-xs flex items-center gap-1.5 transition"
+                className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[var(--mg-blue-ink)] font-bold text-xs flex items-center gap-1.5 transition"
               >
                 <Calculator className="w-3.5 h-3.5" />
                 <span>Калькулятор пального</span>
@@ -264,7 +264,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
               <div className="text-[11px] text-slate-500 font-medium">Пасажирів перевезено</div>
-              <div className="text-lg font-black text-[#1769F4] mt-1">
+              <div className="text-lg font-black text-[var(--mg-blue-ink)] mt-1">
                 210 людей
               </div>
             </div>

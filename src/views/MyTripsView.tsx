@@ -46,7 +46,7 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
           <h1 className="text-base sm:text-lg font-bold text-[#14243B]">Мої поїздки та квитки</h1>
           <button
             onClick={() => onNavigate('home')}
-            className="text-xs font-semibold text-[#1769F4] hover:underline"
+            className="text-xs font-semibold text-[var(--mg-blue-ink)] hover:underline"
           >
             Знайти нову поїздку
           </button>
@@ -60,7 +60,7 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
             onClick={() => setTab('upcoming')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               tab === 'upcoming'
-                ? 'bg-[#1769F4] text-white shadow-sm'
+                ? 'bg-[var(--mg-action)] text-white shadow-sm'
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
@@ -70,7 +70,7 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
             onClick={() => setTab('completed')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               tab === 'completed'
-                ? 'bg-[#1769F4] text-white shadow-sm'
+                ? 'bg-[var(--mg-action)] text-white shadow-sm'
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
@@ -80,7 +80,7 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
             onClick={() => setTab('cancelled')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               tab === 'cancelled'
-                ? 'bg-[#1769F4] text-white shadow-sm'
+                ? 'bg-[var(--mg-action)] text-white shadow-sm'
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
@@ -96,12 +96,12 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
                 key={b.id}
                 onClick={() => setActiveTicket(b)}
                 className={`bg-white rounded-2xl border p-5 shadow-sm space-y-3 cursor-pointer transition ${
-                  activeTicket?.id === b.id ? 'border-[#1769F4] ring-2 ring-[#1769F4]/10' : 'border-[#DFE7F1] hover:border-slate-300'
+                  activeTicket?.id === b.id ? 'border-[var(--mg-blue)] ring-2 ring-[var(--mg-blue)]/10' : 'border-[#DFE7F1] hover:border-slate-300'
                 }`}
               >
                 {/* Header */}
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-extrabold text-[#1769F4] bg-blue-50 px-2.5 py-1 rounded-lg">
+                  <span className="font-extrabold text-[var(--mg-blue-ink)] bg-blue-50 px-2.5 py-1 rounded-lg">
                     {b.bookingCode}
                   </span>
                   <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
@@ -184,9 +184,9 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
 
         {/* Digital Ticket Voucher / QR Code Box */}
         {activeTicket && activeTicket.status === 'confirmed' && (
-          <div className="bg-white rounded-2xl border-2 border-[#1769F4] p-6 shadow-xl space-y-4 max-w-lg mx-auto">
+          <div className="bg-white rounded-2xl border-2 border-[var(--mg-blue)] p-6 shadow-xl space-y-4 max-w-lg mx-auto">
             <div className="text-center space-y-1">
-              <span className="text-xs font-bold text-[#1769F4] uppercase tracking-wider">Електронний квиток MARSHGO</span>
+              <span className="text-xs font-bold text-[var(--mg-blue-ink)] uppercase tracking-wider">Електронний квиток MARSHGO</span>
               <h3 className="text-xl font-black text-[#14243B]">{activeTicket.origin} → {activeTicket.destination}</h3>
               <p className="text-xs text-slate-500">
                 Покажіть цей QR-код водієві під час посадки
@@ -209,7 +209,7 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
                 <span className="text-slate-500">Телефон водія:</span>
                 <a
                   href={`tel:${activeTicket.driverPhoneFull}`}
-                  className="font-bold text-[#1769F4] flex items-center gap-1 hover:underline"
+                  className="font-bold text-[var(--mg-blue-ink)] flex items-center gap-1 hover:underline"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   <span>{activeTicket.driverPhoneFull || activeTicket.driverPhoneMasked}</span>

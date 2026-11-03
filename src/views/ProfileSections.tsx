@@ -229,7 +229,7 @@ export function ProfileSections({
             <button
               type="button"
               onClick={requestGpsPermission}
-              className="mt-3 min-h-11 w-full rounded-xl bg-blue-600 px-4 text-xs font-bold text-white transition hover:bg-blue-700"
+              className="mt-3 min-h-11 w-full rounded-xl bg-blue-600 px-4 text-xs font-bold text-white transition hover:bg-[var(--mg-action-hover)]"
             >
               {gpsPermission === 'granted' ? 'Перевірити доступ ще раз' : 'Надати доступ до місця'}
             </button>
@@ -253,7 +253,7 @@ export function ProfileSections({
                 className="flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 p-3 text-left text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <span className="flex items-center gap-2">
-                  <Download size={16} className="text-blue-600" />
+                  <Download size={16} className="text-[var(--mg-blue)]" />
                   {exporting ? 'Готуємо файл…' : 'Завантажити копію моїх даних (JSON)'}
                 </span>
                 <span className="text-[10px] text-slate-400">Експорт</span>

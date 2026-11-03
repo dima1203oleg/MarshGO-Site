@@ -18,7 +18,7 @@ export function DriverPhotoCard({ photoUrl, isDriver, onChange }: { photoUrl: st
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Не вдалося видалити фото.'); }
     finally { setBusy(false); }
   };
-  return <section aria-label="Фото водія" className="mt-4 rounded-[1.4rem] bg-white p-4 shadow-sm">
+  return <section aria-label="Фото водія" className="mt-4 rounded-[var(--mg-radius-2xl)] bg-white p-4 shadow-sm">
     <div className="flex items-center gap-4">
       <span className="relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-[#EAF3FF] text-[var(--mg-blue)]">
         {photoUrl ? <img src={photoUrl} alt="Фото водія" className="h-full w-full object-cover"/> : <UserRound size={30}/>}

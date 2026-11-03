@@ -346,7 +346,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
             onClick={() => setSelectedPeriod('all')}
             className={`px-3 py-1.5 rounded-lg font-bold transition ${
               selectedPeriod === 'all'
-                ? 'bg-white dark:bg-[#1769F4] text-[#1769F4] dark:text-white shadow-xs'
+                ? 'bg-white dark:bg-[var(--mg-action)] text-[var(--mg-blue-ink)] dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -357,7 +357,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
             onClick={() => setSelectedPeriod('last_3_months')}
             className={`px-3 py-1.5 rounded-lg font-bold transition ${
               selectedPeriod === 'last_3_months'
-                ? 'bg-white dark:bg-[#1769F4] text-[#1769F4] dark:text-white shadow-xs'
+                ? 'bg-white dark:bg-[var(--mg-action)] text-[var(--mg-blue-ink)] dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -368,7 +368,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
             onClick={() => setSelectedPeriod('current_month')}
             className={`px-3 py-1.5 rounded-lg font-bold transition ${
               selectedPeriod === 'current_month'
-                ? 'bg-white dark:bg-[#1769F4] text-[#1769F4] dark:text-white shadow-xs'
+                ? 'bg-white dark:bg-[var(--mg-action)] text-[var(--mg-blue-ink)] dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -395,7 +395,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
           <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block uppercase">
             Середній чек
           </span>
-          <div className="text-xl sm:text-2xl font-black text-[#1769F4] dark:text-sky-400 mt-1 tabular-nums">
+          <div className="text-xl sm:text-2xl font-black text-[var(--mg-blue-ink)] dark:text-sky-400 mt-1 tabular-nums">
             {averageTripCost} ₴
           </div>
           <span className="text-[10px] text-slate-400 block mt-0.5">за 1 поїздку</span>
@@ -433,7 +433,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <h3 className="font-extrabold text-sm text-[#14243B] dark:text-white flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#1769F4]" />
+            <Calendar className="w-4 h-4 text-[var(--mg-blue-ink)]" />
             <span>Динаміка витрат за місяцями (2026)</span>
           </h3>
           <span className="text-xs text-slate-400">Гривні (₴)</span>
@@ -466,7 +466,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
                     {m.proAmount > 0 && (
                       <div
                         style={{ height: `${(m.proAmount / m.totalAmount) * 100}%` }}
-                        className="bg-[#1769F4] w-full"
+                        className="bg-[var(--mg-action)] w-full"
                         title={`Таксі & PRO: ${m.proAmount} ₴`}
                       />
                     )}
@@ -482,7 +482,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
 
                   {/* Month Label */}
                   <div className="text-center">
-                    <span className={`text-xs font-bold block ${isCurrent ? 'text-[#1769F4] dark:text-sky-400 font-extrabold' : 'text-slate-600 dark:text-slate-400'}`}>
+                    <span className={`text-xs font-bold block ${isCurrent ? 'text-[var(--mg-blue-ink)] dark:text-sky-400 font-extrabold' : 'text-slate-600 dark:text-slate-400'}`}>
                       {m.monthName}
                     </span>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold tabular-nums">
@@ -501,7 +501,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
               <span className="text-slate-700 dark:text-slate-300">Попутка Community (0%)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-[#1769F4]" />
+              <span className="w-3 h-3 rounded bg-[var(--mg-action)]" />
               <span className="text-slate-700 dark:text-slate-300">Таксі & PRO</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -550,7 +550,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
                 key={cat.category}
                 className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
                   isHovered
-                    ? 'border-[#1769F4] bg-blue-50/40 dark:bg-blue-950/30 shadow-xs'
+                    ? 'border-[var(--mg-blue)] bg-blue-50/40 dark:bg-blue-950/30 shadow-xs'
                     : 'border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 hover:bg-slate-100/70'
                 }`}
               >
@@ -581,8 +581,8 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
       </div>
 
       {/* Smart Community Insight Note */}
-      <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 flex items-start gap-3">
-        <Info className="w-4 h-4 text-[#1769F4] shrink-0 mt-0.5" />
+      <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-[var(--mg-border-subtle)] dark:border-blue-900 flex items-start gap-3">
+        <Info className="w-4 h-4 text-[var(--mg-blue-ink)] shrink-0 mt-0.5" />
         <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
           <strong className="text-[#14243B] dark:text-white">Справедлива економія MARSHGO:</strong>{' '}
           Використання попуток без комісії платформи дозволило скоротити ваші транспортні витрати в середньому на <strong>65%</strong> порівняно з міжміським індивідуальним таксі.

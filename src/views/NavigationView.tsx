@@ -137,7 +137,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Звідки:</label>
                 <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#081B35] border border-slate-600">
-                  <MapPin className="w-4 h-4 text-[#1769F4]" />
+                  <MapPin className="w-4 h-4 text-[var(--mg-blue-ink)]" />
                   <input
                     type="text"
                     value={origin}
@@ -163,7 +163,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
 
             <button
               onClick={() => onStartSession(origin, destination)}
-              className="w-full py-3.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white font-extrabold text-sm shadow-lg shadow-[#1769F4]/30 flex items-center justify-center gap-2 transition active:scale-95"
+              className="w-full py-3.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white font-extrabold text-sm shadow-lg shadow-[color:var(--mg-action)]/30 flex items-center justify-center gap-2 transition active:scale-95"
             >
               <Play className="w-5 h-5 fill-white" />
               <span>Почати навігацію (Стрий → Львів)</span>
@@ -231,7 +231,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
 
             {/* ACTIVE CORRIDOR MATCH CANDIDATE PROMPT (FLOW D) */}
             {session.matchmakingOptIn && activeCandidate && (
-              <div className="bg-gradient-to-r from-[#1769F4]/20 via-[#0F284E] to-[#16845C]/20 rounded-2xl border-2 border-[#1769F4] p-5 shadow-2xl space-y-4 animate-slideUp">
+              <div className="bg-gradient-to-r from-[var(--mg-blue-500)]/20 via-[#0F284E] to-[#16845C]/20 rounded-2xl border-2 border-[var(--mg-blue)] p-5 shadow-2xl space-y-4 animate-slideUp">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <img

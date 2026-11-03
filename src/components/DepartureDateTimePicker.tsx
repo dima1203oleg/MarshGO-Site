@@ -36,7 +36,7 @@ function WheelColumn({ label, values, selected, onSelect, selectedIndex }: {
   }, [selectedIndex]);
 
   return <div className="relative h-[220px] flex-1 overflow-hidden rounded-2xl bg-[#0d2340]">
-    <div className="pointer-events-none absolute inset-x-2 top-[88px] z-[1] h-11 rounded-xl border border-blue-300/20 bg-blue-400/10"/>
+    <div className="pointer-events-none absolute inset-x-2 top-[88px] z-[var(--mg-z-base)] h-11 rounded-xl border border-blue-300/20 bg-blue-400/10"/>
     <div
       ref={ref}
       role="listbox"
@@ -64,8 +64,8 @@ function WheelColumn({ label, values, selected, onSelect, selectedIndex }: {
       {values.map((value, index) => <button key={value} type="button" role="option" aria-selected={value === selected} onClick={() => { userScrolled.current = true; onSelect(value); if (ref.current) ref.current.scrollTop = index * ITEM_HEIGHT; }} className={`block h-11 w-full snap-center ${value === selected ? 'font-bold text-white' : ''}`}>{pad(value)}</button>)}
       <div aria-hidden="true" className="h-[88px]"/>
     </div>
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-16 bg-gradient-to-b from-[#0d2340] to-transparent"/>
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-16 bg-gradient-to-t from-[#0d2340] to-transparent"/>
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-[var(--mg-z-raised)] h-16 bg-gradient-to-b from-[#0d2340] to-transparent"/>
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[var(--mg-z-raised)] h-16 bg-gradient-to-t from-[#0d2340] to-transparent"/>
   </div>;
 }
 
@@ -106,8 +106,8 @@ export function DepartureDateTimePicker({ open, value, onChange, onClose }: {
   const visibleDates = Array.from({ length: 7 }, (_, index) => addDays(today, index));
   const commit = () => { onChange(`${date}T${pad(hour)}:${pad(minute)}`); onClose(); };
 
-  return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/65 px-3 pt-4 backdrop-blur-sm sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section role="dialog" aria-modal="true" aria-labelledby="departure-picker-title" className="max-h-[94dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-blue-900/50 bg-[#071a31] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 text-white shadow-2xl sm:rounded-[2rem]">
+  return <div className="fixed inset-0 z-[var(--mg-z-map-control)] flex items-end justify-center bg-slate-950/65 px-3 pt-4 backdrop-blur-sm sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section role="dialog" aria-modal="true" aria-labelledby="departure-picker-title" className="max-h-[94dvh] w-full max-w-md overflow-y-auto rounded-t-[var(--mg-radius-sheet)] border border-blue-900/50 bg-[#071a31] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 text-white shadow-2xl sm:rounded-[var(--mg-radius-sheet)]">
       <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-600"/>
       <header className="flex items-center justify-between"><button type="button" onClick={onClose} aria-label="Закрити вибір дати й часу" className="grid h-11 w-11 place-items-center rounded-full bg-[#102847] text-slate-300"><X size={19}/></button><h2 id="departure-picker-title" className="text-base font-extrabold">Час маршруту</h2><span className="w-11"/></header>
       <p className="mt-1 text-center text-xs text-slate-300">Виберіть дату й час відправлення</p>

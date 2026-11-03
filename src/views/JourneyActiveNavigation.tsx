@@ -11,7 +11,7 @@ import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMo
 import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { buildRouteMapAnnotations, isTransitLeg } from './routeMapAnnotations';
-import { routeSheetHeights, settleRouteSheetSnap, type RouteSheetSnap } from './routeSheet';
+import { createFrameWriter, prefersReducedMotion, routeSheetHeights, routeSheetTransition, settleRouteSheetSnap, subscribeReducedMotion, type RouteSheetSnap } from './routeSheet';
 import { themeService } from '../services/theme';
 import { priorityLevelOf } from '../map/transportVisualZones';
 import { formatJourneyDurationTile } from './journeyResultPresentation';
@@ -49,7 +49,11 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
   const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 340 : routeSheetHeights(window.innerHeight).half);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
-  const [dragging, setDragging] = useState(false);
+  // The gesture deliberately bypasses React state. A re-render on touch-down measured two
+  // ~89 ms blocked-main-thread tasks in Chromium (audit report 393x852): that is exactly the
+  // hitch a rider reads as "the sheet ignored my finger". The refs and the imperative styles in
+  // the handlers are the live values; state is written only when the sheet commits to a detent.
+  const draggingRef = useRef(false);
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
   const [focusWhole, setFocusWhole] = useState(false);
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
@@ -59,6 +63,22 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
   const sheetHeightRef = useRef(sheetHeight);
   const dragStart = useRef<{ y: number; height: number; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
   const suppressHandleClick = useRef(false);
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  const dragWriter = useRef<ReturnType<typeof createFrameWriter> | null>(null);
+  if (dragWriter.current === null) {
+    dragWriter.current = createFrameWriter((height) => {
+      const sheet = sheetElement.current;
+      if (!sheet) return;
+      sheet.style.transition = 'none';
+      sheet.style.height = `${height}px`;
+    });
+  }
+
+  useEffect(() => subscribeReducedMotion(setReducedMotion), []);
+  useEffect(() => {
+    const writer = dragWriter.current;
+    return () => writer?.discard();
+  }, []);
 
   const leg = legs[Math.min(legIndex, Math.max(0, legs.length - 1))];
   const liveLeg = leg && isTransitLeg(leg) ? leg : undefined;
@@ -175,7 +195,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
   }, [focusWhole, leg?.id, legSegment, liveSegment, model.routeSegments]);
 
   useEffect(() => {
-    if (dragging || !mapAdapterReady || !leg) return;
+    if (draggingRef.current || !mapAdapterReady || !leg) return;
     const adapter = mapAdapter.current;
     if (!adapter) return;
     adapter.setActiveRouteSegment?.(leg.id);
@@ -191,7 +211,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
       return;
     }
     adapter.fitRoute(mapPadding);
-  }, [dragging, focusData.key, leg, mapAdapterReady, mapPadding, sheetSnap, focusWhole]);
+  }, [focusData.key, leg, mapAdapterReady, mapPadding, sheetSnap, focusWhole]);
 
   useEffect(() => {
     const updateViewport = () => {
@@ -220,14 +240,14 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
     const now = performance.now();
     const renderedHeight = sheetElement.current?.getBoundingClientRect().height ?? sheetHeightRef.current;
     sheetHeightRef.current = renderedHeight;
-    setSheetHeight(renderedHeight);
+    draggingRef.current = true;
     if (sheetElement.current) {
-      sheetElement.current.style.transition = 'none';
+      sheetElement.current.dataset.dragging = 'true';
+      sheetElement.current.style.transition = routeSheetTransition(true, reducedMotion);
       sheetElement.current.style.height = `${renderedHeight}px`;
     }
     dragStart.current = { y: event.clientY, height: renderedHeight, pointerId: event.pointerId, moved: false, lastY: event.clientY, lastAt: now, velocity: 0 };
     event.currentTarget.setPointerCapture(event.pointerId);
-    setDragging(true);
   };
   const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStart.current;
@@ -243,21 +263,27 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
     start.lastAt = now;
     const heights = routeSheetHeights(viewportHeight);
     const nextHeight = Math.min(heights.expanded, Math.max(heights.collapsed, start.height + delta));
+    // The ref is authoritative immediately so the release can settle on the true height;
+    // only the paint is coalesced into the next frame.
     sheetHeightRef.current = nextHeight;
-    if (sheetElement.current) {
-      sheetElement.current.style.transition = 'none';
-      sheetElement.current.style.height = `${nextHeight}px`;
-    }
+    dragWriter.current?.schedule(nextHeight);
   };
   const handlePointerEnd = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStart.current;
     if (!start || start.pointerId !== event.pointerId) return;
+    dragWriter.current?.flush();
     if (start.moved) {
       const heights = routeSheetHeights(viewportHeight);
       moveToSnap(settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height));
     }
     dragStart.current = null;
-    setDragging(false);
+    draggingRef.current = false;
+    if (sheetElement.current) {
+      sheetElement.current.dataset.dragging = 'false';
+      // moveToSnap can settle on the detent the sheet is already at, in which case React skips the
+      // render entirely; restoring the curve here is what keeps the *next* snap animated.
+      sheetElement.current.style.transition = routeSheetTransition(false, reducedMotion);
+    }
   };
 
   const jumpToLeg = useCallback((index: number) => {
@@ -266,7 +292,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
   }, []);
 
   if (!leg) {
-    return <main className="route-map-screen fixed inset-0 z-[80] grid place-items-center p-6 text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'}>
+    return <main className="route-map-screen fixed inset-0 z-[var(--mg-z-map-chip)] grid place-items-center p-6 text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'}>
       <div className="text-center">
         <p className="text-[15px] font-extrabold">У цьому маршруті немає етапів.</p>
         <button type="button" onClick={onExit} className="mg-route-cta mt-4 px-6">До маршруту</button>
@@ -294,7 +320,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
   };
 
   return <main
-    className="route-map-screen fixed inset-0 z-[80] overflow-hidden text-[var(--route-ink)]"
+    className="route-map-screen fixed inset-0 z-[var(--mg-z-map-chip)] overflow-hidden text-[var(--route-ink)]"
     data-theme={isDark ? 'dark' : 'light'}
     data-sheet-snap={sheetSnap}
     data-testid="active-journey-navigation"
@@ -360,11 +386,12 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
 
     <section
       ref={sheetElement}
-      className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-3xl flex-col overflow-hidden rounded-t-[1.75rem] border border-[var(--route-border)] bg-[var(--route-sheet)] shadow-[var(--route-sheet-shadow)]"
+      className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-3xl flex-col overflow-hidden rounded-t-[var(--mg-radius-3xl)] border border-[var(--route-border)] bg-[var(--route-sheet)] shadow-[var(--route-sheet-shadow)]"
       aria-label="Поточний етап маршруту"
       data-testid="active-navigation-sheet"
       data-sheet-state={sheetSnap}
-      style={{ height: `${sheetHeight}px`, transition: dragging ? 'none' : 'height var(--mg-dur-base) var(--mg-ease-entrance)', paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
+      data-dragging={draggingRef.current ? 'true' : 'false'}
+      style={{ height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`, transition: routeSheetTransition(draggingRef.current, reducedMotion), paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
     >
       <button
         type="button"

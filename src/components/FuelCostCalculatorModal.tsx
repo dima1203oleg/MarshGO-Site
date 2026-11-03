@@ -105,7 +105,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
               <h2 className="text-base sm:text-lg font-extrabold">
                 Калькулятор справедливого розподілу пального
               </h2>
-              <p className="text-xs text-blue-100">
+              <p className="text-xs text-[var(--mg-on-action)]">
                 Прозорий розрахунок без комерційної націнки згідно з принципами Community
               </p>
             </div>
@@ -137,7 +137,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
               <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-bold uppercase">
                 Відстань
               </span>
-              <span className="font-extrabold text-sm text-[#1769F4] dark:text-sky-400">
+              <span className="font-extrabold text-sm text-[var(--mg-blue-ink)] dark:text-sky-400">
                 {distanceKm} км
               </span>
             </div>
@@ -158,7 +158,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
               step="10"
               value={distanceKm}
               onChange={(e) => setDistanceKm(Number(e.target.value))}
-              className="w-full accent-[#1769F4] cursor-pointer"
+              className="w-full accent-[var(--mg-action)] cursor-pointer"
             />
           </div>
 
@@ -175,7 +175,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
                   onClick={() => handleFuelChange(fuel.id)}
                   className={`p-2 rounded-xl border text-center transition font-bold ${
                     fuelTypeId === fuel.id
-                      ? 'bg-[#1769F4] text-white border-[#1769F4] shadow-xs'
+                      ? 'bg-[var(--mg-action)] text-white border-[var(--mg-blue)] shadow-xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                   }`}
                 >
@@ -227,7 +227,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
                   onClick={() => setPassengersCount(num)}
                   className={`flex-1 py-1.5 rounded-xl font-bold transition text-xs ${
                     passengersCount === num
-                      ? 'bg-[#1769F4] text-white shadow-xs'
+                      ? 'bg-[var(--mg-action)] text-white shadow-xs'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
                   }`}
                 >
@@ -243,7 +243,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
               type="checkbox"
               checked={includeWearAndTear}
               onChange={(e) => setIncludeWearAndTear(e.target.checked)}
-              className="rounded text-[#1769F4] focus:ring-0"
+              className="rounded text-[var(--mg-blue-ink)] focus:ring-0"
             />
             <div>
               <span className="text-slate-800 dark:text-slate-200 font-bold block">
@@ -294,7 +294,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white text-xs font-bold transition shadow-xs"
+            className="px-5 py-2 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white text-xs font-bold transition shadow-xs"
           >
             Зрозуміло, дякую!
           </button>

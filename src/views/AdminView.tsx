@@ -118,8 +118,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </div>
               <div className="bg-white p-4 rounded-xl border border-slate-200">
                 <span className="text-[11px] text-[#62718A] uppercase font-bold">Відкритий попит</span>
-                <div className="text-2xl font-black text-[#1769F4] mt-1 tabular-nums">{demands.length}</div>
-                <div className="text-[10px] text-blue-600 mt-0.5">Біржа попиту</div>
+                <div className="text-2xl font-black text-[var(--mg-blue-ink)] mt-1 tabular-nums">{demands.length}</div>
+                <div className="text-[10px] text-[var(--mg-blue)] mt-0.5">Біржа попиту</div>
               </div>
               <div className="bg-white p-4 rounded-xl border border-slate-200">
                 <span className="text-[11px] text-[#62718A] uppercase font-bold">Комісія Community</span>
@@ -187,7 +187,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               Відповідно до інструкції, MARSHGO не стверджує, що сума нижче певної кількості грн/км автоматично звільняє від ліцензії перевізника в Україні.
               Система застосовує внутрішні risk guardrails та розділяє режим <strong>Community (0% комісії MARSHGO)</strong> і режим <strong>PRO / Ліцензовані перевізники</strong>.
             </p>
-            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 font-medium">
+            <div className="p-3 rounded-xl bg-blue-50 border border-[var(--mg-border-subtle)] text-blue-950 font-medium">
               ✓ 0% комісії платформи для Community зафіксовано на рівні коду.
               <br />
               ✓ Будь-які підозри щодо комерційної регулярної діяльності маркуються для ручної перевірки.

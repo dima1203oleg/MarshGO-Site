@@ -41,7 +41,7 @@ export function MobilityAdminPanel() {
   };
 
   return <section className="mt-6" aria-label="Центр керування мобільністю">
-    <div className="mb-3 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-600">Адміністрування</p><h2 className="text-lg font-extrabold">Центр керування мобільністю</h2></div>
+    <div className="mb-3 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[var(--mg-blue)]">Адміністрування</p><h2 className="text-lg font-extrabold">Центр керування мобільністю</h2></div>
       <button type="button" onClick={() => setAdding((value) => !value)} className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--mg-action)] px-3 py-2 text-xs font-bold text-white"><Plus size={14}/>Додати</button></div>
     {message && <p role="status" className="mb-3 rounded-xl bg-blue-50 p-3 text-xs text-blue-800">{message}</p>}
     <div className="mb-5 space-y-2">

@@ -139,7 +139,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
                     onClick={() => handleToggleTag(tag)}
                     className={`px-2.5 py-1 rounded-full text-xs font-semibold transition ${
                       isSelected
-                        ? 'bg-[#1769F4] text-white shadow-xs'
+                        ? 'bg-[var(--mg-action)] text-white shadow-xs'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                   >
@@ -160,7 +160,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Поділіться враженнями від поїздки, щоб допомогти іншим користувачам..."
-              className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#1769F4] resize-none"
+              className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--mg-blue)] resize-none"
             />
           </div>
 
@@ -175,7 +175,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
             </button>
             <button
               type="submit"
-              className="w-2/3 py-2.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white text-xs font-extrabold shadow-md shadow-[#1769F4]/20 transition flex items-center justify-center gap-2 active:scale-95"
+              className="w-2/3 py-2.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white text-xs font-extrabold shadow-md shadow-[color:var(--mg-action)]/20 transition flex items-center justify-center gap-2 active:scale-95"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>Зберегти відгук</span>

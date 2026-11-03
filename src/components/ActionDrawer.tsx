@@ -45,15 +45,15 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({
               onClose();
               onSelectAction('demand_new');
             }}
-            className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-[#1769F4] hover:bg-[#F5F8FD] transition group flex items-start gap-4"
+            className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-[var(--mg-blue)] hover:bg-[#F5F8FD] transition group flex items-start gap-4"
           >
-            <div className="w-11 h-11 rounded-xl bg-[#EFF6FF] text-[#1769F4] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-11 h-11 rounded-xl bg-[#EFF6FF] text-[var(--mg-blue-ink)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <Search className="w-5 h-5" />
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-sm text-[#14243B]">Шукаю поїздку (Назвати ціну)</h4>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#1769F4] transition-colors" />
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[var(--mg-blue-ink)] transition-colors" />
               </div>
               <p className="text-xs text-[#62718A] mt-1">
                 Вкажіть маршрут, час та бюджет. Водії побачать заявку і запропонують авто.
@@ -92,7 +92,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({
               onClose();
               onSelectAction('navigation');
             }}
-            className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-[#1769F4] hover:bg-[#081B35]/5 transition group flex items-start gap-4"
+            className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-[var(--mg-blue)] hover:bg-[#081B35]/5 transition group flex items-start gap-4"
           >
             <div className="w-11 h-11 rounded-xl bg-[#081B35] text-[#38BDF8] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <Navigation className="w-5 h-5" />
@@ -103,7 +103,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({
                   <h4 className="font-bold text-sm text-[#14243B]">MARSHGO Навігація</h4>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">Beta</span>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#1769F4] transition-colors" />
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[var(--mg-blue-ink)] transition-colors" />
               </div>
               <p className="text-xs text-[#62718A] mt-1">
                 Їдьте власним маршрутом. За бажанням система підкаже пасажирів дорогою.
