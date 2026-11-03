@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ArrowLeftRight, ChevronRight, Clock, Coins, Heart, Info, Scale, Star, Timer,
+  ArrowLeftRight, ChevronRight, Clock, Coins, Heart, Info, Scale, Star, Timer, X,
 } from 'lucide-react';
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
@@ -165,9 +165,9 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
 /**
  * Shown while a journey search is in flight. Multi-provider corridors really do take tens of
  * seconds, so the only honest progress signal is measured elapsed time plus a skeleton of the
- * cards that are about to arrive.
+ * cards that are about to arrive — and a way out, because the passenger may not want to wait.
  */
-export function JourneySearchPending({ startedAt }: { startedAt: number }) {
+export function JourneySearchPending({ startedAt, onCancel }: { startedAt: number; onCancel?: () => void }) {
   const [elapsedSeconds, setElapsedSeconds] = useState(() => Math.max(0, Math.round((Date.now() - startedAt) / 1000)));
   useEffect(() => {
     setElapsedSeconds(Math.max(0, Math.round((Date.now() - startedAt) / 1000)));
@@ -182,6 +182,9 @@ export function JourneySearchPending({ startedAt }: { startedAt: number }) {
       <span className="tabular-nums">{copy.title}</span>
     </p>
     {copy.note && <p className="text-[10px] leading-4 text-slate-500 dark:text-slate-400">{copy.note}</p>}
+    {onCancel && <button type="button" onClick={onCancel} data-testid="journey-search-cancel" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 text-xs font-bold text-slate-700 transition-colors hover:border-[var(--mg-action)] hover:text-[var(--mg-blue-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)] dark:border-slate-700 dark:text-slate-100 dark:hover:text-[var(--mg-blue)]">
+      <X size={13} aria-hidden="true" />Скасувати пошук
+    </button>}
     {[0, 1, 2].map(i => <div
       key={i}
       className="mg-rise mg-stagger flex items-start gap-3 rounded-2xl border border-slate-200/70 bg-white/70 p-3 dark:border-slate-700/60 dark:bg-slate-900/50"

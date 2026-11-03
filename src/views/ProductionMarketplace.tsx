@@ -37,6 +37,7 @@ import { currentPlaceBias } from '../platform/placeBias';
 import { parseSharedNavigationDestination } from '../routing/navigationShare';
 import { navigationDestinationName } from '../navigation/destinationName';
 import { JourneyResultsPanel, JourneySearchPending } from './JourneyResultsPanel';
+import { JOURNEY_SEARCH_DEADLINE_MS, journeySearchAbortMessage } from './journeyResultPresentation';
 import { JourneyRouteMapScreen } from './JourneyRouteMapScreen';
 import { JourneyActiveNavigation } from './JourneyActiveNavigation';
 const MobilityAdminPanel = lazy(() => import('./MobilityAdminPanel').then((module) => ({ default: module.MobilityAdminPanel })));
@@ -258,6 +259,7 @@ export function ProductionMarketplace() {
   const routedEntityKey = useRef('');
   const bookingsPollCooldownUntil = useRef(0);
   const hydratedSearchLocation = useRef<string | null>(null);
+  const journeySearchAbort = useRef<AbortController | null>(null);
 
   const refreshUnreadConversations = useCallback(async () => {
     const unread = await productionApi.conversationUnreadCounts();
@@ -617,6 +619,12 @@ export function ProductionMarketplace() {
       setDeparturePickerOpen(true);
       return;
     }
+    // Only one search may own the results screen: a replaced run must stay silent, or its late
+    // rejection would hide the new pending card and clear the new busy flag.
+    journeySearchAbort.current?.abort('superseded');
+    const controller = new AbortController();
+    journeySearchAbort.current = controller;
+    const deadlineId = window.setTimeout(() => controller.abort('timeout'), JOURNEY_SEARCH_DEADLINE_MS);
     setBusy(true); setStatusMessage(''); setJourneySearchStartedAt(Date.now()); setShowResults(true);
     try {
       setJourneyResult(null);
@@ -625,6 +633,7 @@ export function ProductionMarketplace() {
         destination: { name: searchDestinationPlace.label, coordinates: [searchDestinationPlace.longitude, searchDestinationPlace.latitude] },
         departureAt: departure.toISOString(), passengers: seats, strategy: journeyStrategy,
         preferences: toJourneyPreferences(transportSelection, providerGroups),
+        signal: controller.signal,
       });
       setJourneyResult(result); setShowResults(true); setRestoredSearchMode('planner');
       const searchPath = buildSearchRoute({
@@ -644,18 +653,30 @@ export function ProductionMarketplace() {
         setStatusMessage(error instanceof Error ? `Попутки не вдалося отримати: ${error.message}` : 'Попутки тимчасово недоступні.');
       }
     } catch (error) {
-      // The results screen has no status line, so a failed search must return to the form
-      // where the message is actually rendered.
-      setShowResults(false);
-      const message = error instanceof Error ? error.message : '';
-      const needsSignIn = (error instanceof ProductionApiError && (error.status === 401 || error.status === 403))
-        || /authentication required|unauthorized/i.test(message);
-      setStatusMessage(needsSignIn
-        ? 'Щоб отримати реальні пропозиції, увійдіть в акаунт і повторіть пошук.'
-        : message || 'Не вдалося побудувати маршрут.');
+      if (journeySearchAbort.current === controller) {
+        // The results screen has no status line, so a failed search must return to the form
+        // where the message is actually rendered.
+        setShowResults(false);
+        const message = error instanceof Error ? error.message : '';
+        const needsSignIn = (error instanceof ProductionApiError && (error.status === 401 || error.status === 403))
+          || /authentication required|unauthorized/i.test(message);
+        setStatusMessage(controller.signal.aborted
+          ? journeySearchAbortMessage(controller.signal.reason)
+          : needsSignIn
+            ? 'Щоб отримати реальні пропозиції, увійдіть в акаунт і повторіть пошук.'
+            : message || 'Не вдалося побудувати маршрут.');
+      }
     }
-    finally { setBusy(false); setJourneySearchStartedAt(null); }
+    finally {
+      window.clearTimeout(deadlineId);
+      if (journeySearchAbort.current === controller) {
+        journeySearchAbort.current = null;
+        setBusy(false); setJourneySearchStartedAt(null);
+      }
+    }
   };
+
+  const cancelJourneySearch = () => { journeySearchAbort.current?.abort('cancelled'); };
 
   const openJourneyOffer = async (offerId: string, journeyId: string, journeyLegId: string) => {
     setBusy(true); setStatusMessage('');
@@ -1624,7 +1645,7 @@ export function ProductionMarketplace() {
       <p title={fullRoute} className="line-clamp-2 min-w-0 flex-1 break-words text-[11px] font-bold leading-[14px]"><span className="text-[#526477] dark:text-[#B4C0CF]">Маршрут: </span>{displayRoute}</p>
       <button type="button" onClick={returnToSearch} aria-label="Змінити маршрут пошуку" title="Змінити маршрут" className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 text-[10px] font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:text-slate-100 dark:hover:border-blue-500 dark:hover:text-blue-300"><Pencil size={12}/>Змінити</button>
     </header>
-    {journeyResult ? <><JourneyResultsPanel result={journeyResult} onOpenMap={setSelectedRouteMap}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt}/> : restoredSearchMode === 'planner' ? <><div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]"><Compass className="mx-auto text-blue-600"/><p className="mt-2 font-bold">Параметри маршруту відновлено</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Оновіть план, щоб перевірити актуальні пропозиції.</p>{statusMessage ? <p role="alert" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-bold leading-snug text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">{statusMessage}</p> : null}<button onClick={()=>void searchJourney()} className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Знайти маршрут</button></div>{carpoolSection}</> : carpoolSection}
+    {journeyResult ? <><JourneyResultsPanel result={journeyResult} onOpenMap={setSelectedRouteMap}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt} onCancel={cancelJourneySearch}/> : restoredSearchMode === 'planner' ? <><div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]"><Compass className="mx-auto text-blue-600"/><p className="mt-2 font-bold">Параметри маршруту відновлено</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Оновіть план, щоб перевірити актуальні пропозиції.</p>{statusMessage ? <p role="alert" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-bold leading-snug text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">{statusMessage}</p> : null}<button onClick={()=>void searchJourney()} className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Знайти маршрут</button></div>{carpoolSection}</> : carpoolSection}
   </main>;
 
   const visibleBookings = route?.kind === 'booking' && route.entityId ? bookings.filter((booking) => booking.id === route.entityId) : bookings;

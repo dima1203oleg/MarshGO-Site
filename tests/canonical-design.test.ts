@@ -116,8 +116,16 @@ test('journey search enters the results screen and shows a pending panel while p
     'search must move the passenger to the results screen before awaiting providers');
   assert.match(marketplace, /journeySearchStartedAt !== null \? <JourneySearchPending/,
     'results body lost its pending branch');
-  assert.match(marketplace, /finally \{ setBusy\(false\); setJourneySearchStartedAt\(null\); \}/,
+  assert.match(marketplace, /setTimeout\(\(\) => controller\.abort\('timeout'\), JOURNEY_SEARCH_DEADLINE_MS\)/,
+    'search must stop on its own deadline instead of waiting for the gateway to cut it');
+  assert.match(marketplace, /signal: controller\.signal,/,
+    'the search request must carry the abort signal, or cancel does nothing');
+  assert.match(marketplace, /window\.clearTimeout\(deadlineId\);[\s\S]{0,200}setBusy\(false\); setJourneySearchStartedAt\(null\);/,
     'the pending clock must stop when the search settles');
+  assert.match(marketplace, /<JourneySearchPending startedAt=\{journeySearchStartedAt\} onCancel=\{cancelJourneySearch\}/,
+    'the pending panel lost its way out');
+  assert.match(panel, /data-testid="journey-search-cancel"/,
+    'a passenger who waits 45 s must be able to stop waiting');
   assert.match(panel, /data-testid="journey-search-pending"[\s\S]{0,200}aria-live="polite"/,
     'pending state must be announced to screen readers');
   assert.match(panel, /mg-skeleton/, 'pending cards stopped using the shimmer placeholder');
