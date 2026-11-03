@@ -16,7 +16,10 @@ export function funnelLines(result: ApiJourneySearchResult): string[] {
   const completeness = result.completeness;
   if (completeness) {
     lines.push(`Провайдери: ${completeness.providersQueried} запитано · ${completeness.providersSucceeded} успішно · ${completeness.providersFailed} із збоєм`);
-    lines.push(`Кандидати: ${completeness.candidatesGenerated} згенеровано · ${completeness.candidatesValidated} валідовано · ${completeness.candidatesRejected} відхилено · ${completeness.candidatesDeduplicated} після дедуплікації`);
+    // Server calls this counter `candidatesDeduplicated`, but it carries the Pareto frontier size: the journeys
+    // nothing else beats on every measure. Naming it "після дедуплікації" made a thin frontier look like a
+    // deleted duplicate, while the list can legitimately be longer than it (best ride of each route chain).
+    lines.push(`Кандидати: ${completeness.candidatesGenerated} згенеровано · ${completeness.candidatesValidated} валідовано · ${completeness.candidatesRejected} відхилено · ${completeness.candidatesDeduplicated} після Pareto-фільтра`);
     lines.push(`Видано: ${completeness.resultsReturned} · пошук ${completeness.searchComplete ? 'завершений' : 'обмежений'}${completeness.transitSearchFailed ? ' · публічний транспорт не відповідав' : ''}`);
     // The extended count is validated candidates, not returned cards — the two numbers must not be merged.
     if (completeness.walkReachExtended) {
