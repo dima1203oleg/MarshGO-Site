@@ -483,15 +483,17 @@ async function requestEnvelope<T>(path: string, init: RequestInit = {}, retryAut
   const body = await response.json().catch(() => null) as { data?: T; meta?: TransportLayerMeta | null; error?: { code?: string; message?: string } } | null;
   if (response.status === 401 && retryAuth && accessToken && !path.startsWith('/auth/')) {
     if (tokenUsed !== accessToken) return requestEnvelope<T>(path, init, false);
+    // A refresh started with the token we just sent must not write its result over a
+    // newer session: login() can finish while this request is still awaiting the refresh.
+    const adoptSession = (nextToken: string | null) => { if (tokenUsed === accessToken) accessToken = nextToken; };
     try {
       refreshInFlight ??= requestEnvelope<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false)
-        .then((session) => { accessToken = session.data.accessToken; return session.data; })
+        .then((refreshed) => { adoptSession(refreshed.data.accessToken); return refreshed.data; })
         .finally(() => { refreshInFlight = null; });
-      const session = await refreshInFlight;
-      accessToken = session.accessToken;
+      await refreshInFlight;
       return requestEnvelope<T>(path, init, false);
     } catch {
-      accessToken = null;
+      adoptSession(null);
     }
   }
   if (!response.ok) {
