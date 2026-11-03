@@ -238,7 +238,14 @@ export function ProductionMarketplace() {
   const [exportingData, setExportingData] = useState(false);
   const [deletionRequest, setDeletionRequest] = useState<ApiAccountDeletionRequest | null>(null);
   const [deletionBusy, setDeletionBusy] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
+  const [statusMessage, setStatusMessageText] = useState('');
+  // D-06 (THEME-1): the same pill carried errors and information. The second argument
+  // marks failures; an error then reads via icon + role + text, never color alone.
+  const [statusIsError, setStatusIsError] = useState(false);
+  const setStatusMessage = useCallback((message: string, isError = false) => {
+    setStatusIsError(isError);
+    setStatusMessageText(message);
+  }, []);
   const [authError, setAuthError] = useState('');
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [verificationTarget, setVerificationTarget] = useState<ApiVehicle | null>(null);
@@ -290,7 +297,7 @@ export function ProductionMarketplace() {
   useEffect(() => {
     if (!user || loading || tab !== 'admin' || !user.roles.some((role) => role === 'admin' || role === 'moderator')) return;
     void Promise.all([refreshAdminQueue(), refreshModerationCases()]).catch((error: unknown) => {
-      setStatusMessage(error instanceof Error ? error.message : 'Черга модерації недоступна.');
+      setStatusMessage(error instanceof Error ? error.message : 'Черга модерації недоступна.', true);
     });
   }, [loading, refreshAdminQueue, refreshModerationCases, tab, user?.id, user?.roles.join(',')]);
   // Until the user picks a section, show the first one that has trips (active → upcoming → past). Declared before any early return.
@@ -351,7 +358,7 @@ export function ProductionMarketplace() {
     }).then((nextOffers) => {
       if (active) setOffers(nextOffers);
     }).catch((error: unknown) => {
-      if (active) setStatusMessage(error instanceof Error ? error.message : 'Не вдалося відновити результати пошуку.');
+      if (active) setStatusMessage(error instanceof Error ? error.message : 'Не вдалося відновити результати пошуку.', true);
     });
     if (parsed.mode === 'planner') {
       setStatusMessage('Параметри планування відновлено. Натисніть «Знайти маршрут», щоб оновити варіанти.');
@@ -440,7 +447,7 @@ export function ProductionMarketplace() {
         }
       } catch (error) {
         if (!active) return;
-        setStatusMessage(deepLinkFailureMessage(error));
+        setStatusMessage(deepLinkFailureMessage(error), true);
         activateTab(route.tab);
       }
     };
@@ -457,7 +464,7 @@ export function ProductionMarketplace() {
         return;
       }
       if (event.type === 'journey.updated') {
-        void refreshJourneys().catch(() => setStatusMessage('Маршрут не оновився. Оновіть список поїздок.'));
+        void refreshJourneys().catch(() => setStatusMessage('Маршрут не оновився. Оновіть список поїздок.', true));
         setStatusMessage(event.data.state === 'READY' ? 'Ваш маршрут готов, бронювання збережене.'
           : event.data.state === 'PARTIALLY_RESERVED' ? 'Бронювання попутки підтверджене. Квитки на інші сегменти маршруту оформлюються окремо.'
             : 'Стан маршруту змінився. Перевірте актуальні варіанти.');
@@ -468,7 +475,7 @@ export function ProductionMarketplace() {
       if (event.type === 'trip.updated') setStatusMessage('Водій оновив поїздку. Перевірте актуальні деталі.');
       if (event.type.startsWith('booking.') || event.type.startsWith('trip.')) {
         void Promise.all([refreshBookings(), ...(user.roles.includes('driver') ? [refreshMyOffers()] : [])])
-          .catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Стан бронювання не оновився.'));
+          .catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Стан бронювання не оновився.', true));
         return;
       }
       if (event.type.startsWith('rendezvous.')) {
@@ -487,7 +494,7 @@ export function ProductionMarketplace() {
                 setStatusMessage('Водій зацікавився вашою заявкою на маршрут.');
               }
             })
-            .catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити пропозиції водіїв.'));
+            .catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити пропозиції водіїв.', true));
         }
         return;
       }
@@ -496,7 +503,7 @@ export function ProductionMarketplace() {
       if (user.roles.includes('driver')) refreshes.push(refreshOpenDemands());
       if (user.roles.includes('passenger')) refreshes.push(refreshMyDemands());
       if (selectedDemand) refreshes.push(productionApi.demandProposals(selectedDemand.id).then(setProposals));
-      void Promise.all(refreshes).catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Цінова пропозиція змінилася. Оновіть список.'));
+      void Promise.all(refreshes).catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Цінова пропозиція змінилася. Оновіть список.', true));
     }, () => undefined);
   }, [refreshBookings, refreshJourneys, refreshMyDemands, refreshMyOffers, refreshNotifications, refreshOpenDemands, refreshPassengerNavigationMatches, refreshUnreadConversations, selectedDemand?.id, user?.id, user?.roles.join(',')]);
 
@@ -525,10 +532,10 @@ export function ProductionMarketplace() {
         // A 429 means every further 3s tick would only deepen the throttle; pause the poll instead of storming the API.
         if (error instanceof ProductionApiError && error.code === 'rate_limit_exceeded') {
           bookingsPollCooldownUntil.current = Date.now() + 60_000;
-          setStatusMessage('Сервер просить робити запити рідше. Автооновлення поїздок призупинено на хвилину.');
+          setStatusMessage('Сервер просить робити запити рідше. Автооновлення поїздок призупинено на хвилину.', true);
           return;
         }
-        setStatusMessage(error instanceof Error ? error.message : 'Стан поїздок не оновився.');
+        setStatusMessage(error instanceof Error ? error.message : 'Стан поїздок не оновився.', true);
       });
     }, 3000);
     return () => window.clearInterval(timer);
@@ -571,7 +578,7 @@ export function ProductionMarketplace() {
         }).catch(() => undefined);
       });
     }).catch((error: unknown) => {
-      if (!disposed) setStatusMessage(error instanceof Error ? error.message : 'Чат недоступний.');
+      if (!disposed) setStatusMessage(error instanceof Error ? error.message : 'Чат недоступний.', true);
     });
     return () => { disposed = true; unsubscribe(); setRealtimeConnected(false); };
   }, [refreshUnreadConversations, selectedBooking?.id, tab]);
@@ -641,7 +648,7 @@ export function ProductionMarketplace() {
         }));
       } catch (error) {
         setOffers([]);
-        setStatusMessage(error instanceof Error ? `Попутки не вдалося отримати: ${error.message}` : 'Попутки тимчасово недоступні.');
+        setStatusMessage(error instanceof Error ? `Попутки не вдалося отримати: ${error.message}` : 'Попутки тимчасово недоступні.', true);
       }
     } catch (error) {
       // The results screen has no status line, so a failed search must return to the form
@@ -652,7 +659,7 @@ export function ProductionMarketplace() {
         || /authentication required|unauthorized/i.test(message);
       setStatusMessage(needsSignIn
         ? 'Щоб отримати реальні пропозиції, увійдіть в акаунт і повторіть пошук.'
-        : message || 'Не вдалося побудувати маршрут.');
+        : message || 'Не вдалося побудувати маршрут.', true);
     }
     finally { setBusy(false); setJourneySearchStartedAt(null); }
   };
@@ -666,7 +673,7 @@ export function ProductionMarketplace() {
       setSelectedJourney(null);
       setRoutePath(pathForProductionEntity('offer', offerId));
     }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пропозиція більше недоступна. Оновіть пошук.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пропозиція більше недоступна. Оновіть пошук.', true); }
     finally { setBusy(false); }
   };
 
@@ -675,7 +682,7 @@ export function ProductionMarketplace() {
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setRoutePlaceField(field); setRoutePlaceSuggestions([]); setPlaceSearchBusy(true); setStatusMessage('');
     try { setRoutePlaceSuggestions(await productionApi.suggestPlaces(query, await currentPlaceBias())); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.', true); }
     finally { setPlaceSearchBusy(false); }
   };
 
@@ -692,13 +699,13 @@ export function ProductionMarketplace() {
   };
 
   const useMyLocationAsOrigin = async () => {
-    if (!navigator.geolocation) { setStatusMessage('Геолокація недоступна на цьому пристрої.'); return; }
+    if (!navigator.geolocation) { setStatusMessage('Геолокація недоступна на цьому пристрої.', true); return; }
     setStatusMessage('');
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15_000 }));
       const place = await productionApi.reverseGeocode(position.coords.latitude, position.coords.longitude);
       setSearchOriginPlace(place); setOrigin(place.label); setRoutePlaceSuggestions([]); setRoutePlaceField(null);
-    } catch (error) { setStatusMessage(error instanceof Error && error.message ? error.message : 'Не вдалося визначити місцезнаходження. Дозвольте геолокацію в браузері.'); }
+    } catch (error) { setStatusMessage(error instanceof Error && error.message ? error.message : 'Не вдалося визначити місцезнаходження. Дозвольте геолокацію в браузері.', true); }
   };
 
   const chooseSearchPlace = (place: ApiPlace) => {
@@ -723,7 +730,7 @@ export function ProductionMarketplace() {
       setPlaceSearchBusy(true);
       void lookup()
         .catch((error: unknown) => {
-          if (!cancelled) setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.');
+          if (!cancelled) setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.', true);
         })
         .finally(() => { if (!cancelled) setPlaceSearchBusy(false); });
     }, 280);
@@ -783,7 +790,7 @@ export function ProductionMarketplace() {
       setBookingToConfirm(null);
       setSelectedOffer(null); setJourneyBookingLink(null); setTab('trips');
     } catch (error) {
-      setStatusMessage(bookingFailureMessage(error));
+      setStatusMessage(bookingFailureMessage(error), true);
       setBookingToConfirm(null);
       // A rejected or unanswered request may still have committed server-side,
       // and the seat count on screen is already known to be stale: reconcile
@@ -831,7 +838,7 @@ export function ProductionMarketplace() {
       setStatusMessage(booking.current_user_is_driver
         ? 'Бронювання скасовано на сервері, місця повернено. Пасажиру надіслано оновлення.'
         : 'Бронювання скасовано. Перевіряємо актуальні поїздки поруч із цим маршрутом.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося скасувати бронювання.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося скасувати бронювання.', true); }
     finally { setBusy(false); }
   };
 
@@ -840,27 +847,27 @@ export function ProductionMarketplace() {
     try {
       const ticket = await productionApi.bookingTicket(booking.id);
       setVisibleBookingTicket({ bookingId: booking.id, token: ticket.token });
-    } catch (error) { setStatusMessage(ticketFailureMessage(error)); setVisibleBookingTicket(null); }
+    } catch (error) { setStatusMessage(ticketFailureMessage(error), true); setVisibleBookingTicket(null); }
     finally { setBusy(false); }
   };
 
   const loadRendezvous = async (booking: ApiBooking) => {
     setRendezvousBusy(booking.id); setStatusMessage('');
     try { const session = await productionApi.bookingRendezvous(booking.id); setRendezvousSessions((current) => ({ ...current, [booking.id]: session })); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Зустріч поки недоступна.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Зустріч поки недоступна.', true); }
     finally { setRendezvousBusy(null); }
   };
 
   const activateRendezvous = async (booking: ApiBooking) => {
     setRendezvousBusy(booking.id); setStatusMessage('');
     try { const session = await productionApi.activateRendezvous(booking.id); setRendezvousSessions((current) => ({ ...current, [booking.id]: session })); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося активувати обмін місцем.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося активувати обмін місцем.', true); }
     finally { setRendezvousBusy(null); }
   };
 
   const sendRendezvousLocation = async (booking: ApiBooking) => {
     const session = rendezvousSessions[booking.id];
-    if (!session || !navigator.geolocation) { setStatusMessage('Геолокація недоступна на цьому пристрої.'); return; }
+    if (!session || !navigator.geolocation) { setStatusMessage('Геолокація недоступна на цьому пристрої.', true); return; }
     setRendezvousBusy(booking.id); setStatusMessage('');
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 }));
@@ -868,7 +875,7 @@ export function ProductionMarketplace() {
       const next = await productionApi.bookingRendezvous(booking.id);
       setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
       setStatusMessage('Поточне місце надіслано учаснику бронювання. Воно автоматично зникне за 5 хвилин.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося отримати геолокацію. Перевірте дозвіл пристрою.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося отримати геолокацію. Перевірте дозвіл пристрою.', true); }
     finally { setRendezvousBusy(null); }
   };
 
@@ -880,7 +887,7 @@ export function ProductionMarketplace() {
       await productionApi.rendezvousStatus(session.id, action);
       const next = await productionApi.bookingRendezvous(booking.id);
       setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити статус зустрічі.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити статус зустрічі.', true); }
     finally { setRendezvousBusy(null); }
   };
 
@@ -892,7 +899,7 @@ export function ProductionMarketplace() {
       await productionApi.rendezvousBoarding(session.id);
       const next = await productionApi.bookingRendezvous(booking.id);
       setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Посадка ще не готова.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Посадка ще не готова.', true); }
     finally { setRendezvousBusy(null); }
   };
 
@@ -904,7 +911,7 @@ export function ProductionMarketplace() {
       await productionApi.endRendezvous(session.id);
       const next = await productionApi.bookingRendezvous(booking.id);
       setRendezvousSessions((current) => ({ ...current, [booking.id]: next }));
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завершити обмін місцем.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завершити обмін місцем.', true); }
     finally { setRendezvousBusy(null); }
   };
 
@@ -917,7 +924,7 @@ export function ProductionMarketplace() {
       setBoardingTicketInput((current) => ({ ...current, [booking.id]: '' }));
       await refreshBookings();
       setStatusMessage('Посадку підтверджено сервером.');
-    } catch (error) { setStatusMessage(boardingFailureMessage(error)); }
+    } catch (error) { setStatusMessage(boardingFailureMessage(error), true); }
     finally { setBusy(false); setBoardingScanBookingId(null); }
   };
 
@@ -927,7 +934,7 @@ export function ProductionMarketplace() {
       await productionApi.startTrip(booking.id);
       await refreshBookings();
       setStatusMessage('Початок поїздки збережено на сервері.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося розпочати поїздку.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося розпочати поїздку.', true); }
     finally { setBusy(false); }
   };
 
@@ -937,7 +944,7 @@ export function ProductionMarketplace() {
       const result = await productionApi.confirmTripCompletion(booking.id);
       await refreshBookings();
       setStatusMessage(result.status === 'completed' ? 'Поїздку завершено за підтвердженнями обох учасників.' : `Завершення підтверджено вами · ${result.confirmations} з ${result.requiredConfirmations}. Очікуємо другого учасника.`);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити завершення.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити завершення.', true); }
     finally { setBusy(false); }
   };
 
@@ -950,10 +957,10 @@ export function ProductionMarketplace() {
       setReviewComment('');
       setStatusMessage('Дякуємо! Ваш відгук збережено.');
       await refreshBookings().catch(() => {
-        setStatusMessage('Відгук збережено на сервері. Не вдалося оновити список зараз; стан оновиться після повторного завантаження.');
+        setStatusMessage('Відгук збережено на сервері. Не вдалося оновити список зараз; стан оновиться після повторного завантаження.', true);
       });
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Не вдалося зберегти відгук. Перевірте з’єднання та спробуйте ще раз.');
+      setStatusMessage(error instanceof Error ? error.message : 'Не вдалося зберегти відгук. Перевірте з’єднання та спробуйте ще раз.', true);
     } finally {
       setReviewSubmitting(false);
     }
@@ -968,7 +975,7 @@ export function ProductionMarketplace() {
       const readState = await productionApi.markConversationRead(conversation.id).catch(() => null);
       if (readState) setUnreadConversations((current) => ({ ...current, [booking.id]: readState.unread_count }));
       setRoutePath(pathForProductionEntity('conversation', conversation.id));
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Чат недоступний.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Чат недоступний.', true); }
     finally { setBusy(false); }
   };
 
@@ -985,7 +992,7 @@ export function ProductionMarketplace() {
       });
       setOlderMessagesAvailable(page.hasMore); setOlderMessageCursor(page.nextCursor);
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити попередні повідомлення.');
+      setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити попередні повідомлення.', true);
     } finally { setLoadingOlderMessages(false); }
   };
 
@@ -998,7 +1005,7 @@ export function ProductionMarketplace() {
       const sent = await productionApi.sendMessage(conversation.id, messageDraft.trim());
       setMessages((current) => current.some((message) => message.id === sent.id)
         ? current : [...current, { ...sent, sender_name: user?.display_name ?? sent.sender_name }]); setMessageDraft('');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Повідомлення не надіслано.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Повідомлення не надіслано.', true); }
     finally { setBusy(false); }
   };
 
@@ -1007,7 +1014,7 @@ export function ProductionMarketplace() {
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setPlaceField(field); setPlaceSearchBusy(true); setPlaceSuggestions([]); setStatusMessage('');
     try { setPlaceSuggestions(await productionApi.suggestPlaces(query, await currentPlaceBias())); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.', true); }
     finally { setPlaceSearchBusy(false); }
   };
 
@@ -1016,7 +1023,7 @@ export function ProductionMarketplace() {
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setOfferPlaceField(field); setOfferPlaceSuggestions([]); setPlaceSearchBusy(true); setStatusMessage('');
     try { setOfferPlaceSuggestions(await productionApi.suggestPlaces(query, await currentPlaceBias())); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.', true); }
     finally { setPlaceSearchBusy(false); }
   };
 
@@ -1051,7 +1058,7 @@ export function ProductionMarketplace() {
       const message = error instanceof Error ? error.message : '';
       setStatusMessage(/invalid offer fields/i.test(message)
         ? 'Сервер не прийняв поїздку: перевірте назви місць (до 120 символів), авто, час відправлення, ціну та кількість місць.'
-        : message || 'Не вдалося опублікувати поїздку.');
+        : message || 'Не вдалося опублікувати поїздку.', true);
     }
     finally { setBusy(false); }
   };
@@ -1083,7 +1090,7 @@ export function ProductionMarketplace() {
       const message = error instanceof Error ? error.message : '';
       setStatusMessage(/invalid passenger demand/i.test(message)
         ? 'Сервер не прийняв заявку: перевірте назви місць (до 120 символів) та часовий інтервал.'
-        : message || 'Не вдалося опублікувати заявку.');
+        : message || 'Не вдалося опублікувати заявку.', true);
     }
     finally { setBusy(false); }
   };
@@ -1091,7 +1098,7 @@ export function ProductionMarketplace() {
   const viewDemand = async (demand: ApiDemand, isOwned: boolean) => {
     setSelectedDemand(demand); setSelectedDemandIsOwned(isOwned); setProposals([]); setProposalRevisions({}); setBusy(true); setStatusMessage('');
     try { setProposals(await productionApi.demandProposals(demand.id).catch(() => [])); setRoutePath(pathForProductionEntity('demand', demand.id)); activateTab(isOwned ? 'my-demands' : 'requests'); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити пропозиції.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити пропозиції.', true); }
     finally { setBusy(false); }
   };
 
@@ -1101,7 +1108,7 @@ export function ProductionMarketplace() {
       const demands = await productionApi.openDemands();
       setOpenDemands(demands);
       const demand = demands.find((item) => item.id === demandId);
-      if (!demand) { setStatusMessage('Заявка вже недоступна або закрита.'); return; }
+      if (!demand) { setStatusMessage('Заявка вже недоступна або закрита.', true); return; }
       await viewDemand(demand, false);
       setProposalNavigationCandidateId(candidateId);
       setProposalTarget(demand);
@@ -1110,14 +1117,14 @@ export function ProductionMarketplace() {
       setProposalPrice(proposedTotal === null ? '' : String(proposedTotal.toFixed(2)));
       const verified = vehicles.find((vehicle) => vehicleUsable(vehicle) && vehicle.is_active) ?? vehicles.find((vehicle) => vehicleUsable(vehicle));
       setProposalVehicleId(verified?.id ?? '');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося відкрити заявку пасажира.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося відкрити заявку пасажира.', true); }
     finally { setBusy(false); }
   };
 
   const loadProposalHistory = async (proposalId: string) => {
     setBusy(true);
     try { const history = await productionApi.proposalRevisions(proposalId); setProposalRevisions((current) => ({ ...current, [proposalId]: history })); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Історія переговорів недоступна.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Історія переговорів недоступна.', true); }
     finally { setBusy(false); }
   };
 
@@ -1133,7 +1140,7 @@ export function ProductionMarketplace() {
       setProposalTarget(null); setProposalNavigationCandidateId(null); await refreshOpenDemands();
       await viewDemand(proposalTarget, false);
       setStatusMessage('Цінову пропозицію надіслано пасажиру.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося надіслати пропозицію.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося надіслати пропозицію.', true); }
     finally { setBusy(false); }
   };
 
@@ -1148,7 +1155,7 @@ export function ProductionMarketplace() {
       await productionApi.counterProposal(counterTarget.id, { priceMinor: amount, departureAt, comment: counterComment });
       setCounterTarget(null); setStatusMessage('Зустрічну пропозицію збережено.');
       if (selectedDemand) await viewDemand(selectedDemand, selectedDemandIsOwned);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити пропозицію.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити пропозицію.', true); }
     finally { setBusy(false); }
   };
 
@@ -1157,7 +1164,7 @@ export function ProductionMarketplace() {
     try {
       await productionApi.agreeProposal(proposal.id); setStatusMessage('Ви погодили ціну. Пасажир має підтвердити бронювання.');
       if (selectedDemand) await viewDemand(selectedDemand, selectedDemandIsOwned);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося погодити ціну.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося погодити ціну.', true); }
     finally { setBusy(false); }
   };
 
@@ -1166,7 +1173,7 @@ export function ProductionMarketplace() {
     try {
       await productionApi.acceptProposal(proposal.id); setStatusMessage('Домовленість підтверджено; бронювання створено на сервері.');
       await Promise.all([refreshBookings(), refreshMyDemands()]); setSelectedDemand(null); setTab('trips');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити бронювання.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити бронювання.', true); }
     finally { setBusy(false); }
   };
 
@@ -1176,14 +1183,14 @@ export function ProductionMarketplace() {
       await productionApi.confirmNavigationMatch(candidateId);
       await refreshPassengerNavigationMatches();
       setStatusMessage('Взаємний інтерес підтверджено. Ціну та бронювання ще не погоджено — це окремий наступний крок.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити взаємний інтерес.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити взаємний інтерес.', true); }
     finally { setBusy(false); }
   };
 
   const cancelDemand = async (demand: ApiDemand) => {
     setBusy(true);
     try { await productionApi.cancelDemand(demand.id); await refreshMyDemands(); setStatusMessage('Заявку скасовано.'); if (selectedDemand?.id===demand.id) setSelectedDemand(null); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося скасувати заявку.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося скасувати заявку.', true); }
     finally { setBusy(false); }
   };
 
@@ -1194,10 +1201,10 @@ export function ProductionMarketplace() {
     try {
       const created = await productionApi.createVehicle(vehicleForm);
       try { await productionApi.uploadVehiclePhoto(created.id, vehicleFormPhoto); }
-      catch (error) { await refreshVehicles(); setShowVehicleForm(false); setStatusMessage(`Автомобіль додано, але фото не завантажилось: ${error instanceof Error ? error.message : 'помилка'}. Додайте фото в картці авто, щоб ним користуватись.`); return; }
+      catch (error) { await refreshVehicles(); setShowVehicleForm(false); setStatusMessage(`Автомобіль додано, але фото не завантажилось: ${error instanceof Error ? error.message : 'помилка'}. Додайте фото в картці авто, щоб ним користуватись.`, true); return; }
       await refreshVehicles(); setShowVehicleForm(false); setVehicleFormPhoto(null); setVehicleForm({ ...vehicleForm, make: '', model: '', plate: '' });
       setStatusMessage('Автомобіль додано автоматично. Ним можна користуватись одразу; документи можна додати пізніше, щоб підвищити довіру.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося додати автомобіль.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося додати автомобіль.', true); }
     finally { setBusy(false); }
   };
 
@@ -1207,14 +1214,14 @@ export function ProductionMarketplace() {
       const photo = await productionApi.uploadVehiclePhoto(vehicleId, file);
       setVehiclePhotos((current) => ({ ...current, [vehicleId]: [...(current[vehicleId] ?? []), photo] }));
       setStatusMessage('Фото автомобіля завантажено до приватного сховища.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити фото.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити фото.', true); }
     finally { setBusy(false); }
   };
 
   const setPrimaryVehiclePhoto = async (vehicleId: string, photoId: string) => {
     setBusy(true);
     try { await productionApi.setPrimaryVehiclePhoto(vehicleId, photoId); await refreshVehicles(); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося змінити головне фото.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося змінити головне фото.', true); }
     finally { setBusy(false); }
   };
 
@@ -1230,14 +1237,14 @@ export function ProductionMarketplace() {
       const result = await productionApi.reorderVehiclePhotos(vehicleId, reordered.map((photo) => photo.id));
       const byId = new Map(photos.map((photo) => [photo.id, photo]));
       setVehiclePhotos((current) => ({ ...current, [vehicleId]: result.photoIds.flatMap((id) => byId.has(id) ? [byId.get(id)!] : []) }));
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося змінити порядок фото.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося змінити порядок фото.', true); }
     finally { setBusy(false); }
   };
 
   const deleteVehiclePhoto = async (vehicleId: string, photoId: string) => {
     setBusy(true);
     try { await productionApi.deleteVehiclePhoto(vehicleId, photoId); await refreshVehicles(); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося видалити фото.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося видалити фото.', true); }
     finally { setBusy(false); }
   };
 
@@ -1263,7 +1270,7 @@ export function ProductionMarketplace() {
       });
       await refreshVehicles(); setVerificationTarget(null); setRegistrationEvidence(null); setDriverLicenseEvidence(null);
       setStatusMessage('Документи передано на перевірку. Статус авто оновиться після рішення модератора.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося передати документи.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося передати документи.', true); }
     finally { setBusy(false); }
   };
 
@@ -1272,7 +1279,7 @@ export function ProductionMarketplace() {
     try {
       const evidence = await productionApi.adminVerificationEvidence(record.id);
       setReviewingRecord(record); setReviewEvidenceUrl(evidence.url); setReviewNote('');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Документ недоступний для перевірки.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Документ недоступний для перевірки.', true); }
     finally { setBusy(false); }
   };
 
@@ -1284,7 +1291,7 @@ export function ProductionMarketplace() {
       await productionApi.decideVerification(reviewingRecord.id, decision, reviewNote.trim());
       setReviewingRecord(null); setReviewEvidenceUrl(''); setReviewNote(''); await refreshAdminQueue();
       setStatusMessage(decision === 'approved' ? 'Документ схвалено.' : 'Документ відхилено із зазначеною причиною.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Рішення не збережено.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Рішення не збережено.', true); }
     finally { setBusy(false); }
   };
 
@@ -1292,7 +1299,7 @@ export function ProductionMarketplace() {
     if (!user) return;
     setBusy(true);
     try { await productionApi.enableRole('driver'); setUser({ ...user, roles: [...new Set([...user.roles, 'driver'])] }); await Promise.all([refreshOpenDemands(), refreshMyOffers()]); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося змінити роль.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося змінити роль.', true); }
     finally { setBusy(false); }
   };
 
@@ -1306,7 +1313,7 @@ export function ProductionMarketplace() {
       await refreshBlockedUsers();
       setMessages([]); setRealtimeConnected(false); setSelectedBooking(null); setTab('trips');
       setStatusMessage(`${contactName} заблоковано. Бронювання залишилось у списку поїздок.`);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося заблокувати користувача.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося заблокувати користувача.', true); }
     finally { setBusy(false); }
   };
 
@@ -1316,7 +1323,7 @@ export function ProductionMarketplace() {
       await productionApi.unblockUser(blocked.user_id);
       await refreshBlockedUsers();
       setStatusMessage(`${blocked.display_name} розблоковано.`);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося розблокувати користувача.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося розблокувати користувача.', true); }
     finally { setBusy(false); }
   };
 
@@ -1328,7 +1335,7 @@ export function ProductionMarketplace() {
       await productionApi.createReport({ bookingId: selectedBooking.id, category: reportCategory, details: reportDetails.trim() });
       setShowReportForm(false); setReportDetails(''); setSelectedBooking(null); setMessages([]); setTab('trips');
       setStatusMessage('Скаргу передано команді безпеки. Її перевірить уповноважений модератор.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося передати скаргу.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося передати скаргу.', true); }
     finally { setBusy(false); }
   };
 
@@ -1340,7 +1347,7 @@ export function ProductionMarketplace() {
       await productionApi.reviewModerationCase(report.id, { status, ...(action ? { action } : {}), ...(note ? { note } : {}) });
       await refreshModerationCases();
       setStatusMessage(status === 'in_review' ? 'Скаргу взято в роботу.' : action === 'suspend_account' ? 'Акаунт призупинено, активні сесії відкликано.' : status === 'dismissed' ? 'Скаргу закрито без підтвердження порушення.' : 'Розгляд скарги завершено.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити скаргу.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити скаргу.', true); }
     finally { setBusy(false); }
   };
 
@@ -1372,7 +1379,7 @@ export function ProductionMarketplace() {
       URL.revokeObjectURL(url);
       setStatusMessage('Ваші дані завантажено у форматі JSON.');
     } catch (error) {
-      setStatusMessage(error instanceof Error ? `Не вдалося експортувати дані: ${error.message}` : 'Не вдалося експортувати дані. Спробуйте ще раз.');
+      setStatusMessage(error instanceof Error ? `Не вдалося експортувати дані: ${error.message}` : 'Не вдалося експортувати дані. Спробуйте ще раз.', true);
     } finally {
       setExportingData(false);
     }
@@ -1384,7 +1391,7 @@ export function ProductionMarketplace() {
     try {
       setDeletionRequest(await productionApi.requestAccountDeletion());
       setStatusMessage('Запит на видалення зареєстровано. Він ще не видаляє дані; перевірте стан і дату в профілі.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося подати запит на видалення.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося подати запит на видалення.', true); }
     finally { setDeletionBusy(false); }
   };
 
@@ -1393,14 +1400,14 @@ export function ProductionMarketplace() {
     try {
       setDeletionRequest(await productionApi.cancelAccountDeletion());
       setStatusMessage('Запит на видалення скасовано. Акаунт і його дані залишаються активними.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося скасувати запит.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося скасувати запит.', true); }
     finally { setDeletionBusy(false); }
   };
 
   const openNotifications = async () => {
     setShowNotifications(true); setNotificationsLoading(true);
     try { await refreshNotifications(); }
-    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Сповіщення тимчасово недоступні.'); }
+    catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Сповіщення тимчасово недоступні.', true); }
     finally { setNotificationsLoading(false); }
   };
 
@@ -1409,7 +1416,7 @@ export function ProductionMarketplace() {
     try {
       await productionApi.markNotificationRead(notification.id);
       setNotificationPage(current => ({ ...current, unreadCount: Math.max(0, current.unreadCount - 1), items: current.items.map(item => item.id === notification.id ? { ...item, read_at: new Date().toISOString() } : item) }));
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося позначити сповіщення прочитаним.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося позначити сповіщення прочитаним.', true); }
   };
 
   const markAllNotificationsRead = async () => {
@@ -1417,7 +1424,7 @@ export function ProductionMarketplace() {
       await productionApi.markAllNotificationsRead();
       const now = new Date().toISOString();
       setNotificationPage(current => ({ ...current, unreadCount: 0, items: current.items.map(item => ({ ...item, read_at: item.read_at ?? now })) }));
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити сповіщення.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити сповіщення.', true); }
   };
 
   const loadMoreNotifications = async () => {
@@ -1426,7 +1433,7 @@ export function ProductionMarketplace() {
     try {
       const next = await productionApi.notifications(notificationPage.nextCursor);
       setNotificationPage(current => ({ ...next, items: [...current.items, ...next.items] }));
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити давніші сповіщення.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося завантажити давніші сповіщення.', true); }
     finally { setNotificationsLoading(false); }
   };
 
@@ -1493,7 +1500,7 @@ export function ProductionMarketplace() {
           <button type="button" onClick={() => { setAuthMode('login'); setStatusMessage(''); setAuthError(''); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-sm text-blue-100 hover:text-white">Вже є акаунт? Увійти</button>
         </>}
         {authError && <p id="auth-error" role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-[#FF9CA7]/45 bg-[rgba(255,90,106,.15)] px-3.5 py-3 text-sm leading-5 text-[#FFE2E6]"><AlertCircle size={16} className="mt-0.5 shrink-0 text-[#FF9CA7]"/><span className="min-w-0 flex-1">{authError}</span></p>}
-        {statusMessage && <p role="status" className="mt-4 rounded-xl bg-white/10 p-3 text-sm text-white">{statusMessage}</p>}
+        {statusMessage && <p role={statusIsError ? 'alert' : 'status'} className={`mt-4 rounded-xl p-3 text-sm ${statusIsError ? 'mg-feedback-error' : 'bg-white/10 text-white'}`}>{statusIsError && <AlertCircle size={16} className="mr-1 inline-block shrink-0 align-text-bottom" aria-hidden="true"/>}{statusIsError && <span className="sr-only">Помилка: </span>}{statusMessage}</p>}
         {!authIntro && <p className="mt-5 flex gap-2 text-xs leading-5 text-blue-100/70"><ShieldCheck size={16} className="shrink-0"/>Захищено шифруванням. Дані не передаються третім особам.</p>}
         </>}
       </section>
@@ -1502,7 +1509,7 @@ export function ProductionMarketplace() {
 
   if (notFound) return <main className="grid min-h-[70svh] place-items-center px-5 text-center"><div role="alert" className="max-w-md rounded-3xl bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">404</p><h1 className="mt-2 text-2xl font-extrabold">Сторінку не знайдено</h1><p className="mt-2 text-sm text-slate-500">Перевірте адресу або поверніться до головної сторінки MARSHGO.</p><button onClick={goHome} className="mg-press mt-5 min-h-11 rounded-xl bg-[var(--mg-action)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--mg-action-hover)]">На головну</button></div></main>;
 
-  const status = statusMessage ? <div role="status" className="mx-auto mt-3 flex w-full max-w-xl items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800"><span className="min-w-0 flex-1">{statusMessage}</span><button type="button" aria-label="Закрити повідомлення" onClick={() => setStatusMessage('')} className="-mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-blue-100"><X size={16}/></button></div> : null;
+  const status = statusMessage ? <div role={statusIsError ? 'alert' : 'status'} className={`mx-auto mt-3 flex w-full max-w-xl items-start gap-2 rounded-2xl border px-4 py-3 text-sm ${statusIsError ? 'mg-feedback-error' : 'border-blue-100 bg-blue-50 text-blue-800 dark:border-[var(--mg-line)] dark:bg-[var(--mg-blue-tint)] dark:text-[var(--mg-blue-ink)]'}`}>{statusIsError && <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>}{statusIsError && <span className="sr-only">Помилка: </span>}<span className="min-w-0 flex-1">{statusMessage}</span><button type="button" aria-label="Закрити повідомлення" onClick={() => setStatusMessage('')} className="-mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-blue-100"><X size={16}/></button></div> : null;
   const unreadMessageCount = Object.values(unreadConversations).reduce((total, count) => total + count, 0);
   const header = <header className="app-header mx-auto flex w-full max-w-xl items-center justify-between px-5 pb-3 pt-[max(.8rem,env(safe-area-inset-top))]">
     <div className="flex items-center gap-2.5"><BrandMark size="sm"/><div><strong className="text-[18px] tracking-tight text-[#081b35] dark:text-[#F5F9FF]">MARSH<span className="text-[var(--mg-blue-ink)]">GO</span></strong><p className="-mt-1 text-[10px] text-[#526477] dark:text-[#B4C0CF]">Усі поїздки в одному місці</p></div></div>
@@ -1624,7 +1631,7 @@ export function ProductionMarketplace() {
       <p title={fullRoute} className="line-clamp-2 min-w-0 flex-1 break-words text-[11px] font-bold leading-[14px]"><span className="text-[#526477] dark:text-[#B4C0CF]">Маршрут: </span>{displayRoute}</p>
       <button type="button" onClick={returnToSearch} aria-label="Змінити маршрут пошуку" title="Змінити маршрут" className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 text-[10px] font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:text-slate-100 dark:hover:border-blue-500 dark:hover:text-blue-300"><Pencil size={12}/>Змінити</button>
     </header>
-    {journeyResult ? <><JourneyResultsPanel result={journeyResult} onOpenMap={setSelectedRouteMap}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt}/> : restoredSearchMode === 'planner' ? <><div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]"><Compass className="mx-auto text-blue-600"/><p className="mt-2 font-bold">Параметри маршруту відновлено</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Оновіть план, щоб перевірити актуальні пропозиції.</p>{statusMessage ? <p role="alert" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-bold leading-snug text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">{statusMessage}</p> : null}<button onClick={()=>void searchJourney()} className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Знайти маршрут</button></div>{carpoolSection}</> : carpoolSection}
+    {journeyResult ? <><JourneyResultsPanel result={journeyResult} onOpenMap={setSelectedRouteMap}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt}/> : restoredSearchMode === 'planner' ? <><div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]"><Compass className="mx-auto text-blue-600"/><p className="mt-2 font-bold">Параметри маршруту відновлено</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Оновіть план, щоб перевірити актуальні пропозиції.</p>{statusMessage ? <p role={statusIsError ? 'alert' : 'status'} className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-bold leading-snug text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">{statusMessage}</p> : null}<button onClick={()=>void searchJourney()} className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Знайти маршрут</button></div>{carpoolSection}</> : carpoolSection}
   </main>;
 
   const visibleBookings = route?.kind === 'booking' && route.entityId ? bookings.filter((booking) => booking.id === route.entityId) : bookings;
@@ -1635,10 +1642,10 @@ export function ProductionMarketplace() {
   const tripSectionCounts = { active: visibleBookings.filter((b) => bookingSection(b) === 'active').length, upcoming: visibleBookings.filter((b) => bookingSection(b) === 'upcoming').length, past: visibleBookings.filter((b) => bookingSection(b) === 'past').length };
 
   const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">{tripsTabSubtitle[tripsSection]}</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div><div role="tablist" aria-label="Розділи поїздок" className="no-scrollbar mb-4 flex gap-1 overflow-x-auto rounded-2xl bg-[#EEF3F9] p-1 text-xs dark:bg-[#0C1D30]">{tripsTabs.map(([key, label]) => { const count = isBookingSection(key) ? tripSectionCounts[key] : 0; return <button key={key} type="button" role="tab" aria-selected={tripsSection===key} onClick={()=>{tripsSectionChosen.current=true;setTripsSection(key);}} className={`flex min-h-11 shrink-0 items-center justify-center rounded-xl px-3 py-2 font-bold transition-colors ${tripsSection===key?'bg-white text-[var(--mg-blue-ink)] shadow-sm':'text-[#526477] dark:text-[#B4C0CF]'}`}>{label}{count>0?` · ${count}`:''}</button>; })}</div>
-    {showsSavedRoutes(tripsSection) && journeys.length > 0 && <section className="mb-5" aria-label="Збережені маршрути"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Збережені маршрути</h2><button onClick={() => void refreshJourneys().catch(error => setStatusMessage(error instanceof Error ? error.message : 'Маршрути недоступні.'))} className="min-h-11 rounded-lg px-2 text-xs font-bold text-[var(--mg-blue-ink)] dark:text-[#66B2FF]">Оновити</button></div><div className="space-y-2.5">{journeys.map(journey => <SavedJourneyCard key={journey.id} journey={journey} departureLabel={formatDate(journey.requested_departure_at, { day: 'numeric', month: 'short' })} onOpen={() => setRoutePath(pathForProductionEntity('journey', journey.id))}/>)}</div></section>}
+    {showsSavedRoutes(tripsSection) && journeys.length > 0 && <section className="mb-5" aria-label="Збережені маршрути"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Збережені маршрути</h2><button onClick={() => void refreshJourneys().catch(error => setStatusMessage(error instanceof Error ? error.message : 'Маршрути недоступні.', true))} className="min-h-11 rounded-lg px-2 text-xs font-bold text-[var(--mg-blue-ink)] dark:text-[#66B2FF]">Оновити</button></div><div className="space-y-2.5">{journeys.map(journey => <SavedJourneyCard key={journey.id} journey={journey} departureLabel={formatDate(journey.requested_departure_at, { day: 'numeric', month: 'short' })} onOpen={() => setRoutePath(pathForProductionEntity('journey', journey.id))}/>)}</div></section>}
     {showsSavedRoutes(tripsSection) && !journeys.length && <p className="rounded-2xl bg-white p-5 text-sm text-slate-500">Збережених маршрутів немає. Збережіть маршрут із екрана результатів пошуку.</p>}
     {tripsSection === 'requests' && <section className="mb-5" aria-label="Запити"><div className="space-y-2"><button type="button" onClick={()=>setTab('my-demands')} className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm"><span><b className="block text-sm text-[#0E1F35]">Мої запити на поїздку</b><small className="text-xs text-slate-500">{myDemands.length ? `${myDemands.length} — переглянути пропозиції водіїв` : 'Створіть запит кнопкою «+»'}</small></span><ChevronRight size={17} className="text-slate-400"/></button>{user.roles.includes('driver')&&<button type="button" onClick={()=>setTab('requests')} className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm"><span><b className="block text-sm text-[#0E1F35]">Запити пасажирів</b><small className="text-xs text-slate-500">Відкриті запити, на які можна запропонувати ціну</small></span><ChevronRight size={17} className="text-slate-400"/></button>}</div></section>}
-    {tripsSection === 'upcoming' && user.roles.includes('driver')&&<section className="mb-5"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Мої оголошення</h2><button onClick={()=>void refreshMyOffers().catch(error=>setStatusMessage(error instanceof Error?error.message:'Оголошення недоступні.'))} className="text-xs font-bold text-blue-600">Оновити</button></div>{upcomingOffers.length?<div className="space-y-2">{upcomingOffers.map((offer)=><article key={offer.id} className="rounded-2xl p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><b className="min-w-0 truncate" title={`${fullPlaceLabel(offer.origin_name)} → ${fullPlaceLabel(offer.destination_name)}`}>{compactPlaceLabel(offer.origin_name)} → {compactPlaceLabel(offer.destination_name)}</b><span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{offerStatusLabel[offer.status??'published']??offer.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(offer.departure_at)} · {offer.available_seats}/{offer.total_seats} місць</p><p className="mt-1 text-xs font-bold text-blue-700">{formatMoney(offer.price_per_seat_minor,offer.currency)} за місце{offer.duration_s?` · ${Math.floor(offer.duration_s/3600)} год ${Math.round(offer.duration_s%3600/60)} хв`:''}</p><button type="button" onClick={()=>setEditingOffer(offer)} className="mt-3 w-full rounded-xl bg-[#EAF3FF] py-2.5 text-xs font-bold text-[var(--mg-blue)]">Редагувати або скасувати</button></article>)}</div>:<p className="rounded-2xl bg-white p-4 text-sm text-slate-500">Запланованих поїздок немає. Створіть поїздку через «Запланувати поїздку».</p>}</section>}
+    {tripsSection === 'upcoming' && user.roles.includes('driver')&&<section className="mb-5"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Мої оголошення</h2><button onClick={()=>void refreshMyOffers().catch(error=>setStatusMessage(error instanceof Error?error.message:'Оголошення недоступні.', true))} className="text-xs font-bold text-blue-600">Оновити</button></div>{upcomingOffers.length?<div className="space-y-2">{upcomingOffers.map((offer)=><article key={offer.id} className="rounded-2xl p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><b className="min-w-0 truncate" title={`${fullPlaceLabel(offer.origin_name)} → ${fullPlaceLabel(offer.destination_name)}`}>{compactPlaceLabel(offer.origin_name)} → {compactPlaceLabel(offer.destination_name)}</b><span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{offerStatusLabel[offer.status??'published']??offer.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(offer.departure_at)} · {offer.available_seats}/{offer.total_seats} місць</p><p className="mt-1 text-xs font-bold text-blue-700">{formatMoney(offer.price_per_seat_minor,offer.currency)} за місце{offer.duration_s?` · ${Math.floor(offer.duration_s/3600)} год ${Math.round(offer.duration_s%3600/60)} хв`:''}</p><button type="button" onClick={()=>setEditingOffer(offer)} className="mt-3 w-full rounded-xl bg-[#EAF3FF] py-2.5 text-xs font-bold text-[var(--mg-blue)]">Редагувати або скасувати</button></article>)}</div>:<p className="rounded-2xl bg-white p-4 text-sm text-slate-500">Запланованих поїздок немає. Створіть поїздку через «Запланувати поїздку».</p>}</section>}
     {tripsSection === 'past' && pastOffers.length>0 && <section className="mb-5"><h2 className="mb-2 font-extrabold">Мої минулі оголошення</h2><div className="space-y-2">{pastOffers.map((offer)=><article key={offer.id} className="rounded-2xl p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><b className="min-w-0 truncate" title={`${fullPlaceLabel(offer.origin_name)} → ${fullPlaceLabel(offer.destination_name)}`}>{compactPlaceLabel(offer.origin_name)} → {compactPlaceLabel(offer.destination_name)}</b><span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{offerStatusLabel[offer.status??'']??offer.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(offer.departure_at)} · {formatMoney(offer.price_per_seat_minor,offer.currency)} за місце</p></article>)}</div></section>}
     {!showsBookingList(tripsSection) && !(route?.kind === 'booking' && tripsSection !== 'saved') ? null : sectionBookings.length ? <div className="space-y-3">{sectionBookings.map((booking)=>{
       const statusLabel: Record<string, string> = { confirmed: 'Підтверджено', boarding: 'Посадка', in_progress: 'У дорозі', completed: 'Завершено', cancelled: 'Скасовано' };
@@ -1678,7 +1685,7 @@ export function ProductionMarketplace() {
       setStatusMessage(result.activatedVehicleId ? 'Авто видалено. Активним стало інше ваше авто.' : 'Авто видалено.');
     } catch (error) {
       setVehicleToDelete(null);
-      setStatusMessage(error instanceof Error && /upcoming trips/i.test(error.message) ? 'Авто використовується в майбутніх поїздках. Спершу змініть авто в цих поїздках або скасуйте їх.' : error instanceof Error ? error.message : 'Не вдалося видалити авто.');
+      setStatusMessage(error instanceof Error && /upcoming trips/i.test(error.message) ? 'Авто використовується в майбутніх поїздках. Спершу змініть авто в цих поїздках або скасуйте їх.' : error instanceof Error ? error.message : 'Не вдалося видалити авто.', true);
     } finally { setBusy(false); }
   };
 
@@ -1691,7 +1698,7 @@ export function ProductionMarketplace() {
       .sort((a, b) => Date.parse(b.reviewed_at ?? b.created_at) - Date.parse(a.reviewed_at ?? a.created_at))[0];
     const photos = vehiclePhotos[vehicle.id] ?? [];
     return <article key={vehicle.id} className="rounded-xl bg-[var(--mg-surface-tint)] p-3">
-      <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-blue-600"><CarFront size={19}/></span><div className="min-w-0 flex-1"><b className="block text-sm">{vehicle.make} {vehicle.model}</b><small className="text-slate-500">{vehicle.plate ? `${vehicle.plate} · ` : ''}{vehicle.model_year} · {vehicle.seat_count} місць</small><div className="mt-1 flex flex-wrap gap-1">{vehicleUsable(vehicle) ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">✓ Авто додано</span> : <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">Додайте {vehicle.plate ? 'фото' : 'номер і фото'}</span>}{(vehicle.trust_level ?? 0) >= 2 && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">✓ Автомобіль підтверджено</span>}{(vehicle.trust_level ?? 0) >= 3 && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">✓ Водій підтверджений</span>}</div></div>{vehicle.is_active?<span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Активне</span>:<button onClick={async()=>{setBusy(true);try{await productionApi.activateVehicle(vehicle.id);await refreshVehicles();}catch(error){setStatusMessage(error instanceof Error?error.message:'Не вдалося активувати авто.');}finally{setBusy(false);}}} className="text-xs font-bold text-blue-600">Обрати</button>}</div>
+      <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-blue-600"><CarFront size={19}/></span><div className="min-w-0 flex-1"><b className="block text-sm">{vehicle.make} {vehicle.model}</b><small className="text-slate-500">{vehicle.plate ? `${vehicle.plate} · ` : ''}{vehicle.model_year} · {vehicle.seat_count} місць</small><div className="mt-1 flex flex-wrap gap-1">{vehicleUsable(vehicle) ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">✓ Авто додано</span> : <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">Додайте {vehicle.plate ? 'фото' : 'номер і фото'}</span>}{(vehicle.trust_level ?? 0) >= 2 && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">✓ Автомобіль підтверджено</span>}{(vehicle.trust_level ?? 0) >= 3 && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">✓ Водій підтверджений</span>}</div></div>{vehicle.is_active?<span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Активне</span>:<button onClick={async()=>{setBusy(true);try{await productionApi.activateVehicle(vehicle.id);await refreshVehicles();}catch(error){setStatusMessage(error instanceof Error?error.message:'Не вдалося активувати авто.', true);}finally{setBusy(false);}}} className="text-xs font-bold text-blue-600">Обрати</button>}</div>
       {photos.length>0?<div className="mt-3 grid grid-cols-3 gap-2">{photos.map((photo,index)=><div key={photo.id} className="relative overflow-hidden rounded-lg bg-white"><img src={photo.url} alt={`${vehicle.make} ${vehicle.model}`} className="aspect-[4/3] w-full object-cover"/><div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-slate-950/70 px-1.5 py-1 text-[10px] text-white"><div className="flex items-center gap-1"><button type="button" disabled={busy||index===0} onClick={()=>void moveVehiclePhoto(vehicle.id,photo.id,-1)} aria-label={`Перемістити фото ${index+1} вище`} className="px-1 font-bold disabled:opacity-40">↑</button><button type="button" disabled={busy||index===photos.length-1} onClick={()=>void moveVehiclePhoto(vehicle.id,photo.id,1)} aria-label={`Перемістити фото ${index+1} нижче`} className="px-1 font-bold disabled:opacity-40">↓</button></div><button type="button" onClick={()=>void setPrimaryVehiclePhoto(vehicle.id,photo.id)} className="truncate font-bold">{photo.is_primary?'Головне':'Головне фото'}</button><button type="button" onClick={()=>void deleteVehiclePhoto(vehicle.id,photo.id)} aria-label="Видалити фото">×</button></div></div>)}</div>:<p className="mt-2 text-[10px] text-slate-500">Фото потрібне для публікації поїздки.</p>}
       {user.roles.includes('driver')&&(photos.length>=3?<p className="mt-2 text-center text-[11px] text-slate-500">Максимум 3 фото. Видаліть одне, щоб додати інше.</p>:<label className="mt-2 flex w-full cursor-pointer items-center justify-center rounded-lg bg-white py-2 text-xs font-bold text-blue-700">{busy?'Зачекайте…':photos.length===0?'Додати фото авто (обов’язково)':`Додати ще фото (${photos.length}/3)`}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={event=>{const file=event.target.files?.[0];if(file)void uploadVehiclePhoto(vehicle.id,file);event.currentTarget.value='';}} className="sr-only"/></label>)}
       <button type="button" onClick={()=>setVehicleToDelete(vehicle)} className="mt-2 w-full rounded-lg py-2 text-xs font-bold text-rose-600">Видалити авто</button>
@@ -1730,9 +1737,9 @@ export function ProductionMarketplace() {
     <button onClick={()=>void logout()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-rose-600 shadow-sm"><LogOut size={16}/>Вийти</button>
   </div>;
 
-  const adminScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">Тільки персонал</p><h1 className="text-2xl font-extrabold">Перевірка документів</h1></div><button onClick={()=>void refreshAdminQueue().catch((error:unknown)=>setStatusMessage(error instanceof Error?error.message:'Черга недоступна.'))} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button></div><p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">Документи містять чутливі дані. Відкриття й рішення журналюються; схвалення одного документа ще не верифікує авто.</p>{adminQueue.length?<div className="space-y-3">{adminQueue.map(record=><article key={record.id} className="rounded-2xl p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-blue-600">{record.verification_type==='vehicle'?'Реєстраційний документ':record.verification_type==='driver_license'?'Посвідчення водія':record.verification_type}</p><h2 className="mt-1 font-extrabold">{record.display_name}</h2><p className="mt-1 text-xs text-slate-500">{record.make&&record.model?`${record.make} ${record.model} · ${record.model_year} · ${record.seat_count} місць`:'Документ профілю'}</p><p className="mt-1 text-[10px] text-slate-400">Подано {formatDate(record.created_at)}</p></div><span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">Очікує</span></div><button disabled={busy} onClick={()=>void openVerificationEvidence(record)} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-50">Відкрити та перевірити документ</button></article>)}</div>:<div className="rounded-2xl bg-white p-6 text-center"><ShieldCheck className="mx-auto text-emerald-600"/><p className="mt-2 font-bold">Черга порожня</p><p className="mt-1 text-xs text-slate-500">Нові подання з’являться після завантаження водієм документів.</p></div>}</div>;
+  const adminScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">Тільки персонал</p><h1 className="text-2xl font-extrabold">Перевірка документів</h1></div><button onClick={()=>void refreshAdminQueue().catch((error:unknown)=>setStatusMessage(error instanceof Error?error.message:'Черга недоступна.', true))} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button></div><p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">Документи містять чутливі дані. Відкриття й рішення журналюються; схвалення одного документа ще не верифікує авто.</p>{adminQueue.length?<div className="space-y-3">{adminQueue.map(record=><article key={record.id} className="rounded-2xl p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-blue-600">{record.verification_type==='vehicle'?'Реєстраційний документ':record.verification_type==='driver_license'?'Посвідчення водія':record.verification_type}</p><h2 className="mt-1 font-extrabold">{record.display_name}</h2><p className="mt-1 text-xs text-slate-500">{record.make&&record.model?`${record.make} ${record.model} · ${record.model_year} · ${record.seat_count} місць`:'Документ профілю'}</p><p className="mt-1 text-[10px] text-slate-400">Подано {formatDate(record.created_at)}</p></div><span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">Очікує</span></div><button disabled={busy} onClick={()=>void openVerificationEvidence(record)} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white disabled:opacity-50">Відкрити та перевірити документ</button></article>)}</div>:<div className="rounded-2xl bg-white p-6 text-center"><ShieldCheck className="mx-auto text-emerald-600"/><p className="mt-2 font-bold">Черга порожня</p><p className="mt-1 text-xs text-slate-500">Нові подання з’являться після завантаження водієм документів.</p></div>}</div>;
 
-  const moderationScreen = <section className="mb-5 rounded-[1.4rem] bg-[#eef4ff] p-4"><div className="mb-3 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-700">Безпека спільноти</p><h2 className="text-lg font-extrabold">Скарги користувачів</h2></div><button onClick={()=>void refreshModerationCases().catch(error=>setStatusMessage(error instanceof Error?error.message:'Черга скарг недоступна.'))} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button></div>{moderationCases.length? <div className="space-y-3">{moderationCases.map(report=><article key={report.id} className="rounded-2xl p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-rose-600">{({safety:'Безпека',harassment:'Домагання',fraud:'Шахрайство',service:'Якість сервісу',other:'Інше'} as const)[report.category]}</p><h3 className="mt-1 text-sm font-extrabold">{report.reporter_name} · {report.reported_user_name}</h3><p className="mt-1 text-xs text-slate-500">{report.origin_name&&report.destination_name?`${report.origin_name} → ${report.destination_name}`:'Бронювання недоступне'} · {formatDate(report.created_at)}</p><p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{report.details}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${report.status==='open'?'bg-amber-50 text-amber-700':report.status==='in_review'?'bg-blue-50 text-blue-700':'bg-slate-100 text-slate-600'}`}>{report.status==='open'?'Нова':report.status==='in_review'?'У роботі':report.status==='resolved'?'Вирішена':'Відхилена'}</span></div>{report.status==='open'&&<button disabled={busy} onClick={()=>void reviewModerationCase(report,'in_review')} className="mt-3 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Взяти у роботу</button>}{report.status==='in_review'&&<><label className="mt-3 block text-xs font-semibold text-slate-600">Рішення й коротке обґрунтування<textarea value={moderationNotes[report.id]??''} onChange={event=>setModerationNotes(current=>({...current,[report.id]:event.target.value}))} maxLength={1000} className="mt-1.5 min-h-16 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" placeholder="Опишіть перевірку та вжиті заходи"/></label><div className="mt-2 grid grid-cols-2 gap-2"><button disabled={busy} onClick={()=>void reviewModerationCase(report,'resolved','no_action')} className="rounded-xl bg-emerald-700 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити, без блокування</button><button disabled={busy} onClick={()=>void reviewModerationCase(report,'dismissed','no_action')} className="rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-700 disabled:opacity-50">Відхилити скаргу</button>{user.roles.includes('admin')&&<button disabled={busy} onClick={()=>void reviewModerationCase(report,'resolved','suspend_account')} className="col-span-2 rounded-xl bg-rose-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Призупинити акаунт і відкликати сесії</button>}</div></>}</article>)}</div>:<div className="rounded-xl bg-white p-4 text-sm text-slate-500">Скарг у черзі немає.</div>}</section>;
+  const moderationScreen = <section className="mb-5 rounded-[1.4rem] bg-[#eef4ff] p-4"><div className="mb-3 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-700">Безпека спільноти</p><h2 className="text-lg font-extrabold">Скарги користувачів</h2></div><button onClick={()=>void refreshModerationCases().catch(error=>setStatusMessage(error instanceof Error?error.message:'Черга скарг недоступна.', true))} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button></div>{moderationCases.length? <div className="space-y-3">{moderationCases.map(report=><article key={report.id} className="rounded-2xl p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-rose-600">{({safety:'Безпека',harassment:'Домагання',fraud:'Шахрайство',service:'Якість сервісу',other:'Інше'} as const)[report.category]}</p><h3 className="mt-1 text-sm font-extrabold">{report.reporter_name} · {report.reported_user_name}</h3><p className="mt-1 text-xs text-slate-500">{report.origin_name&&report.destination_name?`${report.origin_name} → ${report.destination_name}`:'Бронювання недоступне'} · {formatDate(report.created_at)}</p><p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{report.details}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${report.status==='open'?'bg-amber-50 text-amber-700':report.status==='in_review'?'bg-blue-50 text-blue-700':'bg-slate-100 text-slate-600'}`}>{report.status==='open'?'Нова':report.status==='in_review'?'У роботі':report.status==='resolved'?'Вирішена':'Відхилена'}</span></div>{report.status==='open'&&<button disabled={busy} onClick={()=>void reviewModerationCase(report,'in_review')} className="mt-3 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Взяти у роботу</button>}{report.status==='in_review'&&<><label className="mt-3 block text-xs font-semibold text-slate-600">Рішення й коротке обґрунтування<textarea value={moderationNotes[report.id]??''} onChange={event=>setModerationNotes(current=>({...current,[report.id]:event.target.value}))} maxLength={1000} className="mt-1.5 min-h-16 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal" placeholder="Опишіть перевірку та вжиті заходи"/></label><div className="mt-2 grid grid-cols-2 gap-2"><button disabled={busy} onClick={()=>void reviewModerationCase(report,'resolved','no_action')} className="rounded-xl bg-emerald-700 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити, без блокування</button><button disabled={busy} onClick={()=>void reviewModerationCase(report,'dismissed','no_action')} className="rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-700 disabled:opacity-50">Відхилити скаргу</button>{user.roles.includes('admin')&&<button disabled={busy} onClick={()=>void reviewModerationCase(report,'resolved','suspend_account')} className="col-span-2 rounded-xl bg-rose-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Призупинити акаунт і відкликати сесії</button>}</div></>}</article>)}</div>:<div className="rounded-xl bg-white p-4 text-sm text-slate-500">Скарг у черзі немає.</div>}</section>;
   const adminDashboard = user?.roles.some((role) => role === 'admin' || role === 'moderator')
     ? <div className="mx-auto w-full max-w-xl px-5 pb-5">{moderationScreen}{adminScreen}{user?.roles.includes('admin') && <Suspense fallback={null}><MobilityAdminPanel/></Suspense>}</div>
     : <main className="grid min-h-[70svh] place-items-center px-5 text-center"><div className="max-w-md rounded-3xl bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-amber-700">403</p><h1 className="mt-2 text-2xl font-extrabold">Доступ заборонено</h1><p className="mt-2 text-sm text-slate-500">Цей розділ доступний лише модераторам і адміністраторам.</p><button onClick={goHome} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">На головну</button></div></main>;
@@ -1778,15 +1785,15 @@ export function ProductionMarketplace() {
 
   const demandDetailScreen = (owned: boolean) => selectedDemand ? <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>setSelectedDemand(null)} className="grid h-11 w-11 place-items-center rounded-full bg-white"><ArrowLeft size={18}/></button><div><p className="text-xs text-slate-500">{owned?'Моя заявка':'Заявка пасажира'}</p><h1 className="font-extrabold">{selectedDemand.origin_name.split(',')[0]} → {selectedDemand.destination_name.split(',')[0]}</h1></div></div><div data-surface="card" className="mb-3 rounded-2xl p-4 shadow-sm"><p className="text-sm font-bold">{formatDate(selectedDemand.earliest_departure)} – {formatDate(selectedDemand.latest_departure,{hour:'2-digit',minute:'2-digit'})}</p><p className="mt-1 text-xs text-slate-500">{passengersLabel(selectedDemand.passenger_count)} · {selectedDemand.budget_minor===null?'Бюджет не вказано':`${formatMoney(selectedDemand.budget_minor,'UAH')} ${selectedDemand.budget_type==='per_seat'?'за місце':'за всіх'}`}</p>{selectedDemand.notes&&<p className="mt-2 text-xs text-slate-600">{selectedDemand.notes}</p>}{owned&&selectedDemand.status==='open'&&<button onClick={()=>void cancelDemand(selectedDemand)} className="mt-3 text-xs font-bold text-rose-600">Скасувати заявку</button>}</div><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Пропозиції водіїв</h2><span className="text-xs text-slate-500">{proposals.length}</span></div>{proposals.length?<div className="space-y-3">{proposals.map(proposalCard)}</div>:<p className="rounded-2xl bg-white p-4 text-sm text-slate-500">Пропозицій поки немає.</p>}</div> : null;
 
-  const myDemandsScreen = selectedDemand && selectedDemandIsOwned ? demandDetailScreen(true) : <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">Пасажир</p><h1 className="text-2xl font-extrabold">Мої заявки</h1></div><div className="flex gap-2"><button onClick={()=>void refreshPassengerNavigationMatches().catch(error=>setStatusMessage(error instanceof Error?error.message:'Підбір недоступний.'))} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button><button onClick={()=>{setSelectedDemand(null);setTab('demand');}} className="grid h-11 w-11 place-items-center rounded-full bg-blue-600 text-white"><Plus size={20}/></button></div></div>{passengerNavigationMatches.length>0&&<section className="mb-4 space-y-2"><h2 className="px-1 text-sm font-extrabold">Водії поруч із маршрутом</h2>{passengerNavigationMatches.map(match=><article key={match.candidate_id} className="rounded-2xl border border-blue-100 p-4 shadow-sm dark:border-[#1D4E80]"><div className="flex items-start justify-between gap-3"><div><b className="text-sm">{match.origin_name.split(',')[0]} → {match.destination_name.split(',')[0]}</b><p className="mt-1 text-xs text-slate-500">Забір орієнтовно {formatDate(match.pickup_eta,{hour:'2-digit',minute:'2-digit'})} · відхилення +{(match.detour_distance_m/1000).toFixed(1)} км / +{Math.round(match.detour_duration_s/60)} хв</p></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">{match.status==='passenger_confirmed'?'Взаємний інтерес':'Є інтерес водія'}</span></div>{match.status==='driver_interested'?<><p className="mt-2 text-xs text-slate-500">Підтвердьте, якщо цей маршрут і час вам підходять. Це ще не бронювання.</p><button disabled={busy} onClick={()=>void confirmNavigationMatch(match.candidate_id)} className="mt-3 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити взаємний інтерес</button></>:<p className="mt-2 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Взаємний інтерес підтверджено. Водій може надіслати ціну у пропозиції до цієї заявки; бронювання ще немає.</p>}</article>)}</section>}{myDemands.length?<div className="space-y-3">{myDemands.map(demand=><button key={demand.id} data-testid={`owned-demand-${demand.id}`} onClick={()=>void viewDemand(demand,true)} className="w-full rounded-2xl bg-white p-4 text-left shadow-sm"><div className="flex items-center justify-between"><b>{demand.origin_name.split(',')[0]} → {demand.destination_name.split(',')[0]}</b><span className="text-[10px] text-slate-400">{({open:'Відкрита',cancelled:'Скасована',accepted:'Прийнята',expired:'Прострочена',closed:'Закрита',matched:'Є збіг'} as Record<string,string>)[demand.status] ?? demand.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(demand.earliest_departure)} · {passengersLabel(demand.passenger_count)}</p><p className="mt-2 text-xs font-bold text-blue-600">{demand.budget_minor===null?'Без вказаного бюджету':`${formatMoney(demand.budget_minor,'UAH')} ${demand.budget_type==='per_seat'?'за місце':'за всіх'}`} · {demand.proposal_count ?? 0} пропозицій</p></button>)}</div>:<div className="rounded-2xl bg-white p-6 text-center"><Compass className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Ви ще не публікували запитів</p><button onClick={()=>setTab('demand')} className="mt-3 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">Створити заявку</button></div>}</div>;
+  const myDemandsScreen = selectedDemand && selectedDemandIsOwned ? demandDetailScreen(true) : <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">Пасажир</p><h1 className="text-2xl font-extrabold">Мої заявки</h1></div><div className="flex gap-2"><button onClick={()=>void refreshPassengerNavigationMatches().catch(error=>setStatusMessage(error instanceof Error?error.message:'Підбір недоступний.', true))} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button><button onClick={()=>{setSelectedDemand(null);setTab('demand');}} className="grid h-11 w-11 place-items-center rounded-full bg-blue-600 text-white"><Plus size={20}/></button></div></div>{passengerNavigationMatches.length>0&&<section className="mb-4 space-y-2"><h2 className="px-1 text-sm font-extrabold">Водії поруч із маршрутом</h2>{passengerNavigationMatches.map(match=><article key={match.candidate_id} className="rounded-2xl border border-blue-100 p-4 shadow-sm dark:border-[#1D4E80]"><div className="flex items-start justify-between gap-3"><div><b className="text-sm">{match.origin_name.split(',')[0]} → {match.destination_name.split(',')[0]}</b><p className="mt-1 text-xs text-slate-500">Забір орієнтовно {formatDate(match.pickup_eta,{hour:'2-digit',minute:'2-digit'})} · відхилення +{(match.detour_distance_m/1000).toFixed(1)} км / +{Math.round(match.detour_duration_s/60)} хв</p></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">{match.status==='passenger_confirmed'?'Взаємний інтерес':'Є інтерес водія'}</span></div>{match.status==='driver_interested'?<><p className="mt-2 text-xs text-slate-500">Підтвердьте, якщо цей маршрут і час вам підходять. Це ще не бронювання.</p><button disabled={busy} onClick={()=>void confirmNavigationMatch(match.candidate_id)} className="mt-3 w-full rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white disabled:opacity-50">Підтвердити взаємний інтерес</button></>:<p className="mt-2 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Взаємний інтерес підтверджено. Водій може надіслати ціну у пропозиції до цієї заявки; бронювання ще немає.</p>}</article>)}</section>}{myDemands.length?<div className="space-y-3">{myDemands.map(demand=><button key={demand.id} data-testid={`owned-demand-${demand.id}`} onClick={()=>void viewDemand(demand,true)} className="w-full rounded-2xl bg-white p-4 text-left shadow-sm"><div className="flex items-center justify-between"><b>{demand.origin_name.split(',')[0]} → {demand.destination_name.split(',')[0]}</b><span className="text-[10px] text-slate-400">{({open:'Відкрита',cancelled:'Скасована',accepted:'Прийнята',expired:'Прострочена',closed:'Закрита',matched:'Є збіг'} as Record<string,string>)[demand.status] ?? demand.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(demand.earliest_departure)} · {passengersLabel(demand.passenger_count)}</p><p className="mt-2 text-xs font-bold text-blue-600">{demand.budget_minor===null?'Без вказаного бюджету':`${formatMoney(demand.budget_minor,'UAH')} ${demand.budget_type==='per_seat'?'за місце':'за всіх'}`} · {demand.proposal_count ?? 0} пропозицій</p></button>)}</div>:<div className="rounded-2xl bg-white p-6 text-center"><Compass className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Ви ще не публікували запитів</p><button onClick={()=>setTab('demand')} className="mt-3 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">Створити заявку</button></div>}</div>;
 
   const requestsScreen = selectedDemand && !selectedDemandIsOwned ? demandDetailScreen(false) : (
     <div className="mx-auto w-full max-w-xl px-5 pb-5">
       <div className="mb-4 flex items-center justify-between">
         <div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">Для водія</p><h1 className="text-2xl font-extrabold">Заявки пасажирів</h1></div>
-        <button onClick={() => { void refreshOpenDemands().catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Заявки недоступні.')); }} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button>
+        <button onClick={() => { void refreshOpenDemands().catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Заявки недоступні.', true)); }} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-blue-700">Оновити</button>
       </div>
-      {statusMessage && <p role="status" className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs leading-5 text-emerald-800">{statusMessage}</p>}
+      {statusMessage && <p role={statusIsError ? 'alert' : 'status'} className={`mb-3 rounded-xl border p-3 text-xs leading-5 ${statusIsError ? 'mg-feedback-error' : 'border-emerald-100 bg-emerald-50 text-emerald-800'}`}>{statusIsError && <AlertCircle size={16} className="mr-1 inline-block shrink-0 align-text-bottom" aria-hidden="true"/>}{statusIsError && <span className="sr-only">Помилка: </span>}{statusMessage}</p>}
       <p className="mb-3 rounded-xl bg-amber-50 p-3 text-[11px] leading-4 text-amber-800">Список показує відкриті заявки. Автоматичне географічне ранжування за маршрутом ще не підключено.</p>
       {openDemands.length ? <div className="space-y-3">
         {openDemands.map((demand) => <article key={demand.id} data-testid={`open-demand-${demand.id}`} className="rounded-2xl p-4 shadow-sm">
@@ -1816,7 +1823,7 @@ export function ProductionMarketplace() {
   const createMenu = showCreateMenu ? <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-950/35 p-3 sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowCreateMenu(false); }}><section role="dialog" aria-modal="true" aria-labelledby="create-menu-title" className="mg-rise w-full max-w-md rounded-[1.6rem] bg-white p-4 shadow-xl"><div className="mb-3 flex items-center justify-between"><h2 id="create-menu-title" className="font-extrabold">Швидкі дії</h2><button type="button" onClick={() => setShowCreateMenu(false)} aria-label="Закрити" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-600"><X size={20}/></button></div><div className="space-y-2">{([
     { label: 'Навігація', hint: 'Ведення до точки', icon: Navigation, pick: () => setTab('navigation') },
     { label: 'Карта транспорту', hint: 'Зупинки, лінії, рух', icon: BusFront, pick: () => setTab('map') },
-    { label: 'Опублікувати поїздку', hint: 'Маршрут, авто й ціна', icon: CarFront, pick: () => { if (!user.roles.includes('driver')) { setStatusMessage('Спершу активуйте роль водія у профілі.'); setTab('profile'); return; } setTab('offer-new'); void refreshVehicles().catch((error) => setStatusMessage(error instanceof Error ? error.message : 'Автомобілі недоступні.')); } },
+    { label: 'Опублікувати поїздку', hint: 'Маршрут, авто й ціна', icon: CarFront, pick: () => { if (!user.roles.includes('driver')) { setStatusMessage('Спершу активуйте роль водія у профілі.', true); setTab('profile'); return; } setTab('offer-new'); void refreshVehicles().catch((error) => setStatusMessage(error instanceof Error ? error.message : 'Автомобілі недоступні.')); } },
     { label: 'Знайти маршрут', hint: 'Усі види транспорту', icon: Search, pick: () => setTab('search') },
   ] as const).map((action) => { const Icon = action.icon; return <button key={action.label} type="button" onClick={() => { setShowCreateMenu(false); setNavAutoStart(false); action.pick(); }} className="flex min-h-12 w-full items-center gap-3 rounded-xl bg-blue-50 p-3 text-left"><Icon className="shrink-0 text-blue-600" size={20}/><span className="min-w-0"><b className="block text-sm">{action.label}</b><small className="block text-[var(--mg-muted)]">{action.hint}</small></span></button>; })}</div><p className="mt-3 border-t border-slate-100 px-1 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">Пасажир</p><button type="button" onClick={() => { setShowCreateMenu(false); setSelectedDemand(null); setSelectedDemandIsOwned(false); setProposals([]); setTab('demand'); }} className="mt-2 flex min-h-12 w-full items-center gap-3 rounded-xl bg-slate-50 p-3 text-left"><Compass className="shrink-0 text-slate-500" size={19}/><span className="min-w-0"><b className="block text-sm">Створити запит</b><small className="block text-[var(--mg-muted)]">Маршрут і ваш бюджет</small></span></button></section></div> : null;
   const renderBottomTab = (item: (typeof tabItems)[number]) => { const Icon = item.icon; const active = tab === item.id || (tab === 'navigation' && item.id === 'home'); return <button key={item.id} aria-current={active ? 'page' : undefined} onClick={() => { setTab(item.id); if (item.id === 'home') setShowResults(false); setSelectedOffer(null); setSelectedBooking(null); setSelectedJourney(null); setSelectedRouteMap(null); setJourneyBookingLink(null); }} className={`flex w-full min-w-0 flex-col items-center gap-1 px-1 py-1 ${active ? 'text-blue-600' : 'text-slate-500'}`}><Icon size={20} strokeWidth={active ? 2.5 : 2}/><span className="text-[10px] font-semibold">{item.label}</span></button>; };

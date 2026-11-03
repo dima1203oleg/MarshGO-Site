@@ -1,0 +1,103 @@
+{
+  "label": "after",
+  "url": "http://localhost:4175",
+  "flash": {
+    "firstFrameScreenshotAtMs": null,
+    "firstSample": {
+      "ms": 236,
+      "darkClass": true,
+      "bootDark": true,
+      "htmlBg": "rgb(11, 15, 20)",
+      "bodyBg": "rgb(18, 37, 66)"
+    },
+    "firstDarkFrameMs": 236,
+    "lightFramesBeforeDark": 0,
+    "totalFrames": 76,
+    "darkAtT0": true
+  },
+  "auto": {
+    "toLight": {
+      "ok": true,
+      "ms": 20
+    },
+    "backToDark": {
+      "ok": true,
+      "ms": 32
+    },
+    "settledDarkClass": true
+  },
+  "pills": {
+    "error-light-320x568": {
+      "surface": "rgb(250, 234, 235)",
+      "ink": "rgb(143, 29, 42)",
+      "role": "alert",
+      "icon": true,
+      "alertIcon": true,
+      "srText": true,
+      "ratio": 7.59
+    },
+    "info-light-320x568": {
+      "surface": "rgb(239, 246, 255)",
+      "ink": "rgb(25, 60, 184)",
+      "role": "status",
+      "icon": true,
+      "alertIcon": false,
+      "srText": false,
+      "ratio": 8.11
+    },
+    "error-light-390x844": {
+      "surface": "rgb(250, 234, 235)",
+      "ink": "rgb(143, 29, 42)",
+      "role": "alert",
+      "icon": true,
+      "alertIcon": true,
+      "srText": true,
+      "ratio": 7.59
+    },
+    "info-light-390x844": {
+      "surface": "rgb(239, 246, 255)",
+      "ink": "rgb(25, 60, 184)",
+      "role": "status",
+      "icon": true,
+      "alertIcon": false,
+      "srText": false,
+      "ratio": 8.11
+    },
+    "error-dark-320x568": {
+      "surface": "rgb(42, 16, 20)",
+      "ink": "rgb(255, 180, 188)",
+      "role": "alert",
+      "icon": true,
+      "alertIcon": true,
+      "srText": true,
+      "ratio": 10.57
+    },
+    "info-dark-320x568": {
+      "surface": "rgb(12, 32, 53)",
+      "ink": "rgb(140, 196, 255)",
+      "role": "status",
+      "icon": true,
+      "alertIcon": false,
+      "srText": false,
+      "ratio": 8.99
+    },
+    "error-dark-390x844": {
+      "surface": "rgb(42, 16, 20)",
+      "ink": "rgb(255, 180, 188)",
+      "role": "alert",
+      "icon": true,
+      "alertIcon": true,
+      "srText": true,
+      "ratio": 10.57
+    },
+    "info-dark-390x844": {
+      "surface": "rgb(12, 32, 53)",
+      "ink": "rgb(140, 196, 255)",
+      "role": "status",
+      "icon": true,
+      "alertIcon": false,
+      "srText": false,
+      "ratio": 8.99
+    }
+  }
+}

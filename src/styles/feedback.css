@@ -1,0 +1,32 @@
+/* THEME-1 (DESIGN_AUDIT_3.0 D-06): feedback tone tokens for the marketplace status pills.
+   Error never reads as color alone — the component pairs these classes with an AlertCircle
+   icon, role="alert" and a screen-reader text marker. Contrast measured (WCAG relative
+   luminance): light ink #8F1D2A on #FAEAEB = 7.59:1, dark ink #FFB4BC on #2A1014 = 10.57:1,
+   both clear AA at 12 px body text. The light ink is --color-marshgo-red (#BE3440) darkened
+   because at 4.80:1 on the tinted surface it left no headroom. Transport --mode-* colors are
+   intentionally not referenced here. */
+:root {
+  --mg-feedback-error-ink: #8F1D2A;
+  --mg-feedback-error-surface: #FAEAEB;
+  --mg-feedback-error-line: #ECC7CC;
+}
+
+html.dark {
+  --mg-feedback-error-ink: #FFB4BC;
+  --mg-feedback-error-surface: #2A1014;
+  --mg-feedback-error-line: rgba(255, 156, 167, .45);
+}
+
+.mg-feedback-error {
+  background-color: var(--mg-feedback-error-surface);
+  border: 1px solid var(--mg-feedback-error-line);
+  color: var(--mg-feedback-error-ink);
+}
+
+/* The dismiss button keeps its canonical labelled 44 px literal (tests/canonical-design.test.ts),
+   so its hover lifts from this unlayered rule instead — Tailwind v4 ships utilities inside
+   @layer utilities, and an unlayered selector of equal specificity always wins. No important-flag
+   escalation is used anywhere in this layer. */
+.mg-feedback-error button:hover {
+  background-color: var(--mg-feedback-error-line);
+}

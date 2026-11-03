@@ -25,8 +25,19 @@
       .boot-dark .boot-notice { background: #081b35; color: #e6eefb; }
     </style>
     <script>
-      // The bundle carries the theme sheet, so the shell reads the same key the app writes.
-      try { if (localStorage.getItem('mg_theme') === 'dark') document.documentElement.classList.add('boot-dark'); } catch { /* Private mode: keep the light shell. */ }
+      // The bundle carries the theme sheet, so the shell reads the same key the app writes and
+      // resolves it exactly like src/services/theme.ts: a stored light/dark wins over the OS,
+      // only "system" (Авто) follows prefers-color-scheme. This runs before the first paint, so
+      // a dark start never shows a light frame.
+      try {
+        var stored = localStorage.getItem('mg_theme');
+        var mode = (stored === 'light' || stored === 'dark' || stored === 'system') ? stored : 'light';
+        var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) {
+          document.documentElement.classList.add('boot-dark', 'dark');
+          document.documentElement.style.colorScheme = 'dark';
+        }
+      } catch { /* Private mode: keep the light shell. */ }
     </script>
   </head>
   <body class="bg-[#F5F8FD] text-[#14243B] antialiased selection:bg-[#1769F4] selection:text-white">

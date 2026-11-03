@@ -4,6 +4,18 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 
 const STORAGE_KEY = 'mg_theme';
 
+/** Normalize a stored value into the theme contract; anything unknown stays light, as init did before. */
+export function resolveThemeMode(saved: string | null | undefined): ThemeMode {
+  return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'light';
+}
+
+/** Resolve a mode against the OS scheme. Only "system" (Авто) follows the OS; stored light/dark wins. */
+export function resolveIsDark(mode: ThemeMode, systemPrefersDark: boolean): boolean {
+  if (mode === 'dark') return true;
+  if (mode === 'light') return false;
+  return systemPrefersDark;
+}
+
 class ThemeService {
   private currentTheme: ThemeMode = 'light';
   private listeners: Set<(theme: ThemeMode, isDark: boolean) => void> = new Set();
@@ -14,12 +26,7 @@ class ThemeService {
 
   private init() {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-      if (saved && (saved === 'light' || saved === 'dark' || saved === 'system')) {
-        this.currentTheme = saved;
-      } else {
-        this.currentTheme = 'light';
-      }
+      this.currentTheme = resolveThemeMode(localStorage.getItem(STORAGE_KEY));
     } catch {
       this.currentTheme = 'light';
     }
@@ -42,9 +49,9 @@ class ThemeService {
   }
 
   public isDark(): boolean {
-    if (this.currentTheme === 'dark') return true;
-    if (this.currentTheme === 'light') return false;
-    return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const systemPrefersDark = typeof window !== 'undefined' && !!window.matchMedia
+      && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return resolveIsDark(this.currentTheme, systemPrefersDark);
   }
 
   public setTheme(theme: ThemeMode): void {
