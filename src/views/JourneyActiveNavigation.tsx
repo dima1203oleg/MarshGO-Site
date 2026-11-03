@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, ArrowRight, Flag, Layers, Navigation } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Flag, Layers, Navigation } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import {
   buildJourneyRouteMapModel, formatTransferCount, journeyModeColor,
@@ -38,7 +38,14 @@ import {
  * and the «Далі» control all come from the itinerary's own legs and schedule.
  * No position is invented when the feed has no fresh vehicle.
  */
-export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourney; onExit: () => void }) {
+export function JourneyActiveNavigation({ journey, notice, onExit, onFinish }: {
+  journey: ApiJourney;
+  /** Server refused to record the start; the screen follows the plan but must say so. */
+  notice?: string | null;
+  onExit: () => void;
+  /** Called once when the passenger reaches the end of the plan; the server owns the state change. */
+  onFinish?: () => void;
+}) {
   const legs = journey.legs;
   const model = useMemo(() => buildJourneyRouteMapModel(legs), [legs]);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -289,7 +296,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
 
   const advance = () => {
     haptic([8, 24, 8]);
-    if (isLast) { onExit(); return; }
+    if (isLast) { onFinish?.(); onExit(); return; }
     setLegIndex(index => Math.min(legs.length - 1, index + 1));
   };
 
@@ -408,6 +415,14 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
             </div>
           </div>
           <p className="mt-1 text-[11px] font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</p>
+          {notice && <p
+            role="status"
+            data-testid="active-nav-notice"
+            className={`mt-2 flex items-start gap-2 rounded-xl border px-3 py-2.5 text-[12px] font-bold leading-[16px] ${isDark ? 'border-amber-300/30 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'}`}
+          >
+            <AlertTriangle size={15} className="mt-px shrink-0"/>
+            <span className="min-w-0 flex-1">{notice}</span>
+          </p>}
         </div>
 
         {showRibbon && <div className="mg-route-ribbon mt-3 shrink-0 px-5" role="list" aria-label="Етапи навігації">

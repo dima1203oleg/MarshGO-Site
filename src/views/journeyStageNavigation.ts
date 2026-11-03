@@ -51,6 +51,8 @@ export function activeLegPhase(leg: ActiveLeg, nowMs: number): LegPhase {
  * Opening navigation on a plan that already started should not replay the
  * walk the passenger has finished: the first leg still ahead is the current one.
  * Every value comes from the itinerary's own timestamps, never from a guess.
+ * The server's `current_leg_id` is not used here: it marks where activation was
+ * requested, and advancing a stage in the PWA does not move it.
  */
 export function activeNavigationStartIndex(legs: readonly ActiveLeg[], nowMs: number): number {
   const index = legs.findIndex(leg => {

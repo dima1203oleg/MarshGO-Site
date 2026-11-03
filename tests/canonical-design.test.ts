@@ -306,3 +306,26 @@ test('the journey screens read one accent token set and the sort tabs stay AA-sa
   assert.match(results, /bg-\[var\(--mg-action\)\] text-white/, 'the active sort tab is a filled AA control: --mg-action is 5.57:1 under white, #1687FF was 3.53:1');
   assert.doesNotMatch(results, /bg-gradient-to-b from-\[#1687FF\]/, 'the sort-tab gradient put half of its white label under AA');
 });
+
+// CP6b live review found the stage screen's primary CTA painted with a violet gradient (#A21CFF →
+// #7C1BE3) while every other filled control in the app uses --mg-action. Owner decision: the action
+// token wins, geometry unchanged.
+test('the route CTA and the carpool book button are filled by the action token, not violet', async () => {
+  const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
+  const block = (selector: string) => {
+    const match = css.match(new RegExp(`\\n\\${selector} \\{([^}]*)\\}`, 'm'));
+    assert.ok(match, `${selector} went missing from the sheet`);
+    return match![1];
+  };
+  const cta = block('.mg-route-cta');
+  const focus = block('.mg-route-cta:focus-visible');
+  const book = block('.mg-route-book');
+  const violet = /#A21CFF|#7C1BE3|#A855F7|139, 60, 230|162, 28, 255|168, 85, 247/i;
+  assert.match(cta, /background:\s*var\(--mg-action\);/, 'the filled control must carry white labels on --mg-action (5.57:1), the same token as the sort tab');
+  assert.match(cta, /box-shadow:\s*var\(--mg-action-shadow\)/, 'the CTA glow must come from the action shadow token, not an inline violet rgba');
+  assert.match(focus, /outline:\s*2px solid var\(--mg-blue\)/, 'focus is a 2px --mg-blue ring everywhere else in the system');
+  for (const [name, body] of [['.mg-route-cta', cta], ['.mg-route-cta:focus-visible', focus], ['.mg-route-book', book]] as const) {
+    assert.doesNotMatch(body, violet, `${name} still hand-picks a violet literal`);
+  }
+  assert.equal((css.match(/--mg-action-shadow:/g) || []).length, 2, '--mg-action-shadow must be declared once per theme');
+});

@@ -26,6 +26,7 @@ import type { ProfileSection } from './ProfileSections';
 import { compactPlaceLabel, fullPlaceLabel } from '../domain/placeLabel';
 import { ApiAccountDeletionRequest, ApiBlockedUser, ApiBooking, ApiDemand, ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiNotification, ApiNotificationPage, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiRendezvous, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, ProductionApiError, productionApi } from '../services/productionApi';
 import { storedJourneyToApiJourney } from '../routing/storedJourneyView';
+import { activatePassengerJourney, completePassengerJourney, isRestorableJourneyState } from '../services/journeyLifecycle';
 import { bookingFailureMessage, boardingFailureMessage, deepLinkFailureMessage, isOfferNoLongerBookable, OFFER_NO_LONGER_BOOKABLE_TEXT, ticketFailureMessage } from './bookingFailureState';
 import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
 import { defaultKyivDateTime, formatKyivDateTimeInput, kyivDateTimeInputToDate, kyivDateTimeInputToIso } from '../domain/kyivTime';
@@ -213,6 +214,7 @@ export function ProductionMarketplace() {
   const [selectedOffer, setSelectedOffer] = useState<ApiOffer | null>(null);
   const [selectedJourney, setSelectedJourney] = useState<ApiStoredJourney | null>(null);
   const [activeJourneyNavigation, setActiveJourneyNavigation] = useState<ApiJourney | null>(null);
+  const [journeyNotice, setJourneyNotice] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<ApiBooking | null>(null);
   const [visibleBookingTicket, setVisibleBookingTicket] = useState<{ bookingId: string; token: string } | null>(null);
   const [ticketTokenRevealed, setTicketTokenRevealed] = useState(false);
@@ -269,6 +271,27 @@ export function ProductionMarketplace() {
   }, [refreshUnreadConversations]);
   useEffect(() => { rendezvousSessionsRef.current = rendezvousSessions; }, [rendezvousSessions]);
   const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
+  // The passenger stage map is local; `journeys.state` is the server's. Opening it
+  // asks the server to record the start, and finishing it asks the server to close
+  // the journey — so a reload or a PWA relaunch restores the same truth.
+  const openJourneyNavigation = useCallback((journey: ApiJourney) => {
+    setActiveJourneyNavigation(journey);
+    setJourneyNotice('');
+    void (async () => {
+      const outcome = await activatePassengerJourney(productionApi, journey.id, journey.legs[0]?.id);
+      if (!outcome.confirmed) setJourneyNotice(outcome.message);
+      else await refreshJourneys().catch(() => undefined);
+    })();
+  }, [refreshJourneys]);
+  const finishJourneyNavigation = useCallback((journeyId: string) => {
+    setActiveJourneyNavigation(null);
+    setJourneyNotice('');
+    void (async () => {
+      const outcome = await completePassengerJourney(productionApi, journeyId);
+      if (!outcome.confirmed) setStatusMessage(outcome.message);
+      await refreshJourneys().catch(() => undefined);
+    })();
+  }, [refreshJourneys]);
   const refreshNotifications = useCallback(async () => setNotificationPage(await productionApi.notifications()), []);
   const refreshBlockedUsers = useCallback(async () => setBlockedUsers(await productionApi.blockedUsers()), []);
   const refreshMyOffers = useCallback(async () => setMyOffers(await productionApi.myOffers()), []);
@@ -424,7 +447,11 @@ export function ProductionMarketplace() {
         } else if (route.kind === 'journey') {
           const journey = await productionApi.journey(entityId);
           if (!active) return;
-          setSelectedOffer(null); setSelectedJourney(journey); activateTab('trips');
+          setSelectedOffer(null); setSelectedJourney(journey);
+          // A journey the server still holds as running reopens on its stage screen:
+          // the reload survival comes from `state`, not from a local copy of it.
+          if (isRestorableJourneyState(journey.state)) setActiveJourneyNavigation(storedJourneyToApiJourney(journey));
+          activateTab('trips');
         } else if (route.kind === 'conversation') {
           const conversation = await productionApi.conversationById(entityId);
           const currentBookings = await productionApi.bookings();
@@ -1835,10 +1862,15 @@ export function ProductionMarketplace() {
     // One tap: the selected itinerary becomes the active navigation map. The
     // route screen stays behind it, so exiting restores the same journey and
     // no destination is ever asked for again.
-    onStartJourney={() => setActiveJourneyNavigation(journey)}
+    onStartJourney={() => openJourneyNavigation(journey)}
   />;
 
-  const screen = activeJourneyNavigation ? <JourneyActiveNavigation journey={activeJourneyNavigation} onExit={() => setActiveJourneyNavigation(null)} />
+  const screen = activeJourneyNavigation ? <JourneyActiveNavigation
+    journey={activeJourneyNavigation}
+    notice={journeyNotice}
+    onExit={() => { setActiveJourneyNavigation(null); setJourneyNotice(''); }}
+    onFinish={() => finishJourneyNavigation(activeJourneyNavigation.id)}
+  />
     : selectedRouteMap ? routeMapScreen(selectedRouteMap, () => setSelectedRouteMap(null))
     : selectedJourney ? routeMapScreen(storedJourneyToApiJourney(selectedJourney), () => { setSelectedJourney(null); setTab('trips'); })
     : selectedOffer ? <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>{setSelectedOffer(null);setJourneyBookingLink(null);setTab('search');}} className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div><p className="text-xs text-slate-500">Деталі поїздки</p><h1 className="font-extrabold">{selectedOffer.origin_name.split(',')[0]} → {selectedOffer.destination_name.split(',')[0]}</h1></div></div><div className="mb-3"><Suspense fallback={null}><OfferRoutePreview offer={selectedOffer}/></Suspense></div><div className="mb-3 overflow-hidden rounded-[1.4rem]"><VehiclePhoto url={selectedOffer.vehicle_photo_url} alt={`Авто водія ${selectedOffer.driver_name}`}/></div><div className="rounded-[1.5rem] bg-white p-5 shadow-sm"><span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700">COMMUNITY · Попутка</span><div className="mt-5 grid grid-cols-2 gap-4"><div><small className="text-slate-400">Відправлення</small><p className="mt-1 text-xl font-extrabold">{formatDate(selectedOffer.departure_at,{hour:'2-digit',minute:'2-digit'})}</p><b>{selectedOffer.origin_name.split(',')[0]}</b></div><div className="text-right"><small className="text-slate-400">Прибуття</small><p className="mt-1 text-xl font-extrabold">{selectedOffer.arrival_at?formatDate(selectedOffer.arrival_at,{hour:'2-digit',minute:'2-digit'}):'—'}</p><b>{selectedOffer.destination_name.split(',')[0]}</b></div></div><div className="my-4 border-t border-slate-100"/><ol aria-label="Маршрут поїздки" className="relative ml-1 space-y-5 border-l-2 border-dashed border-[#BBD7FB] pl-5"><li className="relative"><span className="absolute -left-[1.72rem] top-1 h-3 w-3 rounded-full border-2 border-white bg-[var(--mg-action)] shadow"/><p className="text-sm font-extrabold text-[#0E1F35]">{formatDate(selectedOffer.departure_at,{hour:'2-digit',minute:'2-digit'})} · {selectedOffer.origin_name.split(',')[0]}</p><p className="text-[11px] text-slate-400">Посадка</p></li>{selectedOffer.distance_m&&selectedOffer.duration_s?<li className="text-[11px] font-semibold text-[var(--mg-muted)]">{(selectedOffer.distance_m/1000).toFixed(0)} км · {Math.floor(selectedOffer.duration_s/3600)} год {Math.round((selectedOffer.duration_s%3600)/60)} хв дорогою</li>:null}<li className="relative"><span className="absolute -left-[1.72rem] top-1 h-3 w-3 rounded-full border-2 border-white bg-[#EF4444] shadow"/><p className="text-sm font-extrabold text-[#0E1F35]">{selectedOffer.arrival_at?formatDate(selectedOffer.arrival_at,{hour:'2-digit',minute:'2-digit'}):'—'} · {selectedOffer.destination_name.split(',')[0]}</p><p className="text-[11px] text-slate-400">Висадка</p></li></ol><div className="my-4 border-t border-slate-100"/><p className="flex items-center gap-3 text-sm"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">{selectedOffer.driver_name.slice(0,1)}</span><span><b>{selectedOffer.driver_name}</b><small className="block text-[var(--mg-muted)]">{selectedOffer.review_count?`★ ${Number(selectedOffer.average_rating).toFixed(1)} · ${selectedOffer.review_count} відгуків`:'Новий водій'}</small></span></p><div className="mt-5 flex justify-between text-sm"><span className="text-slate-500">Вільні місця</span><b>{detailOfferBlocked?'—':selectedOffer.available_seats}</b></div>{detailOfferBlocked&&<p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800">{OFFER_NO_LONGER_BOOKABLE_TEXT}</p>}<div className="mt-3 flex justify-between text-sm"><span className="text-slate-500">Вартість за {seats} {seats===1?'місце':'місця'}</span><b className="text-lg">{formatMoney(selectedOffer.price_per_seat_minor*seats,selectedOffer.currency)}</b></div><p className="mt-1 text-right text-[10px] text-slate-400">MARSHGO Community · комісія платформи 0%</p><button data-testid="offer-book-button" data-offer-id={selectedOffer.id} disabled={busy||detailOfferBlocked||selectedOffer.available_seats<seats} title={detailOfferBlocked?'Ця поїздка більше недоступна для бронювання':selectedOffer.available_seats<seats?'Недостатньо вільних місць для такої кількості пасажирів':''} onClick={()=>{setStatusMessage('');setBookingToConfirm(selectedOffer);}} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{detailOfferBlocked?'Недоступно для бронювання':selectedOffer.available_seats<seats?'Недостатньо місць':'Забронювати місце'}<ArrowRight size={17}/></button></div></div> : tab==='navigation' ? null : tab==='map' ? <Suspense fallback={<main className="grid min-h-[100svh] place-items-center bg-[#f5f8fd] text-sm text-slate-500">Завантажуємо карту…</main>}><TransportMapView onBack={()=>setTab('search')}/></Suspense> : tab==='plan' ? planScreen : tab==='home' ? (showResults ? resultsScreen : homeScreen) : tab==='search' ? (showResults ? resultsScreen : searchScreen) : tab==='trips' ? tripsScreen : tab==='chat' ? chatScreen : tab==='profile' ? (profileSection ? <Suspense fallback={profileSectionPending}><ProfileSections section={profileSection} onBack={()=>setProfileSection(null)} vehicles={vehicles} records={verificationRecords} onLogoutAll={logoutAllDevices} onExportData={downloadPersonalData} onRequestDeletion={()=>setConfirmDeletion(true)} onOpenSafetyReport={()=>{setProfileSection(null);setTab('trips');}}/></Suspense> : profileScreen) : tab==='admin' ? adminDashboard : tab==='demand' ? demandFormScreen : tab==='offer-new' ? offerFormScreen : tab==='requests' ? requestsScreen : myDemandsScreen;
