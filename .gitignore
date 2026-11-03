@@ -6,3 +6,5 @@ coverage/
 
 .e2e-dist/
 MarshGO-Site-*/
+test-results/
+playwright-report/

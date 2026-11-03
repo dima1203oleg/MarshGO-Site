@@ -64,7 +64,7 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[#1769F4] transition"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[var(--mg-blue-ink)] transition"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Назад</span>
@@ -75,7 +75,7 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
         {/* Banner */}
-        <div className="bg-gradient-to-r from-[#081B35] to-[#1769F4] rounded-2xl p-5 text-white shadow-md space-y-2">
+        <div className="bg-gradient-to-r from-[#081B35] to-[var(--mg-blue-600)] rounded-2xl p-5 text-white shadow-md space-y-2">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-semibold text-[#38BDF8]">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Пасажир обирає умови</span>
@@ -94,8 +94,8 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-bold text-[#14243B] mb-1">Звідки:</label>
-              <div className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-[#F5F8FD] focus-within:bg-white focus-within:border-[#1769F4] transition">
-                <MapPin className="w-4 h-4 text-[#1769F4] shrink-0" />
+              <div className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-[#F5F8FD] focus-within:bg-white focus-within:border-[var(--mg-blue)] transition">
+                <MapPin className="w-4 h-4 text-[var(--mg-blue-ink)] shrink-0" />
                 <input
                   type="text"
                   value={origin}
@@ -109,7 +109,7 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-[#14243B] mb-1">Куди:</label>
-              <div className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-[#F5F8FD] focus-within:bg-white focus-within:border-[#1769F4] transition">
+              <div className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-[#F5F8FD] focus-within:bg-white focus-within:border-[var(--mg-blue)] transition">
                 <MapPin className="w-4 h-4 text-[#16845C] shrink-0" />
                 <input
                   type="text"
@@ -168,7 +168,7 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
                   onClick={() => setPassengerCount(num)}
                   className={`w-12 h-10 rounded-xl font-bold text-xs transition ${
                     passengerCount === num
-                      ? 'bg-[#1769F4] text-white shadow-sm'
+                      ? 'bg-[var(--mg-action)] text-white shadow-sm'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
@@ -179,17 +179,17 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
           </div>
 
           {/* Budget Input & Unit Selector */}
-          <div className="p-4 rounded-xl bg-[#EFF6FF] border border-blue-200 space-y-3">
+          <div className="p-4 rounded-xl bg-[#EFF6FF] border border-[var(--mg-border-subtle)] space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-[#14243B]">
                 Скільки ви готові заплатити?
               </label>
-              <div className="flex items-center gap-1 p-0.5 bg-white rounded-lg border border-blue-200 text-[11px]">
+              <div className="flex items-center gap-1 p-0.5 bg-white rounded-lg border border-[var(--mg-border-subtle)] text-[11px]">
                 <button
                   type="button"
                   onClick={() => setBudgetType('total_all')}
                   className={`px-2.5 py-1 rounded font-bold transition ${
-                    budgetType === 'total_all' ? 'bg-[#1769F4] text-white' : 'text-slate-600'
+                    budgetType === 'total_all' ? 'bg-[var(--mg-action)] text-white' : 'text-slate-600'
                   }`}
                 >
                   Загалом за всіх ({passengerCount} пас.)
@@ -198,7 +198,7 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
                   type="button"
                   onClick={() => setBudgetType('per_seat')}
                   className={`px-2.5 py-1 rounded font-bold transition ${
-                    budgetType === 'per_seat' ? 'bg-[#1769F4] text-white' : 'text-slate-600'
+                    budgetType === 'per_seat' ? 'bg-[var(--mg-action)] text-white' : 'text-slate-600'
                   }`}
                 >
                   За 1 місце
@@ -213,7 +213,7 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
                 step="50"
                 value={totalBudget}
                 onChange={(e) => setTotalBudget(Number(e.target.value))}
-                className="w-full text-2xl font-black text-[#1769F4] p-3 rounded-xl border border-blue-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#1769F4] tabular-nums"
+                className="w-full text-2xl font-black text-[var(--mg-blue-ink)] p-3 rounded-xl border border-blue-300 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--mg-blue)] tabular-nums"
                 required
               />
               <span className="absolute right-4 top-3.5 text-sm font-bold text-slate-500">UAH</span>
@@ -236,14 +236,14 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Опишіть ваші побажання щодо точки посадки або багажу..."
-              className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-[#F5F8FD] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1769F4] resize-none"
+              className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-[#F5F8FD] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--mg-blue)] resize-none"
             />
           </div>
 
           {/* Submit button */}
           <button
             type="submit"
-            className="w-full py-3.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white font-extrabold text-sm shadow-lg shadow-[#1769F4]/25 transition flex items-center justify-center gap-2 active:scale-95"
+            className="w-full py-3.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white font-extrabold text-sm shadow-lg shadow-[color:var(--mg-action)]/25 transition flex items-center justify-center gap-2 active:scale-95"
           >
             <CheckCircle2 className="w-5 h-5" />
             <span>Опублікувати запит на біржі (Бюджет {totalBudget} грн)</span>

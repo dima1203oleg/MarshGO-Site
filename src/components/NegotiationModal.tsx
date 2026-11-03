@@ -85,7 +85,7 @@ export const NegotiationModal: React.FC<NegotiationModalProps> = ({
                 step="50"
                 value={price}
                 onChange={(e) => setPrice(Number(e.target.value))}
-                className="w-full text-2xl font-extrabold text-[#1769F4] px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#1769F4] tabular-nums"
+                className="w-full text-2xl font-extrabold text-[var(--mg-blue-ink)] px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--mg-blue)] tabular-nums"
                 required
               />
               <span className="absolute right-4 top-4 text-sm font-semibold text-slate-500">UAH</span>
@@ -106,7 +106,7 @@ export const NegotiationModal: React.FC<NegotiationModalProps> = ({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Наприклад: Заберу о 08:30 біля автовокзалу, є вільний багажник."
-              className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#1769F4] resize-none"
+              className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--mg-blue)] resize-none"
             />
           </div>
 
@@ -125,7 +125,7 @@ export const NegotiationModal: React.FC<NegotiationModalProps> = ({
             </button>
             <button
               type="submit"
-              className="w-1/2 py-2.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white text-xs font-bold shadow-md shadow-[#1769F4]/20 transition flex items-center justify-center gap-1.5 active:scale-95"
+              className="w-1/2 py-2.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white text-xs font-bold shadow-md shadow-[color:var(--mg-action)]/20 transition flex items-center justify-center gap-1.5 active:scale-95"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Надіслати пропозицію</span>

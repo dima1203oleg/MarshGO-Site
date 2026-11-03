@@ -14,7 +14,8 @@
     "lint": "npm run lint:all",
     "lint:all": "eslint src scripts shared vite.config.ts eslint.config.js",
     "check:bundle": "node scripts/check-bundle-size.mjs",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
     "@capacitor/core": "8.5.2",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.14.0",
     "@types/qrcode": "^1.5.6",

@@ -80,9 +80,9 @@ export const SafetyTripModal: React.FC<SafetyTripModalProps> = ({
         {/* Body */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
           {/* Share Live Location Card */}
-          <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 space-y-3">
+          <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-[var(--mg-border-subtle)] dark:border-blue-900 space-y-3">
             <div className="flex items-center gap-2">
-              <Share2 className="w-4 h-4 text-[#1769F4] shrink-0" />
+              <Share2 className="w-4 h-4 text-[var(--mg-blue-ink)] shrink-0" />
               <h3 className="font-extrabold text-[#14243B] dark:text-white text-sm">
                 Поділитися поїздкою з близькими
               </h3>
@@ -95,7 +95,7 @@ export const SafetyTripModal: React.FC<SafetyTripModalProps> = ({
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-[#1769F4] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition shadow-2xs"
+                className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-[var(--mg-blue)] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition shadow-2xs"
               >
                 {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-500" />}
                 <span>{copied ? 'Скопійовано!' : 'Копіювати посилання'}</span>
@@ -140,7 +140,7 @@ export const SafetyTripModal: React.FC<SafetyTripModalProps> = ({
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-start gap-2.5">
-                <Lock className="w-4 h-4 text-[#1769F4] dark:text-sky-400 shrink-0 mt-0.5" />
+                <Lock className="w-4 h-4 text-[var(--mg-blue-ink)] dark:text-sky-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-[#14243B] dark:text-white">Захист конфіденційності</div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -202,7 +202,7 @@ export const SafetyTripModal: React.FC<SafetyTripModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white text-xs font-bold transition shadow-xs"
+            className="px-5 py-2 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white text-xs font-bold transition shadow-xs"
           >
             Зрозуміло
           </button>

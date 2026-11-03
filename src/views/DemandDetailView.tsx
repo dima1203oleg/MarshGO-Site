@@ -41,7 +41,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[#1769F4] transition"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[var(--mg-blue-ink)] transition"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Назад</span>
@@ -61,7 +61,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-base sm:text-lg font-bold text-[#14243B]">
-                <MapPin className="w-5 h-5 text-[#1769F4]" />
+                <MapPin className="w-5 h-5 text-[var(--mg-blue-ink)]" />
                 <span>{demand.origin}</span>
                 <span className="text-slate-400">→</span>
                 <span>{demand.destination}</span>
@@ -77,7 +77,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
 
             <div className="text-right">
               <div className="text-xs text-[#62718A]">Ваш бюджет:</div>
-              <div className="text-xl sm:text-2xl font-black text-[#1769F4] tabular-nums">
+              <div className="text-xl sm:text-2xl font-black text-[var(--mg-blue-ink)] tabular-nums">
                 {demand.totalBudget} грн
               </div>
               <div className="text-[10px] text-slate-500">
@@ -101,7 +101,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
             </h3>
             <button
               onClick={() => onOpenChat(demand.id)}
-              className="text-xs font-semibold text-[#1769F4] flex items-center gap-1.5 hover:underline"
+              className="text-xs font-semibold text-[var(--mg-blue-ink)] flex items-center gap-1.5 hover:underline"
             >
               <MessageSquare className="w-4 h-4" />
               <span>Відкрити діалог</span>
@@ -116,7 +116,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
                   className={`bg-white rounded-2xl border p-5 shadow-sm space-y-3 transition ${
                     prop.status === 'accepted'
                       ? 'border-emerald-500 bg-emerald-50/20 ring-2 ring-emerald-500/20'
-                      : 'border-[#DFE7F1] hover:border-[#1769F4]'
+                      : 'border-[#DFE7F1] hover:border-[var(--mg-blue)]'
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

@@ -41,7 +41,7 @@ export const DriverRequestsView: React.FC<DriverRequestsViewProps> = ({
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[#1769F4] transition"
+            className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[var(--mg-blue-ink)] transition"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Назад</span>
@@ -75,7 +75,7 @@ export const DriverRequestsView: React.FC<DriverRequestsViewProps> = ({
                 onClick={() => setFilterCity(city)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition ${
                   filterCity === city
-                    ? 'bg-[#1769F4] text-white'
+                    ? 'bg-[var(--mg-action)] text-white'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >

@@ -140,7 +140,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-[#1769F4] dark:text-sky-400 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-[var(--mg-blue-ink)] dark:text-sky-400 flex items-center justify-center">
               <Calendar className="w-4 h-4" />
             </div>
             <h3 className="font-extrabold text-sm sm:text-base text-[#14243B] dark:text-white">
@@ -159,7 +159,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="self-end sm:self-auto text-xs font-bold text-[#1769F4] dark:text-sky-400 hover:opacity-80 flex items-center gap-1 transition"
+          className="self-end sm:self-auto text-xs font-bold text-[var(--mg-blue-ink)] dark:text-sky-400 hover:opacity-80 flex items-center gap-1 transition"
         >
           <span>{isExpanded ? 'Згорнути графік' : 'Показати динаміку'}</span>
           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -206,7 +206,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                       <div
                         className={`text-[11px] sm:text-xs font-black tabular-nums transition ${
                           isSelected
-                            ? 'text-[#1769F4] dark:text-sky-400 scale-105'
+                            ? 'text-[var(--mg-blue-ink)] dark:text-sky-400 scale-105'
                             : day.isCheapest
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : 'text-[#14243B] dark:text-slate-200'
@@ -222,7 +222,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                         style={{ height: `${normalizedHeight}%` }}
                         className={`w-full rounded-t-xl transition-all duration-300 relative flex flex-col justify-end ${
                           isSelected
-                            ? 'bg-gradient-to-t from-[#1769F4] to-[#38BDF8] shadow-md ring-2 ring-[#1769F4]/40'
+                            ? 'bg-gradient-to-t from-[var(--mg-blue-500)] to-[#38BDF8] shadow-md ring-2 ring-[var(--mg-blue)]/40'
                             : day.isCheapest
                             ? 'bg-gradient-to-t from-emerald-500 to-teal-400 hover:opacity-90'
                             : day.isPeak
@@ -232,7 +232,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                       >
                         {/* Selected day pointer indicator */}
                         {isSelected && (
-                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white dark:bg-[#081B35] border-2 border-[#1769F4] shadow-xs" />
+                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white dark:bg-[#081B35] border-2 border-[var(--mg-blue)] shadow-xs" />
                         )}
                       </div>
                     </div>
@@ -242,7 +242,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                       <div
                         className={`text-xs font-bold transition ${
                           isSelected
-                            ? 'text-[#1769F4] dark:text-sky-400 underline underline-offset-2'
+                            ? 'text-[var(--mg-blue-ink)] dark:text-sky-400 underline underline-offset-2'
                             : 'text-[#14243B] dark:text-slate-300'
                         }`}
                       >
@@ -284,12 +284,12 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                   <span>Піковий попит</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#1769F4]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--mg-action)]" />
                   <span>Обраний день</span>
                 </span>
               </div>
 
-              <div className="text-[11px] text-[#1769F4] dark:text-sky-400 font-semibold">
+              <div className="text-[11px] text-[var(--mg-blue-ink)] dark:text-sky-400 font-semibold">
                 Клікніть на стовпчик для вибору дня
               </div>
             </div>
@@ -298,7 +298,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
           {/* Active Selected Day Micro-Breakdown */}
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0A1A30] border border-slate-200/80 dark:border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-[#1769F4] dark:text-sky-300 flex items-center justify-center font-extrabold text-xs">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-[var(--mg-blue-ink)] dark:text-sky-300 flex items-center justify-center font-extrabold text-xs">
                 {selectedDayInfo.dayShort}
               </div>
               <div>

@@ -88,12 +88,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   src={user.avatar}
                   name={user.name}
                   size="xl"
-                  className="border-2 border-[#1769F4] shadow-sm group-hover:opacity-90 transition"
+                  className="border-2 border-[var(--mg-blue)] shadow-sm group-hover:opacity-90 transition"
                 />
                 <button
                   type="button"
                   title="Змінити або згенерувати аватар"
-                  className="absolute bottom-0 right-0 p-1.5 bg-[#1769F4] text-white rounded-full shadow-md group-hover:scale-110 transition active:scale-95"
+                  className="absolute bottom-0 right-0 p-1.5 bg-[var(--mg-action)] text-white rounded-full shadow-md group-hover:scale-110 transition active:scale-95"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                 </button>
@@ -121,7 +121,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <button
               type="button"
               onClick={() => setIsAvatarModalOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#1769F4] border border-blue-200 font-bold text-xs transition active:scale-95 shadow-xs"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-[var(--mg-blue-ink)] border border-[var(--mg-border-subtle)] font-bold text-xs transition active:scale-95 shadow-xs"
             >
               <Sparkles className="w-4 h-4" />
               <span>Згенерувати унікальний аватар</span>
@@ -135,7 +135,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <button
                 onClick={() => onRoleSwitch('passenger')}
                 className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                  !isDriver ? 'bg-[#1769F4] text-white shadow-sm' : 'text-slate-600'
+                  !isDriver ? 'bg-[var(--mg-action)] text-white shadow-sm' : 'text-slate-600'
                 }`}
               >
                 Пасажир
@@ -143,7 +143,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <button
                 onClick={() => onRoleSwitch('driver')}
                 className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                  isDriver ? 'bg-[#1769F4] text-white shadow-sm' : 'text-slate-600'
+                  isDriver ? 'bg-[var(--mg-action)] text-white shadow-sm' : 'text-slate-600'
                 }`}
               >
                 Водій
@@ -175,13 +175,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="bg-white rounded-2xl border border-[#DFE7F1] p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#1769F4] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-[var(--mg-blue-ink)] flex items-center justify-center">
                     <Car className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="font-extrabold text-sm sm:text-base text-[#14243B] flex items-center gap-2">
                       <span>Гараж автомобілів</span>
-                      <span className="text-xs font-black bg-blue-100 text-[#1769F4] px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-black bg-blue-100 text-[var(--mg-blue-ink)] px-2 py-0.5 rounded-full">
                         {allVehicles.length}
                       </span>
                     </h3>
@@ -194,7 +194,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddVehicleModalOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs active:scale-95"
+                  className="px-3 py-1.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs active:scale-95"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>+ Додати авто</span>
@@ -214,7 +214,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       key={veh.id}
                       className={`p-3.5 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         isActive
-                          ? 'border-[#1769F4] bg-blue-50/50 shadow-xs ring-1 ring-[#1769F4]/20'
+                          ? 'border-[var(--mg-blue)] bg-blue-50/50 shadow-xs ring-1 ring-[var(--mg-blue)]/20'
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
@@ -231,7 +231,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                             </span>
                             <span className="text-xs text-slate-500 font-medium">({veh.year})</span>
                             {isActive && (
-                              <span className="text-[10px] font-extrabold bg-[#1769F4] text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="text-[10px] font-extrabold bg-[var(--mg-action)] text-white px-2 py-0.5 rounded-full flex items-center gap-1">
                                 <Check className="w-2.5 h-2.5 stroke-[3]" />
                                 <span>Основне авто</span>
                               </span>
@@ -255,7 +255,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onSetActiveVehicle(veh.id)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-300 hover:border-[#1769F4] text-slate-700 hover:text-[#1769F4] bg-white transition"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-300 hover:border-[var(--mg-blue)] text-slate-700 hover:text-[var(--mg-blue-ink)] bg-white transition"
                           >
                             Зробити основним
                           </button>
@@ -269,7 +269,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                             }
                             onNavigate('driver-vehicle');
                           }}
-                          className="px-3 py-1.5 rounded-xl text-xs font-bold text-[#1769F4] hover:bg-blue-50 transition"
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold text-[var(--mg-blue-ink)] hover:bg-blue-50 transition"
                         >
                           Фото та дані
                         </button>
@@ -350,7 +350,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               className="w-full p-4 text-left flex items-center justify-between hover:bg-slate-50 transition border-b border-slate-100"
             >
               <div className="flex items-center gap-3">
-                <HelpCircle className="w-4 h-4 text-[#1769F4]" />
+                <HelpCircle className="w-4 h-4 text-[var(--mg-blue-ink)]" />
                 <div>
                   <span className="font-bold text-[#14243B] text-xs sm:text-sm block">Онбординг-тур по сервісу</span>
                   <span className="text-[11px] text-slate-500">Повторити підказки: пошук, створення запитів та маршрутів</span>
@@ -436,7 +436,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-[var(--mg-border-subtle)] dark:border-blue-800">
                 <strong className="text-[#14243B] dark:text-white block mb-1">
                   2. Відповідальність та ліцензування
                 </strong>
@@ -458,7 +458,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
               <button
                 onClick={() => setIsRulesModalOpen(false)}
-                className="px-5 py-2 bg-[#1769F4] text-white rounded-xl font-bold text-xs hover:bg-[#1358CE] transition"
+                className="px-5 py-2 bg-[var(--mg-action)] text-white rounded-xl font-bold text-xs hover:bg-[#1358CE] transition"
               >
                 Зрозуміло
               </button>

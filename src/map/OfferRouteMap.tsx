@@ -29,7 +29,7 @@ export function OfferRouteMap({ origin, destination, geometry }: OfferRouteMapPr
         <div className="relative h-64 sm:h-80">
           <MarshGoMap route={route} onStatus={setStatus} onAdapter={setAdapter} />
           <div className="absolute left-3 top-3 z-10 flex max-w-[calc(100%-5.5rem)] items-center gap-2 rounded-xl border border-white/70 bg-white/95 px-3 py-2 text-xs font-semibold text-[#14243B] shadow-md backdrop-blur">
-            <MapPin className="h-4 w-4 shrink-0 text-[#1769F4]" aria-hidden="true" />
+            <MapPin className="h-4 w-4 shrink-0 text-[var(--mg-blue-ink)]" aria-hidden="true" />
             <span className="truncate">{origin} <span className="text-slate-400">→</span> {destination}</span>
           </div>
           <button
@@ -37,7 +37,7 @@ export function OfferRouteMap({ origin, destination, geometry }: OfferRouteMapPr
             aria-label="Показати весь маршрут"
             title="Показати весь маршрут"
             onClick={() => adapter?.fitRoute()}
-            className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-xl border border-white/70 bg-white/95 text-[#1769F4] shadow-md"
+            className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-xl border border-white/70 bg-white/95 text-[var(--mg-blue-ink)] shadow-md"
           >
             <Navigation className="h-4 w-4" aria-hidden="true" />
           </button>

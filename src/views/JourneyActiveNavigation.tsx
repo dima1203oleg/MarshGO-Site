@@ -292,7 +292,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
   }, []);
 
   if (!leg) {
-    return <main className="route-map-screen fixed inset-0 z-[80] grid place-items-center p-6 text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'}>
+    return <main className="route-map-screen fixed inset-0 z-[var(--mg-z-map-chip)] grid place-items-center p-6 text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'}>
       <div className="text-center">
         <p className="text-[15px] font-extrabold">У цьому маршруті немає етапів.</p>
         <button type="button" onClick={onExit} className="mg-route-cta mt-4 px-6">До маршруту</button>
@@ -320,7 +320,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
   };
 
   return <main
-    className="route-map-screen fixed inset-0 z-[80] overflow-hidden text-[var(--route-ink)]"
+    className="route-map-screen fixed inset-0 z-[var(--mg-z-map-chip)] overflow-hidden text-[var(--route-ink)]"
     data-theme={isDark ? 'dark' : 'light'}
     data-sheet-snap={sheetSnap}
     data-testid="active-journey-navigation"
@@ -386,7 +386,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
 
     <section
       ref={sheetElement}
-      className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-3xl flex-col overflow-hidden rounded-t-[1.75rem] border border-[var(--route-border)] bg-[var(--route-sheet)] shadow-[var(--route-sheet-shadow)]"
+      className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-3xl flex-col overflow-hidden rounded-t-[var(--mg-radius-3xl)] border border-[var(--route-border)] bg-[var(--route-sheet)] shadow-[var(--route-sheet-shadow)]"
       aria-label="Поточний етап маршруту"
       data-testid="active-navigation-sheet"
       data-sheet-state={sheetSnap}

@@ -337,7 +337,7 @@ export function RideshareLifecycleExperience({
   return (
     <div
       data-testid="rideshare-lifecycle-experience"
-      className="fixed inset-0 z-[120] flex flex-col overflow-hidden bg-[#06101E] text-white font-sans select-none"
+      className="fixed inset-0 z-[var(--mg-z-sheet-raised)] flex flex-col overflow-hidden bg-[#06101E] text-white font-sans select-none"
     >
       <div role="note" className="shrink-0 bg-amber-300 px-3 py-1.5 text-center text-[11px] font-extrabold text-slate-950">
         ДЕМО: маршрут, GPS та ETA симульовані — не використовувати для реальної поїздки.
@@ -1029,7 +1029,7 @@ export function RideshareLifecycleExperience({
 
       {/* ─── MODAL: PHONE CALL ─── */}
       {showCallModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[var(--mg-z-lifecycle)] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-sm rounded-3xl border border-slate-700 bg-[#0B1E32] p-5 shadow-2xl text-center space-y-4">
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-500/20 border border-emerald-400/40">
               <PhoneCall size={28} className="text-emerald-400" />
@@ -1078,7 +1078,7 @@ export function RideshareLifecycleExperience({
 
       {/* ─── DRAWER: INSTANT CHAT ─── */}
       {showChatDrawer && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end bg-black/75 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[var(--mg-z-lifecycle)] flex flex-col justify-end bg-black/75 backdrop-blur-sm animate-fade-in">
           <div className="h-[80svh] w-full max-w-xl mx-auto rounded-t-3xl border-t border-slate-700 bg-[#071728] flex flex-col overflow-hidden shadow-2xl">
             {/* Drawer Header */}
             <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3 bg-[#0B1E32]">
@@ -1169,7 +1169,7 @@ export function RideshareLifecycleExperience({
 
       {/* ─── MODAL: SOS SAFETY ─── */}
       {showSosModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[var(--mg-z-lifecycle)] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-sm rounded-3xl border border-rose-500/40 bg-[#1F0A0E] p-5 shadow-2xl text-center space-y-4">
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-rose-500/20 border border-rose-500/50">
               <ShieldAlert size={32} className="text-rose-500" />
@@ -1219,7 +1219,7 @@ export function RideshareLifecycleExperience({
 
       {/* ─── MODAL: HAZARD / TRAFFIC SITUATION ─── */}
       {showHazardModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[var(--mg-z-lifecycle)] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-sm rounded-3xl border border-slate-700 bg-[#0B1E32] p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-black text-white flex items-center gap-2">

@@ -103,7 +103,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-[#F5F8FD]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-100 text-[#1769F4]">
+            <div className="p-2 rounded-xl bg-blue-100 text-[var(--mg-blue-ink)]">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -137,7 +137,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
 
             <div className="text-center sm:text-left space-y-2">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#1769F4]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--mg-blue-ink)]">
                   Персональний аватар
                 </span>
                 <h4 className="font-black text-lg text-[#14243B]">{userName}</h4>
@@ -149,7 +149,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
               <button
                 type="button"
                 onClick={handleShuffle}
-                className="px-4 py-2 rounded-xl bg-white hover:bg-blue-50 border border-blue-200 text-[#1769F4] font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-95"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-blue-50 border border-[var(--mg-border-subtle)] text-[var(--mg-blue-ink)] font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-95"
               >
                 <Dices className="w-4 h-4" />
                 <span>Згенерувати новий вигляд</span>
@@ -172,7 +172,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
                     onClick={() => handleSelectPreset(preset)}
                     className={`p-2 rounded-xl border flex flex-col items-center gap-1.5 transition ${
                       isSelected
-                        ? 'border-[#1769F4] bg-blue-50 ring-2 ring-[#1769F4]/20'
+                        ? 'border-[var(--mg-blue)] bg-blue-50 ring-2 ring-[var(--mg-blue)]/20'
                         : 'border-slate-200 hover:border-slate-300 bg-white'
                     }`}
                   >
@@ -196,7 +196,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
             {/* Palette */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#14243B]">
-                <Palette className="w-3.5 h-3.5 text-[#1769F4]" />
+                <Palette className="w-3.5 h-3.5 text-[var(--mg-blue-ink)]" />
                 <span>Колірна тема:</span>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -214,7 +214,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
                     onClick={() => handleUpdateCustom(col.id, selectedAccessory, selectedExpression)}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold border transition ${
                       selectedPalette === col.id
-                        ? 'bg-[#1769F4] text-white border-[#1769F4]'
+                        ? 'bg-[var(--mg-action)] text-white border-[var(--mg-blue)]'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -227,7 +227,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
             {/* Accessory */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#14243B]">
-                <Glasses className="w-3.5 h-3.5 text-[#1769F4]" />
+                <Glasses className="w-3.5 h-3.5 text-[var(--mg-blue-ink)]" />
                 <span>Аксесуар:</span>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -244,7 +244,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
                     onClick={() => handleUpdateCustom(selectedPalette, acc.id as AvatarOptions['accessory'], selectedExpression)}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold border transition ${
                       selectedAccessory === acc.id
-                        ? 'bg-[#1769F4] text-white border-[#1769F4]'
+                        ? 'bg-[var(--mg-action)] text-white border-[var(--mg-blue)]'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -257,7 +257,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
             {/* Expression */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#14243B]">
-                <Smile className="w-3.5 h-3.5 text-[#1769F4]" />
+                <Smile className="w-3.5 h-3.5 text-[var(--mg-blue-ink)]" />
                 <span>Настрій:</span>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -273,7 +273,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
                     onClick={() => handleUpdateCustom(selectedPalette, selectedAccessory, exp.id as AvatarOptions['expression'])}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold border transition ${
                       selectedExpression === exp.id
-                        ? 'bg-[#1769F4] text-white border-[#1769F4]'
+                        ? 'bg-[var(--mg-action)] text-white border-[var(--mg-blue)]'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -298,7 +298,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
           <button
             type="button"
             onClick={handleSave}
-            className="px-6 py-2.5 rounded-xl bg-[#1769F4] hover:bg-[#1358CE] text-white font-bold text-xs shadow-md shadow-[#1769F4]/20 flex items-center gap-2 transition active:scale-95"
+            className="px-6 py-2.5 rounded-xl bg-[var(--mg-action)] hover:bg-[#1358CE] text-white font-bold text-xs shadow-md shadow-[color:var(--mg-action)]/20 flex items-center gap-2 transition active:scale-95"
           >
             <Check className="w-4 h-4" />
             <span>Встановити цей аватар</span>

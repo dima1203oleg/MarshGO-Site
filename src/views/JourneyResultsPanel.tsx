@@ -28,7 +28,7 @@ const strategyConfig: Array<{ id: ApiJourneyStrategy; label: string; Icon: typeo
 const noticeTone = {
   rose: { dot: 'bg-rose-500', text: 'text-rose-800 dark:text-rose-100', softBg: 'bg-rose-50 dark:bg-rose-950/50' },
   amber: { dot: 'bg-amber-500', text: 'text-amber-900 dark:text-amber-100', softBg: 'bg-amber-50 dark:bg-amber-950/40' },
-  blue: { dot: 'bg-blue-500', text: 'text-blue-900 dark:text-blue-100', softBg: 'bg-blue-50 dark:bg-blue-950/40' },
+  blue: { dot: 'bg-blue-500', text: 'text-[var(--mg-blue-ink)] dark:text-[var(--mg-on-action)]', softBg: 'bg-blue-50 dark:bg-blue-950/40' },
   slate: { dot: 'bg-slate-400', text: 'text-slate-600 dark:text-slate-300', softBg: 'bg-slate-100 dark:bg-slate-800/60' },
 } as const;
 
@@ -116,9 +116,9 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
     data-testid="journey-result-card"
     data-journey-id={journey.id}
     data-top-pick={index === 0 ? 'true' : undefined}
-    className={`journey-result-card relative isolate overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]`}
+    className={`journey-result-card relative isolate overflow-hidden rounded-[var(--mg-radius-lg)] border border-slate-200 bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]`}
   >
-    <button type="button" aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+    <button type="button" aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[var(--mg-radius-lg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]">
       <span className="sr-only">Переглянути карту й деталі маршруту</span>
     </button>
     <div className="journey-result-card-content pointer-events-none relative z-10 p-2">
@@ -135,12 +135,12 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
         actionsClassName="journey-result-actions flex shrink-0 items-center gap-1"
         summaryRowClassName="journey-result-header"
         actions={<>
-          <span data-strategy={strategyItem.id} aria-label={strategyItem.label} title={strategyItem.label} className={`journey-result-action-badge grid h-8 w-8 shrink-0 place-items-center rounded-full border ${strategyItem.id === 'FASTEST' ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/60 dark:text-orange-300' : strategyItem.id === 'CHEAPEST' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300'}`}><StrategyIcon size={18} strokeWidth={2.2} aria-hidden="true"/></span>
+          <span data-strategy={strategyItem.id} aria-label={strategyItem.label} title={strategyItem.label} className={`journey-result-action-badge grid h-8 w-8 shrink-0 place-items-center rounded-full border ${strategyItem.id === 'FASTEST' ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/60 dark:text-orange-300' : strategyItem.id === 'CHEAPEST' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-blue-50 text-[var(--mg-blue)] dark:bg-blue-950/60 dark:text-blue-300'}`}><StrategyIcon size={18} strokeWidth={2.2} aria-hidden="true"/></span>
           <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="journey-result-transfer-badge inline-flex h-8 shrink-0 items-center gap-1 rounded-full border bg-slate-100 px-1.5 text-[10px] font-extrabold tabular-nums text-slate-700 dark:bg-[#15283A] dark:text-slate-200"><ArrowLeftRight size={13} aria-hidden="true"/>{journey.transfers}</span>
-          <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} onPointerDown={event => event.stopPropagation()} className="journey-result-save-button pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-transparent text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800" title={saved ? 'Збережено на цьому пристрої' : 'Зберегти маршрут'}>
+          <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} onPointerDown={event => event.stopPropagation()} className="journey-result-save-button pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-transparent text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)] dark:text-slate-200 dark:hover:bg-slate-800" title={saved ? 'Збережено на цьому пристрої' : 'Зберегти маршрут'}>
             <span className="journey-result-save-visual"><Heart size={19} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''} aria-hidden="true"/></span>
           </button>
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/70 dark:bg-blue-950/50 dark:text-blue-300" aria-hidden="true"><ChevronRight size={18}/></span>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-blue-100 bg-blue-50 text-[var(--mg-blue)] dark:border-blue-900/70 dark:bg-blue-950/50 dark:text-blue-300" aria-hidden="true"><ChevronRight size={18}/></span>
         </>}
         items={stripItems}
         ariaLabel="Послідовність етапів маршруту"
@@ -250,8 +250,8 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
         const active = activeStrategy === id;
         const disabled = count === 0;
         const filled = active && !disabled;
-        return <button key={id} type="button" disabled={disabled} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed ${filled ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : `border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] ${active ? 'border-[var(--mg-action)]' : disabled ? 'opacity-70' : 'hover:border-[var(--mg-blue)]'}`}`}>
-          <Icon size={18} className={`shrink-0 ${filled ? 'text-white' : tone}`} aria-hidden="true"/><span className="whitespace-nowrap text-[10px] font-extrabold leading-tight sm:text-[11px]">{label}</span>
+        return <button key={id} type="button" disabled={disabled} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-1 text-center transition-colors disabled:cursor-not-allowed ${filled ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : `border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] ${active ? 'border-[var(--mg-action)]' : disabled ? 'opacity-70' : 'hover:border-[var(--mg-blue)]'}`}`}>
+          <Icon size={18} className={`shrink-0 ${filled ? 'text-white' : tone}`} aria-hidden="true"/><span className="max-w-full truncate whitespace-nowrap text-[12px] font-extrabold leading-tight">{label}</span>
         </button>;
       })}
     </div>

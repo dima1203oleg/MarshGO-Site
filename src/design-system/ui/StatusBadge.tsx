@@ -16,7 +16,7 @@ const statusConfig: Record<TransportTelemetryStatus, {
   },
   scheduled: {
     label: 'За розкладом',
-    toneClass: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
+    toneClass: 'bg-blue-50 text-blue-700 border-[var(--mg-border-subtle)] dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
     icon: CalendarClock,
   },
   estimated: {

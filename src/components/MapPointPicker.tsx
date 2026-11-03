@@ -71,10 +71,10 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
       .catch((error: unknown) => setMessage(geolocationFailureMessage(typeof error === 'object' && error !== null && 'code' in error ? Number((error as { code: unknown }).code) : undefined)));
   };
 
-  return <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[80] flex flex-col bg-white">
+  return <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[var(--mg-z-map-chip)] flex flex-col bg-white">
     <div ref={container} className="relative min-h-0 flex-1" data-testid="point-picker-map">
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full"><svg width="38" height="48" viewBox="0 0 38 48"><path d="M19 0C8.5 0 0 8.3 0 18.6 0 32 19 48 19 48s19-16 19-29.4C38 8.3 29.5 0 19 0z" fill="#1789F4" stroke="#fff" strokeWidth="2.5"/><circle cx="19" cy="18" r="6.5" fill="#fff"/></svg></div>
-      <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-[9] h-2 w-5 -translate-x-1/2 rounded-full bg-black/20 blur-[2px]"/>
+      <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-[var(--mg-z-control)] h-2 w-5 -translate-x-1/2 rounded-full bg-black/20 blur-[2px]"/>
       <header className="absolute inset-x-0 top-0 z-20 flex items-center gap-3 bg-gradient-to-b from-white/95 to-white/0 px-4 pb-6 pt-[max(.8rem,env(safe-area-inset-top))]">
         <button type="button" onClick={onClose} aria-label="Закрити мапу" className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-md"><X size={18}/></button>
         <h2 className="text-base font-extrabold text-[#0E1F35]">{title}</h2>
