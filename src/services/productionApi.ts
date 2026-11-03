@@ -341,6 +341,9 @@ export type ApiJourneySearchResult = {
     searchTruncated: boolean;
     searchComplete: boolean;
     transitSearchFailed: boolean;
+    /** Present only when every queried feed missed a side at its walk radius. */
+    nearestOriginStopMeters?: number | null;
+    nearestDestinationStopMeters?: number | null;
   };
 };
 export type ApiStoredJourney = {
