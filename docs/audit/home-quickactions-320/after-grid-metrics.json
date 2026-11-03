@@ -1,0 +1,332 @@
+[
+  {
+    "windowInner": [
+      320,
+      568
+    ],
+    "hero": {
+      "top": 69,
+      "bottom": 500,
+      "clientHeight": 431,
+      "scrollHeight": 473,
+      "maxScroll": 42,
+      "paddingBottom": "8px"
+    },
+    "tabbarTop": 505,
+    "deadBand": 5,
+    "banner": {
+      "boxHeight": 116,
+      "contentHeight": 114,
+      "clipped": false
+    },
+    "cards": [
+      {
+        "w": 140,
+        "h": 140,
+        "top": 246,
+        "bottom": 386
+      },
+      {
+        "w": 140,
+        "h": 140,
+        "top": 246,
+        "bottom": 386
+      },
+      {
+        "w": 140,
+        "h": 140,
+        "top": 395,
+        "bottom": 534
+      },
+      {
+        "w": 140,
+        "h": 140,
+        "top": 395,
+        "bottom": 534
+      }
+    ],
+    "squareTiles": true,
+    "rowTwoVisibleRatio": 0.75,
+    "minFontSizePx": 12,
+    "touchTargetsBelow44": [],
+    "label": "after",
+    "screen": "320x568",
+    "theme": "light",
+    "file": "/Users/dima1203/Desktop/ag-work/home-320-v2/docs/audit/home-quickactions-320/after-320x568-light.png"
+  },
+  {
+    "windowInner": [
+      320,
+      568
+    ],
+    "hero": {
+      "top": 69,
+      "bottom": 500,
+      "clientHeight": 431,
+      "scrollHeight": 473,
+      "maxScroll": 42,
+      "paddingBottom": "8px"
+    },
+    "tabbarTop": 505,
+    "deadBand": 5,
+    "banner": {
+      "boxHeight": 116,
+      "contentHeight": 114,
+      "clipped": false
+    },
+    "cards": [
+      {
+        "w": 140,
+        "h": 140,
+        "top": 246,
+        "bottom": 386
+      },
+      {
+        "w": 140,
+        "h": 140,
+        "top": 246,
+        "bottom": 386
+      },
+      {
+        "w": 140,
+        "h": 140,
+        "top": 395,
+        "bottom": 534
+      },
+      {
+        "w": 140,
+        "h": 140,
+        "top": 395,
+        "bottom": 534
+      }
+    ],
+    "squareTiles": true,
+    "rowTwoVisibleRatio": 0.75,
+    "minFontSizePx": 12,
+    "touchTargetsBelow44": [],
+    "label": "after",
+    "screen": "320x568",
+    "theme": "dark",
+    "file": "/Users/dima1203/Desktop/ag-work/home-320-v2/docs/audit/home-quickactions-320/after-320x568-dark.png"
+  },
+  {
+    "windowInner": [
+      390,
+      844
+    ],
+    "hero": {
+      "top": 69,
+      "bottom": 776,
+      "clientHeight": 707,
+      "scrollHeight": 738,
+      "maxScroll": 31,
+      "paddingBottom": "4px"
+    },
+    "tabbarTop": 781,
+    "deadBand": 5,
+    "banner": {
+      "boxHeight": 172,
+      "contentHeight": 170,
+      "clipped": false
+    },
+    "cards": [
+      {
+        "w": 175,
+        "h": 175,
+        "top": 313,
+        "bottom": 488
+      },
+      {
+        "w": 175,
+        "h": 175,
+        "top": 313,
+        "bottom": 488
+      },
+      {
+        "w": 175,
+        "h": 175,
+        "top": 497,
+        "bottom": 671
+      },
+      {
+        "w": 175,
+        "h": 175,
+        "top": 497,
+        "bottom": 671
+      }
+    ],
+    "squareTiles": true,
+    "rowTwoVisibleRatio": 0.99,
+    "minFontSizePx": 12,
+    "touchTargetsBelow44": [],
+    "label": "after",
+    "screen": "390x844",
+    "theme": "light",
+    "file": "/Users/dima1203/Desktop/ag-work/home-320-v2/docs/audit/home-quickactions-320/after-390x844-light.png"
+  },
+  {
+    "windowInner": [
+      390,
+      844
+    ],
+    "hero": {
+      "top": 69,
+      "bottom": 776,
+      "clientHeight": 707,
+      "scrollHeight": 738,
+      "maxScroll": 31,
+      "paddingBottom": "4px"
+    },
+    "tabbarTop": 781,
+    "deadBand": 5,
+    "banner": {
+      "boxHeight": 172,
+      "contentHeight": 170,
+      "clipped": false
+    },
+    "cards": [
+      {
+        "w": 175,
+        "h": 175,
+        "top": 313,
+        "bottom": 488
+      },
+      {
+        "w": 175,
+        "h": 175,
+        "top": 313,
+        "bottom": 488
+      },
+      {
+        "w": 175,
+        "h": 175,
+        "top": 497,
+        "bottom": 671
+      },
+      {
+        "w": 175,
+        "h": 175,
+        "top": 497,
+        "bottom": 671
+      }
+    ],
+    "squareTiles": true,
+    "rowTwoVisibleRatio": 0.99,
+    "minFontSizePx": 12,
+    "touchTargetsBelow44": [],
+    "label": "after",
+    "screen": "390x844",
+    "theme": "dark",
+    "file": "/Users/dima1203/Desktop/ag-work/home-320-v2/docs/audit/home-quickactions-320/after-390x844-dark.png"
+  },
+  {
+    "windowInner": [
+      430,
+      932
+    ],
+    "hero": {
+      "top": 69,
+      "bottom": 864,
+      "clientHeight": 795,
+      "scrollHeight": 795,
+      "maxScroll": 0,
+      "paddingBottom": "4px"
+    },
+    "tabbarTop": 869,
+    "deadBand": 5,
+    "banner": {
+      "boxHeight": 172,
+      "contentHeight": 170,
+      "clipped": false
+    },
+    "cards": [
+      {
+        "w": 195,
+        "h": 195,
+        "top": 313,
+        "bottom": 508
+      },
+      {
+        "w": 195,
+        "h": 195,
+        "top": 313,
+        "bottom": 508
+      },
+      {
+        "w": 195,
+        "h": 195,
+        "top": 517,
+        "bottom": 711
+      },
+      {
+        "w": 195,
+        "h": 195,
+        "top": 517,
+        "bottom": 711
+      }
+    ],
+    "squareTiles": true,
+    "rowTwoVisibleRatio": 0.99,
+    "minFontSizePx": 12,
+    "touchTargetsBelow44": [],
+    "label": "after",
+    "screen": "430x932",
+    "theme": "light",
+    "file": "/Users/dima1203/Desktop/ag-work/home-320-v2/docs/audit/home-quickactions-320/after-430x932-light.png"
+  },
+  {
+    "windowInner": [
+      430,
+      932
+    ],
+    "hero": {
+      "top": 69,
+      "bottom": 864,
+      "clientHeight": 795,
+      "scrollHeight": 795,
+      "maxScroll": 0,
+      "paddingBottom": "4px"
+    },
+    "tabbarTop": 869,
+    "deadBand": 5,
+    "banner": {
+      "boxHeight": 172,
+      "contentHeight": 170,
+      "clipped": false
+    },
+    "cards": [
+      {
+        "w": 195,
+        "h": 195,
+        "top": 313,
+        "bottom": 508
+      },
+      {
+        "w": 195,
+        "h": 195,
+        "top": 313,
+        "bottom": 508
+      },
+      {
+        "w": 195,
+        "h": 195,
+        "top": 517,
+        "bottom": 711
+      },
+      {
+        "w": 195,
+        "h": 195,
+        "top": 517,
+        "bottom": 711
+      }
+    ],
+    "squareTiles": true,
+    "rowTwoVisibleRatio": 0.99,
+    "minFontSizePx": 12,
+    "touchTargetsBelow44": [],
+    "label": "after",
+    "screen": "430x932",
+    "theme": "dark",
+    "file": "/Users/dima1203/Desktop/ag-work/home-320-v2/docs/audit/home-quickactions-320/after-430x932-dark.png"
+  }
+]

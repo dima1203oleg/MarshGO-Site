@@ -80,8 +80,12 @@ export function HomeHero({
       if (!element || window.innerWidth >= 1024) { setAvailableHeight(null); return; }
       const top = element.getBoundingClientRect().top + window.scrollY;
       const shell = element.closest('.production-app');
-      const reserved = shell ? parseFloat(getComputedStyle(shell).paddingBottom) || 0 : 0;
+      const tabbar = shell?.querySelector<HTMLElement>('.app-tabbar');
       const viewport = window.visualViewport?.height ?? window.innerHeight;
+      const tabbarGap = tabbar && getComputedStyle(tabbar).position === 'fixed'
+        ? Math.max(0, viewport - tabbar.getBoundingClientRect().top)
+        : 0;
+      const reserved = tabbarGap || (shell ? parseFloat(getComputedStyle(shell).paddingBottom) || 0 : 0);
       setAvailableHeight(Math.max(300, Math.floor(viewport - top - reserved - 4)));
     };
     measure();
@@ -121,7 +125,7 @@ export function HomeHero({
     </section> : <section key={activeBanner.eyebrow} aria-label="MARSHGO: банер про поїздки" className="home-canonical-banner home-banner relative mb-3 flex shrink-0 flex-col justify-between overflow-hidden rounded-[20px] border border-white/80 p-4 shadow-[0_7px_22px_rgba(26,73,133,.12)]">
       <img src={activeBanner.image} alt="" style={{ objectPosition: activeBanner.imagePosition }} className="home-banner-media absolute inset-0 h-full w-full object-cover"/>
       <span aria-hidden="true" className="home-banner-scrim absolute inset-0"/>
-      <div className="home-banner-copy relative z-10 max-w-[78%]"><p className="text-[10px] font-black uppercase tracking-[.12em] text-blue-700 dark:text-blue-300">{activeBanner.eyebrow}</p><h1 className="mt-1 text-[18px] font-black leading-tight tracking-tight text-[#102344] dark:text-white">{activeBanner.title}</h1><p className="mt-1 text-[12px] font-semibold leading-snug text-slate-700 dark:text-slate-200">{activeBanner.description}</p></div>
+      <div className="home-banner-copy relative z-10 max-w-[78%]"><p className="home-banner-eyebrow text-[12px] font-black uppercase tracking-[.12em] text-blue-700 dark:text-blue-300">{activeBanner.eyebrow}</p><h1 className="mt-1 text-[18px] font-black leading-tight tracking-tight text-[#102344] dark:text-white">{activeBanner.title}</h1><p className="home-banner-description mt-1 text-[12px] font-semibold leading-snug text-slate-700 dark:text-slate-200">{activeBanner.description}</p></div>
       <div className="relative z-10 flex items-center justify-between"><button type="button" onClick={activeBanner.action === 'publish' ? onPlanTrip : onSearchTrip} className="home-action-cta mg-press inline-flex min-h-11 items-center gap-2 rounded-full bg-blue-600 px-4 text-[13px] font-bold text-white shadow-md shadow-blue-900/20">{activeBanner.actionLabel}<ArrowRight size={15}/></button><div className="flex items-center gap-1.5" role="group" aria-label="Банери MARSHGO">{banners.map((banner, index) => <button key={banner.eyebrow} type="button" aria-label={`Показати банер ${index + 1}: ${banner.eyebrow}`} aria-pressed={bannerIndex === index} onClick={() => setBannerIndex(index)} className="grid size-11 shrink-0 place-items-center"><span aria-hidden="true" className={`h-2.5 rounded-full transition-all duration-300 ${bannerIndex === index ? 'w-6 bg-blue-600' : 'w-2.5 bg-slate-400/60 hover:bg-slate-400'}`}/></button>)}</div></div>
     </section>}
 
