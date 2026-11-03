@@ -1,0 +1,82 @@
+{
+ "theme": "light",
+ "out": {
+  "htmlClass": "",
+  "bodyBg": "rgb(8, 27, 53)",
+  "mainClass": "auth-screen relative flex min-h-[100svh] overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe  bg-[#081b35] text-white items-end sm:items-center sm:justify-center",
+  "mainBgImage": "radial-gradient(at 55% 35%, rgba(41, 131, 255, 0.65), rgba(0, 0, 0, 0) 48%), linear-gradie",
+  "email": {
+   "colorScheme": "light",
+   "backgroundColor": "oklab(0.999994 0.0000455678 0.0000200868 / 0.1)",
+   "backgroundImage": "none",
+   "borderColor": "oklab(0.999994 0.0000455678 0.0000200868 / 0.2)",
+   "boxShadow": "none",
+   "rect": {
+    "x": 20,
+    "y": 486,
+    "w": 350,
+    "h": 54
+   },
+   "valueLength": 0,
+   "active": false
+  },
+  "password": {
+   "colorScheme": "light",
+   "backgroundColor": "oklab(0.999994 0.0000455678 0.0000200868 / 0.1)",
+   "backgroundImage": "none",
+   "borderColor": "oklab(0.999994 0.0000455678 0.0000200868 / 0.2)",
+   "boxShadow": "none",
+   "rect": {
+    "x": 20,
+    "y": 574,
+    "w": 350,
+    "h": 54
+   },
+   "valueLength": 0,
+   "active": false
+  },
+  "autofill": false,
+  "activeTag": "BODY"
+ }
+}
+{
+ "theme": "dark",
+ "out": {
+  "htmlClass": "boot-dark dark",
+  "bodyBg": "rgb(18, 37, 66)",
+  "mainClass": "auth-screen relative flex min-h-[100svh] overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe  bg-[#081b35] text-white items-end sm:items-center sm:justify-center",
+  "mainBgImage": "radial-gradient(at 55% 35%, rgba(41, 131, 255, 0.65), rgba(0, 0, 0, 0) 48%), linear-gradie",
+  "email": {
+   "colorScheme": "dark",
+   "backgroundColor": "rgb(22, 32, 43)",
+   "backgroundImage": "none",
+   "borderColor": "rgb(38, 54, 72)",
+   "boxShadow": "none",
+   "rect": {
+    "x": 20,
+    "y": 486,
+    "w": 350,
+    "h": 54
+   },
+   "valueLength": 0,
+   "active": false
+  },
+  "password": {
+   "colorScheme": "dark",
+   "backgroundColor": "rgb(22, 32, 43)",
+   "backgroundImage": "none",
+   "borderColor": "rgb(38, 54, 72)",
+   "boxShadow": "none",
+   "rect": {
+    "x": 20,
+    "y": 574,
+    "w": 350,
+    "h": 54
+   },
+   "valueLength": 0,
+   "active": false
+  },
+  "autofill": false,
+  "activeTag": "BODY"
+ }
+}

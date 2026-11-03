@@ -1,0 +1,1171 @@
+{
+  "generatedAt": "2026-11-03T07:05:19.711Z",
+  "base": "https://a602584pesfa.shares.zrok.io",
+  "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+  "entry": {
+    "entry": "assets/index-Ci-jmXW8.js",
+    "sha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+    "bytes": 757185
+  },
+  "viewports": [
+    {
+      "name": "iphone15",
+      "width": 390,
+      "height": 844,
+      "dpr": 3
+    },
+    {
+      "name": "iphone-se",
+      "width": 375,
+      "height": 667,
+      "dpr": 2
+    },
+    {
+      "name": "iphone-max",
+      "width": 430,
+      "height": 932,
+      "dpr": 3
+    },
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1
+    }
+  ],
+  "guestStates": [
+    {
+      "state": "landing-intro",
+      "steps": [],
+      "expect": "Усі способи"
+    },
+    {
+      "state": "onboarding-step",
+      "steps": [
+        "Почати"
+      ],
+      "expect": "Пропустити"
+    },
+    {
+      "state": "login-form",
+      "steps": [
+        "У мене вже є акаунт"
+      ],
+      "expect": "Вхід"
+    }
+  ],
+  "entries": [
+    {
+      "file": "baselines/desktop-dark-landing-intro.png",
+      "sha256": "efb9d999fecb5e2c6ce123f3880ff733691b29f6825c1fa54b57b9c370232234",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "1440x900@1",
+      "viewportName": "desktop",
+      "isMobile": false,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "landing-intro",
+      "path": [],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:05:09.550Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/desktop-dark-login-form.png",
+      "sha256": "f5539244427349fc85e342f6da0c2b1eca498bd168d307a02e6038517773fc62",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "1440x900@1",
+      "viewportName": "desktop",
+      "isMobile": false,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "login-form",
+      "path": [
+        "У мене вже є акаунт"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:05:16.892Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/desktop-dark-onboarding-step.png",
+      "sha256": "59727b865326dcddcf288f523b801f2a086ecd24724fa5480b622e93069cc173",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "1440x900@1",
+      "viewportName": "desktop",
+      "isMobile": false,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "onboarding-step",
+      "path": [
+        "Почати"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:05:14.180Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/desktop-dark-proxy-interstitial.png",
+      "sha256": "748188d51723bba386fa959a0bac0332609dadadf6543977d64a786ebeb6238e",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": "1440x900@1",
+      "theme": "dark",
+      "routePath": "/",
+      "state": "proxy-interstitial",
+      "dataMode": "NOT_PRODUCT_infrastructure",
+      "capturedAt": "2026-11-03T07:05:09.518Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "zrok first-visit consent page; not the MARSHGO UI"
+    },
+    {
+      "file": "baselines/desktop-light-landing-intro.png",
+      "sha256": "efb9d999fecb5e2c6ce123f3880ff733691b29f6825c1fa54b57b9c370232234",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "1440x900@1",
+      "viewportName": "desktop",
+      "isMobile": false,
+      "theme": "light",
+      "routePath": "/",
+      "state": "landing-intro",
+      "path": [],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:58.629Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/desktop-light-login-form.png",
+      "sha256": "eb5a0fb8d934c65b6ffa8a1fe017133444c2c34610550fa79a0aff2578270c9f",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "1440x900@1",
+      "viewportName": "desktop",
+      "isMobile": false,
+      "theme": "light",
+      "routePath": "/",
+      "state": "login-form",
+      "path": [
+        "У мене вже є акаунт"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:05:06.131Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/desktop-light-onboarding-step.png",
+      "sha256": "0ef05c92a2e0305eaae8430d87e3bbd175d87a8fbd5daa34b2c0645ebb819fd3",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "1440x900@1",
+      "viewportName": "desktop",
+      "isMobile": false,
+      "theme": "light",
+      "routePath": "/",
+      "state": "onboarding-step",
+      "path": [
+        "Почати"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:05:03.262Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/desktop-light-proxy-interstitial.png",
+      "sha256": "748188d51723bba386fa959a0bac0332609dadadf6543977d64a786ebeb6238e",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": "1440x900@1",
+      "theme": "light",
+      "routePath": "/",
+      "state": "proxy-interstitial",
+      "dataMode": "NOT_PRODUCT_infrastructure",
+      "capturedAt": "2026-11-03T07:04:58.593Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "zrok first-visit consent page; not the MARSHGO UI"
+    },
+    {
+      "file": "baselines/iphone-max-dark-landing-intro.png",
+      "sha256": "8e5756451930f5aecc146a3c7d6bf8e402f4f04367b257aaaf481aaac360b73b",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "430x932@3",
+      "viewportName": "iphone-max",
+      "isMobile": true,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "landing-intro",
+      "path": [],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:47.094Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-max-dark-login-form.png",
+      "sha256": "e8237124f5329291ac85017456f8e2923404429613d184e3457061c66e66881f",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "430x932@3",
+      "viewportName": "iphone-max",
+      "isMobile": true,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "login-form",
+      "path": [
+        "У мене вже є акаунт"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:54.928Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-max-dark-onboarding-step.png",
+      "sha256": "3184054e3be32ed1348f4dcc979d5f302f4bb7cc143d9a1bee63791e7a2f4e5f",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "430x932@3",
+      "viewportName": "iphone-max",
+      "isMobile": true,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "onboarding-step",
+      "path": [
+        "Почати"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:52.064Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-max-dark-proxy-interstitial.png",
+      "sha256": "d3f4b656e419704897d9a47247df437ec7b8a20f8851c1e7e0ec11779d2c26fa",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": "430x932@3",
+      "theme": "dark",
+      "routePath": "/",
+      "state": "proxy-interstitial",
+      "dataMode": "NOT_PRODUCT_infrastructure",
+      "capturedAt": "2026-11-03T07:04:47.057Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "zrok first-visit consent page; not the MARSHGO UI"
+    },
+    {
+      "file": "baselines/iphone-max-light-landing-intro.png",
+      "sha256": "8e5756451930f5aecc146a3c7d6bf8e402f4f04367b257aaaf481aaac360b73b",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "430x932@3",
+      "viewportName": "iphone-max",
+      "isMobile": true,
+      "theme": "light",
+      "routePath": "/",
+      "state": "landing-intro",
+      "path": [],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:35.459Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-max-light-login-form.png",
+      "sha256": "9bfd58014e8aaa7ce3cca77f28841f0cafb0c17dea7f104c31f78cb7550a7264",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "430x932@3",
+      "viewportName": "iphone-max",
+      "isMobile": true,
+      "theme": "light",
+      "routePath": "/",
+      "state": "login-form",
+      "path": [
+        "У мене вже є акаунт"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:43.273Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-max-light-onboarding-step.png",
+      "sha256": "401e14b1624492ebed9bacefbbc4002781992829002911c144cd1bcc650a17e0",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "430x932@3",
+      "viewportName": "iphone-max",
+      "isMobile": true,
+      "theme": "light",
+      "routePath": "/",
+      "state": "onboarding-step",
+      "path": [
+        "Почати"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:40.389Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-max-light-proxy-interstitial.png",
+      "sha256": "d3f4b656e419704897d9a47247df437ec7b8a20f8851c1e7e0ec11779d2c26fa",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": "430x932@3",
+      "theme": "light",
+      "routePath": "/",
+      "state": "proxy-interstitial",
+      "dataMode": "NOT_PRODUCT_infrastructure",
+      "capturedAt": "2026-11-03T07:04:35.423Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "zrok first-visit consent page; not the MARSHGO UI"
+    },
+    {
+      "file": "baselines/iphone-se-dark-landing-intro.png",
+      "sha256": "db44a55f7c4695483abed4e00e98a3d4a692020cb08a7700d3ca214e5f54ed40",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "375x667@2",
+      "viewportName": "iphone-se",
+      "isMobile": true,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "landing-intro",
+      "path": [],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:24.660Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-se-dark-login-form.png",
+      "sha256": "b8c6b7d5931b276e1363a8a09f597d48078a0f26412a8669cc3e71477a6873de",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "375x667@2",
+      "viewportName": "iphone-se",
+      "isMobile": true,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "login-form",
+      "path": [
+        "У мене вже є акаунт"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:31.882Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-se-dark-onboarding-step.png",
+      "sha256": "9163af20111e1baf6f48ed8360a9b9591329cb694ccb07b4610b9f0b95aea903",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "375x667@2",
+      "viewportName": "iphone-se",
+      "isMobile": true,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "onboarding-step",
+      "path": [
+        "Почати"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:29.128Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-se-dark-proxy-interstitial.png",
+      "sha256": "150c2144c4b5424cbde125338a566af55d2d600b1409f6c091f2a98ad6837e67",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": "375x667@2",
+      "theme": "dark",
+      "routePath": "/",
+      "state": "proxy-interstitial",
+      "dataMode": "NOT_PRODUCT_infrastructure",
+      "capturedAt": "2026-11-03T07:04:24.615Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "zrok first-visit consent page; not the MARSHGO UI"
+    },
+    {
+      "file": "baselines/iphone-se-light-landing-intro.png",
+      "sha256": "db44a55f7c4695483abed4e00e98a3d4a692020cb08a7700d3ca214e5f54ed40",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "375x667@2",
+      "viewportName": "iphone-se",
+      "isMobile": true,
+      "theme": "light",
+      "routePath": "/",
+      "state": "landing-intro",
+      "path": [],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:13.904Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-se-light-login-form.png",
+      "sha256": "0ddc4365e250d39284ce77728cb806160c40dfc53c7097faf1ae3f57f3b31bd8",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "375x667@2",
+      "viewportName": "iphone-se",
+      "isMobile": true,
+      "theme": "light",
+      "routePath": "/",
+      "state": "login-form",
+      "path": [
+        "У мене вже є акаунт"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:21.275Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-se-light-onboarding-step.png",
+      "sha256": "570b5bb0e54d71c9493000add91244553407f708af2acd84c84d53cb0540bf79",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "375x667@2",
+      "viewportName": "iphone-se",
+      "isMobile": true,
+      "theme": "light",
+      "routePath": "/",
+      "state": "onboarding-step",
+      "path": [
+        "Почати"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:18.442Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone-se-light-proxy-interstitial.png",
+      "sha256": "150c2144c4b5424cbde125338a566af55d2d600b1409f6c091f2a98ad6837e67",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": "375x667@2",
+      "theme": "light",
+      "routePath": "/",
+      "state": "proxy-interstitial",
+      "dataMode": "NOT_PRODUCT_infrastructure",
+      "capturedAt": "2026-11-03T07:04:13.853Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "zrok first-visit consent page; not the MARSHGO UI"
+    },
+    {
+      "file": "baselines/iphone15-dark-landing-intro.png",
+      "sha256": "72de29472009bb9f883a2fea8f2235be8bcb350ec2f384a79d9e7c9814bb0425",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "390x844@3",
+      "viewportName": "iphone15",
+      "isMobile": true,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "landing-intro",
+      "path": [],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:02.368Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone15-dark-login-form.png",
+      "sha256": "850e5dec86ce6b74c1d82628e7ec8107c425c35079dbaeb837e8237cbd765893",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "390x844@3",
+      "viewportName": "iphone15",
+      "isMobile": true,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "login-form",
+      "path": [
+        "У мене вже є акаунт"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:10.319Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone15-dark-onboarding-step.png",
+      "sha256": "cd1107f528cd4f8347b41ab425c0fa8dc13bfef36b6c2d45fba50a8fff73dec5",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "390x844@3",
+      "viewportName": "iphone15",
+      "isMobile": true,
+      "theme": "dark",
+      "routePath": "/",
+      "state": "onboarding-step",
+      "path": [
+        "Почати"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:04:07.378Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone15-dark-proxy-interstitial.png",
+      "sha256": "436dda8272142e3586c440290137bf3fda6b1941bd58191b53317cd89a9dd97f",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": "390x844@3",
+      "theme": "dark",
+      "routePath": "/",
+      "state": "proxy-interstitial",
+      "dataMode": "NOT_PRODUCT_infrastructure",
+      "capturedAt": "2026-11-03T07:04:02.302Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "zrok first-visit consent page; not the MARSHGO UI"
+    },
+    {
+      "file": "baselines/iphone15-light-landing-intro.png",
+      "sha256": "72de29472009bb9f883a2fea8f2235be8bcb350ec2f384a79d9e7c9814bb0425",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "390x844@3",
+      "viewportName": "iphone15",
+      "isMobile": true,
+      "theme": "light",
+      "routePath": "/",
+      "state": "landing-intro",
+      "path": [],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:03:50.240Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone15-light-login-form.png",
+      "sha256": "514cfe72168048efe1446af73886518f04b0ccfdd95b4c90ac938c8dd3ed5eac",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "390x844@3",
+      "viewportName": "iphone15",
+      "isMobile": true,
+      "theme": "light",
+      "routePath": "/",
+      "state": "login-form",
+      "path": [
+        "У мене вже є акаунт"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:03:58.070Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone15-light-onboarding-step.png",
+      "sha256": "d52eb963e69de5555b9359438197cdf0f96003b2ec663c0da0b09b07a25889cb",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "entryAsset": "assets/index-Ci-jmXW8.js",
+      "entrySha256": "eeae08878658e7f5d7b14da7a47ccdf8793c60f0fa0d0581e194fa5d1d1ac1f0",
+      "viewport": "390x844@3",
+      "viewportName": "iphone15",
+      "isMobile": true,
+      "theme": "light",
+      "routePath": "/",
+      "state": "onboarding-step",
+      "path": [
+        "Почати"
+      ],
+      "dataMode": "LIVE_API_GUEST",
+      "capturedAt": "2026-11-03T07:03:55.138Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "guest walk, no credentials, no geolocation, no booking"
+    },
+    {
+      "file": "baselines/iphone15-light-proxy-interstitial.png",
+      "sha256": "436dda8272142e3586c440290137bf3fda6b1941bd58191b53317cd89a9dd97f",
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": "390x844@3",
+      "theme": "light",
+      "routePath": "/",
+      "state": "proxy-interstitial",
+      "dataMode": "NOT_PRODUCT_infrastructure",
+      "capturedAt": "2026-11-03T07:03:50.189Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "zrok first-visit consent page; not the MARSHGO UI"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "home",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "search",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "results",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "route-map",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "route-details",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "private-ride-details",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "marshpass",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "marshpass-details",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "active-navigation",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "driver-flow",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "chat",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "profile-own",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "trips-list",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "booking-confirmed",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "offline-notice",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    },
+    {
+      "file": null,
+      "sha256": null,
+      "url": "https://a602584pesfa.shares.zrok.io/",
+      "buildSha": "8d927e8098a36f94f2ac519e52f7c720f1e0d239",
+      "viewport": null,
+      "theme": null,
+      "routePath": "/",
+      "state": "all-12-modes",
+      "dataMode": "NOT_VERIFIED",
+      "capturedAt": "2026-11-03T07:05:19.641Z",
+      "probe": {
+        "/api/v1/health": 200,
+        "/api/v1/journeys/search": 401,
+        "/api/v1/bookings": 401,
+        "/api/v1/transport-regions": 404,
+        "/api/v1/marshpass": 404
+      },
+      "notes": "needs an authenticated session, GPS consent or a confirmed booking"
+    }
+  ]
+}

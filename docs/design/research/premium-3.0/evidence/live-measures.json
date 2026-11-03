@@ -1,0 +1,877 @@
+{
+  "generatedAt": "2026-11-03T07:05:19.712Z",
+  "measures": [
+    {
+      "key": "iphone15/light/landing-intro",
+      "htmlClass": "",
+      "bodyBackground": "rgb(8, 27, 53)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Почати",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 58
+          }
+        },
+        {
+          "label": "У мене вже є акаунт",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 54
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Усі способидоїхати — в одномузастосунку.",
+      "headingFont": 34.4,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone15/light/onboarding-step",
+      "htmlClass": "",
+      "bodyBackground": "rgb(8, 27, 53)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Пропустити",
+          "font": 16,
+          "box": {
+            "w": 115,
+            "h": 44
+          }
+        },
+        {
+          "label": "Далі",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 56
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Їдеш? MARSHGO знайде попутника по дорозі",
+      "headingFont": 25.6,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone15/light/login-form",
+      "htmlClass": "",
+      "bodyBackground": "rgb(8, 27, 53)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Увійти",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 56
+          }
+        },
+        {
+          "label": "Немає акаунта? Зареєструвати",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 44
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "type": "email",
+          "label": "name@example.com",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 54
+          }
+        },
+        {
+          "type": "password",
+          "label": null,
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 54
+          }
+        }
+      ],
+      "h1": "Вхід до MARSHGO",
+      "headingFont": 30,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone15/dark/landing-intro",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Почати",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 58
+          }
+        },
+        {
+          "label": "У мене вже є акаунт",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 54
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Усі способидоїхати — в одномузастосунку.",
+      "headingFont": 34.4,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone15/dark/onboarding-step",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Пропустити",
+          "font": 16,
+          "box": {
+            "w": 115,
+            "h": 44
+          }
+        },
+        {
+          "label": "Далі",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 56
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Їдеш? MARSHGO знайде попутника по дорозі",
+      "headingFont": 25.6,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone15/dark/login-form",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Увійти",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 56
+          }
+        },
+        {
+          "label": "Немає акаунта? Зареєструвати",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 44
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "type": "email",
+          "label": "name@example.com",
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 54
+          }
+        },
+        {
+          "type": "password",
+          "label": null,
+          "font": 16,
+          "box": {
+            "w": 350,
+            "h": 54
+          }
+        }
+      ],
+      "h1": "Вхід до MARSHGO",
+      "headingFont": 30,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-se/light/landing-intro",
+      "htmlClass": "",
+      "bodyBackground": "rgb(8, 27, 53)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Почати",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 58
+          }
+        },
+        {
+          "label": "У мене вже є акаунт",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 54
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Усі способидоїхати — в одномузастосунку.",
+      "headingFont": 34.4,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-se/light/onboarding-step",
+      "htmlClass": "",
+      "bodyBackground": "rgb(8, 27, 53)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Пропустити",
+          "font": 16,
+          "box": {
+            "w": 115,
+            "h": 44
+          }
+        },
+        {
+          "label": "Далі",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 56
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Їдеш? MARSHGO знайде попутника по дорозі",
+      "headingFont": 25.6,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-se/light/login-form",
+      "htmlClass": "",
+      "bodyBackground": "rgb(8, 27, 53)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Увійти",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 56
+          }
+        },
+        {
+          "label": "Немає акаунта? Зареєструвати",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 44
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "type": "email",
+          "label": "name@example.com",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 54
+          }
+        },
+        {
+          "type": "password",
+          "label": null,
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 54
+          }
+        }
+      ],
+      "h1": "Вхід до MARSHGO",
+      "headingFont": 30,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-se/dark/landing-intro",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Почати",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 58
+          }
+        },
+        {
+          "label": "У мене вже є акаунт",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 54
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Усі способидоїхати — в одномузастосунку.",
+      "headingFont": 34.4,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-se/dark/onboarding-step",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Пропустити",
+          "font": 16,
+          "box": {
+            "w": 115,
+            "h": 44
+          }
+        },
+        {
+          "label": "Далі",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 56
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Їдеш? MARSHGO знайде попутника по дорозі",
+      "headingFont": 25.6,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-se/dark/login-form",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Увійти",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 56
+          }
+        },
+        {
+          "label": "Немає акаунта? Зареєструвати",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 44
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "type": "email",
+          "label": "name@example.com",
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 54
+          }
+        },
+        {
+          "type": "password",
+          "label": null,
+          "font": 16,
+          "box": {
+            "w": 335,
+            "h": 54
+          }
+        }
+      ],
+      "h1": "Вхід до MARSHGO",
+      "headingFont": 30,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-max/light/landing-intro",
+      "htmlClass": "",
+      "bodyBackground": "rgb(8, 27, 53)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Почати",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 58
+          }
+        },
+        {
+          "label": "У мене вже є акаунт",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 54
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Усі способидоїхати — в одномузастосунку.",
+      "headingFont": 34.4,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-max/light/onboarding-step",
+      "htmlClass": "",
+      "bodyBackground": "rgb(8, 27, 53)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Пропустити",
+          "font": 16,
+          "box": {
+            "w": 115,
+            "h": 44
+          }
+        },
+        {
+          "label": "Далі",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 56
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Їдеш? MARSHGO знайде попутника по дорозі",
+      "headingFont": 25.6,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-max/light/login-form",
+      "htmlClass": "",
+      "bodyBackground": "rgb(8, 27, 53)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Увійти",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 56
+          }
+        },
+        {
+          "label": "Немає акаунта? Зареєструвати",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 44
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "type": "email",
+          "label": "name@example.com",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 54
+          }
+        },
+        {
+          "type": "password",
+          "label": null,
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 54
+          }
+        }
+      ],
+      "h1": "Вхід до MARSHGO",
+      "headingFont": 30,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-max/dark/landing-intro",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Почати",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 58
+          }
+        },
+        {
+          "label": "У мене вже є акаунт",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 54
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Усі способидоїхати — в одномузастосунку.",
+      "headingFont": 34.4,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-max/dark/onboarding-step",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Пропустити",
+          "font": 16,
+          "box": {
+            "w": 115,
+            "h": 44
+          }
+        },
+        {
+          "label": "Далі",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 56
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Їдеш? MARSHGO знайде попутника по дорозі",
+      "headingFont": 25.6,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "iphone-max/dark/login-form",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Увійти",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 56
+          }
+        },
+        {
+          "label": "Немає акаунта? Зареєструвати",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 44
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "type": "email",
+          "label": "name@example.com",
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 54
+          }
+        },
+        {
+          "type": "password",
+          "label": null,
+          "font": 16,
+          "box": {
+            "w": 390,
+            "h": 54
+          }
+        }
+      ],
+      "h1": "Вхід до MARSHGO",
+      "headingFont": 30,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "desktop/light/landing-intro",
+      "htmlClass": "",
+      "bodyBackground": "rgba(0, 0, 0, 0)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Почати",
+          "font": 16,
+          "box": {
+            "w": 518,
+            "h": 58
+          }
+        },
+        {
+          "label": "У мене вже є акаунт",
+          "font": 16,
+          "box": {
+            "w": 518,
+            "h": 58
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Усі способидоїхати — в одномузастосунку.",
+      "headingFont": 88,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "desktop/light/onboarding-step",
+      "htmlClass": "",
+      "bodyBackground": "rgba(0, 0, 0, 0)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Пропустити",
+          "font": 16,
+          "box": {
+            "w": 115,
+            "h": 44
+          }
+        },
+        {
+          "label": "Далі",
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 56
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Їдеш? MARSHGO знайде попутника по дорозі",
+      "headingFont": 25.6,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "desktop/light/login-form",
+      "htmlClass": "",
+      "bodyBackground": "rgba(0, 0, 0, 0)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Увійти",
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 56
+          }
+        },
+        {
+          "label": "Немає акаунта? Зареєструвати",
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 44
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "type": "email",
+          "label": "name@example.com",
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 54
+          }
+        },
+        {
+          "type": "password",
+          "label": null,
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 54
+          }
+        }
+      ],
+      "h1": "Вхід до MARSHGO",
+      "headingFont": 30,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "desktop/dark/landing-intro",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Почати",
+          "font": 16,
+          "box": {
+            "w": 518,
+            "h": 58
+          }
+        },
+        {
+          "label": "У мене вже є акаунт",
+          "font": 16,
+          "box": {
+            "w": 518,
+            "h": 58
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Усі способидоїхати — в одномузастосунку.",
+      "headingFont": 88,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "desktop/dark/onboarding-step",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Пропустити",
+          "font": 16,
+          "box": {
+            "w": 115,
+            "h": 44
+          }
+        },
+        {
+          "label": "Далі",
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 56
+          }
+        }
+      ],
+      "inputs": [],
+      "h1": "Їдеш? MARSHGO знайде попутника по дорозі",
+      "headingFont": 25.6,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    },
+    {
+      "key": "desktop/dark/login-form",
+      "htmlClass": "boot-dark dark",
+      "bodyBackground": "rgb(18, 37, 66)",
+      "buttonCount": 2,
+      "smallestFonts": [
+        {
+          "label": "Увійти",
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 56
+          }
+        },
+        {
+          "label": "Немає акаунта? Зареєструвати",
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 44
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "type": "email",
+          "label": "name@example.com",
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 54
+          }
+        },
+        {
+          "type": "password",
+          "label": null,
+          "font": 16,
+          "box": {
+            "w": 448,
+            "h": 54
+          }
+        }
+      ],
+      "h1": "Вхід до MARSHGO",
+      "headingFont": 30,
+      "mapCanvas": false,
+      "productionShell": false,
+      "authShell": true
+    }
+  ]
+}

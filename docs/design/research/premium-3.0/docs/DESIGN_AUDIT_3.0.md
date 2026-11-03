@@ -60,6 +60,9 @@ npm run lint:all  → eslint src scripts shared vite.config.ts eslint.config.js,
 | D-25 | Код HTTP потрапляє в текст для пасажира | `src/services/requestErrorMessage.ts:4-25` | P2 |
 | D-26 | Немає error boundary | `src/` — 0 збігів | P2 |
 | D-27 | `--mg-ease-exit` і три `--route-*` оголошені й ніким не читані | `index.css:1190,90,91,93` | P2 |
+| D-28 | `html.dark :is(input, textarea, select)` без scope перебиває кожен інпут у застосунку, у т.ч. на екрані входу | `index.css:1148` | P1 |
+| D-29 | Гість на будь-якому шляху (`/trips`, `/map`, невідомому) бачить лендінг; екран 404 з коду ніколи не рендериться | `evidence/guest-route-wall.txt` | P1 |
+| D-30 | Довхідний лендінг сліпий до теми: у світлому режимі перший екран — насичений navy | `ProductionMarketplace.tsx:1451` | P1 |
 
 Загальний фон (мірник `measure-debt.sh`, вивід закріплено в `evidence/`):
 1844 сирих hex-літералів (382 у CSS + 1462 у TS/TSX), 497 входжень шрифту
@@ -485,6 +488,126 @@ picker — обгортка над ним.
 його ж і не прочитати. Перевірено, що індикатор офлайну існує, коректно
 підписаний і ще й вимикає пошук (`:1533` `disabled={busy || isOffline}`) —
 тобто механіка добра, типографіка ні.
+
+---
+
+### D-28 · Одна темна перебивка переписує кожен інпут у застосунку
+
+**Де.** [src/index.css:1148](file:///Users/dima1203/Desktop/marshgo-design3/src/index.css#L1148):
+
+```css
+html.dark :is(input, textarea, select) {
+  background-color: var(--mg-surface-secondary) !important;
+  color: var(--mg-ink-primary) !important;
+  border-color: var(--mg-border-subtle) !important;
+}
+```
+
+Селектор не обмежений жодним класом екрана чи компонента — він діє на кожен
+`input`, `textarea` і `select` у DOM, щойно на `<html>` є `.dark`.
+Поруч лежить і другий, що робить те саме для кольору тексту
+(`index.css:1097-1102`, `color: #F8FAFC !important`) і для плейсхолдера
+(`:1104-1107`, `:1149`) — тобто три механізми на одну властивість.
+
+**Доказ у коді.** Блок `index.css:1118-1182` — 65 рядків, 41 рядок із селектором
+`html.dark`, 49 `!important`, 63 згадки назв утиліт на кшталт `.bg-white` чи
+`.text-\[\#0E1F35\]`. Це чверть (49 з 201) усіх `!important` файлу, зібраних в
+одному місці. Така тема тримається не на токенах, а на перекреслюванні імен
+класів: змінити утиліту в JSX — значить не знати, чи перекриє її цей блок.
+
+**Доказ на живій збірці, а не на пам'ятці.** Запуск
+`evidence/probe-auth-theme.mjs` (той самий закріплений білд
+`8d927e80`, вхід через публічний URL, значення полів порожні,
+`:autofill` → `false` в обох темах, тож це не автозаповнення браузера):
+
+| тема | `getComputedStyle(email).backgroundColor` | `borderTopColor` |
+|---|---|---|
+| light | `oklab(0.999994 … / 0.1)` — заявлений `bg-white/10` | `oklab(… / 0.2)` — `border-white/20` |
+| dark | `rgb(22, 32, 43)` — непрозорий `--mg-surface-secondary` | `rgb(38, 54, 72)` — `--mg-border-subtle` |
+
+Компонент просить напівпрозоре скло
+([ProductionMarketplace.tsx:89](file:///Users/dima1203/Desktop/marshgo-design3/src/views/ProductionMarketplace.tsx#L89),
+`bg-white/10 … border-white/20 … placeholder:text-blue-100/55`); у темній темі
+від нього не залишається нічого. Те саме стосується `::placeholder` — у світлій
+темі `blue-100/55`, у темній `var(--mg-ink-muted)`.
+
+**Чому це дорожче, ніж один пофарбований інпут.** Це механічна причина D-07:
+щойно такий перемикач існує, будь-який наступний дизайн, який хоче інший
+інпут, змушений або мати вищу специфічність, або теж ставити `!important`.
+Саме тому в коді, що нижче за цим блоком, нові стилі йдуть уже з
+`!important` у спадщину.
+
+**Що з цього випливає для A3.** Першим кроком тематизації має бути заміна
+цього блока на токени, які компонент читає сам (`--mg-field-*`), а не на
+додаткові `!important`. Інакше кожен новий екран успадковує проблему, а не
+рішення.
+
+### D-29 · Гість на будь-якому шляху бачить лендінг, а не 404
+
+**Де.** Роль не в одному файлі, а в порядку рішень: `useProductionTabRouter`
+обчислює `notFound` (`src/routing/useProductionTabRouter.ts:7`), екран 404
+існує в markup (`ProductionMarketplace.tsx:1503`, зафіксований у
+`SCREEN_INVENTORY.md:112`), але до нього справа не доходить — гостьовий
+запит на будь-який шлях рендерить `main.auth-screen`.
+
+**Доказ.** `evidence/probe-guest-route-wall.mjs` проти закріпленого білда,
+10 шляхів, `localStorage` порожній (ключів значень не виводимо):
+
+```
+/                     auth-screen=true  production-app=false 404=false
+/search               auth-screen=true  production-app=false 404=false
+/journeys/search      auth-screen=true  production-app=false 404=false
+/trips                auth-screen=true  production-app=false 404=false
+/profile              auth-screen=true  production-app=false 404=false
+/map                  auth-screen=true  production-app=false 404=false
+/navigate             auth-screen=true  production-app=false 404=false
+/demands              auth-screen=true  production-app=false 404=false
+/messages             auth-screen=true  production-app=false 404=false
+/this-route-does-not-exist  auth-screen=true  production-app=false 404=false
+```
+
+`h1` всюди той самий — «Усі способи доїхати — в одному застосунку.».
+
+**Чому це P1 для дизайну, а не лише для маршрутизації.** Посилання на
+конкретну поїздку, яку новий користувач отримав у месенджері, приводить його
+на загальний лендінг без жодної вказівки, що далі. Дизайн-наслідок: гостьовий
+вхід не має стану «ви шукали ось це» — єдиний, хто міг би це пояснити, екран
+404 ніколи не виконується для гостя.
+
+**Межа твердження.** VERIFIED лише те, що бачить гість. Чи повертається
+користувач на початковий шлях після входу — NOT_VERIFIED: перевірка потребує
+живої сесії, а я її не маю (див. `VISUAL_BASELINES_INDEX.md` §5).
+
+### D-30 · Перший екран ігнорує світлу тему
+
+**Де.** [src/views/ProductionMarketplace.tsx:1451](file:///Users/dima1203/Desktop/marshgo-design3/src/views/ProductionMarketplace.tsx#L1451) —
+гілка `authIntro` (і гілка форми входу) отримує літерал
+`bg-[#081b35] text-white` без жодного `dark:` варіанта;
+[html:has(.auth-screen), body:has(.auth-screen)](file:///Users/dima1203/Desktop/marshgo-design3/src/index.css#L942)
+дублює той самий navy на `body` (`index.css:942-945`), теж без теми.
+
+**Доказ.** Порівняння пар light/dark попіксельно
+(`evidence/baselines/`, 4 в'юпорти × 1 стан; результати — у таблиці
+`VISUAL_BASELINES_INDEX.md` §7.2):
+
+| стан | доля пікселів, що відрізняються light↔dark |
+|---|---|
+| `landing-intro` | **0.0000 %** у всіх 4 в'юпортах (файли ще й байт-в-байт однакові) |
+| `onboarding-step` | 82.7 – 95.0 % |
+| `login-form` | 3.7 – 14.4 % (і це не дизайн: див. D-28 — перебиваються інпути) |
+
+Тобто тема на лендінгу не «працює погано» — її там немає взагалі. Користувач,
+який у системі обрав світлу тему, бачить першим екраном насичений navy з
+білим текстом; наступний крок онбордингу вже світлий (`bg-[#f4f8ff]`
+`dark:bg-[#0D1E36]` у тому ж рядку `:1451`), тож перший перехід у застосунку —
+це різка зміна режиму без жодної обіцянки в інтерфейсі.
+
+**Чому це не «так задумано» в межах поточного контракту.** Канонічна дошка
+визначає світлу мову як основну геометрію й відсилу (README §Invariants:
+«Use the light board as the primary geometry reference»), а захисні правила
+власника забороняють міняти затверджену ієрархію заради зовнішнього вигляду.
+Тема, яка зникає на єдиному екрані до входу, — це не стилістична перевага, а
+розрив між затвердженою системою токенів і тим, що бачить новий користувач.
 
 ---
 
