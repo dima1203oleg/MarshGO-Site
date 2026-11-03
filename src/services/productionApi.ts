@@ -311,6 +311,7 @@ export type ApiJourneyLive = {
     vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean; etaSeconds?: number | null; priority?: VehiclePriority | null; etaConfidence?: 'OBSERVED' | 'PREDICTED' | 'NONE' }>;
   }>;
 };
+export type ApiJourneyLifecycle = { id: string; state: string; currentLegId?: string | null; startedAt?: string | null; completedAt?: string | null };
 export type ApiJourneySearchResult = {
   journeys: ApiJourney[];
   requestedStrategy?: ApiJourneyStrategy;
@@ -619,6 +620,23 @@ export const productionApi = {
     const legId = typeof arg2 === 'string' ? arg2 : typeof arg3 === 'string' ? arg3 : undefined;
     const suffix = legId ? `?legId=${encodeURIComponent(legId)}` : '';
     return request<ApiJourneyLive>(`/journeys/${encodeURIComponent(id)}/live${suffix}`, { signal });
+  },
+  /**
+   * Mark the passenger's own plan as running. The server owns `journeys.state` only:
+   * a repeat call replays without moving `started_at`, and a carpool leg's business
+   * status stays with the booking endpoints.
+   */
+  activateJourney(id: string, legId?: string) {
+    return request<ApiJourneyLifecycle>(`/journeys/${encodeURIComponent(id)}/activate`, {
+      method: 'POST',
+      body: JSON.stringify(legId ? { legId } : {}),
+    });
+  },
+  endJourney(id: string, outcome: 'COMPLETED' | 'CANCELLED') {
+    return request<ApiJourneyLifecycle>(`/journeys/${encodeURIComponent(id)}/end`, {
+      method: 'POST',
+      body: JSON.stringify({ outcome }),
+    });
   },
   startNavigation(input: { origin: [number, number]; destination?: [number, number]; destinationName?: string }) {
     return request<ApiNavigationSession>('/navigation/sessions', { method: 'POST', body: JSON.stringify(input) });
