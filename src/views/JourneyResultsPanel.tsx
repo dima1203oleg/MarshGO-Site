@@ -119,7 +119,7 @@ function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
     data-journey-id={journey.id}
     data-top-pick={index === 0 ? 'true' : undefined}
     data-chosen={chosen ? 'true' : undefined}
-    className={`journey-result-card mg-press-subtle relative isolate overflow-hidden rounded-[var(--mg-radius-lg)] border border-[var(--mg-line)] bg-[var(--mg-surface-card)] shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]`}
+    className={`journey-result-card mg-press-subtle relative isolate overflow-hidden rounded-[var(--mg-radius-lg)] border bg-[var(--mg-surface-card)] transition-all duration-[var(--mg-dur-fast)] ${chosen ? 'border-[var(--mg-action)] ring-1 ring-[var(--mg-action)] shadow-[0_4px_20px_rgba(11,99,214,.18)]' : 'border-[var(--mg-line)] hover:border-[var(--mg-action-subtle)] shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]'}`}
   >
     <button type="button" aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[var(--mg-radius-lg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
       <span className="sr-only">Переглянути карту й деталі маршруту</span>

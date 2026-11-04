@@ -60,7 +60,7 @@ export function CanonicalRouteLip({
           <strong data-testid="canonical-route-duration" title={durationTitle} className={`font-black leading-6 tracking-tight tabular-nums text-slate-900 dark:text-white ${sheet ? 'text-[21px]' : 'text-[22px]'} ${durationClassName}`}>{durationLabel}</strong>
           {durationNote}
         </span>
-        <span aria-hidden="true" className="h-7 w-px shrink-0 bg-slate-200 dark:bg-[#294258]"/>
+        <span aria-hidden="true" className="h-7 w-px shrink-0 bg-slate-200 dark:bg-[var(--mg-line)]"/>
         <span className={`flex flex-col leading-tight ${sheet ? 'min-w-0' : 'shrink-0'}`}>
           <strong aria-label={priceAccessibleLabel} className={`truncate ${sheet ? 'font-extrabold text-[15px]' : 'font-black text-[20px]'} tabular-nums ${priceUnavailable ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'} ${priceClassName}`}>{priceLabel}</strong>
           {priceCaption}
