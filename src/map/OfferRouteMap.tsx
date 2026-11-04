@@ -54,7 +54,7 @@ export function OfferRouteMap({ origin, destination, geometry }: OfferRouteMapPr
           <p>Для цієї пропозиції сервер не надав геометрію дороги. Карта з’явиться після отримання перевіреного маршруту.</p>
         </div>
       )}
-      <p className="border-t border-slate-100 px-3 py-2 text-[11px] text-slate-500">Огляд маршруту · без поточного GPS водія</p>
+      <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-500">Огляд маршруту · без поточного GPS водія</p>
     </section>
   );
 }

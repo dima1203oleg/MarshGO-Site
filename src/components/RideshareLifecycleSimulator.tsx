@@ -111,7 +111,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                 Синтетичні дані Львів
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:block">
+            <p className="text-xs text-slate-400 dark:text-slate-500 hidden sm:block">
               Повний життєвий цикл попутки без реальних API, GPS чи транзакцій
             </p>
           </div>
@@ -220,7 +220,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
           <button
             type="button"
             onClick={() => dispatch({ type: 'TOGGLE_OFFLINE', isOffline: false })}
-            className="underline text-[11px] font-bold"
+            className="underline text-xs font-bold"
           >
             Відновити звʼязок
           </button>
@@ -263,7 +263,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
           {/* Active View Header */}
           <div className="mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-extrabold tracking-wider uppercase text-blue-600 dark:text-blue-400">
+              <p className="text-xs font-extrabold tracking-wider uppercase text-blue-600 dark:text-blue-400">
                 Поточний стан ({isPassenger ? 'Режим пасажира' : 'Режим водія'})
               </p>
               <h2 className="text-xl font-black text-slate-900 dark:text-white">
@@ -454,7 +454,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                   <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-slate-500 font-bold">1. Пасажир (Дмитро)</p>
-                      <span className={`text-[11px] font-black px-2 py-0.5 rounded ${
+                      <span className={`text-xs font-black px-2 py-0.5 rounded ${
                         state.passengerGpsConsent ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
                       }`}>
                         {state.passengerGpsConsent ? '✓ Надано' : '⏳ Очікується'}
@@ -472,13 +472,13 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                         <button
                           type="button"
                           onClick={() => dispatch({ type: 'DENY_GPS_CONSENT', role: 'passenger' })}
-                          className="py-2 px-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-semibold text-[11px] hover:bg-slate-100 dark:hover:bg-slate-700"
+                          className="py-2 px-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-700"
                         >
                           Відхилити
                         </button>
                       </div>
                     ) : (
-                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                         Пасажир дозволив разовий обмін геопозицією
                       </p>
                     )}
@@ -488,7 +488,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                   <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-slate-500 font-bold">2. Водій (Олексій)</p>
-                      <span className={`text-[11px] font-black px-2 py-0.5 rounded ${
+                      <span className={`text-xs font-black px-2 py-0.5 rounded ${
                         state.driverGpsConsent ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
                       }`}>
                         {state.driverGpsConsent ? '✓ Надано' : '⏳ Очікується'}
@@ -506,13 +506,13 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                         <button
                           type="button"
                           onClick={() => dispatch({ type: 'DENY_GPS_CONSENT', role: 'driver' })}
-                          className="py-2 px-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-semibold text-[11px] hover:bg-slate-100 dark:hover:bg-slate-700"
+                          className="py-2 px-2 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-700"
                         >
                           Відхилити
                         </button>
                       </div>
                     ) : (
-                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                         Водій дозволив разовий обмін геопозицією
                       </p>
                     )}
@@ -526,7 +526,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                   <p className="font-bold flex items-center gap-1.5">
                     <span>🔒 Зустріч на карті заблоковано до згоди обох сторін</span>
                   </p>
-                  <p className="text-[11px]">
+                  <p className="text-xs">
                     {!state.passengerGpsConsent && !state.driverGpsConsent
                       ? 'Очікується дія від пасажира та водія.'
                       : !state.passengerGpsConsent
@@ -596,7 +596,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                     {state.isSimulatingGpsStale ? 'Втрата свіжих даних GPS (>30s)' : 'Живі дані GPS (Свіжі)'}
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   {state.isSimulatingGpsStale ? 'Остання відома точка' : 'Точність ~5-8 м'}
                 </span>
               </div>
@@ -611,7 +611,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                   <p className="text-lg font-black text-slate-900 dark:text-white">
                     {formatDistanceUk(driverDistMeters)}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-500">
                     ETA: ~{driverEtaMin} хв (авто)
                   </p>
                 </div>
@@ -624,7 +624,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                   <p className="text-lg font-black text-slate-900 dark:text-white">
                     {formatDistanceUk(passengerDistMeters)}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-500">
                     ETA: ~{passengerEtaMin} хв (пішки)
                   </p>
                 </div>
@@ -639,13 +639,13 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                 />
                 <div className="text-xs">
                   <p className="font-bold text-slate-900 dark:text-white">{state.trip.pickup.label}</p>
-                  <p className="text-slate-500 text-[11px]">{state.trip.pickup.landmarkDescription}</p>
+                  <p className="text-slate-500 text-xs">{state.trip.pickup.landmarkDescription}</p>
                 </div>
               </div>
 
               {/* Quick Communication Chips */}
               <div className="space-y-1.5">
-                <p className="text-[11px] font-bold text-slate-400 uppercase">Швидкі повідомлення</p>
+                <p className="text-xs font-bold text-slate-400 uppercase">Швидкі повідомлення</p>
                 <div className="flex flex-wrap gap-1.5">
                   {['Я на місці', 'Трохи запізнююся на 3 хв', 'Стою біля входу ТРЦ'].map((msg) => (
                     <button
@@ -799,7 +799,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                 <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
                   <div className="bg-blue-600 h-full w-[65%]" />
                 </div>
-                <div className="flex justify-between text-[11px] text-slate-500">
+                <div className="flex justify-between text-xs text-slate-500">
                   <span>Малоголосківська</span>
                   <span>Наукова (~12 хв)</span>
                 </div>
@@ -941,7 +941,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                   <span className="font-bold">{state.trip.pickup.label} → {state.trip.destination.label}</span>
                   <span className="font-black text-blue-600 dark:text-blue-400">{state.trip.priceUah} ₴</span>
                 </div>
-                <p className="text-slate-500 text-[11px]">Водій: {state.trip.driver.name} ({state.trip.vehicle.make} {state.trip.vehicle.model})</p>
+                <p className="text-slate-500 text-xs">Водій: {state.trip.driver.name} ({state.trip.vehicle.make} {state.trip.vehicle.model})</p>
                 <div className="flex items-center gap-1 text-amber-500 font-bold">
                   {[...Array(state.ratingStars)].map((_, i) => (
                     <Star key={i} size={13} className="fill-amber-400" />
@@ -989,7 +989,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               <summary className="cursor-pointer font-bold hover:text-slate-700 dark:hover:text-slate-300">
                 Журнал переходів стану ({state.historyLog.length})
               </summary>
-              <div className="mt-2 space-y-1 max-h-36 overflow-y-auto font-mono text-[11px] p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="mt-2 space-y-1 max-h-36 overflow-y-auto font-mono text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                 {state.historyLog.length === 0 && <p className="text-slate-400">Подій ще немає</p>}
                 {state.historyLog.map((log, idx) => (
                   <div key={idx} className="border-b border-slate-200/50 dark:border-slate-700/50 pb-1">
@@ -1009,7 +1009,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
               <Compass size={14} className="text-blue-500" />
               <span>Львів: Малоголосківська ↔ Наукова</span>
             </div>
-            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur px-2.5 py-1 rounded-lg border text-[11px] text-slate-500 font-mono">
+            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur px-2.5 py-1 rounded-lg border text-xs text-slate-500 font-mono">
               Пряма дистанція між учасниками: {formatDistanceUk(betweenDistMeters)}
             </div>
           </div>
@@ -1037,7 +1037,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                   <MapPin size={15} />
                 </div>
               </div>
-              <span className="mt-1 font-bold text-[10px] bg-slate-900 text-white px-2 py-0.5 rounded shadow">
+              <span className="mt-1 font-bold text-xs bg-slate-900 text-white px-2 py-0.5 rounded shadow">
                 Точка зустрічі
               </span>
             </div>
@@ -1054,7 +1054,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                 <div className="flex items-center justify-center h-8 w-8 rounded-full bg-amber-500 border-2 border-white shadow-lg text-white">
                   <Car size={16} />
                 </div>
-                <span className="mt-0.5 font-bold text-[10px] bg-amber-700 text-white px-1.5 py-0.2 rounded shadow">
+                <span className="mt-0.5 font-bold text-xs bg-amber-700 text-white px-1.5 py-0.2 rounded shadow">
                   Водій ({formatDistanceUk(driverDistMeters)})
                 </span>
               </div>
@@ -1072,7 +1072,7 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                 <div className="flex items-center justify-center h-8 w-8 rounded-full bg-emerald-500 border-2 border-white shadow-lg text-white">
                   <User size={16} />
                 </div>
-                <span className="mt-0.5 font-bold text-[10px] bg-emerald-700 text-white px-1.5 py-0.2 rounded shadow">
+                <span className="mt-0.5 font-bold text-xs bg-emerald-700 text-white px-1.5 py-0.2 rounded shadow">
                   Ви ({formatDistanceUk(passengerDistMeters)})
                 </span>
               </div>
@@ -1088,13 +1088,13 @@ export function RideshareLifecycleSimulator({ onClose }: RideshareLifecycleSimul
                 </p>
                 <div className="bg-white/10 p-3 rounded-2xl border border-white/20 text-xs text-left max-w-xs">
                   <p className="font-bold">{state.trip.pickup.label}</p>
-                  <p className="text-slate-300 text-[11px]">{state.trip.pickup.landmarkDescription}</p>
+                  <p className="text-slate-300 text-xs">{state.trip.pickup.landmarkDescription}</p>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="mt-3 text-[11px] text-slate-400 text-center">
+          <div className="mt-3 text-xs text-slate-400 text-center">
             Синтетична картографічна проекція з перевіркою свіжості координат (Freshness)
           </div>
         </div>

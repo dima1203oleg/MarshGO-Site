@@ -71,27 +71,32 @@ export function JourneySegmentStrip({
     });
   };
 
-  const renderContent = (item: JourneySegmentStripItem) => <>
-    <span className="journey-segment-tile-heading">
-      <span className="journey-segment-tile-icon" data-icon-mode={item.mode} style={{ color: item.mode === 'WALK' ? undefined : item.color }}>
-        {item.mode === 'METRO'
-          ? <span className="journey-metro-glyph" aria-hidden="true">М</span>
-          : <TransportIcon mode={item.mode} transportType={item.transportType} size={16} strokeWidth={2.3}/>
-        }
+  const renderContent = (item: JourneySegmentStripItem) => {
+    const showPrice = Boolean(item.priceLabel) && item.mode !== 'WALK';
+    return <>
+      <span className="journey-segment-tile-heading">
+        <span className="journey-segment-tile-icon" data-icon-mode={item.mode} style={{ color: item.mode === 'WALK' ? undefined : item.color }}>
+          {item.mode === 'METRO'
+            ? <span className="journey-metro-glyph" aria-hidden="true">М</span>
+            : <TransportIcon mode={item.mode} transportType={item.transportType} size={16} strokeWidth={2.3}/>
+          }
+        </span>
+        {item.badge
+          ? <span className="journey-segment-tile-badge" style={{ ['--segment-color' as string]: item.color }} title={item.label}>{item.badge}</span>
+          : <span className="journey-segment-tile-label" title={item.label}>{item.label}</span>}
       </span>
-      {item.badge
-        ? <span className="journey-segment-tile-badge" style={{ ['--segment-color' as string]: item.color }} title={item.label}>{item.badge}</span>
-        : <span className="journey-segment-tile-label" title={item.label}>{item.label}</span>}
-    </span>
-    <span className="journey-segment-tile-meta" title={item.durationLabel + ' · ' + item.priceLabel}>
-      <strong className="journey-segment-tile-meta-value">{item.durationLabel}</strong>
-      <span aria-hidden="true"> · </span>
-      <strong className="journey-segment-tile-meta-value">{item.priceLabel}</strong>
-    </span>
-  </>;
+      <span className="journey-segment-tile-meta" title={showPrice ? item.durationLabel + ' · ' + item.priceLabel : item.durationLabel}>
+        <strong className="journey-segment-tile-meta-value">{item.durationLabel}</strong>
+        {showPrice && <>
+          <span aria-hidden="true"> · </span>
+          <strong className="journey-segment-tile-meta-value">{item.priceLabel}</strong>
+        </>}
+      </span>
+    </>;
+  };
 
   return <div className={'journey-segment-strip ' + className}>
-    <div className="journey-segment-ribbon" role="img" aria-label={'Кольорова шкала: ' + items.map(item => item.label + ' ' + item.durationLabel).join(', ')}>
+    <div data-testid="journey-transit-thread" className="journey-segment-ribbon" role="img" aria-label={'Кольорова шкала: ' + items.map(item => item.label + ' ' + item.durationLabel).join(', ')}>
       {items.map(item => <span
         key={item.id}
         data-segment-mode={item.mode}
@@ -113,7 +118,7 @@ export function JourneySegmentStrip({
             key={item.id}
             role="listitem"
             data-segment-tile-id={item.id}
-            aria-label={item.accessibilityLabel ?? item.label + ', ' + item.durationLabel + ', ' + item.priceLabel}
+            aria-label={item.accessibilityLabel ?? (item.priceLabel && item.mode !== 'WALK' ? item.label + ', ' + item.durationLabel + ', ' + item.priceLabel : item.label + ', ' + item.durationLabel)}
             className={tileClass + (selected ? ' is-active' : '')}
             style={{ opacity: activeItemId && !selected ? .5 : 1 }}
           >

@@ -1,23 +1,32 @@
-export type RouteSheetSnap = 'collapsed' | 'half' | 'expanded';
+export type RouteSheetSnap = 'peek' | 'collapsed' | 'half' | 'expanded';
+export type RouteSheetLogicalState = 'PEEK' | 'COMPACT' | 'MEDIUM' | 'FULL';
 export type RouteSheetHeights = Record<RouteSheetSnap, number>;
 
-export const ROUTE_SHEET_SNAPS: readonly RouteSheetSnap[] = ['collapsed', 'half', 'expanded'];
+export const ROUTE_SHEET_SNAPS: readonly RouteSheetSnap[] = ['peek', 'collapsed', 'half', 'expanded'];
+
+export const ROUTE_SHEET_LOGICAL_LABELS: Readonly<Record<RouteSheetSnap, RouteSheetLogicalState>> = {
+  peek: 'PEEK',
+  collapsed: 'COMPACT',
+  half: 'MEDIUM',
+  expanded: 'FULL',
+};
 
 /**
- * Snap points match the approved route-sheet composition:
- * - collapsed keeps the summary and segment ribbon, so the map keeps the
- *   lower part of the screen for the origin/destination context;
- * - half is the canonical view: duration, price, ribbon and the single
- *   primary action, exactly one screenful with no inner scrolling;
- * - expanded adds the scrollable per-segment details while always leaving a
- *   map strip at the top.
+ * Snap points match the approved 4-position route-sheet composition:
+ * - peek (PEEK, 170–220 px) leaves the maximum map view with only handle,
+ *   total duration, total fare, one-line stage chain, compact scale and CTA;
+ * - collapsed (COMPACT) keeps the departure/arrival summary, ribbon and CTA;
+ * - half (MEDIUM) adds concise stage context while keeping the map interactive;
+ * - expanded (FULL) shows scrollable per-segment details while leaving a
+ *   top map strip.
  */
 export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
   const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
   const expanded = Math.min(840, viewport * 0.9, Math.max(0, viewport - 172));
   const half = Math.min(430, Math.max(300, viewport * 0.375));
-  const collapsed = Math.min(300, Math.max(248, viewport * 0.3), Math.max(180, half - 44));
-  return { collapsed, half, expanded };
+  const collapsed = Math.min(300, Math.max(240, Math.round(viewport * 0.29)), Math.max(180, half - 44));
+  const peek = Math.min(collapsed - 36, Math.max(176, Math.min(208, Math.round(viewport * 0.225))));
+  return { peek, collapsed, half, expanded };
 }
 
 export function nearestRouteSheetSnap(
@@ -55,4 +64,62 @@ export function settleRouteSheetSnap(
   const transitionThreshold = Math.abs(heights[adjacent] - heights[startSnap]) * 0.25;
   if (Math.abs(velocity) < velocityThreshold && Math.abs(displacement) < transitionThreshold) return nearest;
   return adjacent;
+}
+
+/**
+ * Coalesces high-frequency pointermove height updates into a single DOM write
+ * per animation frame so the MapLibre canvas underneath is not forced to relayout
+ * multiple times per frame.
+ */
+export function createFrameWriter(
+  write: (value: number) => void,
+  request: (callback: () => void) => number = typeof requestAnimationFrame === 'function'
+    ? (callback) => requestAnimationFrame(callback)
+    : (callback) => setTimeout(callback, 16) as unknown as number,
+  cancel: (handle: number) => void = typeof cancelAnimationFrame === 'function'
+    ? (handle) => cancelAnimationFrame(handle)
+    : (handle) => clearTimeout(handle),
+): { schedule: (value: number) => void; flush: () => void; discard: () => void } {
+  let pending: number | null = null;
+  let handle: number | null = null;
+  const run = () => {
+    handle = null;
+    if (pending === null) return;
+    const value = pending;
+    pending = null;
+    write(value);
+  };
+  return {
+    schedule(value: number) {
+      pending = value;
+      if (handle === null) handle = request(run);
+    },
+    flush() {
+      if (handle !== null) { cancel(handle); handle = null; }
+      run();
+    },
+    discard() {
+      if (handle !== null) cancel(handle);
+      handle = null;
+      pending = null;
+    },
+  };
+}
+
+export function routeSheetTransition(dragging: boolean, reducedMotion: boolean, property = 'height'): string {
+  return dragging || reducedMotion ? 'none' : `${property} var(--mg-dur-base) var(--mg-ease-entrance)`;
+}
+
+export function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+export function subscribeReducedMotion(listener: (reduced: boolean) => void): () => void {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {};
+  const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const onChange = (event: MediaQueryListEvent) => listener(event.matches);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
 }

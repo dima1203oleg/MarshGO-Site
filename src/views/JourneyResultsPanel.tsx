@@ -14,7 +14,7 @@ import {
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay } from './cashFare';
 import { strategyJourneys } from './journeyStrategySelection';
-import { diagnosticsRequested, funnelLines, splitResultNotices } from './resultsDiagnostics';
+import { diagnosticsRequested, funnelLines, partialReasonNotices, splitResultNotices } from './resultsDiagnostics';
 
 const FAVORITES_KEY = 'marshgo.saved-route-results.v1';
 
@@ -42,9 +42,8 @@ function journeyCaveats(journey: ApiJourney): string[] {
   return [...new Set(journey.legs.map(leg => journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource)).filter((text): text is string => Boolean(text)))];
 }
 
-function RouteResultCard({ journey, strategy, index, caveats, chosen, onOpen }: {
+function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
   journey: ApiJourney;
-  strategy: ApiJourneyStrategy;
   index: number;
   caveats: string[];
   chosen: boolean;
@@ -73,24 +72,24 @@ function RouteResultCard({ journey, strategy, index, caveats, chosen, onOpen }: 
   }, [journey.id]);
 
   if (!firstLeg || !lastLeg) return null;
-  const rankedStrategy = strategyConfig.find(item => journey.strategyRanks?.[item.id] === 1)?.id;
-  const strategyItem = strategyConfig.find(item => item.id === (rankedStrategy ?? strategy)) ?? strategyConfig[0];
-  const StrategyIcon = strategyItem.Icon;
   const totalPrice = journeyPriceDisplay(journey).label;
-  const legPrice = (leg: ApiJourney['legs'][number] | undefined) => (leg ? legPriceDisplay(leg).value : '—');
-  const stripItems: JourneySegmentStripItem[] = segments.map(segment => ({
-    id: segment.id,
-    mode: segment.mode,
-    transportType: segment.leg?.transportType,
-    label: segment.label,
-    badge: journeyRouteBadge(segment.leg?.routeName),
-    selectionLabel: segment.label + (segment.leg?.routeName ? ' ' + segment.leg.routeName : ''),
-    accessibilityLabel: segment.label + (segment.leg?.routeName ? ', маршрут ' + segment.leg.routeName : '') + ', ' + formatJourneyDuration(segment.durationSeconds) + ', ' + legPrice(segment.leg),
-    durationSeconds: segment.durationSeconds,
-    durationLabel: formatJourneyDurationTile(segment.durationSeconds),
-    priceLabel: legPrice(segment.leg),
-    color: segment.color,
-  }));
+  const legPrice = (leg: ApiJourney['legs'][number] | undefined) => (!leg || leg.mode === 'WALK' ? '' : legPriceDisplay(leg).value);
+  const stripItems: JourneySegmentStripItem[] = segments.map(segment => {
+    const priceText = legPrice(segment.leg);
+    return {
+      id: segment.id,
+      mode: segment.mode,
+      transportType: segment.leg?.transportType,
+      label: segment.label,
+      badge: journeyRouteBadge(segment.leg?.routeName),
+      selectionLabel: segment.label + (segment.leg?.routeName ? ' ' + segment.leg.routeName : ''),
+      accessibilityLabel: segment.label + (segment.leg?.routeName ? ', маршрут ' + segment.leg.routeName : '') + ', ' + formatJourneyDuration(segment.durationSeconds) + (priceText ? ', ' + priceText : ''),
+      durationSeconds: segment.durationSeconds,
+      durationLabel: formatJourneyDurationTile(segment.durationSeconds),
+      priceLabel: priceText,
+      color: segment.color,
+    };
+  });
   const startAt = firstLeg.departureAt;
   const boardingLabel = journeyBoardingNote(journey);
   // A journey that boards at once already says that time in «Відправлення»; the note only earns
@@ -138,8 +137,7 @@ function RouteResultCard({ journey, strategy, index, caveats, chosen, onOpen }: 
         actionsClassName="journey-result-actions flex shrink-0 items-center gap-1"
         summaryRowClassName="journey-result-header"
         actions={<>
-          <span data-strategy={strategyItem.id} aria-label={strategyItem.label} title={strategyItem.label} className={`journey-result-action-badge grid h-8 w-8 shrink-0 place-items-center rounded-full border ${strategyItem.id === 'FASTEST' ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/60 dark:text-orange-300' : strategyItem.id === 'CHEAPEST' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300'}`}><StrategyIcon size={18} strokeWidth={2.2} aria-hidden="true"/></span>
-          <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="journey-result-transfer-badge inline-flex h-8 shrink-0 items-center gap-1 rounded-full border bg-slate-100 px-1.5 text-xs font-extrabold tabular-nums text-slate-700 dark:bg-[var(--mg-surface-tint)] dark:text-slate-200"><ArrowLeftRight size={13} aria-hidden="true"/>{journey.transfers}</span>
+          <span data-testid="journey-result-transfers" aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="journey-result-transfer-badge inline-flex h-8 shrink-0 items-center gap-1 rounded-full border bg-slate-100 px-1.5 text-xs font-extrabold tabular-nums text-slate-700 dark:bg-[var(--mg-surface-tint)] dark:text-slate-200"><ArrowLeftRight size={13} aria-hidden="true"/>{journey.transfers}</span>
           <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} onPointerDown={event => event.stopPropagation()} className="journey-result-save-button mg-press-subtle pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-transparent text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800" title={saved ? 'Збережено на цьому пристрої' : 'Зберегти маршрут'}>
             <span className="journey-result-save-visual"><Heart size={19} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''} aria-hidden="true"/></span>
           </button>
@@ -153,9 +151,6 @@ function RouteResultCard({ journey, strategy, index, caveats, chosen, onOpen }: 
         stripClassName="mt-1.5 pointer-events-none"
         durationNote={waitingSeconds > 0 ? <span data-testid="journey-result-wait" className="text-xs font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">Очікування · {formatJourneyDuration(waitingSeconds)}</span> : undefined}
       />
-      {segments.length > 0 && <div data-testid="journey-transit-thread" aria-hidden="true" className="mt-1.5 flex h-1.5 w-full overflow-hidden rounded-full bg-[var(--mg-surface-tint)] gap-[2px]">
-        {segments.map(segment => <span key={segment.id} className="h-full rounded-full transition-all duration-[var(--mg-dur-fast)]" style={{ flexGrow: Math.max(1, Math.round(segment.durationSeconds / 60)), backgroundColor: segment.color, opacity: segment.mode === 'WALK' ? 0.65 : 0.95 }} />)}
-      </div>}
       <p data-testid="journey-result-window" className="journey-result-window mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs font-bold leading-4 tabular-nums text-slate-700 dark:text-slate-200">
         <span className="inline-flex items-center gap-1"><Clock size={13} className="shrink-0" aria-hidden="true"/>Відправлення: {formatJourneyClock(startAt)}</span>
         <span className="inline-flex items-center gap-1"><Flag size={13} className="shrink-0" aria-hidden="true"/>Прибуття: {formatJourneyClock(lastLeg.arrivalAt)}</span>
@@ -239,8 +234,9 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap }: {
   // Transport-type tokens are availability facts, not preferences: they get their own honest lines.
   const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences, result.completeness);
   const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
-  if (result.partial && !result.partialReasons?.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
-  if (result.partialReasons?.includes('walking_routing_unavailable')) notices.push({ tone: 'amber', text: 'Піші ділянки частини варіантів показано як оцінку: пішохідний маршрутизатор не підтвердив для них реальний шлях.' });
+  const reasonNotices = partialReasonNotices(result.partialReasons);
+  reasonNotices.forEach(notice => notices.push(notice));
+  if (result.partial && !reasonNotices.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
   const preferenceTokens = result.unsupportedPreferences.filter(token => !token.startsWith('transportType:'));
   // Provider and preference messages arrive as full sentences (often already
   // ending with a period); trim their terminal punctuation so the wrapper
@@ -289,7 +285,7 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap }: {
       </ul>
     </details>}
 
-    {shownJourneys.length ? <div className="mg-stagger-list space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} strategy={activeStrategy} index={index} caveats={shownCaveats[index].filter(text => !sharedCaveats.includes(text))} chosen={journey.id === chosenJourneyId} onOpen={onOpenMap}/>)}</div>
+    {shownJourneys.length ? <div className="mg-stagger-list space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} index={index} caveats={shownCaveats[index].filter(text => !sharedCaveats.includes(text))} chosen={journey.id === chosenJourneyId} onOpen={onOpenMap}/>)}</div>
       : <div className="rounded-2xl border border-[var(--mg-line)] bg-[var(--mg-surface-card)] p-6 text-center">
         <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{result.journeys.length
