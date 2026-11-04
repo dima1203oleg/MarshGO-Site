@@ -242,12 +242,17 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap }: {
   // ending with a period); trim their terminal punctuation so the wrapper
   // below adds exactly one period instead of rendering "маршрут..".
   const sentenceList = (items: string[]) => items.map(item => item.trim().replace(/[.;]+$/, '')).filter(Boolean).join('; ');
+  const isTechnicalRouterMsg = (msg: string) => /маршрутизатор|відхилено|ліміт|обмежив пошук|алгоритм|pareto|osrm/i.test(msg);
+  const userProviderErrors = result.providerErrors.filter(err => !isTechnicalRouterMsg(err));
+  const technicalProviderErrors = result.providerErrors.filter(isTechnicalRouterMsg);
+
   if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${sentenceList(preferenceTokens.map(value => preferenceMessages[value] ?? value))}.` });
-  if (result.providerErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${sentenceList(result.providerErrors)}.` });
-  if (result.resultsTruncated) notices.push({ tone: 'blue', text: `Показано до ${result.alternativeLimitPerStrategy ?? 12} різних варіантів на режим із ${result.paretoCount ?? result.candidateCount ?? 'знайдених'} Pareto-варіантів. Результати обмежені, щоб пошук залишався швидким.` });
+  if (userProviderErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${sentenceList(userProviderErrors)}.` });
+  if (result.resultsTruncated) notices.push({ tone: 'blue', text: `Показано найкращі варіанти для обраного режиму поїздки.` });
   if (result.candidateGenerationTruncated) notices.push({ tone: 'amber', text: 'Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.' });
   unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
   sharedCaveats.forEach(text => notices.push({ tone: 'amber', text }));
+  technicalProviderErrors.forEach(text => notices.push({ tone: 'slate', text }));
   const { headline, technical } = splitResultNotices(notices);
   const showDiagnostics = diagnosticsRequested(
     typeof window !== 'undefined' ? window.location.search : '',

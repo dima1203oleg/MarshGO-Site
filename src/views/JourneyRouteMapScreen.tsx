@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronDown, Clock3, Heart, Layers, Navigation, Play, Share2, X,
+  ArrowLeft, ArrowRight, ChevronDown, Clock3, Globe, Heart, Navigation, Play, Share2, X,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
+import { MapLayersControl } from '../components/MapLayersControl';
 import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from '../map/journeyRouteModel';
 import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
-import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
+import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
@@ -31,6 +32,7 @@ import {
 import { themeService } from '../services/theme';
 import { buildRouteMapAnnotations, formatSegmentCount, formatStopCount, primaryTransitLeg } from './routeMapAnnotations';
 import { priorityLevelOf } from '../map/transportVisualZones';
+import { shortPlace } from './journeyStageNavigation';
 
 type JourneyLeg = ApiJourney['legs'][number];
 type TimelineItem = {
@@ -120,6 +122,9 @@ export function JourneyRouteMapScreen({
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
   const [mapLayer, setCurrentMapLayer] = useState<MapLayer>(getMapLayer);
+  const [mapPerspective, setLocalPerspective] = useState<MapPerspective>(getMapPerspective);
+  useEffect(() => subscribeMapLayer(setCurrentMapLayer), []);
+  useEffect(() => subscribeMapPerspective(setLocalPerspective), []);
   // The sheet opens exactly on the approved composition: summary, segment
   // ribbon and one primary action; details stay one swipe away.
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
@@ -530,6 +535,7 @@ export function JourneyRouteMapScreen({
     <div className="absolute inset-0" data-testid="journey-route-map">
       <MarshGoMap
         route={[]}
+        overlays
         routeSegments={model.routeSegments}
         routeWaypoints={model.routeWaypoints}
         routeLabels={routeLabels}
@@ -589,11 +595,40 @@ export function JourneyRouteMapScreen({
     </header>}
 
     <div className="absolute right-4 z-10 flex flex-col gap-2" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 8.2rem)' }}>
-      {(sheetSnap === 'half' || activeSegmentId) && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full${activeSegmentId ? ' is-reset' : ''}`}><Navigation size={19}/></button>}
-      <button type="button" aria-label={`Шар карти: ${mapLayers[mapLayer].label}. Перемкнути`} title={`Шар карти: ${mapLayers[mapLayer].label}`} onClick={() => {
-        const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
-        setCurrentMapLayer(next); setMapLayer(next);
-      }} className="route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full"><Layers size={19}/></button>
+      {(sheetSnap === 'half' || activeSegmentId) && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg${activeSegmentId ? ' is-reset' : ''}`}><Navigation size={19}/></button>}
+      <button
+        type="button"
+        aria-label={`3D-перспектива: ${mapPerspective === '3d' ? 'увімкнено' : 'вимкнено'}`}
+        title="3D-перспектива"
+        aria-pressed={mapPerspective === '3d'}
+        onClick={() => {
+          const next: MapPerspective = mapPerspective === '3d' ? '2d' : '3d';
+          setMapPerspective(next);
+          setLocalPerspective(next);
+        }}
+        className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full text-xs font-black shadow-lg transition-all ${
+          mapPerspective === '3d' ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30' : ''
+        }`}
+      >
+        3D
+      </button>
+      <button
+        type="button"
+        aria-label={`Супутникова карта: ${mapLayer === 'satellite' ? 'увімкнено' : 'вимкнено'}`}
+        title="Супутникова карта"
+        aria-pressed={mapLayer === 'satellite'}
+        onClick={() => {
+          const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
+          setCurrentMapLayer(next);
+          setMapLayer(next);
+        }}
+        className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg transition-all ${
+          mapLayer === 'satellite' ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30' : ''
+        }`}
+      >
+        <Globe size={19} />
+      </button>
+      <MapLayersControl overlays variant="navigation" />
     </div>
 
     {showChrome && scale && <div className="route-map-scale" style={{ left: 20, bottom: sheetHeight + chipHeight + 22 }} aria-hidden="true">
@@ -756,7 +791,7 @@ export function JourneyRouteMapScreen({
                         {liveStatus && leg.mode !== 'WALK' && <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-extrabold ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>{liveStatus === 'LIVE' && <span aria-hidden="true" className="mg-live-pulse inline-block h-2 w-2 rounded-full bg-emerald-400"/>}{liveStatus === 'LIVE' ? 'ЗА РУХОМ' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ · ОЦІНКА' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}</span>}
                       </span>
                       <span className="mt-1 block text-xs tabular-nums text-[var(--route-muted)]">{legTimeLabel(leg, item.durationSeconds)}{typeof leg.distanceMeters === 'number' && Number.isFinite(leg.distanceMeters) ? ` · ${formatJourneyDistance(leg.distanceMeters)}` : ''}{scheduled && stops.length ? ` · ${formatStopCount(stops.length)}` : ''}</span>
-                      <span className="mt-1 block text-xs leading-4 text-[var(--route-subtle)]">{leg.mode === 'COMMUNITY' ? `Посадка: ${leg.origin.name} · висадка: ${leg.destination.name}` : `${leg.origin.name} → ${leg.destination.name}`}</span>
+                      <span className="mt-1 block text-xs leading-4 text-[var(--route-subtle)]">{leg.mode === 'COMMUNITY' ? `Посадка: ${shortPlace(leg.origin.name)} · висадка: ${shortPlace(leg.destination.name)}` : `${shortPlace(leg.origin.name)} → ${shortPlace(leg.destination.name)}`}</span>
                       {caveat && <span className={`mt-1 block text-xs leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{caveat}</span>}
                       {scheduled && stops.length === 0 && <span className={`mt-1 block text-xs leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>Перелік зупинок не надійшов від транспортного джерела.</span>}
                     </span>
@@ -777,7 +812,7 @@ export function JourneyRouteMapScreen({
                       return <li key={`${stop.id}:${index}`} className="relative grid min-h-7 grid-cols-[44px_minmax(0,1fr)] gap-2 py-1 text-xs">
                         <span className="absolute -left-[1.05rem] top-[.55rem] h-2.5 w-2.5 rounded-full border-2 border-[var(--route-card)]" style={{ backgroundColor: color }}/>
                         <time className="tabular-nums text-[var(--route-subtle)]">{stopTime(stop, index, stops.length - 1)}</time>
-                        <span className={endpoint ? 'font-extrabold text-[var(--route-ink)]' : stop.skipped ? 'text-[var(--route-subtle)] line-through decoration-rose-500/70' : 'text-[var(--route-muted)]'}>{stop.name}{stop.skipped ? <strong className="ml-1 text-rose-600 no-underline dark:text-rose-300">· ПРОПУСКАЄТЬСЯ</strong> : index === 0 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ПОСАДКА</strong> : index === stops.length - 1 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ВИСАДКА</strong> : null}</span>
+                        <span className={endpoint ? 'font-extrabold text-[var(--route-ink)]' : stop.skipped ? 'text-[var(--route-subtle)] line-through decoration-rose-500/70' : 'text-[var(--route-muted)]'}>{shortPlace(stop.name)}{stop.skipped ? <strong className="ml-1 text-rose-600 no-underline dark:text-rose-300">· ПРОПУСКАЄТЬСЯ</strong> : index === 0 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ПОСАДКА</strong> : index === stops.length - 1 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ВИСАДКА</strong> : null}</span>
                       </li>;
                     })}
                   </ol> : <p className="text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}

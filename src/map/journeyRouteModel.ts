@@ -105,8 +105,12 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
   const mappedLegIds = new Set(mappedLegs.map(leg => leg.id));
   return {
     legs: mappedLegs,
-    routeSegments: mappedLegs.map(({ id, coordinates, color, approximate }) => ({ id, coordinates, modeColor: color,
-      ...(approximate ? { approximate: true } : {}) })),
+    routeSegments: mappedLegs.map(({ id, coordinates, color, approximate }) => ({
+      id,
+      coordinates,
+      modeColor: color,
+      ...(approximate ? { approximate: true } : {}),
+    })),
     routeWaypoints,
     missingShapeCount: legs.filter(leg => leg.mode !== 'WALK' && !mappedLegIds.has(leg.id)).length,
     approximateWalkCount: mappedLegs.filter(leg => leg.approximate).length,

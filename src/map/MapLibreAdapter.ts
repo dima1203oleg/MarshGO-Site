@@ -227,7 +227,7 @@ export class MapLibreAdapter implements MapAdapter {
     ] as const;
     for (const [name, kind] of transitImages) if (!this.map.hasImage(name)) this.map.addImage(name, transitGlyph(kind), { pixelRatio: 2 });
     if (!this.map.hasImage('marshgo-zone-arrow')) this.map.addImage('marshgo-zone-arrow', zoneArrowGlyph(), { pixelRatio: 2 });
-    const confirmedRouteFilter = ['!=', ['get', 'approximate'], true] as maplibregl.FilterSpecification;
+    const confirmedRouteFilter = ['all', ['!=', ['get', 'approximate'], true], ['!=', ['get', 'isWalk'], true]] as maplibregl.FilterSpecification;
     if (!this.map.getLayer('marshgo-transit-context')) this.map.addLayer({
       id: 'marshgo-transit-context', type: 'line', source: 'marshgo-transit-context',
       // A line whose zones are known is drawn by the zone layers instead, so the
@@ -276,10 +276,32 @@ export class MapLibreAdapter implements MapAdapter {
       filter: ['==', ['get', 'approximate'], true],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['coalesce', ['get', 'modeColor'], '#91A6BB'],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3, 15, 6],
-        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.38, 0.9],
+        'line-color': ['coalesce', ['get', 'modeColor'], '#38BDF8'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3.5, 15, 7],
+        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.45, 0.95],
         'line-dasharray': [1.15, 1.8],
+      },
+    });
+    if (!this.map.getLayer('marshgo-route-walking-trail-halo')) this.map.addLayer({
+      id: 'marshgo-route-walking-trail-halo', type: 'line', source: 'marshgo-route',
+      filter: ['all', ['==', ['get', 'isWalk'], true], ['!=', ['get', 'approximate'], true]],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#0284C7',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 6, 15, 12],
+        'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.7, 0.35],
+        'line-blur': 3,
+      },
+    });
+    if (!this.map.getLayer('marshgo-route-walking-trail')) this.map.addLayer({
+      id: 'marshgo-route-walking-trail', type: 'line', source: 'marshgo-route',
+      filter: ['all', ['==', ['get', 'isWalk'], true], ['!=', ['get', 'approximate'], true]],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['case', ['==', ['get', 'selected'], true], '#38BDF8', '#38BDF8'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 4, 15, 8],
+        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.45, 1.0],
+        'line-dasharray': [0.25, 1.6],
       },
     });
     // A separate transparent hit layer gives route segments a 44 px touch
@@ -489,7 +511,7 @@ export class MapLibreAdapter implements MapAdapter {
       source.setData({ type: 'FeatureCollection', features: mapSegments.map(segment => ({
         type: 'Feature' as const,
         properties: { modeColor: segment.modeColor, segmentId: segment.id ?? '', approximate: segment.approximate === true,
-          selected: segment.selected, dimmed: segment.dimmed },
+          isWalk: segment.modeColor === '#91A6BB', selected: segment.selected, dimmed: segment.dimmed },
         geometry: { type: 'LineString' as const, coordinates: segment.coordinates },
       })) });
       return;

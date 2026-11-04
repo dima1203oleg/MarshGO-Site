@@ -50,12 +50,12 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
     {groups === null && <p role="status" className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-4 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
       Покриття маршрутів ще не перевірено; наявність провайдерів не підтверджена.
     </p>}
-    {!compact && <p className="mb-3 text-xs leading-5 text-slate-500">Рівно 12 категорій у затвердженому порядку. Неактивні категорії залишаються видимими; «Пішки» додається автоматично до пересадок.</p>}
+    {!compact && <p className="mb-3 text-xs leading-5 text-slate-500">Оберіть види транспорту, які вам підходять для поїздки.</p>}
     <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>
     {compact && <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-[var(--mg-border-subtle)] bg-white px-3 py-2 dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]">
-      <p className="min-w-0 text-xs leading-4"><span className="font-extrabold text-[var(--mg-ink-primary)] dark:text-[var(--mg-ink-primary)]">Провайдери</span>{' '}
+      <p className="min-w-0 text-xs leading-4"><span className="font-extrabold text-[var(--mg-ink-primary)] dark:text-[var(--mg-ink-primary)]">Перевізники</span>{' '}
         <span className="font-semibold text-slate-500 dark:text-[var(--mg-ink-secondary)]">{groups === null ? 'покриття ще не перевірено'
-          : allProvidersChosen ? `усі наявні (${availableProviderCount})` : `вибрано: ${selectedProviderCount} з ${availableProviderCount}`}</span></p>
+          : allProvidersChosen ? `всі підключені (${availableProviderCount})` : `вибрано: ${selectedProviderCount} з ${availableProviderCount}`}</span></p>
       <span className="flex shrink-0 items-center gap-1.5">
         {onManageProviders && <button type="button" onClick={onManageProviders} className="mg-press-subtle min-h-11 rounded-full border border-slate-200 bg-white px-3 text-xs font-bold text-[var(--mg-blue)] dark:border-slate-700 dark:bg-[var(--mg-surface-tint)] dark:text-[var(--mg-blue-ink)]">Налаштувати</button>}
         <button type="button" aria-pressed={allProvidersChosen} disabled={availableProviderCount === 0} onClick={() => onChange(useAllProviders(selection, routableTypes))}

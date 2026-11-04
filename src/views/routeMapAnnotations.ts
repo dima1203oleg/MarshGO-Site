@@ -3,6 +3,7 @@ import type { MapAnnotation } from '../map/MapAdapter';
 import type { ApiJourney, ApiJourneyLive } from '../services/productionApi';
 import { formatJourneyDistance, formatJourneyDuration } from './journeyResultPresentation';
 import { journeyLegLabel } from './journeyLegLabel';
+import { shortPlace } from './journeyStageNavigation';
 
 type Leg = ApiJourney['legs'][number];
 type LiveSegment = ApiJourneyLive['segments'][number];
@@ -123,7 +124,7 @@ export function buildRouteMapAnnotations({
       kind: 'BOARDING',
       coordinates: transit.origin.coordinates,
       title: 'Посадка',
-      detail: transit.origin.name,
+      detail: shortPlace(transit.origin.name),
       tone: 'green',
     });
     annotations.push({
@@ -131,7 +132,7 @@ export function buildRouteMapAnnotations({
       kind: 'ALIGHTING',
       coordinates: transit.destination.coordinates,
       title: 'Висадка',
-      detail: transit.destination.name,
+      detail: shortPlace(transit.destination.name),
       tone: 'blue',
     });
   }
@@ -147,7 +148,7 @@ export function buildRouteMapAnnotations({
           kind: 'TERMINUS',
           coordinates: before[0]!,
           title: 'Кінцева',
-          detail: terminusFrom,
+          detail: shortPlace(terminusFrom),
           tone: 'neutral',
         });
         const routePoint = midpoint(before);
@@ -159,7 +160,7 @@ export function buildRouteMapAnnotations({
           kind: 'TERMINUS',
           coordinates: after.at(-1)!,
           title: 'Кінцева',
-          detail: terminusTo,
+          detail: shortPlace(terminusTo),
           tone: 'neutral',
         });
         const routePoint = midpoint(after);
