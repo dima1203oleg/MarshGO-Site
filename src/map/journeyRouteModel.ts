@@ -54,7 +54,10 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     // the endpoints as waypoints and let the details card carry the estimate.
     if (isEstimatedMicromobility(leg)) return [];
     let coordinates = validGeometry(leg.routeGeometry);
-    let approximate = false;
+    // A walk leg whose source says "estimate" is a straight line even when the server already
+    // shipped its two endpoints (`walking-straight-line-estimate`), so it must never be drawn
+    // as a solid street trajectory.
+    let approximate = leg.mode === 'WALK' && /estimate|straight-line/i.test(leg.source ?? '');
     if (coordinates.length < 2 && leg.mode === 'WALK'
       && (leg.source === 'walking-estimate' || leg.source === 'straight-line-estimate')
       && validCoordinate(leg.origin?.coordinates) && validCoordinate(leg.destination?.coordinates)

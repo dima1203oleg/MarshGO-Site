@@ -96,6 +96,28 @@ test('renders estimated walking connectors as explicitly approximate dashed segm
   assert.equal(model.missingShapeCount, 0);
 });
 
+test('keeps a server-fabricated straight walking line dashed, not solid', () => {
+  const model = buildJourneyRouteMapModel(legs([
+    { id: 'fabricated-walk', mode: 'WALK', source: 'walking-straight-line-estimate',
+      origin: { coordinates: [30.5225, 50.4501] }, destination: { coordinates: [30.5255, 50.4572] },
+      routeGeometry: [[30.5225, 50.4501], [30.5255, 50.4572]] },
+  ]));
+
+  assert.equal(model.approximateWalkCount, 1);
+  assert.equal(model.routeSegments[0]?.approximate, true);
+});
+
+test('keeps a routed walking leg solid', () => {
+  const model = buildJourneyRouteMapModel(legs([
+    { id: 'routed-walk', mode: 'WALK', source: 'osrm-foot-route',
+      origin: { coordinates: [24.0323, 49.8397] }, destination: { coordinates: [24.0245, 49.8410] },
+      routeGeometry: [[24.0323, 49.8397], [24.0300, 49.8402], [24.0245, 49.8410]] },
+  ]));
+
+  assert.equal(model.approximateWalkCount, 0);
+  assert.equal(model.routeSegments[0]?.approximate, undefined);
+});
+
 test('does not draw estimated bike rental endpoint pairs as road geometry', () => {
   const model = buildJourneyRouteMapModel(legs([
     { id: 'bike-estimate', mode: 'BICYCLE', transportType: 'bike', source: 'static-bike-network-estimate',

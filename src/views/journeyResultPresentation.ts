@@ -93,6 +93,18 @@ export function buildJourneyResultSegments(journey: ApiJourney): JourneyResultSe
   return segments;
 }
 
+/**
+ * The server sends one `routeName` built as route_short_name || route_long_name || route_id, so a
+ * long name or an internal id can arrive where a number is expected. Only a short token without
+ * spaces takes the № prefix; anything else keeps its own wording instead of being dressed up as a
+ * route number.
+ */
+export function journeyRouteBadge(routeName?: string | null): string | null {
+  const name = routeName?.trim();
+  if (!name) return null;
+  return name.length <= 5 && !/\s/.test(name) && /\d/.test(name) ? `№${name}` : name;
+}
+
 export function formatJourneyLegPrice(leg: ApiJourney['legs'][number], currency = 'UAH'): string {
   if (leg.mode === 'WALK') return '0 ₴';
   if (leg.fareIncludedByPreviousSegment) return 'у квитку';

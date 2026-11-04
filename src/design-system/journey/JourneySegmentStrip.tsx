@@ -7,6 +7,8 @@ export type JourneySegmentStripItem = {
   mode: string;
   transportType?: string | null;
   label: string;
+  /** Feed route number rendered as the canonical «№48» pill; absent keeps the mode word. */
+  badge?: string | null;
   selectionLabel?: string;
   accessibilityLabel?: string;
   durationSeconds: number;
@@ -65,7 +67,7 @@ export function JourneySegmentStrip({
     if (!element) return;
     element.scrollTo({
       left: scrollState.atEnd ? 0 : element.scrollWidth,
-      behavior: 'smooth',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     });
   };
 
@@ -77,7 +79,9 @@ export function JourneySegmentStrip({
           : <TransportIcon mode={item.mode} transportType={item.transportType} size={16} strokeWidth={2.3}/>
         }
       </span>
-      <span className="journey-segment-tile-label" title={item.label}>{item.label}</span>
+      {item.badge
+        ? <span className="journey-segment-tile-badge" style={{ ['--segment-color' as string]: item.color }} title={item.label}>{item.badge}</span>
+        : <span className="journey-segment-tile-label" title={item.label}>{item.label}</span>}
     </span>
     <span className="journey-segment-tile-meta" title={item.durationLabel + ' · ' + item.priceLabel}>
       <strong className="journey-segment-tile-meta-value">{item.durationLabel}</strong>
@@ -114,7 +118,7 @@ export function JourneySegmentStrip({
             style={{ opacity: activeItemId && !selected ? .5 : 1 }}
           >
             {onSelect
-              ? <button type="button" aria-pressed={selected} onClick={() => onSelect(item.id)} aria-label={'Вибрати сегмент: ' + (item.selectionLabel ?? item.label)} className="journey-segment-tile-button">
+              ? <button type="button" aria-pressed={selected} onClick={() => onSelect(item.id)} aria-label={'Вибрати сегмент: ' + (item.selectionLabel ?? item.label)} className="journey-segment-tile-button mg-press-subtle">
                 {renderContent(item)}
               </button>
               : <div className="journey-segment-tile-content">{renderContent(item)}</div>}

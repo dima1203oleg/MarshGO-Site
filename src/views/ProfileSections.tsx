@@ -124,11 +124,11 @@ export function ProfileSections({
         <button
           onClick={onBack}
           aria-label="Назад до профілю"
-          className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm dark:bg-[#16202B] dark:text-slate-200"
+          className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm dark:bg-[var(--mg-surface-tint)] dark:text-slate-200"
         >
           <ArrowLeft size={18} />
         </button>
-        <h1 className="text-lg font-extrabold text-[#0E1F35] dark:text-white">{title[section]}</h1>
+        <h1 className="text-lg font-extrabold text-[var(--mg-ink-primary)] dark:text-white">{title[section]}</h1>
       </div>
 
       {section === 'documents' && (
@@ -137,7 +137,7 @@ export function ProfileSections({
             Статус перевірки ваших документів і авто. Нові документи можна подати в розділі «Мій автомобіль».
           </p>
           {records.length === 0 ? (
-            <div className="rounded-2xl bg-white p-5 text-center text-sm text-slate-500 shadow-sm dark:bg-[#16202B] dark:text-slate-400">
+            <div className="rounded-2xl bg-white p-5 text-center text-sm text-slate-500 shadow-sm dark:bg-[var(--mg-surface-tint)] dark:text-slate-400">
               Документів ще не подано. Додайте авто в профілі та натисніть «Подати документи».
             </div>
           ) : (
@@ -145,16 +145,16 @@ export function ProfileSections({
               const meta = statusMeta[record.status];
               const car = vehicleName(record.vehicle_id);
               return (
-                <article key={record.id} className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
+                <article key={record.id} className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[var(--mg-surface-tint)]">
                   <div className="flex items-center justify-between gap-2">
-                    <b className="text-sm text-[#0E1F35] dark:text-white">{typeLabel[record.verification_type]}</b>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold ${meta.tone}`}>
+                    <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">{typeLabel[record.verification_type]}</b>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${meta.tone}`}>
                       <meta.Icon size={12} />
                       {meta.label}
                     </span>
                   </div>
                   {car && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{car}</p>}
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-xs text-slate-400">
                     Подано {dateFormat.format(new Date(record.created_at))}
                     {record.reviewed_at ? ` · перевірено ${dateFormat.format(new Date(record.reviewed_at))}` : ''}
                   </p>
@@ -172,19 +172,19 @@ export function ProfileSections({
 
       {section === 'settings' && (
         <div className="space-y-3">
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
-            <b className="text-sm text-[#0E1F35] dark:text-white">Тема оформлення</b>
+          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[var(--mg-surface-tint)]">
+            <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">Тема оформлення</b>
             <p className="mb-3 mt-0.5 text-xs text-slate-500 dark:text-slate-400">Світла, темна або як у системі.</p>
             <ThemeToggle variant="segmented" />
           </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
-            <b className="text-sm text-[#0E1F35] dark:text-white">Карта й навігація</b>
+          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[var(--mg-surface-tint)]">
+            <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">Карта й навігація</b>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               Перемикач «Схема / Супутник» на мапі. Перспектива 3D вмикається кнопкою орієнтації.
             </p>
           </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
-            <b className="text-sm text-[#0E1F35] dark:text-white">Безпека входу</b>
+          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[var(--mg-surface-tint)]">
+            <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">Безпека входу</b>
             <p className="mb-3 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               Завершити сесії на всіх підключених пристроях.
             </p>
@@ -211,19 +211,19 @@ export function ProfileSections({
 
       {section === 'privacy' && (
         <div className="space-y-3">
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
+          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[var(--mg-surface-tint)]">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <b className="text-sm text-[#0E1F35] dark:text-white">Точна GPS-геолокація</b>
+                <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">Точна GPS-геолокація</b>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   Використовується лише для побудови маршрутів та рандеву зустрічі. Дані не передаються рекламним мережам.
                 </p>
               </div>
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${gpsPermission === 'granted' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : gpsPermission === 'denied' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${gpsPermission === 'granted' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : gpsPermission === 'denied' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
                 {gpsPermissionLabel[gpsPermission]}
               </span>
             </div>
-            <p className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-xs leading-4 text-slate-500 dark:text-slate-400">
               Дозвіл видає браузер, а не MARSHGO. Вимкнути його можна в налаштуваннях доступу цього сайту.
             </p>
             <button
@@ -236,15 +236,15 @@ export function ProfileSections({
             {gpsNote && <p role="status" className="mt-2 text-xs text-slate-600 dark:text-slate-300">{gpsNote}</p>}
           </div>
 
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
-            <b className="text-sm text-[#0E1F35] dark:text-white">Ефемерне збереження Рандеву</b>
+          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[var(--mg-surface-tint)]">
+            <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">Ефемерне збереження Рандеву</b>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Координати зустрічі зберігаються в оперативному Redis-кеші з TTL 120 секунд і безповоротно стираються після завершення або скасування поїздки.
             </p>
           </div>
 
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
-            <b className="text-sm text-[#0E1F35] dark:text-white">Керування персональними даними (GDPR / Закон України)</b>
+          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[var(--mg-surface-tint)]">
+            <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">Керування персональними даними (GDPR / Закон України)</b>
             <div className="mt-3 space-y-2">
               <button
                 type="button"
@@ -256,9 +256,9 @@ export function ProfileSections({
                   <Download size={16} className="text-blue-600" />
                   {exporting ? 'Готуємо файл…' : 'Завантажити копію моїх даних (JSON)'}
                 </span>
-                <span className="text-[10px] text-slate-400">Експорт</span>
+                <span className="text-xs text-slate-400">Експорт</span>
               </button>
-              {exportNote && <p role="status" className="text-[11px] text-rose-700 dark:text-rose-400">{exportNote}</p>}
+              {exportNote && <p role="status" className="text-xs text-rose-700 dark:text-rose-400">{exportNote}</p>}
 
               <button
                 type="button"
@@ -269,9 +269,9 @@ export function ProfileSections({
                   <Trash2 size={16} className="text-rose-600" />
                   Подати запит на повне видалення профілю
                 </span>
-                <span className="text-[10px] text-rose-400">Період очікування</span>
+                <span className="text-xs text-rose-400">Період очікування</span>
               </button>
-              <p className="text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+              <p className="text-xs leading-4 text-slate-500 dark:text-slate-400">
                 Запит підтверджується окремо й має період очікування зі скасуванням. Натискання кнопки саме по собі дані не стирає.
               </p>
             </div>
@@ -306,13 +306,13 @@ export function ProfileSections({
                 Скарги та блокування
               </button>
             </div>
-            <p className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-xs leading-4 text-slate-500 dark:text-slate-400">
               Скаргу надсилають із чату конкретної поїздки — там видно, на кого саме скаржаться. Окремої кнопки тривоги поза поїздкою в застосунку немає.
             </p>
           </div>
 
-          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
-            <b className="text-sm text-[#0E1F35] dark:text-white">Правила безпеки для попутників</b>
+          <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[var(--mg-surface-tint)]">
+            <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">Правила безпеки для попутників</b>
             <ul className="mt-2 space-y-2 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
               <li>Звіряйте номер і марку авто перед посадкою.</li>
               <li>Використовуйте квиток MarshPass для фіксації посадки.</li>
@@ -326,13 +326,13 @@ export function ProfileSections({
       {section === 'help' && (
         <div className="space-y-2">
           {faq.map(([question, answer], index) => (
-            <div key={question} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-[#16202B]">
+            <div key={question} className="overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-[var(--mg-surface-tint)]">
               <button
                 aria-expanded={openFaq === index}
                 onClick={() => setOpenFaq(openFaq === index ? null : index)}
                 className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
               >
-                <b className="text-sm text-[#0E1F35] dark:text-white">{question}</b>
+                <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">{question}</b>
                 <ChevronDown
                   size={17}
                   className={`shrink-0 text-slate-400 transition-transform ${openFaq === index ? 'rotate-180' : ''}`}

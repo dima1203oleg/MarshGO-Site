@@ -81,16 +81,33 @@ export function toggleType(selection: TransportSelection, type: TransportTypeId)
 
 export function choiceFor(selection: TransportSelection, type: TransportTypeId): ProviderChoice { return selection.providers[type] ?? { all: true, ids: [] }; }
 export function activeTypesForSearch(selection: TransportSelection): TransportTypeId[] { return selection.active.filter(isJourneySearchSupported); }
-export function toggleProvider(selection: TransportSelection, type: TransportTypeId, providerId: string | 'all'): TransportSelection {
+export function toggleProvider(selection: TransportSelection, type: TransportTypeId, providerId: string | 'all', availableIds: readonly string[] = []): TransportSelection {
   const current = choiceFor(selection, type);
-  let next: ProviderChoice;
-  if (providerId === 'all') next = { all: true, ids: [] };
-  else {
-    const ids = current.ids.includes(providerId) ? current.ids.filter((id) => id !== providerId) : [...current.ids, providerId];
-    next = ids.length === 0 ? { all: true, ids: [] } : { all: false, ids };
-  }
-  return { ...selection, providers: { ...selection.providers, [type]: next } };
+  if (providerId === 'all') return { ...selection, providers: { ...selection.providers, [type]: { all: true, ids: [] } } };
+  // `all` means every connected provider is in play, so a chip click there removes one —
+  // treating it as an empty list would silently narrow the category to the single provider.
+  const active = current.all ? [...availableIds] : current.ids;
+  const next = active.includes(providerId) ? active.filter((id) => id !== providerId) : [...active, providerId];
+  const coversEverything = availableIds.length > 0 && next.length === availableIds.length;
+  return { ...selection, providers: { ...selection.providers, [type]: next.length === 0 || coversEverything ? { all: true, ids: [] } : { all: false, ids: next } } };
 }
+/** «Вибрати всі»: every one of the given categories routes with all of its connected providers. */
+export function useAllProviders(selection: TransportSelection, types: readonly TransportTypeId[]): TransportSelection {
+  return {
+    ...selection,
+    providers: { ...selection.providers, ...Object.fromEntries(types.map((type) => [type, { all: true, ids: [] } as ProviderChoice])) },
+  };
+}
+/** How many providers the current choice actually hands to the planner; `all` counts every connected one. */
+export function countSelectedProviders(selection: TransportSelection, types: readonly TransportTypeId[], groups: ApiTransportProviders[] | null): number {
+  return types.reduce((total, type) => {
+    const providers = providersForJourneySearch(type, groups);
+    const choice = choiceFor(selection, type);
+    return total + (choice.all ? providers.length : providers.filter((provider) => choice.ids.includes(provider.id)).length);
+  }, 0);
+}
+export const areAllProvidersSelected = (selection: TransportSelection, types: readonly TransportTypeId[]): boolean =>
+  types.every((type) => choiceFor(selection, type).all);
 
 function groupsForCategory(type: TransportTypeId, groups: ApiTransportProviders[] | null) {
   if (!groups) return [];

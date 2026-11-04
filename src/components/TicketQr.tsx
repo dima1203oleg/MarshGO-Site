@@ -17,7 +17,7 @@ export function TicketQr({ token }: { token: string }) {
   }, [token, attempt]);
 
   // An empty box beside «Покажіть цей QR-код водієві» left the passenger guessing at the boarding step.
-  if (failed) return <div className="mx-auto mt-2 max-w-[16rem] rounded-xl bg-amber-50 p-3 text-center text-[11px] font-semibold leading-4 text-amber-800">
+  if (failed) return <div className="mx-auto mt-2 max-w-[16rem] rounded-xl bg-amber-50 p-3 text-center text-xs font-semibold leading-4 text-amber-800">
     QR-код не вдалося побудувати. Спробуйте ще раз або покажіть водієві текстовий токен.
     <button type="button" onClick={() => setAttempt(value => value + 1)} className="mt-2 min-h-11 w-full rounded-lg bg-amber-700 px-3 text-xs font-bold text-white">Спробувати ще раз</button>
   </div>;
