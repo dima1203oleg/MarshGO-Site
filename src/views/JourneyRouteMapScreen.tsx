@@ -242,7 +242,7 @@ export function JourneyRouteMapScreen({
     if (expandForDetails && isScheduledRouteLeg(leg)) {
       setExpandedSegments(current => new Set(current).add(id));
     }
-    requestAnimationFrame(() => segmentCards.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    requestAnimationFrame(() => segmentCards.current.get(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' }));
   }, [journey.legs, sheetSnap, snapHeight]);
 
   const showWholeRoute = useCallback(() => {
@@ -539,9 +539,9 @@ export function JourneyRouteMapScreen({
           actionsClassName="route-summary-actions flex shrink-0 items-center gap-1"
           actions={ <>
               <span aria-label={`Режим: ${strategyLabel}`} title={strategyLabel} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[var(--mg-blue)]"><StrategyIcon size={18}/></span>
-              <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-[var(--route-border)] px-2 text-[10px] font-extrabold tabular-nums"><ArrowLeftRight size={13}/>{journey.transfers}</span>
-              {sheetSnap === 'expanded' && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[var(--mg-blue)] hover:bg-[var(--route-hover)]"><Navigation size={18}/></button>}
-              <button type="button" aria-label={sheetSnap === 'expanded' ? 'Згорнути панель до карти' : sheetSnap === 'half' ? 'Розгорнути панель повністю' : 'Показати деталі маршруту'} onClick={cycleSheet} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[var(--mg-blue)] hover:bg-[var(--route-hover)]"><ChevronRight size={19} className={sheetSnap === 'expanded' ? 'rotate-90' : ''}/></button>
+              <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full border border-[var(--route-border)] px-2 text-xs font-extrabold tabular-nums"><ArrowLeftRight size={13}/>{journey.transfers}</span>
+              {sheetSnap === 'expanded' && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[var(--mg-blue)] hover:bg-[var(--route-hover)]"><Navigation size={18}/></button>}
+              <button type="button" aria-label={sheetSnap === 'expanded' ? 'Згорнути панель до карти' : sheetSnap === 'half' ? 'Розгорнути панель повністю' : 'Показати деталі маршруту'} onClick={cycleSheet} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] text-[var(--mg-blue)] hover:bg-[var(--route-hover)]"><ChevronRight size={19} className={sheetSnap === 'expanded' ? 'rotate-90' : ''}/></button>
           </>}
           items={stripItems}
           ariaLabel="Етапи маршруту та їхня вартість"
@@ -550,8 +550,8 @@ export function JourneyRouteMapScreen({
           className=""
           stripClassName="mt-2"
           summaryNote={<>
-            {waitingSeconds > 0 && <p className="mt-1 text-right text-[10px] font-semibold text-[var(--route-muted)]">Очікування · {formatDuration(waitingSeconds)}</p>}
-            {(mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured' || liveJourneyRequestMessage !== '' || selectedLiveLineIncomplete || missingShapes > 0 || approximateWalkCount > 0) && <p role="status" className={`mt-1 text-[10px] font-semibold ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{mapStatusText}</p>}
+            {waitingSeconds > 0 && <p className="mt-1 text-right text-xs font-semibold text-[var(--route-muted)]">Очікування · {formatDuration(waitingSeconds)}</p>}
+            {(mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured' || liveJourneyRequestMessage !== '' || selectedLiveLineIncomplete || missingShapes > 0 || approximateWalkCount > 0) && <p role="status" className={`mt-1 text-xs font-semibold ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{mapStatusText}</p>}
             {!stripItems.length && <p className="mt-2 text-xs text-[var(--route-muted)]">Дані сегментів цього маршруту не надійшли.</p>}
           </>}
         />
@@ -588,12 +588,12 @@ export function JourneyRouteMapScreen({
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <b className="text-sm font-extrabold">{leg.mode === 'COMMUNITY' ? 'Попутка · приватний автомобіль' : `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`}</b>
-                      {liveStatus && <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>{liveStatus === 'LIVE' ? 'LIVE' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ · ОЦІНКА' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}</span>}
+                      {liveStatus && <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-extrabold ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>{liveStatus === 'LIVE' && <span aria-hidden="true" className="mg-live-pulse inline-block h-2 w-2 rounded-full bg-emerald-400"/>}{liveStatus === 'LIVE' ? 'LIVE' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ · ОЦІНКА' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}</span>}
                     </span>
-                    <span className="mt-1 block text-[11px] tabular-nums text-[var(--route-muted)]">{legTimeLabel(leg, item.durationSeconds)}{hasMeasuredDistance(leg) ? ` · ${formatJourneyDistance(leg.distanceMeters)}` : ''}</span>
-                    <span className="mt-1 block text-[10px] leading-4 text-[var(--route-subtle)]">{leg.mode === 'COMMUNITY' ? `Посадка: ${leg.origin.name} · висадка: ${leg.destination.name}` : `${leg.origin.name} → ${leg.destination.name}`}</span>
-                    {caveat && <span className={`mt-1 block text-[10px] leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{caveat}</span>}
-                    {scheduled && stops.length === 0 && <span className={`mt-1 block text-[10px] leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>Перелік зупинок не надійшов від транспортного джерела.</span>}
+                    <span className="mt-1 block text-xs tabular-nums text-[var(--route-muted)]">{legTimeLabel(leg, item.durationSeconds)}{hasMeasuredDistance(leg) ? ` · ${formatJourneyDistance(leg.distanceMeters)}` : ''}</span>
+                    <span className="mt-1 block text-xs leading-4 text-[var(--route-subtle)]">{leg.mode === 'COMMUNITY' ? `Посадка: ${leg.origin.name} · висадка: ${leg.destination.name}` : `${leg.origin.name} → ${leg.destination.name}`}</span>
+                    {caveat && <span className={`mt-1 block text-xs leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{caveat}</span>}
+                    {scheduled && stops.length === 0 && <span className={`mt-1 block text-xs leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>Перелік зупинок не надійшов від транспортного джерела.</span>}
                   </span>
                 </button>
                 <div className="flex shrink-0 flex-col items-end gap-1">
@@ -608,35 +608,35 @@ export function JourneyRouteMapScreen({
                 {stops.length ? <ol aria-label={`Зупинки сегмента ${leg.routeName ?? journeyLegLabel(leg.mode, leg.transportType)}`} className="ml-1 border-l-2 pl-3">
                   {stops.map((stop, index) => {
                     const endpoint = index === 0 || index === stops.length - 1;
-                    return <li key={`${stop.id}:${index}`} className="relative grid min-h-7 grid-cols-[44px_minmax(0,1fr)] gap-2 py-1 text-[10px]">
+                    return <li key={`${stop.id}:${index}`} className="relative grid min-h-7 grid-cols-[44px_minmax(0,1fr)] gap-2 py-1 text-xs">
                       <span className="absolute -left-[1.05rem] top-[.55rem] h-2.5 w-2.5 rounded-full border-2 border-[var(--route-card)]" style={{ backgroundColor: color }}/>
                       <time className="tabular-nums text-[var(--route-subtle)]">{stopTime(stop, index, stops.length - 1)}</time>
                       <span className={endpoint ? 'font-extrabold text-[var(--route-ink)]' : stop.skipped ? 'text-[var(--route-subtle)] line-through decoration-rose-500/70' : 'text-[var(--route-muted)]'}>{stop.name}{stop.skipped ? <strong className="ml-1 text-rose-600 no-underline dark:text-rose-300">· ПРОПУСКАЄТЬСЯ</strong> : index === 0 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ПОСАДКА</strong> : index === stops.length - 1 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ВИСАДКА</strong> : null}</span>
                     </li>;
                   })}
-                </ol> : <p className="text-[10px] text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
+                </ol> : <p className="text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
               </div>}
 
               {leg.mode === 'COMMUNITY' && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--route-border)] px-3 py-2.5">
-                <span className="text-[10px] text-[var(--route-muted)]">{leg.availabilityStatus === 'AVAILABLE' ? 'Наявність перевірена під час пошуку' : 'Місця потрібно перевірити перед бронюванням'}</span>
-                {canBook && leg.offerId && onBookOffer && <button type="button" onClick={() => onBookOffer(leg.offerId!, journey.id, leg.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#8845E8] px-4 text-xs font-extrabold text-white shadow-[0_0_18px_rgba(168,85,247,.28)] hover:bg-[#9958F2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Забронювати <span aria-hidden="true">→</span></button>}
+                <span className="text-xs text-[var(--route-muted)]">{leg.availabilityStatus === 'AVAILABLE' ? 'Наявність перевірена під час пошуку' : 'Місця потрібно перевірити перед бронюванням'}</span>
+                {canBook && leg.offerId && onBookOffer && <button type="button" onClick={() => onBookOffer(leg.offerId!, journey.id, leg.id)} className="mg-press inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#8845E8] px-4 text-xs font-extrabold text-white shadow-[0_0_18px_rgba(168,85,247,.28)] hover:bg-[#9958F2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Забронювати <span aria-hidden="true">→</span></button>}
               </div>}
             </li>;
           })}
         </ol>
 
-        {missingShapes > 0 && <p className={`mt-2 rounded-xl border px-3 py-2 text-[10px] leading-4 ${isDark ? 'border-amber-300/20 bg-amber-300/5 text-amber-100' : 'border-amber-700/20 bg-amber-50 text-amber-900'}`}>
+        {missingShapes > 0 && <p className={`mt-2 rounded-xl border px-3 py-2 text-xs leading-4 ${isDark ? 'border-amber-300/20 bg-amber-300/5 text-amber-100' : 'border-amber-700/20 bg-amber-50 text-amber-900'}`}>
           {missingShapes} сегм. без геометрії перевізника. Їх не з’єднуємо прямими лініями; карта показує лише підтверджені форми та точки з даних джерела.
         </p>}
-        {mapStatus === 'unconfigured' && <p className={`mt-2 rounded-xl px-3 py-2 text-[10px] ${isDark ? 'bg-amber-300/10 text-amber-100' : 'bg-amber-50 text-amber-900'}`}>Для цієї карти не налаштовано базові тайли. Маршрутні геометрії залишаються доступними, якщо їх надав перевізник.</p>}
+        {mapStatus === 'unconfigured' && <p className={`mt-2 rounded-xl px-3 py-2 text-xs ${isDark ? 'bg-amber-300/10 text-amber-100' : 'bg-amber-50 text-amber-900'}`}>Для цієї карти не налаштовано базові тайли. Маршрутні геометрії залишаються доступними, якщо їх надав перевізник.</p>}
         {(sheetSnap === 'expanded' || sheetSnap === 'full-itinerary') && <div className="grid grid-cols-3 gap-2 border-t border-[var(--route-border)] px-1 pt-2">
-          <button type="button" aria-pressed={saved} onClick={toggleSaved} className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-[10px] font-bold"><Star size={15} fill={saved ? 'currentColor' : 'none'}/>{saved ? 'Збережено' : 'Зберегти'}</button>
-          <button type="button" onClick={() => void shareRoute()} className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-[10px] font-bold"><Share2 size={15}/>Поділитися</button>
-          <button type="button" disabled={!lastLeg || !onNavigate} onClick={() => lastLeg && onNavigate?.({ label: lastLeg.destination.name, latitude: lastLeg.destination.coordinates[1], longitude: lastLeg.destination.coordinates[0] })} className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-[var(--mg-action)] text-[10px] font-extrabold text-white transition hover:bg-[var(--mg-action-hover)] disabled:opacity-45"><Navigation size={15}/>Навігація</button>
+          <button type="button" aria-pressed={saved} onClick={toggleSaved} className="mg-press-subtle flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-xs font-bold"><Star size={15} fill={saved ? 'currentColor' : 'none'}/>{saved ? 'Збережено' : 'Зберегти'}</button>
+          <button type="button" onClick={() => void shareRoute()} className="mg-press-subtle flex min-h-11 items-center justify-center gap-1 rounded-xl border border-[var(--route-border)] text-xs font-bold"><Share2 size={15}/>Поділитися</button>
+          <button type="button" disabled={!lastLeg || !onNavigate} onClick={() => lastLeg && onNavigate?.({ label: lastLeg.destination.name, latitude: lastLeg.destination.coordinates[1], longitude: lastLeg.destination.coordinates[0] })} className="mg-press flex min-h-11 items-center justify-center gap-1 rounded-xl bg-[var(--mg-action)] text-xs font-extrabold text-white transition hover:bg-[var(--mg-action-hover)] disabled:opacity-45"><Navigation size={15}/>Навігація</button>
         </div>}
       </div>}
 
-      {feedback && <p role="status" className="px-4 pb-1 text-center text-[10px] text-[var(--route-muted)]">{feedback}</p>}
+      {feedback && <p role="status" className="px-4 pb-1 text-center text-xs text-[var(--route-muted)]">{feedback}</p>}
     </section>
     <span className="sr-only" aria-live="polite">{feedback}</span>
   </main>;

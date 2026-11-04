@@ -67,7 +67,7 @@ export function JourneySegmentStrip({
     if (!element) return;
     element.scrollTo({
       left: scrollState.atEnd ? 0 : element.scrollWidth,
-      behavior: 'smooth',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     });
   };
 
@@ -118,7 +118,7 @@ export function JourneySegmentStrip({
             style={{ opacity: activeItemId && !selected ? .5 : 1 }}
           >
             {onSelect
-              ? <button type="button" aria-pressed={selected} onClick={() => onSelect(item.id)} aria-label={'Вибрати сегмент: ' + (item.selectionLabel ?? item.label)} className="journey-segment-tile-button">
+              ? <button type="button" aria-pressed={selected} onClick={() => onSelect(item.id)} aria-label={'Вибрати сегмент: ' + (item.selectionLabel ?? item.label)} className="journey-segment-tile-button mg-press-subtle">
                 {renderContent(item)}
               </button>
               : <div className="journey-segment-tile-content">{renderContent(item)}</div>}

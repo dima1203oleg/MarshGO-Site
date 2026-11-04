@@ -119,3 +119,59 @@ test('W1 (в): entrance-утиліти присутні в src/index.css і за
     'глобальний guard prefers-reduced-motion має гасити анімації',
   );
 });
+
+test('W2 (а): src/styles/motion.css підключено з src/index.css і містить примітиви M1–M8 із захистом reduced-motion', () => {
+  const indexCss = readFileSync('src/index.css', 'utf8');
+  assert.match(indexCss, /@import\s+["']\.\/styles\/motion\.css["'];/, 'src/index.css має імпортувати ./styles/motion.css');
+  const motionCss = readFileSync('src/styles/motion.css', 'utf8');
+  for (const selector of [
+    '.animate-spin-slow',
+    '.mg-press-subtle',
+    '.mg-swap-spin',
+    '.mg-accordion-grid',
+    '.mg-stagger-list',
+    '.mg-pill-switch',
+    '.mg-sheet-spring',
+    '.mg-live-pulse',
+    '.mg-route-flow',
+  ]) {
+    assert.ok(motionCss.includes(selector), `src/styles/motion.css має визначати ${selector}`);
+  }
+  assert.match(
+    motionCss,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none !important/,
+    'src/styles/motion.css має вимикати циклічні анімації в режимі prefers-reduced-motion',
+  );
+});
+
+test('W2 (б): програмні виклики scrollIntoView та scrollTo у живих модулях враховують prefers-reduced-motion', () => {
+  const files = [
+    'src/views/JourneyRouteMapScreen.tsx',
+    'src/design-system/journey/JourneySegmentStrip.tsx',
+    'src/components/DepartureDateTimePicker.tsx',
+  ];
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    assert.doesNotMatch(
+      source,
+      /behavior:\s*['"]smooth['"]/,
+      `${file} не повинен викликати scroll із безумовним behavior: 'smooth'`,
+    );
+    assert.match(
+      source,
+      /prefers-reduced-motion:\s*reduce/,
+      `${file} має перевіряти prefers-reduced-motion перед плавним прокручуванням`,
+    );
+  }
+});
+
+test('W2 (в): JourneyRouteMapScreen і JourneyResultsPanel дотримуються мінімального кегля 12px (0 входжень text-[10px]/text-[11px])', () => {
+  for (const file of ['src/views/JourneyRouteMapScreen.tsx', 'src/views/JourneyResultsPanel.tsx']) {
+    const source = readFileSync(file, 'utf8');
+    const undersized = [...source.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)]
+      .filter((m) => Number(m[1]) < 12)
+      .map((m) => `${file} -> ${m[0]}`);
+    assert.deepEqual(undersized, []);
+  }
+});
+

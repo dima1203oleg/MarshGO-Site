@@ -56,7 +56,7 @@ function WheelColumn({ label, values, selected, onSelect, selectedIndex }: {
         event.preventDefault();
         userScrolled.current = true;
         const next = Math.max(0, Math.min(values.length - 1, selectedIndex + (event.key === 'ArrowDown' ? 1 : -1)));
-        ref.current?.scrollTo({ top: next * ITEM_HEIGHT, behavior: 'smooth' });
+        ref.current?.scrollTo({ top: next * ITEM_HEIGHT, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
       }}
       className="h-full snap-y snap-mandatory overflow-y-auto overscroll-contain px-2 text-center text-2xl font-medium text-slate-400 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
