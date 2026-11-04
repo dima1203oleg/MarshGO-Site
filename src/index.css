@@ -303,6 +303,14 @@ html.dark .journey-results .journey-result-card {
  */
 .journey-result-card[data-top-pick="true"] { border-color: #B9D8F7; }
 html.dark .journey-results .journey-result-card[data-top-pick="true"] { border-color: rgba(22,135,255,.5) !important; }
+/*
+ * The card the passenger actually opened is a fact, not a ranking, so it owns a real selection
+ * marker: a ring around the border. It comes after the rank-1 rules and repeats the dark
+ * `!important` so it wins over the stronger-looking top pick.
+ */
+.journey-result-card[data-chosen="true"] { border-color: var(--mg-blue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mg-blue) 30%, transparent), 0 5px 16px rgba(11, 45, 82, .075) !important; }
+html.dark .journey-results .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue) !important; box-shadow: 0 0 0 2px rgba(22,135,255,.45) !important; }
+.journey-result-window { overflow-wrap: anywhere; }
 html.dark .journey-results .journey-result-duration {
   color: #F5F9FF !important;
 }
@@ -377,7 +385,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   justify-content: flex-start;
   gap: .25rem;
   color: #172638;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1.15;
 }
@@ -385,13 +393,31 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
 .journey-metro-glyph { font-size: 1.2rem; font-weight: 950; font-style: italic; line-height: .9; letter-spacing: -.12em; transform: translateX(-.04em); }
 .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #172638 !important; }
 .journey-segment-tile-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/*
+ * The feed route number («№48») is the one thing a passenger scans for, so it takes the mode
+ * colour as a tint and an inset ring rather than filled colour: white text on several --mode-*
+ * hues falls under the WCAG AA the board itself demands.
+ */
+.journey-segment-tile-badge {
+  min-width: 2.05rem;
+  padding: .12rem .3rem;
+  border-radius: .45rem;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  color: inherit;
+  background-color: color-mix(in srgb, var(--segment-color) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--segment-color) 55%, transparent);
+}
 .journey-segment-tile-meta {
   display: block;
   min-width: 0;
   overflow: hidden;
   padding-left: 1.25rem;
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 500;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -479,19 +505,20 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   font-size: clamp(17px, 4.8vw, 20px);
   white-space: nowrap;
 }
-.journey-segment-tile-heading { font-size: 10px; }
+/* Only the tile icon width and the left-aligned meta are screen-specific here; the font sizes
+   must stay in the single base rule above, or a duplicate later in the sheet wins the cascade. */
 .journey-segment-tile-icon { flex-basis: 1.125rem; }
-.journey-segment-tile-meta { padding-left: 1.25rem; font-size: 9.5px; text-align: left; }
+.journey-segment-tile-meta { text-align: left; }
 @media (min-width: 640px) {
   .journey-segment-tile--scroll { flex-basis: 0; }
 }
 @media (max-width: 479px) {
-  .journey-segment-tile-heading { gap: .125rem; font-size: clamp(9px, 2.4vw, 10px); }
+  .journey-segment-tile-heading { gap: .125rem; font-size: clamp(10px, 2.8vw, 11px); }
   .journey-segment-tile-icon { flex-basis: 1rem; }
   .journey-segment-tile:not(.journey-segment-tile--scroll) .journey-segment-tile-meta {
     padding-left: 1.25rem;
     text-align: left;
-    font-size: 9.5px;
+    font-size: 10px;
   }
 }
 @media (max-width: 379px) {

@@ -292,3 +292,43 @@ test('the journey screens read one accent token set and the sort tabs stay AA-sa
   assert.match(results, /bg-\[var\(--mg-action\)\] text-white/, 'the active sort tab is a filled AA control: --mg-action is 5.57:1 under white, #1687FF was 3.53:1');
   assert.doesNotMatch(results, /bg-gradient-to-b from-\[#1687FF\]/, 'the sort-tab gradient put half of its white label under AA');
 });
+
+// The board shows «Відправлення 08:12 / Прибуття 09:40» as visible text with a № pill per stage,
+// and marks the card the passenger actually opened. Until now the times lived in a tooltip, the
+// stage chips printed only the mode word, and the tap left no trace on the list.
+test('the results card shows the departure window, the feed route number and a real chosen state', async () => {
+  const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
+  const [css, panel, strip, mapScreen, marketplace] = await Promise.all([
+    read('../src/index.css'),
+    read('../src/views/JourneyResultsPanel.tsx'),
+    read('../src/design-system/journey/JourneySegmentStrip.tsx'),
+    read('../src/views/JourneyRouteMapScreen.tsx'),
+    read('../src/views/ProductionMarketplace.tsx'),
+  ]);
+  assert.match(panel, /<p data-testid="journey-result-window"[\s\S]{0,400}Відправлення: \{formatJourneyClock\(startAt\)\}[\s\S]{0,160}Прибуття: \{formatJourneyClock\(lastLeg\.arrivalAt\)\}/,
+    'the departure and arrival times must be printed on the card, not hidden in a tooltip');
+  assert.doesNotMatch(panel, /durationTitle=/, 'a title-only duration is the reason the window was invisible');
+  // Both screens mount the same strip, so the route number has to appear on both.
+  assert.match(panel, /badge: journeyRouteBadge\(segment\.leg\?\.routeName\)/, 'the results strip lost the route number');
+  assert.match(mapScreen, /badge: journeyRouteBadge\(leg\.routeName\)/, 'the route sheet strip lost the route number');
+  assert.match(strip, /item\.badge/, 'the strip must branch on the route number');
+  assert.match(strip, /className="journey-segment-tile-badge" style=\{\{ \[\'--segment-color\' as string\]: item\.color \}\} title=\{item\.label\}>\{item\.badge\}/,
+    'the pill takes the segment colour through a variable and keeps the mode word as its tooltip');
+  assert.match(strip, /className="journey-segment-tile-label" title=\{item\.label\}>\{item\.label\}/,
+    'a leg without a route number must still say what the vehicle is');
+  assert.match(css, /\.journey-segment-tile-badge \{[\s\S]{0,400}background-color: color-mix\(in srgb, var\(--segment-color\) 18%, transparent\)/,
+    'the pill tint must come from the segment colour, and the ink stays inherited for AA');
+  assert.doesNotMatch(css, /\.journey-segment-tile-badge \{[\s\S]{0,400}color: #/, 'white or hand-picked text on a saturated mode pill falls under WCAG AA');
+  // Selection is a fact about what the passenger opened, so it is owned by the screen switcher.
+  assert.match(marketplace, /setChosenJourneyId\(journey\.id\); setSelectedRouteMap\(journey\)/,
+    'opening a card must record which journey is chosen');
+  assert.match(marketplace, /setJourneySearchStartedAt\(Date\.now\(\)\); setShowResults\(true\); setChosenJourneyId\(null\)/,
+    'a new search must clear the previous choice');
+  assert.match(panel, /data-testid="journey-result-chosen" role="img" aria-label="Обраний маршрут"/,
+    'the chosen card needs a named marker, not a decorative tick');
+  assert.match(css, /\.journey-result-card\[data-chosen="true"\] \{ border-color: var\(--mg-blue\)/,
+    'the chosen ring must use the single action blue token');
+  assert.doesNotMatch(css, /\.journey-segment-tile-heading \{ font-size:/,
+    'a duplicate heading rule later in the sheet silently wins the cascade and shrinks tile text again');
+  assert.doesNotMatch(panel, /text-\[(?:[89]|1[01])(?:\.\d+)?px\]/, 'results-card chrome drifted under the 12 px floor');
+});

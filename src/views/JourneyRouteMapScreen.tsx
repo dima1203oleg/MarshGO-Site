@@ -19,6 +19,7 @@ import {
   formatJourneyDistanceSummary,
   formatJourneyLegPrice,
   formatJourneyTotalPrice,
+  journeyRouteBadge,
   journeyStrategyLabel,
 } from './journeyResultPresentation';
 import { routeSheetHeights, settleRouteSheetSnap, type RouteSheetSnap } from './routeSheet';
@@ -281,6 +282,7 @@ export function JourneyRouteMapScreen({
       mode: leg.mode,
       transportType: leg.transportType,
       label: leg.mode === 'COMMUNITY' ? 'Попутка' : journeyLegLabel(leg.mode, leg.transportType),
+      badge: journeyRouteBadge(leg.routeName),
       selectionLabel: (leg.mode === 'COMMUNITY' ? 'Попутка' : journeyLegLabel(leg.mode, leg.transportType)) + (leg.routeName ? ' ' + leg.routeName : ''),
       accessibilityLabel: (leg.mode === 'COMMUNITY' ? 'Попутка' : journeyLegLabel(leg.mode, leg.transportType)) + (leg.routeName ? ', маршрут ' + leg.routeName : '') + ', ' + formatDuration(item.durationSeconds) + ', ' + legPriceLabel(leg),
       durationSeconds: item.durationSeconds,

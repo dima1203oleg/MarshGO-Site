@@ -7,6 +7,8 @@ export type JourneySegmentStripItem = {
   mode: string;
   transportType?: string | null;
   label: string;
+  /** Feed route number rendered as the canonical «№48» pill; absent keeps the mode word. */
+  badge?: string | null;
   selectionLabel?: string;
   accessibilityLabel?: string;
   durationSeconds: number;
@@ -77,7 +79,9 @@ export function JourneySegmentStrip({
           : <TransportIcon mode={item.mode} transportType={item.transportType} size={16} strokeWidth={2.3}/>
         }
       </span>
-      <span className="journey-segment-tile-label" title={item.label}>{item.label}</span>
+      {item.badge
+        ? <span className="journey-segment-tile-badge" style={{ ['--segment-color' as string]: item.color }} title={item.label}>{item.badge}</span>
+        : <span className="journey-segment-tile-label" title={item.label}>{item.label}</span>}
     </span>
     <span className="journey-segment-tile-meta" title={item.durationLabel + ' · ' + item.priceLabel}>
       <strong className="journey-segment-tile-meta-value">{item.durationLabel}</strong>

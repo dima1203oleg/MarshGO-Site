@@ -123,6 +123,7 @@ export function ProductionMarketplace() {
   const [journeyStrategy, setJourneyStrategy] = useState<ApiJourneyStrategy>('BALANCED');
   const [journeyResult, setJourneyResult] = useState<ApiJourneySearchResult | null>(null);
   const [selectedRouteMap, setSelectedRouteMap] = useState<ApiJourney | null>(null);
+  const [chosenJourneyId, setChosenJourneyId] = useState<string | null>(null);
   const [journeyBookingLink, setJourneyBookingLink] = useState<{ journeyId: string; journeyLegId: string } | null>(null);
   const [journeys, setJourneys] = useState<ApiStoredJourney[]>([]);
   const [notificationPage, setNotificationPage] = useState<ApiNotificationPage>({ items: [], nextCursor: null, unreadCount: 0 });
@@ -622,7 +623,7 @@ export function ProductionMarketplace() {
       setArrivalPickerOpen(true);
       return;
     }
-    setBusy(true); setStatusMessage(''); setJourneySearchStartedAt(Date.now()); setShowResults(true);
+    setBusy(true); setStatusMessage(''); setJourneySearchStartedAt(Date.now()); setShowResults(true); setChosenJourneyId(null);
     try {
       setJourneyResult(null);
       const result = await productionApi.searchJourneys({
@@ -1639,7 +1640,7 @@ export function ProductionMarketplace() {
       <p title={displayRoute} className="line-clamp-2 min-w-0 flex-1 break-words text-[11px] font-bold leading-[14px]"><span className="text-[#526477] dark:text-[#B4C0CF]">Маршрут: </span>{displayRoute}</p>
       <button type="button" onClick={returnToSearch} aria-label="Змінити маршрут пошуку" title="Змінити маршрут" className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 text-[10px] font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:text-slate-100 dark:hover:border-blue-500 dark:hover:text-blue-300"><Pencil size={12}/>Змінити</button>
     </header>
-    {journeyResult ? <><JourneyResultsPanel result={journeyResult} onOpenMap={setSelectedRouteMap}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt}/> : carpoolSection}
+    {journeyResult ? <><JourneyResultsPanel result={journeyResult} chosenJourneyId={chosenJourneyId} onOpenMap={(journey) => { setChosenJourneyId(journey.id); setSelectedRouteMap(journey); }}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt}/> : carpoolSection}
   </main>;
 
   const visibleBookings = route?.kind === 'booking' && route.entityId ? bookings.filter((booking) => booking.id === route.entityId) : bookings;
