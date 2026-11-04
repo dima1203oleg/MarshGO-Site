@@ -37,7 +37,15 @@ export default defineConfig(() => {
       proxy: {
         // ws:true — the realtime channel is a WebSocket on /api/v1/realtime and the server
         // answers it from an 'upgrade' listener (MarshGO-Server/server/index.ts:6601). Without
-        // the flag the dev/preview proxy drops the upgrade handshake and the socket never opens.
+        // the flag the dev/preview proxy dropped the upgrade handshake and the socket never
+        // opened; measured 2026-11-04: the proxied upgrade now reaches the API in ~3 ms.
+        // The page Origin is forwarded unchanged on purpose. The upgrade handler rejects any
+        // Origin missing from CORS_ORIGINS with 403 before the ticket is read (index.ts:6698),
+        // so the rule for every environment is "list the origin the passenger opens", which a
+        // same-origin deployment satisfies automatically and a public preview satisfies with its
+        // share host. Rewriting the header instead would replace an allowed public host with the
+        // internal API host, which no CORS_ORIGINS may contain (config.ts:38 forbids http:// in
+        // production), so it is deliberately not used here.
         '/api': { target: apiProxyTarget, changeOrigin: true, ws: true },
         '/healthz': { target: apiProxyTarget, changeOrigin: true },
         '/readyz': { target: apiProxyTarget, changeOrigin: true },
