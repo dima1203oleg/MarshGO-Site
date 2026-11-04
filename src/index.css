@@ -1139,15 +1139,49 @@ html.dark :is(.bg-rose-50, .bg-red-50) { background-color: rgba(255, 90, 106, .1
 html.dark :is(.text-\[\#0E1F35\], .text-\[\#081b35\], .text-slate-900, .text-slate-800, .text-slate-700, .text-\[\#14243B\]) { color: var(--mg-ink-primary); }
 html.dark :is(.text-slate-600, .text-slate-500, .text-\[\#62718A\]) { color: var(--mg-ink-secondary); }
 html.dark :is(.text-slate-400, .text-slate-300) { color: var(--mg-ink-muted); }
-html.dark :is(.text-blue-700, .text-blue-800, .text-blue-900) { color: #8CC4FF; }
-html.dark :is(.text-emerald-700, .text-green-700) { color: #74E0A1; }
-html.dark :is(.text-amber-700, .text-amber-800) { color: #FFD27A; }
-html.dark :is(.text-rose-700, .text-red-700) { color: #FF9CA7; }
+html.dark :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900) { color: #8CC4FF; }
+html.dark :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900, .text-green-600, .text-green-700) { color: #74E0A1; }
+html.dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-900\/80) { color: #FFD27A; }
+html.dark :is(.text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900, .text-red-600, .text-red-700, .text-red-800, .text-red-900) { color: #FF9CA7; }
+/* Every remaining palette family the canonical screens still reach (map layer chips, onboarding,
+   lifecycle simulator). -600…-900 brown/dark steps are invisible on a graphite canvas, so each hue
+   keeps its own light partner instead of being flattened to blue. */
+html.dark :is(.text-indigo-600, .text-indigo-700, .text-violet-600, .text-violet-700, .text-purple-600, .text-purple-700) { color: #A9B8FF; }
+html.dark :is(.text-cyan-600, .text-cyan-700, .text-sky-600, .text-sky-700) { color: #7DD3FC; }
+html.dark :is(.text-teal-600, .text-teal-700, .text-teal-800) { color: #6EE7D6; }
+html.dark :is(.text-orange-600, .text-orange-700, .text-orange-800) { color: #FFB877; }
 html.dark :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-\[\#E5EDF7\], .border-\[\#EEF3F9\], .border-\[\#DFE7F1\], .border-t, .border-b) { border-color: var(--mg-border-subtle); }
 html.dark .border-blue-200 { border-color: #1D437A; }
 html.dark .border-emerald-200 { border-color: #0D4E3F; }
 html.dark .border-rose-200 { border-color: #55192C; }
 html.dark .border-amber-200 { border-color: #573A12; }
+/* ---- Dark theme: the rest of the registry ----
+   Two classes of defect hid here. Alpha tints (bg-blue-50/70, bg-slate-50/80, bg-amber-50/95) are
+   separate Tailwind selectors, so `:is(.bg-blue-50)` never matched them and whole panels stayed
+   #eff6ff near-white over a graphite canvas — with their text-slate ink already flipped to light,
+   that is white-on-white. And the -100 chips of every accent hue were unmapped for the same reason.
+   Each maps to the same hue family as its -50 partner, so one transport/semantic colour still reads
+   as one colour in both themes. */
+html.dark :is(.bg-blue-50\/70, .bg-blue-50\/60, .bg-blue-50\/40) { background-color: rgba(22, 135, 255, .12); }
+html.dark :is(.bg-emerald-50\/80, .bg-emerald-50\/70) { background-color: rgba(44, 214, 125, .11); }
+html.dark :is(.bg-amber-50\/95, .bg-amber-50\/70) { background-color: rgba(255, 176, 32, .12); }
+html.dark :is(.bg-slate-50\/80, .bg-slate-50\/70) { background-color: var(--mg-canvas); }
+html.dark :is(.bg-slate-100\/70, .bg-slate-100\/80) { background-color: #132644; }
+html.dark :is(.bg-slate-200\/70, .bg-slate-200\/80) { background-color: #1A3258; }
+html.dark :is(.bg-blue-100) { background-color: rgba(22, 135, 255, .18); }
+html.dark :is(.bg-emerald-100, .bg-green-100) { background-color: rgba(44, 214, 125, .16); }
+html.dark :is(.bg-amber-100) { background-color: rgba(255, 176, 32, .16); }
+html.dark :is(.bg-rose-100, .bg-red-100) { background-color: rgba(255, 90, 106, .16); }
+html.dark :is(.bg-indigo-50, .bg-indigo-100, .bg-violet-100, .bg-purple-50) { background-color: rgba(140, 160, 255, .16); }
+html.dark :is(.bg-cyan-50, .bg-cyan-100, .bg-sky-50, .bg-sky-100) { background-color: rgba(103, 232, 249, .14); }
+html.dark :is(.bg-teal-50, .bg-teal-50\/70) { background-color: rgba(45, 212, 191, .14); }
+html.dark :is(.bg-orange-50, .bg-orange-100) { background-color: rgba(255, 145, 60, .16); }
+html.dark :is(.border-blue-100, .border-blue-200\/60, .border-blue-200\/40) { border-color: #1D437A; }
+html.dark :is(.border-emerald-100, .border-emerald-200\/60) { border-color: #0D4E3F; }
+html.dark :is(.border-rose-100, .border-red-200, .border-red-200\/60, .border-red-100) { border-color: #55192C; }
+html.dark :is(.border-amber-100) { border-color: #573A12; }
+html.dark :is(.border-teal-200) { border-color: #14464A; }
+html.dark :is(.border-slate-200\/80, .border-slate-200\/70, .border-slate-200\/60, .border-slate-200\/50, .border-slate-100\/70) { border-color: var(--mg-border-subtle); }
 html.dark .journey-results [aria-label="Ранжування маршрутів"] > button:disabled {
   opacity: 1;
   background-color: var(--mg-canvas);
