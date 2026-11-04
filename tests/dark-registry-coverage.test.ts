@@ -124,3 +124,30 @@ test('dark registry: alpha tints are named exactly, never inherited from their -
   assert.ok(coveredSelectors.has('text-blue-600'), 'blue -600 ink is 3.7:1 on graphite, below AA at 12 px');
   assert.ok(coveredSelectors.has('text-rose-600'), 'rose -600 ink is 3.3:1 on its own tint');
 });
+
+test('token contract: white text never sits on --mg-blue, which is the stroke accent', () => {
+  // src/index.css:41 states the rule: --mg-blue paints strokes/icons/large text, --mg-action fills a
+  // control carrying white text. #1687FF under white measures 3.53:1 — below AA — while --mg-action
+  // #0B63D6 measures 5.57:1. The create FAB had hard-painted `dark:bg-[#1687FF]` over
+  // `bg-[var(--mg-action)] text-white`, so the dark theme silently broke a control the light theme
+  // got right. Arbitrary hex is invisible to the palette registry above, so guard it here.
+  const offenders: string[] = [];
+  const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return walk(full);
+    return /\.(tsx|ts)$/.test(entry.name) ? [full] : [];
+  });
+  for (const file of walk(srcRoot)) {
+    fs.readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+      if (!/text-white/.test(line)) return;
+      const blueFill = /(?:dark:)?bg-\[(?:var\(--mg-blue\)|#1687FF)\]/.test(line)
+        || /(?:dark:)?(?:from|to)-\[(?:var\(--mg-blue\)|#1687FF)\]/.test(line);
+      if (blueFill) offenders.push(`${path.relative(repoRoot, file)}:${index + 1}`);
+    });
+  }
+  assert.deepEqual(
+    [...new Set(offenders)].sort(),
+    [],
+    'a control with white text must fill with --mg-action (5.57:1), never --mg-blue/#1687FF (3.53:1 — below AA)',
+  );
+});

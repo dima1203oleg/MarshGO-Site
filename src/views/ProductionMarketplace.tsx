@@ -1672,7 +1672,7 @@ export function ProductionMarketplace() {
   </button>; };
 
   const searchScreen = <div className="home-screen search-screen mx-auto w-full max-w-xl px-5 pb-8">
-    <section className="home-intro"><p className="home-greeting relative z-[1] text-xs font-semibold text-[var(--mg-blue-ink)]">Пошук</p><h1 className="home-title relative z-[1] mt-0.5 text-[1.35rem] font-extrabold leading-tight tracking-tight text-[#0E1F35]">Куди їдемо?</h1><p className="home-description relative z-[1] mt-1 text-xs text-slate-500">Усі види транспорту в одному пошуку.</p></section>
+    <section className="home-intro"><p className="home-greeting relative z-[1] text-xs font-semibold text-[var(--mg-blue-ink)]">Пошук</p><h1 className="home-title relative z-[1] mt-0.5 text-[1.35rem] font-extrabold leading-tight tracking-tight text-[#0E1F35]">Куди їдемо?</h1><p className="home-description relative z-[1] mt-1 text-xs text-[var(--mg-muted)]">Усі види транспорту в одному пошуку.</p></section>
     <div className="home-search-panel mt-4">{searchForm}</div>
   </div>;
 
@@ -2018,7 +2018,7 @@ export function ProductionMarketplace() {
     {pointPicker}
     {!immersiveRouteView && <nav data-testid="global-bottom-navigation" aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
       {tabItems.slice(0, 2).map(renderBottomTab)}
-      <button onClick={() => setShowCreateMenu(true)} aria-label="Створити поїздку або запит" aria-haspopup="dialog" aria-expanded={showCreateMenu} className="app-create-button mg-press col-start-3 row-start-1 -mt-5 grid h-14 w-14 place-items-center justify-self-center rounded-full bg-[var(--mg-action)] text-white shadow-lg shadow-[#0B63D6]/30 transition-transform motion-safe:duration-[var(--mg-dur-fast)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:bg-[#1687FF] dark:shadow-[#1687FF]/30"><Plus size={25}/><span className="desktop-create-label">Створити</span></button>
+      <button onClick={() => setShowCreateMenu(true)} aria-label="Створити поїздку або запит" aria-haspopup="dialog" aria-expanded={showCreateMenu} className="app-create-button mg-press col-start-3 row-start-1 -mt-5 grid h-14 w-14 place-items-center justify-self-center rounded-full bg-[var(--mg-action)] text-white shadow-lg shadow-[#0B63D6]/30 transition-transform motion-safe:duration-[var(--mg-dur-fast)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><Plus size={25}/><span className="desktop-create-label">Створити</span></button>
       {tabItems.slice(2).map(renderBottomTab)}
     </div></nav>}
     {createMenu}
