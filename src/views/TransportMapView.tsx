@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Bike, Bus, TrainFront } from 'lucide-react';
+import { ArrowLeft, Bike, BusFront, CarFront, Globe, MapPin, TrainFront, TramFront, type LucideIcon } from 'lucide-react';
 import { productionApi, type ApiTransportCity } from '../services/productionApi';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
@@ -9,9 +9,21 @@ import { getLayerAvailabilityState, loadLayerAvailability, subscribeLayerAvailab
 import { isLayerSelectable, layerUnavailableNote } from '../map/transportLayerConfig';
 import { getVehicleQuality, subscribeVehicleQuality, type VehicleQuality } from '../map/transportQuality';
 import { StatusBadge } from '../design-system/ui/StatusBadge';
+import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 
-const chips: Array<{ label: string; id: TransportLayerId; Icon: typeof Bus }> = [
-  { label: 'Метро', id: 'METRO', Icon: TrainFront }, { label: 'Транспорт', id: 'PUBLIC_TRANSPORT', Icon: Bus }, { label: 'Велосипеди', id: 'BICYCLE', Icon: Bike },
+const chips: Array<{ label: string; id: TransportLayerId; Icon: LucideIcon }> = [
+  { label: 'Увесь транспорт', id: 'PUBLIC_TRANSPORT', Icon: BusFront },
+  { label: 'Автобуси', id: 'BUS', Icon: BusFront },
+  { label: 'Тролейбуси', id: 'TROLLEYBUS', Icon: BusFront },
+  { label: 'Трамваї', id: 'TRAM', Icon: TramFront },
+  { label: 'Маршрутки', id: 'MINIBUS', Icon: BusFront },
+  { label: 'Зупинки', id: 'STOPS', Icon: MapPin },
+  { label: 'Метро', id: 'METRO', Icon: TrainFront },
+  { label: 'Поїзди', id: 'TRAIN', Icon: TrainFront },
+  { label: 'Попутки', id: 'CARPOOL', Icon: CarFront },
+  { label: 'Велосипеди', id: 'BICYCLE', Icon: Bike },
+  { label: 'Самокати', id: 'SCOOTER', Icon: Bike },
+  { label: 'Каршерінг', id: 'CARSHARING', Icon: CarFront },
 ];
 
 /** 2D map for planning: the user switches on only the layers they need; everything is off by default. */
@@ -23,12 +35,16 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState(getTransportLayers());
   const [layerState, setLayerState] = useState(getLayerAvailabilityState);
   const [quality, setQuality] = useState<VehicleQuality | null>(getVehicleQuality());
+  const [mapLayer, setLocalMapLayer] = useState<MapLayer>(getMapLayer);
+  const [mapPerspective, setLocalPerspective] = useState<MapPerspective>(getMapPerspective);
   const adapter = useRef<MapAdapter | null>(null);
   const selectedCity = useMemo(() => cities.find((city) => city.id === cityId) ?? null, [cities, cityId]);
   useEffect(() => subscribeTransportLayers(setSelected), []);
   useEffect(() => subscribeLayerAvailability(setLayerState), []);
   useEffect(() => { void loadLayerAvailability(); }, []);
   useEffect(() => subscribeVehicleQuality(setQuality), []);
+  useEffect(() => subscribeMapLayer(setLocalMapLayer), []);
+  useEffect(() => subscribeMapPerspective(setLocalPerspective), []);
   useEffect(() => {
     const controller = new AbortController();
     void productionApi.transportCities(controller.signal).then((response) => {
@@ -79,6 +95,44 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
       {status === 'failed' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">Не вдалося завантажити карту. Перевірте мережу.</p>}
       {status === 'unconfigured' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">Не налаштовано базову карту — фон мапи порожній.</p>}
     </div>
-    <div className="absolute right-4 top-1/2 z-[500] -translate-y-1/2"><MapLayersControl overlays/></div>
+    <div className="absolute right-4 top-1/2 z-[500] flex -translate-y-1/2 flex-col gap-2">
+      <button
+        type="button"
+        aria-label={`3D-перспектива: ${mapPerspective === '3d' ? 'увімкнено' : 'вимкнено'}`}
+        title="3D-перспектива"
+        aria-pressed={mapPerspective === '3d'}
+        onClick={() => {
+          const next: MapPerspective = mapPerspective === '3d' ? '2d' : '3d';
+          setMapPerspective(next);
+          setLocalPerspective(next);
+        }}
+        className={`grid h-12 w-12 place-items-center rounded-full text-xs font-black shadow-lg transition-all ${
+          mapPerspective === '3d'
+            ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30 ring-2 ring-blue-400/50'
+            : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[#111C28]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
+        }`}
+      >
+        3D
+      </button>
+      <button
+        type="button"
+        aria-label={`Супутникова карта: ${mapLayer === 'satellite' ? 'увімкнено' : 'вимкнено'}`}
+        title="Супутникова карта"
+        aria-pressed={mapLayer === 'satellite'}
+        onClick={() => {
+          const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
+          setMapLayer(next);
+          setLocalMapLayer(next);
+        }}
+        className={`grid h-12 w-12 place-items-center rounded-full shadow-lg transition-all ${
+          mapLayer === 'satellite'
+            ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30 ring-2 ring-blue-400/50'
+            : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[#111C28]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
+        }`}
+      >
+        <Globe size={20} />
+      </button>
+      <MapLayersControl overlays />
+    </div>
   </main>;
 }
