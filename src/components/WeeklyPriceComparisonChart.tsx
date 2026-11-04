@@ -146,7 +146,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
             <h3 className="font-extrabold text-sm sm:text-base text-[#14243B] dark:text-white">
               Графік цін за днями тижня
             </h3>
-            <span className="text-[10px] font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+            <span className="text-xs font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
               Економія до {savingsPercent}%
             </span>
           </div>
@@ -199,12 +199,12 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                     {/* Price tooltip above bar */}
                     <div className="mb-1 text-center">
                       {day.isCheapest && (
-                        <span className="hidden sm:inline-block text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-1 py-0.2 rounded mb-0.5 whitespace-nowrap">
+                        <span className="hidden sm:inline-block text-xs font-black uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-1 py-0.2 rounded mb-0.5 whitespace-nowrap">
                           Хіт
                         </span>
                       )}
                       <div
-                        className={`text-[11px] sm:text-xs font-black tabular-nums transition ${
+                        className={`text-xs sm:text-xs font-black tabular-nums transition ${
                           isSelected
                             ? 'text-[#1769F4] dark:text-sky-400 scale-105'
                             : day.isCheapest
@@ -248,7 +248,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                       >
                         {day.dayShort}
                       </div>
-                      <div className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                      <div className="text-xs text-slate-400 font-medium whitespace-nowrap">
                         {day.displayDate}
                       </div>
                     </div>
@@ -256,15 +256,15 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                     {/* Difference badge */}
                     <div className="mt-1">
                       {day.diffPercent < 0 ? (
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
                           {day.diffPercent}%
                         </span>
                       ) : day.diffPercent > 0 ? (
-                        <span className="text-[10px] font-bold text-rose-500 flex items-center">
+                        <span className="text-xs font-bold text-rose-500 flex items-center">
                           +{day.diffPercent}%
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-slate-400">0%</span>
+                        <span className="text-xs font-bold text-slate-400">0%</span>
                       )}
                     </div>
                   </div>
@@ -274,7 +274,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
 
             {/* Legend & Summary Info */}
             <div className="mt-3 pt-3 border-t border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between flex-wrap gap-2 text-xs">
-              <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                   <span>Найвигідніші дні</span>
@@ -289,7 +289,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                 </span>
               </div>
 
-              <div className="text-[11px] text-[#1769F4] dark:text-sky-400 font-semibold">
+              <div className="text-xs text-[#1769F4] dark:text-sky-400 font-semibold">
                 Клікніть на стовпчик для вибору дня
               </div>
             </div>
@@ -304,7 +304,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
               <div>
                 <div className="font-extrabold text-sm text-[#14243B] dark:text-white flex items-center gap-2">
                   <span>{selectedDayInfo.dayFull}, {selectedDayInfo.displayDate}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full border ${
+                  <span className={`text-xs font-bold px-2 py-0.2 rounded-full border ${
                     selectedDayInfo.isCheapest
                       ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
                       : selectedDayInfo.isPeak
@@ -314,7 +314,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                     {selectedDayInfo.statusTag}
                   </span>
                 </div>
-                <div className="text-[11px] text-[#62718A] dark:text-slate-400 mt-0.5">
+                <div className="text-xs text-[#62718A] dark:text-slate-400 mt-0.5">
                   Попутка від <strong>{selectedDayInfo.carpoolPrice} ₴</strong> · Автобус від <strong>{selectedDayInfo.busPrice} ₴</strong>
                 </div>
               </div>
@@ -325,7 +325,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
                 <div className="text-sm font-black text-[#14243B] dark:text-white">
                   від {selectedDayInfo.price} грн
                 </div>
-                <div className="text-[10px] text-slate-500">
+                <div className="text-xs text-slate-500">
                   {selectedDayInfo.diffPercent < 0
                     ? `на ${Math.abs(selectedDayInfo.diffPercent)}% дешевше за середнє`
                     : selectedDayInfo.diffPercent > 0

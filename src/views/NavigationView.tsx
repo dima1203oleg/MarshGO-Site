@@ -79,7 +79,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
 
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-[#38BDF8]">MARSHGO Navigation</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-[#38BDF8] border border-blue-500/30">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-[#38BDF8] border border-blue-500/30">
               Foreground Beta
             </span>
           </div>
@@ -175,19 +175,19 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
             {/* Live stats HUD */}
             <div className="grid grid-cols-3 gap-3 bg-[#0F284E] rounded-2xl border border-slate-700 p-4 text-center">
               <div>
-                <div className="text-[10px] text-slate-400 font-semibold uppercase">Залишилось</div>
+                <div className="text-xs text-slate-400 font-semibold uppercase">Залишилось</div>
                 <div className="text-xl font-extrabold text-white tabular-nums">
                   {session.remainingDurationMinutes} хв
                 </div>
               </div>
               <div className="border-x border-slate-700">
-                <div className="text-[10px] text-slate-400 font-semibold uppercase">Відстань</div>
+                <div className="text-xs text-slate-400 font-semibold uppercase">Відстань</div>
                 <div className="text-xl font-extrabold text-[#38BDF8] tabular-nums">
                   {session.remainingDistanceKm} км
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-slate-400 font-semibold uppercase">Швидкість</div>
+                <div className="text-xs text-slate-400 font-semibold uppercase">Швидкість</div>
                 <div className="text-xl font-extrabold text-emerald-400 tabular-nums">
                   85 км/год
                 </div>
@@ -200,7 +200,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-extrabold text-sm text-white">Підбирати попутників дорогою</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-[#38BDF8]">
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-[#38BDF8]">
                       Opt-in
                     </span>
                   </div>
@@ -223,7 +223,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
               </div>
 
               {!session.matchmakingOptIn && (
-                <div className="text-[11px] text-slate-400 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
+                <div className="text-xs text-slate-400 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
                   Режим підбору попутників вимкнено. Ви їдете приватно. Увімкніть тумблер вище, якщо хочете взяти попутника та розділити витрати на пальне.
                 </div>
               )}
@@ -243,7 +243,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-amber-400">По дорозі є пасажир!</span>
-                        <span className="text-[10px] font-bold px-1.5 rounded bg-emerald-500/20 text-emerald-300">
+                        <span className="text-xs font-bold px-1.5 rounded bg-emerald-500/20 text-emerald-300">
                           В коридорі траси
                         </span>
                       </div>
@@ -304,12 +304,12 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
                 <div className="space-y-1">
                   {session.waypointStops.map((wp, i) => (
                     <div key={wp.id} className="flex items-center gap-2 text-slate-300">
-                      <span className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">
+                      <span className="w-4 h-4 rounded-full bg-slate-800 flex items-center justify-center text-xs">
                         {i + 1}
                       </span>
                       <span className="font-semibold text-white">{wp.name}</span>
                       {wp.passengerName && (
-                        <span className="text-[11px] text-[#38BDF8]">({wp.passengerName})</span>
+                        <span className="text-xs text-[#38BDF8]">({wp.passengerName})</span>
                       )}
                     </div>
                   ))}

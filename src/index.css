@@ -51,7 +51,10 @@ html.dark {
   --mg-line: #263648;
   --mg-surface-primary: #111820;
   --mg-surface-secondary: #16202B;
+  --mg-surface-card: #111820;
   --mg-surface-tint: #16202B;
+  --mg-amber: #FFB020;
+  --mg-green: #2CD67D;
   /* --mg-action fills a control with white text; --mg-blue is the accent for text and strokes. */
   --mg-action: #0B63D6;
   --mg-action-hover: #0A57BC;
@@ -171,9 +174,14 @@ body {
   --mg-muted: #526477;
   --mg-canvas: #f4f8fd;
   --mg-line: #e5edf7;
+  --mg-surface-primary: #FFFFFF;
+  --mg-surface-secondary: #f6f8fc;
+  --mg-surface-card: #FFFFFF;
   --mg-surface-tint: #f6f8fc;
   --mg-action: #0B63D6;
   --mg-action-hover: #0950A8;
+  --mg-amber: #AE6C00;
+  --mg-green: #16845C;
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
 
   /* Radii: measured from the sheet (8/10/16/20/24/28/32 px + pills). */
@@ -1146,6 +1154,8 @@ html.dark .coverage-details[open] { border-color: #263648; }
   --mg-ease-standard: cubic-bezier(.32, .72, 0, 1);
   --mg-ease-entrance: cubic-bezier(.16, .84, .28, 1);
   --mg-ease-exit: cubic-bezier(.4, 0, 1, 1);
+  --mg-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --mg-dur-instant: 90ms;
   --mg-dur-tap: 120ms;
   --mg-dur-fast: 180ms;
   --mg-dur-base: 260ms;

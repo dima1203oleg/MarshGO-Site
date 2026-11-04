@@ -117,7 +117,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
               <h3 className="font-extrabold text-sm sm:text-base text-[#14243B] dark:text-white">
                 Індекс довіри водія
               </h3>
-              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${tier.badgeBg}`}>
+              <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full border ${tier.badgeBg}`}>
                 {tier.badge}
               </span>
             </div>
@@ -168,7 +168,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
         </div>
 
         {/* Milestone Scale Markers along track */}
-        <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold px-0.5">
+        <div className="flex items-center justify-between text-xs text-slate-400 font-semibold px-0.5">
           <span>0 (Новий)</span>
           <span className="hidden sm:inline">3.0 (Базовий)</span>
           <span>4.0 (Надійний)</span>
@@ -180,7 +180,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
       {/* Trust Factors Micro-Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
         <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200/60 dark:border-slate-700/50">
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
             <Star className="w-3 h-3 text-amber-500" />
             <span>Середня оцінка</span>
           </div>
@@ -190,7 +190,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
         </div>
 
         <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200/60 dark:border-slate-700/50">
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
             <Award className="w-3 h-3 text-blue-500" />
             <span>Успішні рейси</span>
           </div>
@@ -200,7 +200,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
         </div>
 
         <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200/60 dark:border-slate-700/50">
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
             <TrendingUp className="w-3 h-3 text-emerald-500" />
             <span>Пунктуальність</span>
           </div>
@@ -210,7 +210,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
         </div>
 
         <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200/60 dark:border-slate-700/50">
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
             <span>Документи</span>
           </div>

@@ -14,6 +14,10 @@
     "lint": "npm run lint:all",
     "lint:all": "eslint src scripts shared vite.config.ts eslint.config.js",
     "check:bundle": "node scripts/check-bundle-size.mjs",
+    "check-single-react": "node scripts/check-single-react.mjs",
+    "boot-smoke": "node scripts/boot-smoke.mjs",
+    "check-tokens": "node scripts/check-tokens.mjs",
+    "verify": "npm run typecheck && npm run lint && npm test && npm run check-tokens && npm run build && npm run check:bundle && npm run check-single-react && npm run boot-smoke",
     "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {

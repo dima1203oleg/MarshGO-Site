@@ -94,7 +94,7 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
                   <Car className="w-3.5 h-3.5" />
                   <span>{veh.make} {veh.model}</span>
                   {veh.id === currentActiveId && (
-                    <span className="text-[10px] bg-white/20 px-1 rounded ml-1">Основне</span>
+                    <span className="text-xs bg-white/20 px-1 rounded ml-1">Основне</span>
                   )}
                 </button>
               );
@@ -145,13 +145,13 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
 
                 {/* Primary Badge */}
                 {photo.isPrimary ? (
-                  <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#1769F4] text-white shadow">
+                  <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-xs font-extrabold bg-[#1769F4] text-white shadow">
                     Головне
                   </span>
                 ) : (
                   <button
                     onClick={() => onSetPrimaryPhoto(photo.id)}
-                    className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-black/60 text-white opacity-0 group-hover:opacity-100 transition"
+                    className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-black/60 text-white opacity-0 group-hover:opacity-100 transition"
                   >
                     Зробити головним
                   </button>
@@ -234,7 +234,7 @@ export const DriverVehicleView: React.FC<DriverVehicleViewProps> = ({
                 onChange={(e) => onUpdateVehicle({ licensePlateFull: e.target.value })}
                 className="w-full p-2.5 rounded-xl border border-slate-200 bg-[#F5F8FD] font-bold text-[#14243B]"
               />
-              <span className="text-[10px] text-slate-500 mt-1 block">
+              <span className="text-xs text-slate-500 mt-1 block">
                 Публічно видно як: {vehicle.licensePlateMasked} (для захисту приватності)
               </span>
             </div>

@@ -339,7 +339,7 @@ export function RideshareLifecycleExperience({
       data-testid="rideshare-lifecycle-experience"
       className="fixed inset-0 z-[120] flex flex-col overflow-hidden bg-[#06101E] text-white font-sans select-none"
     >
-      <div role="note" className="shrink-0 bg-amber-300 px-3 py-1.5 text-center text-[11px] font-extrabold text-slate-950">
+      <div role="note" className="shrink-0 bg-amber-300 px-3 py-1.5 text-center text-xs font-extrabold text-slate-950">
         ДЕМО: маршрут, GPS та ETA симульовані — не використовувати для реальної поїздки.
       </div>
       {/* ─── TOAST NOTIFICATION ─── */}
@@ -369,11 +369,11 @@ export function RideshareLifecycleExperience({
               <span className="text-base font-black tracking-tight text-white">
                 MARSH<span className="text-[#00C2FF]">GO</span>
               </span>
-              <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#00C2FF] border border-[#00C2FF]/30">
+              <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-xs font-extrabold uppercase tracking-wider text-[#00C2FF] border border-[#00C2FF]/30">
                 Попутка
               </span>
             </div>
-            <p className="text-[11px] font-medium text-slate-400">
+            <p className="text-xs font-medium text-slate-400">
               {role === 'passenger' ? 'Пасажирський режим' : 'Водійський режим'} · {trip.driverName} ({trip.carMake})
             </p>
           </div>
@@ -381,7 +381,7 @@ export function RideshareLifecycleExperience({
 
         {/* Role switcher & quick toggles */}
         <div className="flex items-center gap-1.5">
-          <div className="flex rounded-xl bg-slate-800/80 p-0.5 border border-slate-700/60 text-[11px] font-bold">
+          <div className="flex rounded-xl bg-slate-800/80 p-0.5 border border-slate-700/60 text-xs font-bold">
             <button
               type="button"
               onClick={() => setRole('passenger')}
@@ -436,13 +436,13 @@ export function RideshareLifecycleExperience({
                 setStage(item.id);
                 setProgressRatio(item.id === 'IN_TRANSIT' ? 0.3 : item.id === 'APPROACHING' ? 0.4 : 0);
               }}
-              className={`flex items-center gap-1.5 shrink-0 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+              className={`flex items-center gap-1.5 shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                 isActive
                   ? 'bg-gradient-to-r from-blue-600 to-[#00C2FF] text-white shadow-md shadow-blue-900/30 ring-1 ring-white/20'
                   : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
               }`}
             >
-              <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] font-extrabold ${
+              <span className={`grid h-4 w-4 place-items-center rounded-full text-xs font-extrabold ${
                 isActive ? 'bg-white text-blue-700' : 'bg-slate-700 text-slate-300'
               }`}>
                 {item.num}
@@ -492,7 +492,7 @@ export function RideshareLifecycleExperience({
             className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full rounded-2xl border border-[#00C2FF]/50 bg-[#081B30]/95 px-3 py-1.5 text-center shadow-xl backdrop-blur-md"
             style={{ left: '50%', top: '48%' }}
           >
-            <p className="text-[10px] font-extrabold text-[#00C2FF] uppercase tracking-wider">
+            <p className="text-xs font-extrabold text-[#00C2FF] uppercase tracking-wider">
               {stage === 'ARRIVED' ? '🟢 Водій очікує на місці' : 'Точка зустрічі'}
             </p>
             <p className="text-xs font-bold text-white truncate max-w-[200px]">
@@ -559,7 +559,7 @@ export function RideshareLifecycleExperience({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-black tracking-tight">{activeManeuver.dist}</span>
-                    <span className="rounded bg-emerald-400/20 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-emerald-300">
+                    <span className="rounded bg-emerald-400/20 px-1.5 py-0.5 text-xs font-extrabold uppercase text-emerald-300">
                       Наступний маневр
                     </span>
                   </div>
@@ -570,7 +570,7 @@ export function RideshareLifecycleExperience({
               </div>
 
               {/* Lane Guidance Indicators */}
-              <div className="mt-2.5 flex items-center justify-between border-t border-emerald-600/30 pt-2 text-[11px]">
+              <div className="mt-2.5 flex items-center justify-between border-t border-emerald-600/30 pt-2 text-xs">
                 <div className="flex items-center gap-1.5" aria-label="Смуги руху">
                   {activeManeuver.lanes.map((isTurnLane, idx) => (
                     <div
@@ -586,11 +586,11 @@ export function RideshareLifecycleExperience({
                       ↑
                     </div>
                   ))}
-                  <span className="ml-1 text-[10px] text-emerald-200">Тримайтеся 2-ї смуги</span>
+                  <span className="ml-1 text-xs text-emerald-200">Тримайтеся 2-ї смуги</span>
                 </div>
 
                 {/* Highway sign badge */}
-                <div className="rounded-lg bg-[#0047AB] px-2.5 py-1 text-[10px] font-black tracking-wide text-white border border-blue-300/40 shadow-sm">
+                <div className="rounded-lg bg-[#0047AB] px-2.5 py-1 text-xs font-black tracking-wide text-white border border-blue-300/40 shadow-sm">
                   {activeManeuver.sign}
                 </div>
               </div>
@@ -609,7 +609,7 @@ export function RideshareLifecycleExperience({
                     setTrafficDetourAccepted(true);
                     triggerToast('Обхідний маршрут активовано (-4 хв)');
                   }}
-                  className="rounded-lg bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white shadow hover:bg-rose-500 transition"
+                  className="rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-bold text-white shadow hover:bg-rose-500 transition"
                 >
                   {trafficDetourAccepted ? 'Маршрут оновлено' : 'Об’їзд'}
                 </button>
@@ -630,7 +630,7 @@ export function RideshareLifecycleExperience({
               <span className="block text-xl font-black text-white leading-none">
                 {currentSpeed}
               </span>
-              <span className="block text-[10px] font-bold text-slate-400 uppercase">
+              <span className="block text-xs font-bold text-slate-400 uppercase">
                 км/год
               </span>
             </div>
@@ -649,7 +649,7 @@ export function RideshareLifecycleExperience({
             {/* Header info */}
             <div className="flex items-center justify-between">
               <div>
-                <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 border border-emerald-500/30">
+                <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wider text-emerald-400 border border-emerald-500/30">
                   Поїздку підтверджено
                 </span>
                 <h2 className="mt-1 text-lg font-black text-white">
@@ -658,7 +658,7 @@ export function RideshareLifecycleExperience({
               </div>
               <div className="text-right">
                 <span className="text-lg font-black text-[#00C2FF]">{trip.priceUah} ₴</span>
-                <p className="text-[10px] text-slate-400">0% комісії</p>
+                <p className="text-xs text-slate-400">0% комісії</p>
               </div>
             </div>
 
@@ -679,12 +679,12 @@ export function RideshareLifecycleExperience({
                     <span className="flex items-center text-xs font-bold text-amber-400">
                       ★ {trip.driverRating}
                     </span>
-                    <span className="text-[10px] text-slate-400">({trip.driverReviewsCount})</span>
+                    <span className="text-xs text-slate-400">({trip.driverReviewsCount})</span>
                   </div>
                   <p className="text-xs font-bold text-slate-200">
                     {trip.carMake} {trip.carModel} · <span className="text-slate-400">{trip.carPlate}</span>
                   </p>
-                  <p className="text-[10px] text-slate-400">Колір: {trip.carColor}</p>
+                  <p className="text-xs text-slate-400">Колір: {trip.carColor}</p>
                 </div>
               </div>
 
@@ -759,7 +759,7 @@ export function RideshareLifecycleExperience({
 
             {/* Approach Progress Indicator */}
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] font-bold text-slate-400">
+              <div className="flex justify-between text-xs font-bold text-slate-400">
                 <span>Пасажир на місці</span>
                 <span>Наближення авто</span>
               </div>
@@ -886,7 +886,7 @@ export function RideshareLifecycleExperience({
             </div>
 
             {/* In-ride Controls Strip */}
-            <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-bold text-slate-300">
+            <div className="grid grid-cols-4 gap-1.5 text-center text-xs font-bold text-slate-300">
               <button
                 type="button"
                 onClick={() => setShowChatDrawer(true)}
@@ -934,7 +934,7 @@ export function RideshareLifecycleExperience({
                 className="h-28 w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3 flex flex-col justify-end">
-                <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950 w-fit">
+                <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-xs font-black uppercase text-slate-950 w-fit">
                   Ви прибули
                 </span>
                 <p className="mt-1 text-xs font-black text-white truncate">
@@ -1090,7 +1090,7 @@ export function RideshareLifecycleExperience({
                 />
                 <div>
                   <b className="block text-sm font-black text-white">{trip.driverName}</b>
-                  <span className="block text-[10px] text-emerald-400 font-bold">● В мережі · Водій</span>
+                  <span className="block text-xs text-emerald-400 font-bold">● В мережі · Водій</span>
                 </div>
               </div>
               <button
@@ -1115,7 +1115,7 @@ export function RideshareLifecycleExperience({
                   key={canned}
                   type="button"
                   onClick={() => handleSendCannedMessage(canned)}
-                  className="shrink-0 rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-[11px] font-bold text-slate-200 hover:border-[#00C2FF] hover:text-white transition active:scale-95"
+                  className="shrink-0 rounded-full border border-slate-700 bg-slate-800/80 px-3 py-1 text-xs font-bold text-slate-200 hover:border-[#00C2FF] hover:text-white transition active:scale-95"
                 >
                   {canned}
                 </button>
@@ -1140,7 +1140,7 @@ export function RideshareLifecycleExperience({
                   >
                     {msg.text}
                   </div>
-                  <span className="mt-0.5 text-[10px] text-slate-500 px-1">{msg.time}</span>
+                  <span className="mt-0.5 text-xs text-slate-500 px-1">{msg.time}</span>
                 </div>
               ))}
             </div>

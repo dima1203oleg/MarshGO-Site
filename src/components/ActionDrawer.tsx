@@ -76,7 +76,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h4 className="font-bold text-sm text-[#14243B]">Пропоную попутку</h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">0% комісії</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">0% комісії</span>
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#16845C] transition-colors" />
               </div>
@@ -101,7 +101,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h4 className="font-bold text-sm text-[#14243B]">MARSHGO Навігація</h4>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">Beta</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">Beta</span>
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#1769F4] transition-colors" />
               </div>

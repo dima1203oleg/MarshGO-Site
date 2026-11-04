@@ -175,11 +175,11 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           <div>
             <div className="text-xs font-extrabold flex items-center gap-2">
               <span>Інтерактивна карта доріг України</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 Клікніть на місто
               </span>
             </div>
-            <p className="text-[11px] text-slate-300">
+            <p className="text-xs text-slate-300">
               {activeSlot === 'origin' ? (
                 <span className="text-sky-300 font-semibold">
                   1. Оберіть точку відправлення (Звідки) на карті
@@ -499,7 +499,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
           </div>
 
           {origin && destination && origin !== destination && (
-            <span className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+            <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
               Маршрут прокладено
             </span>
           )}
@@ -507,7 +507,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
 
         {/* Popular Quick Route Chips */}
         <div className="flex items-center gap-1.5 flex-wrap w-full md:w-auto">
-          <span className="text-[11px] font-semibold text-slate-400 mr-1">Популярні:</span>
+          <span className="text-xs font-semibold text-slate-400 mr-1">Популярні:</span>
           {[
             { from: 'Одеса', to: 'Київ' },
             { from: 'Київ', to: 'Львів' },
@@ -522,7 +522,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
                 onSelectDestination(pair.to);
                 setSelectedPopupCity(null);
               }}
-              className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-slate-200 transition active:scale-95"
+              className="text-xs font-bold px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-slate-200 transition active:scale-95"
             >
               {pair.from} → {pair.to}
             </button>

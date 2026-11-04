@@ -87,7 +87,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
             <div className="text-xs">
               <span className="text-slate-500">Водій:</span>
               <div className="font-extrabold text-sm text-[#14243B]">{booking.driverName}</div>
-              <div className="text-slate-500 text-[11px]">{booking.vehicleSummary}</div>
+              <div className="text-slate-500 text-xs">{booking.vehicleSummary}</div>
             </div>
           </div>
 

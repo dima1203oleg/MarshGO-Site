@@ -104,7 +104,7 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
                   <span className="font-extrabold text-[#1769F4] bg-blue-50 px-2.5 py-1 rounded-lg">
                     {b.bookingCode}
                   </span>
-                  <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                  <span className={`font-bold px-2 py-0.5 rounded text-xs ${
                     b.status === 'confirmed'
                       ? 'bg-emerald-100 text-emerald-800'
                       : b.status === 'completed'
@@ -167,7 +167,7 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
                         e.stopPropagation();
                         onCancelBooking(b.id);
                       }}
-                      className="text-[11px] font-semibold text-red-600 hover:underline"
+                      className="text-xs font-semibold text-red-600 hover:underline"
                     >
                       Скасувати
                     </button>
@@ -196,7 +196,7 @@ export const MyTripsView: React.FC<MyTripsViewProps> = ({
             {/* Stylized QR Code Graphic */}
             <div className="w-44 h-44 mx-auto p-3 bg-white border-2 border-slate-900 rounded-2xl shadow-inner flex flex-col items-center justify-center text-center">
               <QrCode className="w-28 h-28 text-slate-900 stroke-[1.5]" />
-              <span className="text-[11px] font-black text-slate-900 tracking-wider mt-1">{activeTicket.bookingCode}</span>
+              <span className="text-xs font-black text-slate-900 tracking-wider mt-1">{activeTicket.bookingCode}</span>
             </div>
 
             {/* Contact details */}

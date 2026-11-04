@@ -125,7 +125,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
           {/* Route info */}
           <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
             <div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-bold uppercase">
+              <span className="text-xs text-slate-500 dark:text-slate-400 block font-bold uppercase">
                 Маршрут
               </span>
               <span className="font-extrabold text-sm text-[#14243B] dark:text-white">
@@ -134,7 +134,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
             </div>
 
             <div className="text-right">
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-bold uppercase">
+              <span className="text-xs text-slate-500 dark:text-slate-400 block font-bold uppercase">
                 Відстань
               </span>
               <span className="font-extrabold text-sm text-[#1769F4] dark:text-sky-400">
@@ -249,7 +249,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
               <span className="text-slate-800 dark:text-slate-200 font-bold block">
                 Враховувати амортизацію та рідини (+15%)
               </span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+              <span className="text-xs text-slate-500 dark:text-slate-400 block">
                 Мастило, омивач скла, знос гуми та гальмівних колодок
               </span>
             </div>
@@ -259,7 +259,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
           <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 p-4 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[11px] text-emerald-800 dark:text-emerald-300 font-bold uppercase block">
+                <span className="text-xs text-emerald-800 dark:text-emerald-300 font-bold uppercase block">
                   Рекомендований внесок за 1 місце:
                 </span>
                 <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
@@ -268,7 +268,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
               </div>
 
               <div className="text-right">
-                <span className="text-[11px] text-slate-600 dark:text-slate-400 font-bold uppercase block">
+                <span className="text-xs text-slate-600 dark:text-slate-400 font-bold uppercase block">
                   Загальна сума пального:
                 </span>
                 <div className="text-lg font-extrabold text-[#14243B] dark:text-white">
@@ -277,7 +277,7 @@ export const FuelCostCalculatorModal: React.FC<FuelCostCalculatorModalProps> = (
               </div>
             </div>
 
-            <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/60 grid grid-cols-2 gap-2 text-[11px]">
+            <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/60 grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-1.5 text-emerald-900 dark:text-emerald-200">
                 <TrendingDown className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>Економія пасажира: ~{userSavingsPerTrip} ₴ vs автобус</span>

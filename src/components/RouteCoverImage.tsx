@@ -169,12 +169,12 @@ export const RouteCoverImage: React.FC<RouteCoverImageProps> = ({
       <div className="absolute inset-0 p-3 flex flex-col justify-between text-white z-10">
         {/* Top Tag: Highway Badge */}
         <div className="flex items-center justify-between gap-1">
-          <div className={`px-2 py-0.5 rounded-md text-[10px] font-black border backdrop-blur-md flex items-center gap-1 ${theme.badgeBg}`}>
+          <div className={`px-2 py-0.5 rounded-md text-xs font-black border backdrop-blur-md flex items-center gap-1 ${theme.badgeBg}`}>
             <Navigation className="w-2.5 h-2.5" />
             <span>{theme.roadNumber}</span>
           </div>
 
-          <span className="text-[10px] text-white/80 font-bold bg-white/10 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
+          <span className="text-xs text-white/80 font-bold bg-white/10 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
             <Sparkles className="w-2.5 h-2.5 text-amber-300" />
             <span>Auto Art</span>
           </span>
@@ -182,7 +182,7 @@ export const RouteCoverImage: React.FC<RouteCoverImageProps> = ({
 
         {/* Bottom Title: Route text */}
         <div>
-          <div className="text-[10px] font-bold text-sky-200 tracking-wide uppercase">
+          <div className="text-xs font-bold text-sky-200 tracking-wide uppercase">
             {theme.name}
           </div>
           <div className="text-xs sm:text-sm font-black text-white leading-tight drop-shadow-md">

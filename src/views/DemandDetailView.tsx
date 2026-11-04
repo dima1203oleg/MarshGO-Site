@@ -48,7 +48,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
           </button>
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-[#14243B]">Запит #{demand.id.slice(-6)}</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
               {demand.status === 'booked' ? 'Заброньовано' : 'Активний попит'}
             </span>
           </div>
@@ -80,7 +80,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
               <div className="text-xl sm:text-2xl font-black text-[#1769F4] tabular-nums">
                 {demand.totalBudget} грн
               </div>
-              <div className="text-[10px] text-slate-500">
+              <div className="text-xs text-slate-500">
                 {demand.budgetType === 'total_all' ? 'загалом за всіх' : 'за місце'}
               </div>
             </div>
@@ -138,7 +138,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
                           <Car className="w-3.5 h-3.5 text-slate-400" />
                           <span>{prop.vehicleSummary}</span>
                         </div>
-                        <div className="text-[11px] text-emerald-700 font-medium mt-0.5">
+                        <div className="text-xs text-emerald-700 font-medium mt-0.5">
                           Виїзд о {prop.estimatedPickupTime} · Відхилення від траси: +{prop.detourMinutes} хв
                         </div>
                       </div>
@@ -150,7 +150,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
                       <div className="text-2xl font-black text-[#14243B] tabular-nums">
                         {prop.offeredPrice} грн
                       </div>
-                      <div className="text-[11px] text-slate-500 font-medium">
+                      <div className="text-xs text-slate-500 font-medium">
                         Ревізія #{prop.currentRevisionNumber}
                       </div>
                     </div>
@@ -166,7 +166,7 @@ export const DemandDetailView: React.FC<DemandDetailViewProps> = ({
 
                   {/* Actions */}
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-[11px] text-[#62718A]">
+                    <span className="text-xs text-[#62718A]">
                       Статус: <strong className="text-[#14243B] uppercase">{prop.status}</strong>
                     </span>
 

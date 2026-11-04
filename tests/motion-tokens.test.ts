@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { test } from 'node:test';
 
@@ -247,9 +247,26 @@ test('W5: живі екрани результатів, маршруту та г
     const rawHex = source.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
     assert.deepEqual(rawHex, [], `${file} не повинен містити сирих hex-кольорів`);
   }
+});test('PROD-FINALIZE-3.0: 12px legibility floor — 0 occurrences of text-[9px], text-[10px], text-[11px] across all TSX files in src/', () => {
+  const root = resolve('src');
+  function walk(dir: string): string[] {
+    let files: string[] = [];
+    for (const f of readdirSync(dir)) {
+      const p = resolve(dir, f);
+      if (statSync(p).isDirectory()) files = files.concat(walk(p));
+      else if (/\.tsx$/.test(f)) files.push(p);
+    }
+    return files;
+  }
+  const undersized: string[] = [];
+  for (const file of walk(root)) {
+    const source = readFileSync(file, 'utf8');
+    const matches = source.match(/text-\[(?:9|10|11)px\]/g);
+    if (matches) {
+      undersized.push(`${relative(root, file)} -> ${matches.join(', ')}`);
+    }
+  }
+  assert.deepEqual(undersized, [], 'All text under 12px must use standard legible typography (text-xs / 12px)');
 });
-
-
-
 
 

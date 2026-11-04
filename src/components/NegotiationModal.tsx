@@ -90,7 +90,7 @@ export const NegotiationModal: React.FC<NegotiationModalProps> = ({
               />
               <span className="absolute right-4 top-4 text-sm font-semibold text-slate-500">UAH</span>
             </div>
-            <p className="text-[11px] text-[#62718A] mt-1">
+            <p className="text-xs text-[#62718A] mt-1">
               {userRole === 'driver'
                 ? 'Зазначте реальну суму участі у витратах на поїздку (0% комісії MARSHGO).'
                 : 'Запропонуйте суму, комфортну для вашого бюджету.'}
@@ -110,7 +110,7 @@ export const NegotiationModal: React.FC<NegotiationModalProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 text-amber-800 text-[11px] border border-amber-200">
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 text-amber-800 text-xs border border-amber-200">
             <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600" />
             <span>Кожна нова сума створює нову ревізію переговорів для запобігання помилкам.</span>
           </div>

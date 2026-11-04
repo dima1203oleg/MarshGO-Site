@@ -42,7 +42,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <button onClick={onToggleDemo} title="Перемкнути демонстраційний режим" className="hidden min-h-11 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 text-[10px] font-extrabold tracking-wide text-amber-800 md:flex"><span className={`h-1.5 w-1.5 rounded-full ${demoMode ? 'bg-amber-500' : 'bg-emerald-500'}`}/>{demoMode ? 'ДЕМО' : 'ПРЕВ’Ю'}</button>
+          <button onClick={onToggleDemo} title="Перемкнути демонстраційний режим" className="hidden min-h-11 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 text-xs font-extrabold tracking-wide text-amber-800 md:flex"><span className={`h-1.5 w-1.5 rounded-full ${demoMode ? 'bg-amber-500' : 'bg-emerald-500'}`}/>{demoMode ? 'ДЕМО' : 'ПРЕВ’Ю'}</button>
           {!isInstalled && <button onClick={onOpenInstall} className="hidden items-center gap-2 rounded-full bg-[#101C30] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-900 sm:inline-flex"><Download className="h-4 w-4"/>Завантажити додаток</button>}
           <button onClick={() => navigate('messages')} aria-label="Повідомлення" className="relative hidden h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-blue-200 hover:text-blue-700 sm:flex"><Bell className="h-[18px] w-[18px]"/><span className="absolute right-2.5 top-2 h-1.5 w-1.5 rounded-full bg-blue-600"/></button>
           <button onClick={() => navigate(isDriver ? 'driver' : 'profile')} aria-label="Профіль" className="grid h-11 w-11 place-items-center rounded-full ring-offset-2 transition hover:ring-2 hover:ring-blue-500"><UserAvatar src={user.avatar} name={user.name} size="sm" className="border border-slate-200"/></button>
@@ -65,7 +65,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </div>
           <div className="flex items-center justify-between rounded-2xl border border-slate-100 p-3"><span className="text-xs font-semibold text-slate-600">Зовнішній вигляд</span><ThemeToggle variant="segmented"/></div>
           {onStartTour && <button onClick={() => { setMenuOpen(false); onStartTour(); }} className="flex w-full items-center gap-2 rounded-xl bg-blue-50 p-3 text-sm font-bold text-blue-800"><HelpCircle className="h-4 w-4"/>Підказки по застосунку</button>}
-          <p className="px-1 text-[10px] font-semibold text-slate-400">{demoMode ? 'Демонстраційні дані' : 'Попередній перегляд'}</p>
+          <p className="px-1 text-xs font-semibold text-slate-400">{demoMode ? 'Демонстраційні дані' : 'Попередній перегляд'}</p>
         </div>
       </div>}
     </header>

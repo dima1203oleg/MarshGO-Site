@@ -201,7 +201,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   }`}
                 >
                   <div className="font-bold truncate">{preset.make}</div>
-                  <div className="text-[11px] text-slate-500 truncate">{preset.model}</div>
+                  <div className="text-xs text-slate-500 truncate">{preset.model}</div>
                 </button>
               ))}
             </div>
@@ -329,7 +329,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 placeholder="AA 1234 BB"
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-mono font-bold uppercase"
               />
-              <span className="text-[10px] text-slate-400 mt-0.5 block">
+              <span className="text-xs text-slate-400 mt-0.5 block">
                 Буде приховано для захисту приватності до бронювання
               </span>
             </div>
@@ -343,7 +343,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 value={photoUrl}
                 onChange={(e) => setPhotoUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-mono text-[11px]"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-[#1769F4] text-[#14243B] dark:text-white font-mono text-xs"
               />
             </div>
           </div>
@@ -357,7 +357,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 className="w-full h-full object-cover"
                 onError={() => {}}
               />
-              <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px] font-bold">
+              <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-xs font-bold">
                 {make} {model} ({color})
               </div>
             </div>

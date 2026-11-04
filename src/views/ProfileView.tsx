@@ -108,7 +108,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 <p className="text-xs text-[#62718A]">{user.phone} · {user.email}</p>
                 <div className="flex items-center gap-2 mt-2 text-xs">
-                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-xs">
                     Документи перевірено
                   </span>
                   <span className="text-amber-500 font-bold">★ {user.rating.toFixed(1)}</span>
@@ -155,7 +155,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
             <div>
               <span className="text-xs font-bold text-[#14243B] block">Тема оформлення (Нічний режим)</span>
-              <span className="text-[11px] text-[#62718A]">Краща видимість та комфорт для очей під час нічних поїздок</span>
+              <span className="text-xs text-[#62718A]">Краща видимість та комфорт для очей під час нічних поїздок</span>
             </div>
             <ThemeToggle variant="segmented" />
           </div>
@@ -185,7 +185,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         {allVehicles.length}
                       </span>
                     </h3>
-                    <p className="text-[11px] text-[#62718A]">
+                    <p className="text-xs text-[#62718A]">
                       Обирайте активне авто або додавайте нові для швидкого перемикання
                     </p>
                   </div>
@@ -231,7 +231,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                             </span>
                             <span className="text-xs text-slate-500 font-medium">({veh.year})</span>
                             {isActive && (
-                              <span className="text-[10px] font-extrabold bg-[#1769F4] text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="text-xs font-extrabold bg-[#1769F4] text-white px-2 py-0.5 rounded-full flex items-center gap-1">
                                 <Check className="w-2.5 h-2.5 stroke-[3]" />
                                 <span>Основне авто</span>
                               </span>
@@ -242,7 +242,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                             <span>·</span>
                             <span>Місць: <strong className="text-slate-700">{veh.seats}</strong></span>
                             <span>·</span>
-                            <span className="font-mono text-[11px] bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
+                            <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
                               {veh.licensePlateMasked}
                             </span>
                           </div>
@@ -310,11 +310,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-[#14243B] text-xs sm:text-sm">Чорний список</span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                  <span className="text-xs font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">
                     {blacklistCount} {blacklistCount === 1 ? 'заблокований' : 'заблокованих'}
                   </span>
                 </div>
-                <span className="text-[11px] text-[#62718A]">
+                <span className="text-xs text-[#62718A]">
                   Ігнорувати пропозиції від небажаних водіїв або пасажирів
                 </span>
               </div>
@@ -353,7 +353,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <HelpCircle className="w-4 h-4 text-[#1769F4]" />
                 <div>
                   <span className="font-bold text-[#14243B] text-xs sm:text-sm block">Онбординг-тур по сервісу</span>
-                  <span className="text-[11px] text-slate-500">Повторити підказки: пошук, створення запитів та маршрутів</span>
+                  <span className="text-xs text-slate-500">Повторити підказки: пошук, створення запитів та маршрутів</span>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-slate-400" />
@@ -368,7 +368,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <RotateCcw className="w-4 h-4" />
               <span className="font-bold">Скинути демонстраційні дані до початкових</span>
             </div>
-            <span className="text-[11px] text-slate-400">Reset State</span>
+            <span className="text-xs text-slate-400">Reset State</span>
           </button>
         </div>
       </div>

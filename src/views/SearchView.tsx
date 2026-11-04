@@ -301,7 +301,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 <Bookmark className={`w-3.5 h-3.5 ${showOnlyFavorites || favoriteIds.length > 0 ? 'fill-current' : ''}`} />
                 <span>Вибране</span>
                 {favoriteIds.length > 0 && (
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  <span className={`px-1.5 py-0.2 rounded-full text-xs font-black ${
                     showOnlyFavorites ? 'bg-white text-rose-600' : 'bg-rose-200 text-rose-800'
                   }`}>
                     {favoriteIds.length}
@@ -336,7 +336,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 <span>Фільтри</span>
                 {activeFiltersCount > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-white text-[#1769F4] text-[10px] font-black flex items-center justify-center">
+                  <span className="w-4 h-4 rounded-full bg-white text-[#1769F4] text-xs font-black flex items-center justify-center">
                     {activeFiltersCount}
                   </span>
                 )}
@@ -396,7 +396,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
           {/* Transport Type Quick Toggle Chips */}
           <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-            <span className="text-[11px] font-bold text-slate-500 shrink-0 mr-1">Транспорт:</span>
+            <span className="text-xs font-bold text-slate-500 shrink-0 mr-1">Транспорт:</span>
             {transportTypeOptions.map((type) => {
               const isChecked = selectedTypes.includes(type.id);
               return (
@@ -493,7 +493,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   />
 
                   {/* Price presets */}
-                  <div className="flex items-center justify-between gap-1 text-[11px] text-slate-600">
+                  <div className="flex items-center justify-between gap-1 text-xs text-slate-600">
                     <button
                       type="button"
                       onClick={() => setMaxPrice(550)}
@@ -557,7 +557,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   {showOnlyFavorites && <span className="text-slate-400"> (з {sortedOffers.length})</span>}
                 </span>
                 {showOnlyFavorites && (
-                  <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold text-[11px] border border-rose-200">
+                  <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200">
                     Тільки вибрані
                   </span>
                 )}
@@ -609,12 +609,12 @@ export const SearchView: React.FC<SearchViewProps> = ({
                         : 'Сповіщення про нові рейси за цим маршрутом'}
                     </span>
                     {isSubscribed && (
-                      <span className="text-[10px] font-bold bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-bold bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full">
                         Активно
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-[#62718A] mt-0.5">
+                  <p className="text-xs text-[#62718A] mt-0.5">
                     {isSubscribed
                       ? `Ми повідомимо вас через ${currentSubscription.channels.join(', ')} щойно з'явиться новий рейс на ${searchParams.date || 'сьогодні'}`
                       : `Не знайшли ідеальний варіант? Підпишіться на оновлення та дізнавайтеся першими про нові пропозиції водіїв.`}
@@ -822,7 +822,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
             <div className="bg-white rounded-2xl border border-[#DFE7F1] p-3 shadow-sm space-y-3">
               <div className="flex items-center justify-between text-xs px-1">
                 <span className="font-bold text-[#14243B]">Карта маршруту</span>
-                <span className="text-slate-600 font-semibold text-[11px] bg-slate-100 px-2 py-0.5 rounded">
+                <span className="text-slate-600 font-semibold text-xs bg-slate-100 px-2 py-0.5 rounded">
                   Огляд маршруту
                 </span>
               </div>
@@ -833,7 +833,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 className="h-80 lg:h-[480px]"
               />
 
-              <div className="text-[11px] text-[#62718A] px-1 leading-relaxed">
+              <div className="text-xs text-[#62718A] px-1 leading-relaxed">
                 Точки посадки та висадки узгоджуються безпосередньо з водієм. Карта з’явиться, коли результат міститиме геометрію маршруту.
               </div>
             </div>

@@ -329,7 +329,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
               <h2 className="text-base sm:text-lg font-black text-[#14243B] dark:text-white">
                 Статистика витрат
               </h2>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                 Live Data
               </span>
             </div>
@@ -380,30 +380,30 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
       {/* Top Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block uppercase">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block uppercase">
             Всього витрачено
           </span>
           <div className="text-xl sm:text-2xl font-black text-[#14243B] dark:text-white mt-1 tabular-nums">
             {totalAmount.toLocaleString()} ₴
           </div>
-          <span className="text-[10px] text-slate-400 block mt-0.5">
+          <span className="text-xs text-slate-400 block mt-0.5">
             {filteredBookings.length} {filteredBookings.length === 1 ? 'поїздка' : 'поїздок'}
           </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block uppercase">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block uppercase">
             Середній чек
           </span>
           <div className="text-xl sm:text-2xl font-black text-[#1769F4] dark:text-sky-400 mt-1 tabular-nums">
             {averageTripCost} ₴
           </div>
-          <span className="text-[10px] text-slate-400 block mt-0.5">за 1 поїздку</span>
+          <span className="text-xs text-slate-400 block mt-0.5">за 1 поїздку</span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">
+            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase">
               Заощаджено
             </span>
             <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
@@ -411,19 +411,19 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
           <div className="text-xl sm:text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1 tabular-nums">
             +{estimatedSavings.toLocaleString()} ₴
           </div>
-          <span className="text-[10px] text-emerald-700/80 dark:text-emerald-300 block mt-0.5">
+          <span className="text-xs text-emerald-700/80 dark:text-emerald-300 block mt-0.5">
             завдяки 0% Carpool
           </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800">
-          <span className="text-[11px] font-bold text-teal-800 dark:text-teal-300 block uppercase">
+          <span className="text-xs font-bold text-teal-800 dark:text-teal-300 block uppercase">
             Еко-внесок CO₂
           </span>
           <div className="text-xl sm:text-2xl font-black text-teal-700 dark:text-teal-400 mt-1 tabular-nums">
             -{co2SavedKg} кг
           </div>
-          <span className="text-[10px] text-teal-700/80 dark:text-teal-300 block mt-0.5">
+          <span className="text-xs text-teal-700/80 dark:text-teal-300 block mt-0.5">
             зменшення викидів
           </span>
         </div>
@@ -448,7 +448,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
               return (
                 <div key={m.monthKey} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                   {/* Tooltip on hover */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-black px-1.5 py-0.5 rounded bg-[#081B35] text-white shadow-xs whitespace-nowrap mb-1">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-black px-1.5 py-0.5 rounded bg-[#081B35] text-white shadow-xs whitespace-nowrap mb-1">
                     {m.totalAmount} ₴ ({m.tripsCount} рейси)
                   </div>
 
@@ -485,7 +485,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
                     <span className={`text-xs font-bold block ${isCurrent ? 'text-[#1769F4] dark:text-sky-400 font-extrabold' : 'text-slate-600 dark:text-slate-400'}`}>
                       {m.monthName}
                     </span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold tabular-nums">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold tabular-nums">
                       {m.totalAmount} ₴
                     </span>
                   </div>
@@ -560,7 +560,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
                     <div className="font-bold text-xs text-[#14243B] dark:text-white">
                       {cat.label}
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       {cat.count} {cat.count === 1 ? 'поїздка' : 'поїздки'}
                     </div>
                   </div>
@@ -570,7 +570,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
                   <div className="font-extrabold text-xs text-[#14243B] dark:text-white tabular-nums">
                     {cat.amount.toLocaleString()} ₴
                   </div>
-                  <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 tabular-nums">
+                  <div className="text-xs font-bold text-slate-500 dark:text-slate-400 tabular-nums">
                     {percent}%
                   </div>
                 </div>
