@@ -11,7 +11,15 @@ import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMo
 import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { buildRouteMapAnnotations, isTransitLeg } from './routeMapAnnotations';
-import { routeSheetHeights, settleRouteSheetSnap, type RouteSheetSnap } from './routeSheet';
+import {
+  createFrameWriter,
+  prefersReducedMotion,
+  routeSheetHeights,
+  routeSheetTransition,
+  settleRouteSheetSnap,
+  subscribeReducedMotion,
+  type RouteSheetSnap,
+} from './routeSheet';
 import { themeService } from '../services/theme';
 import { priorityLevelOf } from '../map/transportVisualZones';
 import { formatJourneyDurationTile } from './journeyResultPresentation';
@@ -38,34 +46,67 @@ import {
  * and the «Далі» control all come from the itinerary's own legs and schedule.
  * No position is invented when the feed has no fresh vehicle.
  */
-export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourney; onExit: () => void }) {
+export function JourneyActiveNavigation({
+  journey,
+  onExit,
+  initialLegIndex = null,
+  onStageChange,
+}: {
+  journey: ApiJourney;
+  onExit: () => void;
+  initialLegIndex?: number | null;
+  onStageChange?: (legIndex: number) => void;
+}) {
   const legs = journey.legs;
   const model = useMemo(() => buildJourneyRouteMapModel(legs), [legs]);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [legIndex, setLegIndex] = useState(() => activeNavigationStartIndex(legs, Date.now()));
+  const [legIndex, setLegIndex] = useState(() => {
+    const scheduledStart = activeNavigationStartIndex(legs, Date.now());
+    if (initialLegIndex === null || legs.length === 0 || !Number.isInteger(initialLegIndex)) return scheduledStart;
+    return Math.min(Math.max(initialLegIndex, 0), legs.length - 1);
+  });
+  const stageChange = useRef(onStageChange);
+  stageChange.current = onStageChange;
+  useEffect(() => { stageChange.current?.(legIndex); }, [legIndex]);
+
+  const leg = legs[Math.min(legIndex, Math.max(0, legs.length - 1))];
+  const liveLeg = leg && isTransitLeg(leg) ? leg : undefined;
+  const liveLegId = liveLeg?.id ?? null;
+
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
   const [mapLayer, setCurrentMapLayer] = useState<MapLayer>(getMapLayer);
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
   const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 340 : routeSheetHeights(window.innerHeight).half);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
-  const [dragging, setDragging] = useState(false);
+  const draggingRef = useRef(false);
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
   const [focusWhole, setFocusWhole] = useState(false);
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
   const [liveJourneyRequestState, setLiveJourneyRequestState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+  const liveSegment = liveJourney?.segments.find(segment => segment.legId === liveLegId);
   const mapAdapter = useRef<MapAdapter | null>(null);
   const sheetElement = useRef<HTMLElement | null>(null);
   const sheetHeightRef = useRef(sheetHeight);
   const dragStart = useRef<{ y: number; height: number; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
   const suppressHandleClick = useRef(false);
-
-  const leg = legs[Math.min(legIndex, Math.max(0, legs.length - 1))];
-  const liveLeg = leg && isTransitLeg(leg) ? leg : undefined;
-  const liveLegId = liveLeg?.id ?? null;
-  const liveSegment = liveJourney?.segments.find(segment => segment.legId === liveLegId);
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  const dragWriter = useRef<ReturnType<typeof createFrameWriter> | null>(null);
+  if (dragWriter.current === null) {
+    dragWriter.current = createFrameWriter((height) => {
+      const sheet = sheetElement.current;
+      if (!sheet) return;
+      sheet.style.transition = 'none';
+      sheet.style.height = `${height}px`;
+    });
+  }
 
   useEffect(() => themeService.subscribe((_mode, dark) => setIsDark(dark)), []);
+  useEffect(() => subscribeReducedMotion(setReducedMotion), []);
+  useEffect(() => {
+    const writer = dragWriter.current;
+    return () => writer?.discard();
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
@@ -175,7 +216,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
   }, [focusWhole, leg?.id, legSegment, liveSegment, model.routeSegments]);
 
   useEffect(() => {
-    if (dragging || !mapAdapterReady || !leg) return;
+    if (draggingRef.current || !mapAdapterReady || !leg) return;
     const adapter = mapAdapter.current;
     if (!adapter) return;
     adapter.setActiveRouteSegment?.(leg.id);
@@ -191,7 +232,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
       return;
     }
     adapter.fitRoute(mapPadding);
-  }, [dragging, focusData.key, leg, mapAdapterReady, mapPadding, sheetSnap, focusWhole]);
+  }, [focusData.bearing, focusData.key, focusData.points, focusWhole, leg, mapAdapterReady, mapPadding, sheetSnap]);
 
   useEffect(() => {
     const updateViewport = () => {
@@ -220,14 +261,14 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
     const now = performance.now();
     const renderedHeight = sheetElement.current?.getBoundingClientRect().height ?? sheetHeightRef.current;
     sheetHeightRef.current = renderedHeight;
-    setSheetHeight(renderedHeight);
+    draggingRef.current = true;
     if (sheetElement.current) {
+      sheetElement.current.dataset.dragging = 'true';
       sheetElement.current.style.transition = 'none';
       sheetElement.current.style.height = `${renderedHeight}px`;
     }
     dragStart.current = { y: event.clientY, height: renderedHeight, pointerId: event.pointerId, moved: false, lastY: event.clientY, lastAt: now, velocity: 0 };
     event.currentTarget.setPointerCapture(event.pointerId);
-    setDragging(true);
   };
   const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStart.current;
@@ -244,20 +285,22 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
     const heights = routeSheetHeights(viewportHeight);
     const nextHeight = Math.min(heights.expanded, Math.max(heights.collapsed, start.height + delta));
     sheetHeightRef.current = nextHeight;
-    if (sheetElement.current) {
-      sheetElement.current.style.transition = 'none';
-      sheetElement.current.style.height = `${nextHeight}px`;
-    }
+    dragWriter.current?.schedule(nextHeight);
   };
   const handlePointerEnd = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStart.current;
     if (!start || start.pointerId !== event.pointerId) return;
+    dragWriter.current?.flush();
     if (start.moved) {
       const heights = routeSheetHeights(viewportHeight);
       moveToSnap(settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height));
     }
     dragStart.current = null;
-    setDragging(false);
+    draggingRef.current = false;
+    if (sheetElement.current) {
+      sheetElement.current.dataset.dragging = 'false';
+      sheetElement.current.style.transition = routeSheetTransition(false, reducedMotion);
+    }
   };
 
   const jumpToLeg = useCallback((index: number) => {
@@ -325,7 +368,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
           <ArrowLeft size={20}/>
         </button>
         <div data-testid="active-nav-header-pill" className="mx-auto flex min-w-0 max-w-full flex-col items-center rounded-full border border-[var(--route-border)] px-3 py-1 text-center shadow-[var(--route-sheet-shadow)] backdrop-blur-md" style={{ backgroundColor: 'color-mix(in srgb, var(--route-sheet) 88%, transparent)' }}>
-          <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--route-muted)]">Навігація</p>
+          <p className="text-xs font-extrabold uppercase tracking-[.14em] text-[var(--route-muted)]">Навігація</p>
           <p className="max-w-full truncate text-[16px] font-black leading-6 tracking-[-.02em] text-[var(--route-brand-ink)]">{destination}</p>
         </div>
         <button type="button" aria-label={`Шар карти: ${mapLayers[mapLayer].label}. Перемкнути`} title={`Шар карти: ${mapLayers[mapLayer].label}`} onClick={() => {
@@ -336,7 +379,7 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
           <Layers size={20}/>
         </button>
       </div>
-      {(mapWarning || liveLabel) && <p role="status" className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-3 py-1 text-[10.5px] font-bold">{mapWarning || liveLabel}</p>}
+      {(mapWarning || liveLabel) && <p role="status" className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-3 py-1 text-xs font-bold">{mapWarning || liveLabel}</p>}
     </header>
 
     <div className="absolute right-4 z-10" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 5rem)' }}>
@@ -364,7 +407,8 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
       aria-label="Поточний етап маршруту"
       data-testid="active-navigation-sheet"
       data-sheet-state={sheetSnap}
-      style={{ height: `${sheetHeight}px`, transition: dragging ? 'none' : 'height var(--mg-dur-base) var(--mg-ease-entrance)', paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
+      data-dragging={draggingRef.current ? 'true' : 'false'}
+      style={{ height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`, transition: routeSheetTransition(draggingRef.current, reducedMotion), paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
     >
       <button
         type="button"
@@ -389,14 +433,14 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         <div className="shrink-0 px-5">
           <div className="flex items-center gap-2">
-            <p aria-live="polite" aria-atomic="true" className="text-[10.5px] font-extrabold uppercase tracking-[.12em] text-[var(--route-muted)]">
+            <p aria-live="polite" aria-atomic="true" className="text-xs font-extrabold uppercase tracking-[.12em] text-[var(--route-muted)]">
               Етап {legIndex + 1} з {legs.length}
             </p>
-            {status && <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${status === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
+            {status && <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${status === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
               {status === 'LIVE' && <i aria-hidden="true" className="mg-live-dot mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"/>}
               {ACTIVE_LEG_STATUS_LABEL[status]}
             </span>}
-            {phase === 'past' && <span className="rounded-full bg-[var(--route-card-alt)] px-2 py-0.5 text-[10px] font-extrabold text-[var(--route-muted)]">ЗАВЕРШЕНО</span>}
+            {phase === 'past' && <span className="rounded-full bg-[var(--route-card-alt)] px-2 py-0.5 text-xs font-extrabold text-[var(--route-muted)]">ЗАВЕРШЕНО</span>}
           </div>
           <div className="mt-1 flex items-center gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_color-mix(in_srgb,var(--segment-color)_45%,transparent)]" style={{ backgroundColor: journeyModeColor(leg.mode, leg.transportType), ['--segment-color' as string]: journeyModeColor(leg.mode, leg.transportType) }}>
@@ -404,10 +448,10 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
             </span>
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-[21px] font-black leading-7 tracking-[-.03em]">{activeLegTitle(leg)}</h1>
-              <p data-testid="active-nav-leg-destination" className="truncate text-[12px] font-bold text-[var(--route-muted)]">до «{shortPlace(leg.destination.name)}»</p>
+              <p data-testid="active-nav-leg-destination" className="truncate text-xs font-bold text-[var(--route-muted)]">до «{shortPlace(leg.destination.name)}»</p>
             </div>
           </div>
-          <p className="mt-1 text-[11px] font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</p>
+          <p className="mt-1 text-xs font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</p>
         </div>
 
         {showRibbon && <div className="mg-route-ribbon mt-3 shrink-0 px-5" role="list" aria-label="Етапи навігації">
@@ -434,17 +478,18 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
             <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--mg-action)] text-white"><ArrowRight size={15} strokeWidth={2.6}/></span>
             <div className="min-w-0">
               <p data-testid="active-nav-instruction" className="text-[13px] font-extrabold leading-5">{instruction}</p>
-              {nextHint && <p className="mt-0.5 text-[10.5px] font-semibold leading-4 text-[var(--route-muted)]">{nextHint}</p>}
+              {nextHint && <p className="mt-0.5 text-xs font-semibold leading-4 text-[var(--route-muted)]">{nextHint}</p>}
             </div>
           </div>
         </div>}
 
         {sheetSnap === 'expanded' && <div className="mt-3 shrink-0 px-5 pb-2" data-testid="active-navigation-stages">
-          <p className="mb-2 text-[10.5px] font-extrabold uppercase tracking-[.12em] text-[var(--route-muted)]">Увесь маршрут · {formatStageCount(legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</p>
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-[.12em] text-[var(--route-muted)]">Увесь маршрут · {formatStageCount(legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</p>
           <ol className="space-y-2">
             {legs.map((item, index) => {
               const selected = index === legIndex;
               const price = legPriceDisplay(item);
+              const priceText = item.mode === 'WALK' ? '' : price.value !== '—' ? ` · ${price.value}` : '';
               return <li key={item.id}>
                 <button
                   type="button"
@@ -458,10 +503,10 @@ export function JourneyActiveNavigation({ journey, onExit }: { journey: ApiJourn
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <b className="truncate text-[13px] font-extrabold">{activeLegTitle(item)}</b>
-                      <span className="ml-auto shrink-0 text-[10px] font-bold text-[var(--route-muted)]">Етап {index + 1}</span>
+                      <span className="ml-auto shrink-0 text-xs font-bold text-[var(--route-muted)]">Етап {index + 1}</span>
                     </span>
-                    <span className="mt-0.5 block truncate text-[10.5px] font-semibold tabular-nums text-[var(--route-muted)]">{activeLegTimes(item)} · {formatJourneyDurationTile(item.durationSeconds)}{price.value !== '—' ? ` · ${price.value}` : ''}</span>
-                    <span className="mt-0.5 block truncate text-[10px] text-[var(--route-subtle)]">{shortPlace(item.origin.name)} → {shortPlace(item.destination.name)}</span>
+                    <span className="mt-0.5 block truncate text-xs font-semibold tabular-nums text-[var(--route-muted)]">{activeLegTimes(item)} · {formatJourneyDurationTile(item.durationSeconds)}{priceText}</span>
+                    <span className="mt-0.5 block truncate text-xs text-[var(--route-subtle)]">{shortPlace(item.origin.name)} → {shortPlace(item.destination.name)}</span>
                   </span>
                 </button>
               </li>;

@@ -860,7 +860,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     gap: 4px;
     padding: 4px 2px;
     border-radius: var(--mg-radius-lg);
-    font-size: 11px;
+    font-size: 12px;
   }
   .app-tabbar-inner button:not(.app-create-button):hover { background: rgba(37, 99, 235, 0.05); }
   .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
@@ -869,7 +869,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     box-shadow: none;
   }
   .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg { color: var(--mg-blue); }
-  .app-tabbar-inner button:not(.app-create-button) > span { font-size: 11px; }
+  .app-tabbar-inner button:not(.app-create-button) > span { font-size: 12px; }
   .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] > span { font-weight: 700; color: var(--mg-blue-ink); }
   .app-tabbar-inner .app-create-button {
     order: initial;
@@ -1375,7 +1375,7 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
 @media (max-width: 639px) and (max-height: 620px) {
   .home-canonical-banner { min-height: 5.75rem; padding: .5rem; }
   .home-canonical-banner h1 { font-size: 1rem; }
-  .home-canonical-banner p { margin-top: .1rem; font-size: .625rem; }
+  .home-canonical-banner p { margin-top: .1rem; font-size: 0.75rem; }
   .home-action-grid { grid-template-rows: repeat(2, 4.6rem); gap: .4rem; }
   .home-action-grid > .home-action-card { min-height: 0; padding: .5rem; }
   .home-action-card > span:first-of-type { width: 1.75rem; height: 1.75rem; }
@@ -1565,7 +1565,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   flex-direction: column;
   gap: .25rem;
   color: var(--route-scale-ink);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: .01em;
   pointer-events: none;
@@ -1635,7 +1635,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
 .mg-route-ribbon__detail {
   overflow: hidden;
   color: var(--route-muted);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -1699,7 +1699,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   display: block;
   margin-top: 1px;
   color: var(--mg-label-muted);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -1765,7 +1765,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
 .route-map-screen .mg-map-label__caption {
   max-width: 190px;
   color: var(--mg-label-ink);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.2;
   text-align: center;
@@ -1781,7 +1781,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
 }
 .route-map-screen .mg-map-label__kicker {
   color: var(--mg-label-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.15;
 }
@@ -1803,7 +1803,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   border-radius: 8px;
   background: var(--mg-callout-bg);
   color: var(--mg-callout-ink);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1.2;
   box-shadow: var(--mg-label-shadow);
@@ -1823,7 +1823,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   border-radius: 7px;
   background: #7B1BE0;
   color: #fff;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
@@ -1961,4 +1961,11 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
     animation: none !important;
     animation-delay: 0ms !important;
   }
+}
+
+/* Typography floor: no text run renders below 12px (0.75rem) anywhere in the app */
+.production-app :is(.text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[0\.72rem\], .text-\[0\.68rem\]),
+:is(.text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[0\.72rem\], .text-\[0\.68rem\]) {
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
 }

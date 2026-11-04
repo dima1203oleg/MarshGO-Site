@@ -83,7 +83,7 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
       <button type="button" onClick={locate} aria-label="Моє місцезнаходження" className="absolute bottom-4 right-14 z-20 grid h-11 w-11 place-items-center rounded-full bg-white text-[var(--mg-blue)] shadow-md"><LocateFixed size={18}/></button>
     </div>
     <div className="border-t border-slate-100 bg-white px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Обрана точка</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Обрана точка</p>
       <p role="status" className="mt-1 min-h-[2.5rem] text-sm font-bold text-[#0E1F35]">{state === 'resolving' ? place ? `${place.label} · шукаємо адресу…` : 'Торкніться точки на мапі або посуньте мапу під позначку' : place ? place.label : state === 'error' ? message : 'Торкніться точки на мапі або посуньте мапу під позначку'}</p>
       {message && <p className="text-xs text-amber-700">{message}</p>}
       <button type="button" disabled={!place} onClick={() => place && onConfirm(place)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--mg-action)] py-3.5 text-sm font-bold text-white disabled:opacity-50"><Check size={17}/>Підтвердити точку</button>

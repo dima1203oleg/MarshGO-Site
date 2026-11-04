@@ -69,7 +69,7 @@ export function OfferEditSheet({ offer, vehicles, onClose, onDone }: { offer: Ap
           <button type="button" aria-label="Менше місць" disabled={seats <= Math.max(1, booked)} onClick={() => setSeats(seats - 1)} className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm disabled:opacity-30"><Minus size={16}/></button>
           <b>{seats}</b>
           <button type="button" aria-label="Більше місць" disabled={seats >= 8} onClick={() => setSeats(seats + 1)} className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm disabled:opacity-30"><Plus size={16}/></button>
-        </div>{booked > 0 && <small className="mt-1 block text-[11px] text-slate-500">Не менше, ніж уже заброньовано ({booked}).</small>}</div>
+        </div>{booked > 0 && <small className="mt-1 block text-xs text-slate-500">Не менше, ніж уже заброньовано ({booked}).</small>}</div>
       {vehicles.length > 1 && <label className="mt-3 block text-xs font-bold text-slate-600"><span className="flex items-center gap-1.5"><CarFront size={14}/>Автомобіль</span>
         <select value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} className="mt-1.5 w-full rounded-xl bg-slate-50 px-3 py-3 text-sm font-bold outline-none">
           {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.make} {vehicle.model}{vehicle.plate ? ` · ${vehicle.plate}` : ''}</option>)}

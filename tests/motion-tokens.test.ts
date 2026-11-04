@@ -229,11 +229,13 @@ test('W4: src/index.css скорочено та очищено від каска
 
 test('W5: живі екрани результатів, маршруту та головної інтегрують Transit Thread, motion-класи M1–M7 і 0 сирих hex у HomeHero/JourneyResultsPanel', () => {
   const results = readFileSync('src/views/JourneyResultsPanel.tsx', 'utf8');
+  const strip = readFileSync('src/design-system/journey/JourneySegmentStrip.tsx', 'utf8');
   const routeMap = readFileSync('src/views/JourneyRouteMapScreen.tsx', 'utf8');
   const homeHero = readFileSync('src/views/HomeHero.tsx', 'utf8');
   const transportPanel = readFileSync('src/components/TransportTypesPanel.tsx', 'utf8');
 
-  assert.match(results, /data-testid="journey-transit-thread"/, 'картка маршруту має містити пропорційну смугу Transit Thread');
+  assert.match(strip, /data-testid="journey-transit-thread"/, 'JourneySegmentStrip має містити єдину пропорційну смугу Transit Thread');
+  assert.doesNotMatch(results, /data-testid="journey-transit-thread"/, 'JourneyResultsPanel не повинен дублювати другу пропорційну смугу під JourneySegmentStrip');
   assert.match(results, /mg-stagger-list/, 'список результатів має використовувати каскадну появу M4');
   assert.match(results, /mg-press-subtle/, 'картки та кнопки результатів мають використовувати тактильний прес M1');
   assert.match(routeMap, /mg-live-pulse/, 'живий статус GPS на екрані маршруту має використовувати пульс M7');

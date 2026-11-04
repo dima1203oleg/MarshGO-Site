@@ -18,7 +18,16 @@ import {
   journeyRouteBadge,
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay } from './cashFare';
-import { routeSheetHeights, settleRouteSheetSnap, type RouteSheetSnap } from './routeSheet';
+import {
+  createFrameWriter,
+  prefersReducedMotion,
+  ROUTE_SHEET_LOGICAL_LABELS,
+  routeSheetHeights,
+  routeSheetTransition,
+  settleRouteSheetSnap,
+  subscribeReducedMotion,
+  type RouteSheetSnap,
+} from './routeSheet';
 import { themeService } from '../services/theme';
 import { buildRouteMapAnnotations, formatSegmentCount, formatStopCount, primaryTransitLeg } from './routeMapAnnotations';
 import { priorityLevelOf } from '../map/transportVisualZones';
@@ -116,7 +125,7 @@ export function JourneyRouteMapScreen({
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
   const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 316 : routeSheetHeights(window.innerHeight).half);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
-  const [dragging, setDragging] = useState(false);
+  const draggingRef = useRef(false);
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [mapSegmentChoices, setMapSegmentChoices] = useState<{ ids: string[]; x: number; y: number } | null>(null);
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
@@ -139,8 +148,23 @@ export function JourneyRouteMapScreen({
   const segmentCards = useRef(new Map<string, HTMLElement>());
   const dragStart = useRef<{ y: number; height: number; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
   const suppressHandleClick = useRef(false);
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  const dragWriter = useRef<ReturnType<typeof createFrameWriter> | null>(null);
+  if (dragWriter.current === null) {
+    dragWriter.current = createFrameWriter((height) => {
+      const sheet = sheetElement.current;
+      if (!sheet) return;
+      sheet.style.transition = 'none';
+      sheet.style.height = `${height}px`;
+    });
+  }
 
   useEffect(() => themeService.subscribe((_theme, dark) => setIsDark(dark)), []);
+  useEffect(() => subscribeReducedMotion(setReducedMotion), []);
+  useEffect(() => {
+    const writer = dragWriter.current;
+    return () => writer?.discard();
+  }, []);
 
   // A confirmation the rider can actually see: the sheet covers the screen, so the
   // toast floats just above it and clears itself instead of needing a dismiss tap.
@@ -240,7 +264,7 @@ export function JourneyRouteMapScreen({
   }, [sheetSnap, snapHeight]);
 
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
-  const chipHeight = 54;
+  const chipHeight = sheetSnap === 'peek' ? 0 : 54;
   const mapPadding = useMemo<RouteFitPadding>(() => {
     if (isDesktop) return { top: 100, left: 500, right: 40, bottom: 40 };
     return {
@@ -253,7 +277,7 @@ export function JourneyRouteMapScreen({
       // height never reaches this padding.
       bottom: sheetHeight + chipHeight + 12,
     };
-  }, [isDesktop, sheetHeight]);
+  }, [chipHeight, isDesktop, sheetHeight]);
 
   const routeLinePoints = useMemo(() => {
     const itinerary = model.routeSegments.flatMap(segment => segment.coordinates);
@@ -314,7 +338,7 @@ export function JourneyRouteMapScreen({
   }, [mapPadding, routeLinePoints]);
 
   useEffect(() => {
-    if (dragging || !mapAdapterReady) return;
+    if (draggingRef.current || !mapAdapterReady) return;
     const adapter = mapAdapter.current;
     if (!adapter) return;
     adapter.setActiveRouteSegment?.(activeSegmentId);
@@ -331,14 +355,20 @@ export function JourneyRouteMapScreen({
     }
     if (routeLinePoints.length >= 2) adapter.focusCoordinates?.(routeLinePoints, { ...mapPadding, bearing: 0 }, 15.2);
     else adapter.fitRoute(mapPadding);
-  }, [activeSegmentId, dragging, mapAdapterReady, mapPadding, routeFitKey, segmentFocusKey, sheetSnap]);
+  }, [activeSegmentId, mapAdapterReady, mapPadding, routeFitKey, segmentFocusKey, sheetSnap]);
 
   useEffect(() => {
     if (sheetSnap === 'expanded') return;
     const readScale = () => setScale(mapAdapter.current?.getScaleLabel?.(88) ?? null);
-    const timer = window.setTimeout(readScale, 620);
-    return () => window.clearTimeout(timer);
-  }, [mapPadding, mapAdapterReady, sheetSnap]);
+    const t1 = window.setTimeout(readScale, 350);
+    const t2 = window.setTimeout(readScale, 750);
+    const t3 = window.setTimeout(readScale, 1300);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, [mapPadding, mapAdapterReady, routeFitKey, segmentFocusKey, sheetSnap]);
 
   const chooseSegment = useCallback((id: string) => {
     setMapSegmentChoices(null);
@@ -396,21 +426,27 @@ export function JourneyRouteMapScreen({
   };
   const cycleSheet = () => {
     if (suppressHandleClick.current) { suppressHandleClick.current = false; return; }
-    const next: RouteSheetSnap = sheetSnap === 'collapsed' ? 'half' : sheetSnap === 'half' ? 'expanded' : 'collapsed';
+    const next: RouteSheetSnap = sheetSnap === 'peek'
+      ? 'collapsed'
+      : sheetSnap === 'collapsed'
+        ? 'half'
+        : sheetSnap === 'half'
+          ? 'expanded'
+          : 'peek';
     moveToSnap(next);
   };
   const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const now = performance.now();
     const renderedHeight = sheetElement.current?.getBoundingClientRect().height ?? sheetHeightRef.current;
     sheetHeightRef.current = renderedHeight;
-    setSheetHeight(renderedHeight);
+    draggingRef.current = true;
     if (sheetElement.current) {
+      sheetElement.current.dataset.dragging = 'true';
       sheetElement.current.style.transition = 'none';
       sheetElement.current.style.height = `${renderedHeight}px`;
     }
     dragStart.current = { y: event.clientY, height: renderedHeight, pointerId: event.pointerId, moved: false, lastY: event.clientY, lastAt: now, velocity: 0 };
     event.currentTarget.setPointerCapture(event.pointerId);
-    setDragging(true);
   };
   const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStart.current;
@@ -425,23 +461,25 @@ export function JourneyRouteMapScreen({
     start.lastY = event.clientY;
     start.lastAt = now;
     const heights = routeSheetHeights(viewportHeight);
-    const nextHeight = Math.min(heights.expanded, Math.max(heights.collapsed, start.height + delta));
+    const nextHeight = Math.min(heights.expanded, Math.max(heights.peek, start.height + delta));
     sheetHeightRef.current = nextHeight;
-    if (sheetElement.current) {
-      sheetElement.current.style.transition = 'none';
-      sheetElement.current.style.height = `${nextHeight}px`;
-    }
+    dragWriter.current?.schedule(nextHeight);
   };
   const handlePointerEnd = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStart.current;
     if (!start || start.pointerId !== event.pointerId) return;
+    dragWriter.current?.flush();
     if (start.moved) {
       const heights = routeSheetHeights(viewportHeight);
       const next = settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height);
       moveToSnap(next);
     }
     dragStart.current = null;
-    setDragging(false);
+    draggingRef.current = false;
+    if (sheetElement.current) {
+      sheetElement.current.dataset.dragging = 'false';
+      sheetElement.current.style.transition = routeSheetTransition(false, reducedMotion);
+    }
   };
 
   const setCardRef = (id: string, node: HTMLElement | null) => {
@@ -563,7 +601,7 @@ export function JourneyRouteMapScreen({
       <i style={{ width: scale.widthPx }}/>
     </div>}
 
-    {showChrome && liveLeg && <div className="pointer-events-none absolute inset-x-0 z-10 mx-auto flex max-w-3xl justify-center px-4" style={{ bottom: sheetHeight + 10, transition: dragging ? 'none' : 'bottom var(--mg-dur-base) var(--mg-ease-entrance)' }}>
+    {showChrome && sheetSnap !== 'peek' && liveLeg && <div className="pointer-events-none absolute inset-x-0 z-10 mx-auto flex max-w-3xl justify-center px-4" style={{ bottom: sheetHeight + 10, transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}>
       <button type="button" onClick={() => chooseSegment(liveLeg.id)} aria-pressed={activeSegmentId === liveLeg.id} aria-label={activeSegmentId === liveLeg.id ? `${legLabel(liveLeg)} — натисніть, щоб показати весь маршрут` : `${legLabel(liveLeg)} — натисніть, щоб наблизити цей відрізок`} className="pointer-events-auto route-mode-chip mg-press-subtle flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2 text-left">
         <span className="route-mode-chip__icon grid h-9 w-9 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: journeyModeColor(liveLeg.mode, liveLeg.transportType) }}>
           <TransportIcon mode={liveLeg.mode} transportType={liveLeg.transportType} size={19} strokeWidth={2.3}/>
@@ -583,31 +621,62 @@ export function JourneyRouteMapScreen({
       aria-label="Деталі маршруту"
       data-testid="route-bottom-sheet"
       data-sheet-state={sheetSnap}
-      style={{ height: `${sheetHeight}px`, transition: dragging ? 'none' : `height var(--mg-dur-base) var(--mg-ease-entrance)`, paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
+      data-sheet-logical-state={ROUTE_SHEET_LOGICAL_LABELS[sheetSnap]}
+      data-dragging={draggingRef.current ? 'true' : 'false'}
+      style={{ height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`, transition: routeSheetTransition(draggingRef.current, reducedMotion), paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
     >
       <button
         type="button"
         aria-label={sheetSnap === 'expanded' ? 'Згорнути деталі маршруту' : 'Розгорнути деталі маршруту'}
-        aria-expanded={sheetSnap !== 'collapsed'}
+        aria-expanded={sheetSnap !== 'peek'}
         onClick={cycleSheet}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
         onKeyDown={event => {
-          if (event.key === 'ArrowUp') { event.preventDefault(); moveToSnap(sheetSnap === 'collapsed' ? 'half' : 'expanded'); }
-          if (event.key === 'ArrowDown') { event.preventDefault(); moveToSnap(sheetSnap === 'expanded' ? 'half' : 'collapsed'); }
-          if (event.key === 'Home') { event.preventDefault(); moveToSnap('collapsed'); }
+          if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            moveToSnap(sheetSnap === 'peek' ? 'collapsed' : sheetSnap === 'collapsed' ? 'half' : 'expanded');
+          }
+          if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            moveToSnap(sheetSnap === 'expanded' ? 'half' : sheetSnap === 'half' ? 'collapsed' : 'peek');
+          }
+          if (event.key === 'Home') { event.preventDefault(); moveToSnap('peek'); }
           if (event.key === 'End') { event.preventDefault(); moveToSnap('expanded'); }
         }}
         aria-controls="route-sheet-content"
         aria-keyshortcuts="ArrowUp ArrowDown Home End"
-        className="route-sheet-grabber flex h-11 w-full shrink-0 touch-none items-center justify-center"
+        className={`route-sheet-grabber flex w-full shrink-0 touch-none items-center justify-center ${sheetSnap === 'peek' ? 'h-8' : 'h-11'}`}
       >
         <span className="route-sheet-grabber__handle h-1.5 w-12 rounded-full bg-[var(--route-grabber)]"/>
       </button>
 
       <div id="route-sheet-content" className="flex min-h-0 flex-1 flex-col">
+        {sheetSnap === 'peek' ? (
+          <div className="flex shrink-0 flex-col gap-1.5 px-4 pb-1" data-testid="route-peek-summary">
+            <div className="flex items-baseline justify-between gap-3">
+              <strong data-testid="canonical-route-duration" className="text-[20px] font-black leading-6 tracking-tight tabular-nums">{formatDuration(allDuration)}</strong>
+              <strong data-testid="route-total-fare" aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`} className={`text-[16px] font-extrabold tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
+            </div>
+            <p data-testid="route-peek-chain" className="truncate text-xs font-bold tabular-nums text-[var(--route-muted)]">
+              {ribbonItems.map(item => `${item.label}${item.badge ? ` ${item.badge}` : ''} ${formatJourneyDurationTile(item.durationSeconds)}`).join(' → ')}
+            </p>
+            <div data-testid="route-peek-scale" className="flex h-2 w-full overflow-hidden rounded-full bg-[var(--route-card-alt)] gap-1">
+              {ribbonItems.map(item => (
+                <span
+                  key={item.id}
+                  className="h-full rounded-full"
+                  style={{
+                    flexGrow: Math.max(1, Math.round(item.durationSeconds / 60)),
+                    backgroundColor: item.leg.mode === 'WALK' ? 'var(--route-ribbon-walk)' : item.color,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : <>
         {sheetSnap === 'expanded' && <div className="route-details-head flex shrink-0 items-center gap-2 px-4 pb-1">
           <button type="button" aria-label="Назад до результатів" onClick={onBack} className="route-header-back mg-press-subtle grid h-11 w-11 shrink-0 place-items-center rounded-full">
             <ArrowLeft size={20}/>
@@ -623,7 +692,7 @@ export function JourneyRouteMapScreen({
         {sheetSnap === 'expanded' && <p className="shrink-0 truncate px-5 pb-1 text-[13px] font-extrabold text-[var(--route-ink)]">
           {firstLeg?.origin.name ?? 'Початок'} <span aria-hidden="true" className="mx-0.5 text-[var(--route-muted)]">→</span> {lastLeg?.destination.name ?? 'Кінець'}
         </p>}
-        <div className="route-sheet-summary flex shrink-0 items-center gap-3 px-5 py-2">
+        <div className="route-sheet-summary flex shrink-0 items-center gap-3 px-5 py-1.5">
           <span className="flex min-w-0 flex-1 flex-col justify-center leading-tight">
             <strong className="text-[24px] font-black leading-8 tracking-tight tabular-nums">{firstLeg ? formatTime(firstLeg.departureAt) : '—'} <span aria-hidden="true" className="text-[var(--route-muted)]">→</span> {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}</strong>
             <span data-testid="canonical-route-duration" className="truncate text-xs font-bold tabular-nums text-[var(--route-muted)]">{formatDuration(allDuration)} · {formatSegmentCount(journey.legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</span>
@@ -647,6 +716,11 @@ export function JourneyRouteMapScreen({
             </div>;
           })}
         </div>
+
+        {sheetSnap === 'half' && <p data-testid="route-medium-stages" className="shrink-0 truncate px-5 pt-0.5 text-xs font-semibold tabular-nums text-[var(--route-muted)]">
+          {ribbonItems.map(item => `${item.label}${item.badge ? ` ${item.badge}` : ''} (${formatJourneyDurationTile(item.durationSeconds)})`).join(' → ')}
+        </p>}
+        </>}
 
         {sheetSnap === 'expanded' && <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-2" data-testid="route-segment-list">
           <ol className="space-y-2 pt-2">
@@ -688,8 +762,8 @@ export function JourneyRouteMapScreen({
                     </span>
                   </button>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <b className="text-xs tabular-nums" style={{ color: isDark ? color : 'var(--route-ink)' }}>{price.value}</b>
-                    {price.caption && <span className="text-xs font-semibold text-[var(--route-muted)]">{price.caption}</span>}
+                    {leg.mode !== 'WALK' && <b className="text-xs tabular-nums" style={{ color: isDark ? color : 'var(--route-ink)' }}>{price.value}</b>}
+                    {leg.mode !== 'WALK' && price.caption && <span className="text-xs font-semibold text-[var(--route-muted)]">{price.caption}</span>}
                     {scheduled && <button type="button" aria-label={`${expanded ? 'Згорнути' : 'Розгорнути'} зупинки: ${journeyLegLabel(leg.mode, leg.transportType)}`} aria-expanded={expanded} onClick={() => toggleExpanded(leg.id)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-lg text-[var(--route-muted)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
                       <ChevronDown size={17} className={`route-stops-chevron${expanded ? ' is-open' : ''}`}/>
                     </button>}
@@ -718,8 +792,8 @@ export function JourneyRouteMapScreen({
           </ol>
         </div>}
 
-        <div className="mt-auto shrink-0 px-4 pb-3 pt-2">
-          {communityLeg?.offerId && onBookOffer && (() => {
+        <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-2 pt-1' : 'pb-3 pt-2'}`}>
+          {sheetSnap !== 'peek' && communityLeg?.offerId && onBookOffer && (() => {
             const communityPrice = legPriceDisplay(communityLeg).value;
             return <button type="button" onClick={() => onBookOffer(communityLeg.offerId!, journey.id, communityLeg.id)} className="mg-route-book mg-press-subtle mb-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-extrabold">
               Забронювати місце · {communityPrice}{communityPrice !== '—' && !communityPrice.includes('/ місце') ? ' / місце' : ''}
@@ -737,7 +811,7 @@ export function JourneyRouteMapScreen({
         </div>
       </div>
     </section>
-    <div aria-live="polite" className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-6" style={{ bottom: 'calc(var(--route-map-inset) + 10px)', transition: dragging ? 'none' : 'bottom var(--mg-dur-base) var(--mg-ease-entrance)' }}>
+    <div aria-live="polite" className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-6" style={{ bottom: 'calc(var(--route-map-inset) + 10px)', transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}>
       {feedback && <p key={feedback} role="status" className="route-toast max-w-full truncate rounded-full px-4 py-2.5 text-[12.5px] font-extrabold">{feedback}</p>}
     </div>
   </main>;

@@ -36,3 +36,15 @@ export const diagnosticsRequested = (search: string, storedFlag: string | null):
 /** An empty carpool block under real transit results is noise; with no transit answer it is the empty state. */
 export const showsCarpoolSection = (offerCount: number, transitResultPresent: boolean): boolean =>
   offerCount > 0 || !transitResultPresent;
+
+/** Passenger-honest sentences for planner reasons the API names; unknown reasons must never pass silently. */
+const partialReasonMessages: Record<string, string> = {
+  walking_routing_unavailable: 'Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.',
+  no_stop_within_walking_distance: 'Поблизу ваших точок немає зупинки в межах пішої доступності, тому маршрутів не знайдено. Спробуйте точки ближче до зупинок або інший вид транспорту.',
+};
+
+export function partialReasonNotices(reasons: string[] | undefined): ResultNotice[] {
+  return (reasons ?? []).filter(reason => partialReasonMessages[reason])
+    .map(reason => ({ tone: 'amber' as const, text: partialReasonMessages[reason] }));
+}
+
