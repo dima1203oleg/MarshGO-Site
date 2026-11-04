@@ -2,8 +2,10 @@ import type { StyleSpecification } from 'maplibre-gl';
 import type { MapTheme } from './MapAdapter';
 import { buildFallbackStyle } from './style/buildStyle';
 import { parseMapAssetManifest } from './style/manifest';
+import { themeStyleUrls } from './style/themeStyles';
 
 const styleUrl = (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim();
+const darkStyleUrl = (import.meta.env.VITE_MAP_STYLE_URL_DARK as string | undefined)?.trim();
 const tileUrl = (import.meta.env.VITE_MAP_TILE_URL as string | undefined)?.trim();
 const attribution = (import.meta.env.VITE_MAP_TILE_ATTRIBUTION as string | undefined)?.trim() || '© OpenStreetMap contributors';
 const manifestUrl = (import.meta.env.VITE_MAP_STYLE_MANIFEST_URL as string | undefined)?.trim();
@@ -33,5 +35,6 @@ export async function resolveMapAssets(theme: MapTheme) {
     if (!style) throw new Error('MAP_STYLE_MISSING');
     return { style, styles: manifest.styles, mapDataVersion: manifest.mapDataVersion, styleVersion: manifest.styleVersion };
   }
-  return { style: styleUrl || createFallbackMapStyle(theme), styles: undefined, mapDataVersion: undefined, styleVersion: undefined };
+  const styles = themeStyleUrls(styleUrl, darkStyleUrl);
+  return { style: styles?.[theme] ?? createFallbackMapStyle(theme), styles, mapDataVersion: undefined, styleVersion: undefined };
 }

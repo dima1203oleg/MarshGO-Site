@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, LocateFixed, X } from 'lucide-react';
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { resolveMapAssets } from '../map/mapConfig';
+import { themeService } from '../services/theme';
 import { productionApi, type ApiPlace } from '../services/productionApi';
 import { coordinateMapPlace, geolocationFailureMessage, getBrowserPosition } from '../domain/mapPointSelection';
 
@@ -41,7 +42,7 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
   useEffect(() => {
     let cancelled = false;
     let map: import('maplibre-gl').Map | null = null;
-    void Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl.css'), resolveMapAssets('MARSHGO_LIGHT')]).then(([maplibre, , assets]) => {
+    void Promise.all([import('maplibre-gl'), import('maplibre-gl/dist/maplibre-gl.css'), resolveMapAssets(themeService.isDark() ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT')]).then(([maplibre, , assets]) => {
       if (cancelled || !container.current) return;
       const center: [number, number] = initial ? [initial.longitude, initial.latitude] : UKRAINE_CENTER;
       maplibre.setWorkerUrl(mapLibreWorkerUrl);

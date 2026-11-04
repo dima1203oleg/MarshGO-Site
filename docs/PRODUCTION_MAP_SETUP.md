@@ -46,6 +46,12 @@ loaded.
 existing owned style/tile services. They do not replace the production manifest
 requirement for four verified day/night vector styles.
 
+`VITE_MAP_STYLE_URL_DARK` is the night partner of `VITE_MAP_STYLE_URL`: one
+style URL cannot serve both themes, so a deployment that keeps the direct-URL
+mode must declare the provider's dark palette separately. When it is absent the
+dark theme reuses the light style — the map stays readable but is not a night
+basemap, which is the degraded state rather than a verified one.
+
 ## Release verification
 
 Before enabling map assets in a release, verify all six combinations on the
