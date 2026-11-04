@@ -39,7 +39,7 @@ export const showsCarpoolSection = (offerCount: number, transitResultPresent: bo
 
 /** Passenger-honest sentences for planner reasons the API names; unknown reasons must never pass silently. */
 const partialReasonMessages: Record<string, string> = {
-  walking_routing_unavailable: 'Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.',
+  walking_routing_unavailable: 'Пішохідні підходи до зупинок показано приблизно.',
   no_stop_within_walking_distance: 'Поблизу ваших точок немає зупинки в межах пішої доступності, тому маршрутів не знайдено. Спробуйте точки ближче до зупинок або інший вид транспорту.',
 };
 

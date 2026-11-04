@@ -447,6 +447,12 @@ const apiBase = (typeof import.meta !== 'undefined' && (import.meta as unknown a
 let accessToken: string | null = null;
 let refreshInFlight: Promise<{ user: ApiUser; accessToken: string }> | null = null;
 
+/**
+ * Whether a bearer token is currently held. Anonymous browsing is a supported state, and endpoints
+ * that require a session (live vehicle position) must not be polled until one exists.
+ */
+export function hasApiSession(): boolean { return Boolean(accessToken); }
+
 const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 async function uploadPhotoFile<T>(path: string, file: File): Promise<T> {
   // Phones often report an empty type for camera files; infer it from the extension before validating.

@@ -7,6 +7,8 @@ import {defineConfig} from 'vite';
 // Only the local machine and the zrok tunnel may reach the dev/preview server (DNS-rebinding protection).
 const tunnelHosts = ['localhost', '127.0.0.1', '.zrok.io'];
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
+// The API this checkout proxies to (and upgrades the realtime WebSocket against).
+const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002';
 
 export default defineConfig(() => {
   return {
@@ -33,17 +35,20 @@ export default defineConfig(() => {
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       allowedHosts: tunnelHosts,
       proxy: {
-        '/api': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
-        '/healthz': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
-        '/readyz': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
+        // ws:true — the realtime channel is a WebSocket on /api/v1/realtime and the server
+        // answers it from an 'upgrade' listener (MarshGO-Server/server/index.ts:6601). Without
+        // the flag the dev/preview proxy drops the upgrade handshake and the socket never opens.
+        '/api': { target: apiProxyTarget, changeOrigin: true, ws: true },
+        '/healthz': { target: apiProxyTarget, changeOrigin: true },
+        '/readyz': { target: apiProxyTarget, changeOrigin: true },
       },
     },
     preview: {
       allowedHosts: tunnelHosts,
       proxy: {
-        '/api': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
-        '/healthz': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
-        '/readyz': { target: process.env.API_PROXY_TARGET || 'http://127.0.0.1:3002', changeOrigin: true },
+        '/api': { target: apiProxyTarget, changeOrigin: true, ws: true },
+        '/healthz': { target: apiProxyTarget, changeOrigin: true },
+        '/readyz': { target: apiProxyTarget, changeOrigin: true },
       },
     },
   };

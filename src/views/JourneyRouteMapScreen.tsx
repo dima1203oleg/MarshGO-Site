@@ -9,7 +9,7 @@ import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
-import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
+import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
 import {
@@ -187,26 +187,36 @@ export function JourneyRouteMapScreen({
       setLiveJourneyRequestState('idle');
       return;
     }
+    // Live vehicle position is an authenticated endpoint. An anonymous passenger who is only
+    // comparing routes must not fire a rejected request every 15 seconds while the map is open.
+    if (!hasApiSession()) {
+      setLiveJourney(null);
+      setLiveJourneyRequestState('idle');
+      return;
+    }
     let stopped = false;
     let timer: number | undefined;
     let controller: AbortController | undefined;
+    let reschedule = true;
     setLiveJourneyRequestState('loading');
     const poll = async () => {
       controller = new AbortController();
+      reschedule = true;
       try {
         const live = await productionApi.journeyLive(journey.id, liveLegId, controller.signal);
         if (!stopped) {
           setLiveJourney(live);
           setLiveJourneyRequestState('ready');
         }
-      } catch {
+      } catch (error) {
         if (!stopped) {
           setLiveJourney(null);
           setLiveJourneyRequestState('failed');
+          // A rejected session does not heal by itself, so stop instead of retrying into 401s.
+          if (error instanceof ProductionApiError && error.status === 401) reschedule = false;
         }
-      } finally {
-        if (!stopped) timer = window.setTimeout(() => void poll(), 15_000);
       }
+      if (!stopped && reschedule) timer = window.setTimeout(() => void poll(), 15_000);
     };
     void poll();
     return () => { stopped = true; controller?.abort(); if (timer !== undefined) window.clearTimeout(timer); };
@@ -265,9 +275,13 @@ export function JourneyRouteMapScreen({
   const mapPadding = useMemo<RouteFitPadding>(() => {
     if (isDesktop) return { top: 100, left: 500, right: 40, bottom: 40 };
     return {
+      // 124 px already clears the top chip row (>= 64 px), and the ~96 px sides
+      // keep a centred callout at the route terminus (up to ~216 px wide) from
+      // spilling past the viewport edge; the edge-anchor fallback in
+      // routeLabelPlacement covers the remainder on very narrow screens.
       top: 124,
-      left: 26,
-      right: 26,
+      left: 96,
+      right: 96,
       // Follow the sheet's resting height: pulling the sheet down uncovers more
       // map, so the route refits wider instead of staying pinned to the half
       // detent. The expanded detent is skipped when fitting (thin strip), so its

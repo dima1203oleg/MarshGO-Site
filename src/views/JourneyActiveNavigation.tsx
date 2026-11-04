@@ -8,7 +8,7 @@ import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
-import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
+import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { buildRouteMapAnnotations, formatStopCount, isTransitLeg } from './routeMapAnnotations';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
@@ -128,26 +128,35 @@ export function JourneyActiveNavigation({
       setLiveJourneyRequestState('idle');
       return;
     }
+    // Live vehicle position is an authenticated endpoint: without a session every poll would be
+    // rejected, so stay quiet instead of firing a 401 every 15 seconds during the trip.
+    if (!hasApiSession()) {
+      setLiveJourney(null);
+      setLiveJourneyRequestState('idle');
+      return;
+    }
     let stopped = false;
     let timer: number | undefined;
     let controller: AbortController | undefined;
+    let reschedule = true;
     setLiveJourneyRequestState('loading');
     const poll = async () => {
       controller = new AbortController();
+      reschedule = true;
       try {
         const live = await productionApi.journeyLive(journey.id, liveLegId, controller.signal);
         if (!stopped) {
           setLiveJourney(live);
           setLiveJourneyRequestState('ready');
         }
-      } catch {
+      } catch (error) {
         if (!stopped) {
           setLiveJourney(null);
           setLiveJourneyRequestState('failed');
+          if (error instanceof ProductionApiError && error.status === 401) reschedule = false;
         }
-      } finally {
-        if (!stopped) timer = window.setTimeout(() => void poll(), 15_000);
       }
+      if (!stopped && reschedule) timer = window.setTimeout(() => void poll(), 15_000);
     };
     void poll();
     return () => { stopped = true; controller?.abort(); if (timer !== undefined) window.clearTimeout(timer); };

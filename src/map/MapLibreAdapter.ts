@@ -15,6 +15,7 @@ import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayer
 import { configuredMapStyleUrl } from './mapConfig';
 import { journeySegmentsForFocus, visibleJourneyWaypoints } from './focusMode';
 import { nearestRouteHitIds } from './routeHitTesting';
+import { placeJourneyLabels } from './routeLabelPlacement';
 
 const pmtilesProtocol = new Protocol();
 let pmtilesProtocolRegistered = false;
@@ -110,6 +111,8 @@ export class MapLibreAdapter implements MapAdapter {
   private liveTransitMarker: maplibregl.Marker | null = null;
   private liveTransitElement: HTMLDivElement | null = null;
   private journeyLabelMarkers = new Map<string, { marker: maplibregl.Marker; key: string }>();
+  /** Last label feed; placement is recomputed from it whenever the camera settles. */
+  private journeyLabelInput: MapAnnotation[] = [];
   private focusedTransitOverlay: FocusedTransitMapOverlay | null = null;
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
@@ -161,6 +164,10 @@ export class MapLibreAdapter implements MapAdapter {
       container.dataset.marshgoCameraSettledId = String(this.cameraRequestSequence);
       container.dataset.marshgoCameraMoving = 'false';
     });
+    // Callout de-cluttering lives in screen space, so a zoom or pan changes which
+    // labels compete for it. Recompute once per camera settle — never per frame;
+    // the id-keyed reconciliation below keeps existing DOM nodes untouched.
+    this.map.on('moveend', () => { if (this.journeyLabelInput.length) this.applyJourneyLabels(); });
     this.map.on('load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.basemapConfigured() ? 'available' : 'unconfigured'); });
     this.map.on('style.load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; if (this.basemapConfigured() && !this.map.getSource('marshgo-basemap') && this.status !== 'failed') this.publish('available'); });
     this.map.on('error', (event) => {
@@ -631,21 +638,41 @@ export class MapLibreAdapter implements MapAdapter {
    * because screen-sized pills must stay upright and legible at every zoom.
    */
   setJourneyLabels(labels: MapAnnotation[] | null) {
-    // Reconcile by id: recreating every callout on each live poll removes and
-    // re-adds a dozen DOM nodes, which flickers them and re-runs layout. Only
-    // labels whose content actually changed are rebuilt.
-    const entries = (labels ?? []).filter(label => label.coordinates.every(Number.isFinite));
-    this.map.getContainer().dataset.marshgoJourneyLabelCount = String(entries.length);
+    // Keep the last feed so a later camera settle can re-place the same labels.
+    this.journeyLabelInput = (labels ?? []).filter(label => label.coordinates.every(Number.isFinite));
+    this.applyJourneyLabels();
+  }
+
+  private applyJourneyLabels() {
+    const entries = this.journeyLabelInput;
+    const container = this.map.getContainer();
+    const viewport = { width: container.clientWidth, height: container.clientHeight };
+    // Priority de-clutter (BOARDING/ALIGHTING > TERMINUS > WALK > ROUTE > VEHICLE):
+    // a label whose estimated box overlaps a higher-priority one is suppressed
+    // entirely instead of printed on top of it. Nothing is hidden dishonestly — a
+    // suppressed walk callout still shows its duration and distance in the
+    // matching segment row of the bottom sheet.
+    const placed = placeJourneyLabels(
+      entries,
+      label => {
+        const point = this.map.project(label.coordinates as [number, number]);
+        return Number.isFinite(point.x) && Number.isFinite(point.y) ? { x: point.x, y: point.y } : null;
+      },
+      viewport,
+    );
+    container.dataset.marshgoJourneyLabelCount = String(placed.length);
     const seen = new Set<string>();
-    for (const label of entries) {
+    for (const { annotation: label, anchor } of placed) {
       seen.add(label.id);
-      const key = `${label.kind}:${label.tone ?? ''}:${label.title}:${label.detail ?? ''}:${label.coordinates[0].toFixed(5)},${label.coordinates[1].toFixed(5)}`;
+      // The anchor is part of the key: panning an end chip from one half of the
+      // screen to the other legitimately rebuilds the marker with a new anchor.
+      const key = `${label.kind}:${label.tone ?? ''}:${label.title}:${label.detail ?? ''}:${label.coordinates[0].toFixed(5)},${label.coordinates[1].toFixed(5)}:${anchor}`;
       const existing = this.journeyLabelMarkers.get(label.id);
       if (existing?.key === key) continue;
       existing?.marker.remove();
       const marker = new maplibregl.Marker({
         element: this.buildJourneyLabelElement(label),
-        anchor: 'center',
+        anchor,
         pitchAlignment: 'viewport',
         rotationAlignment: 'viewport',
       }).setLngLat(label.coordinates).addTo(this.map);
@@ -873,14 +900,21 @@ export class MapLibreAdapter implements MapAdapter {
     // requested edge accurate and give up some top padding. Capping only the
     // bottom padding shifts the route downward, underneath the sheet.
     const top = Math.min(requestedTop, Math.max(0, clientHeight - requestedBottom - minFitHeight));
+    // A centred terminus callout is up to ~236 px wide, so a caller that reserves
+    // a fixed 96 px on each side needs that to survive on 320-430 px viewports;
+    // 0.15 of the width used to clamp it back to ~48 px and re-clip the chip.
+    // 0.4 keeps the desktop panel inset (500 px on a wide screen) intact while MapLibre's
+    // own rule — combined horizontal padding must stay below the viewport — still holds,
+    // because left and right each cap at 0.4 and never both reach the cap on one screen.
+    const maxSidePadding = clientWidth * 0.4;
     const padding = {
       top,
-      right: Math.min(clientWidth * 0.15, overrides.right ?? Math.min(32, clientWidth * 0.1)),
+      right: Math.min(maxSidePadding, overrides.right ?? Math.min(32, clientWidth * 0.1)),
       // Overlay sheets can cover more than half of a route screen. Honor the
       // requested safe-area while keeping MapLibre's combined vertical padding
       // strictly smaller than the viewport.
       bottom: Math.min(Math.max(0, clientHeight - top - minFitHeight), requestedBottom),
-      left: Math.min(clientWidth * 0.15, overrides.left ?? Math.min(32, clientWidth * 0.1)),
+      left: Math.min(maxSidePadding, overrides.left ?? Math.min(32, clientWidth * 0.1)),
     };
     this.markCameraRequest();
     this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
