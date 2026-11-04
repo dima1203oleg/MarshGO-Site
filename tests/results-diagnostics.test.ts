@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { diagnosticsRequested, funnelLines, showsCarpoolSection, splitResultNotices } from '../src/views/resultsDiagnostics';
+import { diagnosticsRequested, funnelLines, partialReasonNotices, showsCarpoolSection, splitResultNotices } from '../src/views/resultsDiagnostics';
 import type { ApiJourneySearchResult } from '../src/services/productionApi';
 
 const searchResult = {
@@ -49,4 +49,14 @@ test('an empty carpool block disappears only when transit already answered', () 
   assert.equal(showsCarpoolSection(0, true), false);
   assert.equal(showsCarpoolSection(0, false), true);
   assert.equal(showsCarpoolSection(3, true), true);
+});
+
+test('known planner reasons become honest passenger lines, unknown ones stay silent for the panel to fall back', () => {
+  const emptyReason = partialReasonNotices(['no_stop_within_walking_distance']);
+  assert.equal(emptyReason.length, 1);
+  assert.equal(emptyReason[0].tone, 'amber');
+  assert.ok(emptyReason[0].text.includes('немає зупинки в межах пішої доступності'));
+  assert.equal(partialReasonNotices(['walking_routing_unavailable'])[0].text.includes('Пішохідні підходи'), true);
+  assert.deepEqual(partialReasonNotices(['some_future_reason']), []);
+  assert.deepEqual(partialReasonNotices(undefined), []);
 });

@@ -14,7 +14,7 @@ import {
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay } from './cashFare';
 import { strategyJourneys } from './journeyStrategySelection';
-import { diagnosticsRequested, funnelLines, splitResultNotices } from './resultsDiagnostics';
+import { diagnosticsRequested, funnelLines, partialReasonNotices, splitResultNotices } from './resultsDiagnostics';
 
 const FAVORITES_KEY = 'marshgo.saved-route-results.v1';
 
@@ -227,8 +227,9 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   // Transport-type tokens are availability facts, not preferences: they get their own honest lines.
   const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences, result.completeness);
   const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
-  if (result.partial && !result.partialReasons?.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
-  if (result.partialReasons?.includes('walking_routing_unavailable')) notices.push({ tone: 'amber', text: 'Піші ділянки частини варіантів показано як оцінку: пішохідний маршрутизатор не підтвердив для них реальний шлях.' });
+  const reasonNotices = partialReasonNotices(result.partialReasons);
+  reasonNotices.forEach(notice => notices.push(notice));
+  if (result.partial && !reasonNotices.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
   const preferenceTokens = result.unsupportedPreferences.filter(token => !token.startsWith('transportType:'));
   if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${preferenceTokens.map(value => preferenceMessages[value] ?? value).join('; ')}.` });
   if (result.providerErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${result.providerErrors.join('; ')}.` });
