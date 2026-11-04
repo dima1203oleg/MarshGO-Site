@@ -42,10 +42,13 @@ describe('MARSHGO v4.1 home tiles and central action menu', () => {
 
   it('every menu action reaches a real screen instead of a stub', () => {
     const block = menuBlock(marketplace);
-    for (const tab of ['navigation', 'map', 'offer-new', 'search', 'demand']) {
+    for (const tab of ['navigation', 'map', 'search', 'demand']) {
       assert.match(block, new RegExp(`setTab\\('${tab}'\\)`), `menu must route to tab ${tab}`);
     }
-    assert.match(block, /setTab\('profile'\)/, 'driver-role guard must redirect to the profile role screen');
+    assert.match(block, /Опублікувати поїздку'[^\n]*pick: publishDriverTrip/, 'publish must reach the driver form through the shared guard');
+    const guard = marketplace.slice(marketplace.indexOf('const publishDriverTrip'), marketplace.indexOf('const homeScreen'));
+    assert.match(guard, /setTab\('offer-new'\)/, 'publish must route to the driver form');
+    assert.match(guard, /setTab\('profile'\)/, 'driver-role guard must redirect to the profile role screen');
   });
 
   it('marks the central button as a dialog trigger for assistive tech', () => {

@@ -94,8 +94,8 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
     </button>
     <div className="pointer-events-none relative z-10 p-3">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${stateTone[journey.state] ?? 'bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]'}`}>{stateLabels[journey.state] ?? journey.state}</span>
-        <span className="min-w-0 truncate text-right text-[11px] font-semibold text-slate-500 dark:text-slate-400">{departureLabel}{startAt ? ` · ${startAt}` : ''}</span>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${stateTone[journey.state] ?? 'bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]'}`}>{stateLabels[journey.state] ?? journey.state}</span>
+        <span className="min-w-0 truncate text-right text-xs font-semibold text-slate-500 dark:text-slate-400">{departureLabel}{startAt ? ` · ${startAt}` : ''}</span>
       </div>
       <h3 className="truncate text-[15px] font-extrabold leading-5 text-[#0E1F35] dark:text-[#F5F9FF]" title={routeFullAddress}>
         {routeTitle}
@@ -107,7 +107,7 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
         priceLabel={totalPrice}
         priceAccessibleLabel={`Загальна вартість: ${totalPrice === '—' ? 'невідома' : totalPrice}`}
         priceUnavailable={totalPrice === '—'}
-        priceCaption={totalPrice === '—' ? <span className="block max-w-[7.5rem] truncate text-[10px] font-semibold leading-4 text-slate-500 dark:text-slate-400">тариф невідомий</span> : undefined}
+        priceCaption={totalPrice === '—' ? <span className="block max-w-[7.5rem] truncate text-xs font-semibold leading-4 text-slate-500 dark:text-slate-400">тариф невідомий</span> : undefined}
         distanceLabel={`${formatTransferCount(view.transfers)} · пішки ${formatJourneyDistance(view.walkingMeters)}`}
         summaryRowClassName="gap-2"
         items={stripItems}
@@ -115,14 +115,14 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
         actions={<span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]"><ChevronRight size={17}/></span>}
         actionsClassName="shrink-0"
       />
-      <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+      <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
         <span>{journeyStrategyLabel(journey.strategy)}</span>
         <span aria-hidden="true">·</span>
         <span>{passengersLabel(journey.passenger_count)}</span>
         <span aria-hidden="true">·</span>
         <span>{stageLabel(segments.length)}</span>
       </p>
-      {exception && <p role="status" className="mt-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">{exception}</p>}
+      {exception && <p role="status" className="mt-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">{exception}</p>}
     </div>
   </article>;
 }

@@ -132,7 +132,7 @@ export function QrScanner({ onToken, onClose }: { onToken: (token: string) => vo
 
   if (support !== 'ready') {
     return (
-      <div data-testid="qr-scanner-unavailable" role="status" className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800">
+      <div data-testid="qr-scanner-unavailable" role="status" className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-4 text-amber-800">
         <p>{notice || scannerUnavailableMessage(support)}</p>
         <button type="button" onClick={onClose} className="mt-1.5 font-bold text-amber-900 underline">Вставити квиток вручну</button>
       </div>
@@ -144,7 +144,7 @@ export function QrScanner({ onToken, onClose }: { onToken: (token: string) => vo
       <div className="relative">
         <video ref={videoRef} data-testid="qr-scanner-video" playsInline muted className="h-48 w-full bg-slate-900 object-cover" />
         {!streaming && (
-          <p className="absolute inset-0 grid place-items-center px-4 text-center text-[11px] leading-4 text-white/90">
+          <p className="absolute inset-0 grid place-items-center px-4 text-center text-xs leading-4 text-white/90">
             {notice || 'Камера увімкнюється… Дозвольте доступ, якщо браузер запитає.'}
           </p>
         )}
@@ -153,10 +153,10 @@ export function QrScanner({ onToken, onClose }: { onToken: (token: string) => vo
         </button>
       </div>
       <canvas ref={canvasRef} className="hidden" />
-      <p className="px-3 py-2 text-[10px] leading-4 text-slate-200">
+      <p className="px-3 py-2 text-xs leading-4 text-slate-200">
         {notice || 'Наведіть камеру на QR-код квитка пасажира. Камера вимкнеться після розпізнавання, відео нікуди не надсилається.'}
       </p>
-      <button type="button" onClick={onClose} className="w-full border-t border-white/10 py-2 text-[11px] font-bold text-white">
+      <button type="button" onClick={onClose} className="w-full border-t border-white/10 py-2 text-xs font-bold text-white">
         Сканувати не вдається — ввести вручну
       </button>
     </div>

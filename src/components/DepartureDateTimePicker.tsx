@@ -56,7 +56,7 @@ function WheelColumn({ label, values, selected, onSelect, selectedIndex }: {
         event.preventDefault();
         userScrolled.current = true;
         const next = Math.max(0, Math.min(values.length - 1, selectedIndex + (event.key === 'ArrowDown' ? 1 : -1)));
-        ref.current?.scrollTo({ top: next * ITEM_HEIGHT, behavior: 'smooth' });
+        ref.current?.scrollTo({ top: next * ITEM_HEIGHT, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
       }}
       className="h-full snap-y snap-mandatory overflow-y-auto overscroll-contain px-2 text-center text-2xl font-medium text-slate-400 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
@@ -69,11 +69,16 @@ function WheelColumn({ label, values, selected, onSelect, selectedIndex }: {
   </div>;
 }
 
-export function DepartureDateTimePicker({ open, value, onChange, onClose }: {
+export function DepartureDateTimePicker({ open, value, onChange, onClose, title = 'Час маршруту', caption = 'Виберіть дату й час відправлення', timeLabel = 'Час відправлення', minDate }: {
   open: boolean;
   value: string;
   onChange: (value: string) => void;
   onClose: () => void;
+  title?: string;
+  caption?: string;
+  timeLabel?: string;
+  /** `YYYY-MM-DD` lower bound — the arrival picker must not offer a day before the departure. */
+  minDate?: string;
 }) {
   const current = localParts(value);
   const [date, setDate] = useState(current.date);
@@ -103,30 +108,32 @@ export function DepartureDateTimePicker({ open, value, onChange, onClose }: {
 
   if (!open) return null;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv' }).format(new Date());
-  const visibleDates = Array.from({ length: 7 }, (_, index) => addDays(today, index));
+  const floor = minDate && minDate > today ? minDate : today;
+  const visibleDates = Array.from({ length: 7 }, (_, index) => addDays(floor, index));
+  const relativeLabel = (value: string) => value === today ? 'Сьогодні' : value === addDays(today, 1) ? 'Завтра' : dateLabel(value, { day: 'numeric', month: 'long' });
   const commit = () => { onChange(`${date}T${pad(hour)}:${pad(minute)}`); onClose(); };
 
   return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/65 px-3 pt-4 backdrop-blur-sm sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section role="dialog" aria-modal="true" aria-labelledby="departure-picker-title" className="max-h-[94dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-blue-900/50 bg-[#071a31] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 text-white shadow-2xl sm:rounded-[2rem]">
       <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-600"/>
-      <header className="flex items-center justify-between"><button type="button" onClick={onClose} aria-label="Закрити вибір дати й часу" className="grid h-11 w-11 place-items-center rounded-full bg-[#102847] text-slate-300"><X size={19}/></button><h2 id="departure-picker-title" className="text-base font-extrabold">Час маршруту</h2><span className="w-11"/></header>
-      <p className="mt-1 text-center text-xs text-slate-300">Виберіть дату й час відправлення</p>
+      <header className="flex items-center justify-between"><button type="button" onClick={onClose} aria-label="Закрити вибір дати й часу" className="grid h-11 w-11 place-items-center rounded-full bg-[#102847] text-slate-300"><X size={19}/></button><h2 id="departure-picker-title" className="text-base font-extrabold">{title}</h2><span className="w-11"/></header>
+      <p className="mt-1 text-center text-xs text-slate-300">{caption}</p>
 
       <div className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-[#0d2340] p-1.5">
-        {[['today', 'Сьогодні', today], ['tomorrow', 'Завтра', addDays(today, 1)], ['other', 'Інша дата', null]].map(([key, label, target]) => {
+        {[floor, addDays(floor, 1), null].map((target, index) => {
           const selected = target ? date === target : !visibleDates.includes(date);
-          return <button key={key} type="button" onClick={() => target ? setDate(target) : openDateInput()} className={`rounded-xl px-2 py-3 text-xs font-bold ${selected ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/40' : 'text-slate-300'}`}>{label}</button>;
+          return <button key={index} type="button" onClick={() => target ? setDate(target) : openDateInput()} className={`rounded-xl px-2 py-3 text-xs font-bold ${selected ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/40' : 'text-slate-300'}`}>{target ? relativeLabel(target) : 'Інша дата'}</button>;
         })}
       </div>
 
       <div className="relative mt-3">
         <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-          {visibleDates.map((item) => <button key={item} type="button" onClick={() => setDate(item)} aria-pressed={date === item} className={`min-w-[58px] rounded-xl border px-2 py-2 text-center ${date === item ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-900/70 bg-[#0d2340] text-slate-300'}`}><span className="block text-[10px] font-semibold">{dateLabel(item, { weekday: 'short' })}</span><span className="mt-1 block text-lg font-bold">{dateLabel(item, { day: 'numeric' })}</span><span className="block text-[10px]">{dateLabel(item, { month: 'short' })}</span></button>)}
+          {visibleDates.map((item) => <button key={item} type="button" onClick={() => setDate(item)} aria-pressed={date === item} className={`min-w-[58px] rounded-xl border px-2 py-2 text-center ${date === item ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-900/70 bg-[#0d2340] text-slate-300'}`}><span className="block text-xs font-semibold">{dateLabel(item, { weekday: 'short' })}</span><span className="mt-1 block text-lg font-bold">{dateLabel(item, { day: 'numeric' })}</span><span className="block text-xs">{dateLabel(item, { month: 'short' })}</span></button>)}
         </div>
-        <input ref={dateInput} aria-label="Інша дата відправлення" type="date" value={date} min={today} onChange={(event) => { if (event.target.value) setDate(event.target.value); }} className="pointer-events-none absolute h-px w-px opacity-0"/>
+        <input ref={dateInput} aria-label="Інша дата" type="date" value={date} min={floor} onChange={(event) => { if (event.target.value) setDate(event.target.value); }} className="pointer-events-none absolute h-px w-px opacity-0"/>
       </div>
 
-      <div className="mt-5 flex items-center gap-2 text-sm font-bold"><Clock3 size={17} className="text-blue-300"/>Час відправлення</div>
+      <div className="mt-5 flex items-center gap-2 text-sm font-bold"><Clock3 size={17} className="text-blue-300"/>{timeLabel}</div>
       <div className="mt-3 flex items-center gap-3">
         <WheelColumn label="Години" values={Array.from({ length: 24 }, (_, index) => index)} selected={hour} selectedIndex={hour} onSelect={setHour}/>
         <span className="text-2xl font-bold text-blue-200">:</span>

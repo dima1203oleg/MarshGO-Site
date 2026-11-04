@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ApiJourney } from '../src/services/productionApi';
 import {
-  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyBoardingNote, searchPendingCopy, unavailableTransportNotices,
+  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyBoardingNote, journeyRouteBadge, searchPendingCopy, unavailableTransportNotices,
 } from '../src/views/journeyResultPresentation';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
@@ -227,5 +227,34 @@ describe('journeyBoardingNote', () => {
   it('stays silent when the boarding time is not a real timestamp', () => {
     const note = journeyBoardingNote(journey({ legs: [leg({ id: 'tram', mode: 'TRAM', departureAt: 'not-a-time' })] }));
     assert.equal(note, '');
+  });
+});
+
+describe('journeyRouteBadge', () => {
+  // The server collapses route_short_name || route_long_name || route_id into one string, so the
+  // client has to decide from the shape of the token whether a № prefix would be a claim.
+  it('prefixes a bare route number the way the canonical board draws it', () => {
+    assert.equal(journeyRouteBadge('48'), '№48');
+    assert.equal(journeyRouteBadge(' 115 '), '№115');
+    assert.equal(journeyRouteBadge('48А'), '№48А');
+  });
+
+  it('keeps the prefix for a letter-first number from the live Lviv feed', () => {
+    // POST /api/v1/journeys/search, «Львівавтодор — розклад (GTFS)», 2026-11-04: legs arrive as
+    // WALK → BUS:А21 → WALK, so this exact shape is what the real results card has to badge.
+    assert.equal(journeyRouteBadge('А21'), '№А21');
+    assert.equal(journeyRouteBadge('А92'), '№А92');
+  });
+
+  it('leaves a long name and an id-shaped token without the number prefix', () => {
+    assert.equal(journeyRouteBadge('Львів – Київ'), 'Львів – Київ');
+    assert.equal(journeyRouteBadge('lviv:bus:48:R7'), 'lviv:bus:48:R7');
+    assert.equal(journeyRouteBadge('IT482026'), 'IT482026');
+  });
+
+  it('returns nothing for a missing name so the tile keeps the mode word', () => {
+    assert.equal(journeyRouteBadge(undefined), null);
+    assert.equal(journeyRouteBadge(null), null);
+    assert.equal(journeyRouteBadge('   '), null);
   });
 });

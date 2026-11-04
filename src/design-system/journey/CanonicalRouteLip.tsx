@@ -49,8 +49,13 @@ export function CanonicalRouteLip({
 }) {
   const sheet = density === 'sheet';
   return <div data-testid="canonical-route-lip" className={className}>
-    <div className={`${sheet ? 'flex min-w-0 items-center justify-between gap-2 py-2' : 'flex min-h-9 min-w-0 items-center gap-1'} ${summaryRowClassName}`}>
-      <div className={`flex min-w-0 flex-1 items-center ${sheet ? 'gap-2' : 'gap-2'}`}>
+    {/*
+     * The duration and price are shrink-0 because cutting «≈ 23 ₴» in half is worse than a taller
+     * header, so the row has to wrap instead of overflowing: with a zero flex basis the line-break
+     * test never sees the real content width and the action chips paint over the price.
+     */}
+    <div className={`${sheet ? 'flex min-w-0 items-center justify-between gap-2 py-2' : 'flex min-h-9 min-w-0 flex-wrap items-center justify-end gap-1'} ${summaryRowClassName}`}>
+      <div className={`flex min-w-0 items-center ${sheet ? 'flex-1 gap-2' : 'flex-[1_1_auto] gap-2'}`}>
         <span className={`flex min-w-0 flex-col leading-tight ${sheet ? '' : 'shrink-0'}`}>
           <strong data-testid="canonical-route-duration" title={durationTitle} className={`font-black leading-6 tracking-tight tabular-nums text-slate-900 dark:text-white ${sheet ? 'text-[21px]' : 'text-[22px]'} ${durationClassName}`}>{durationLabel}</strong>
           {durationNote}
@@ -59,7 +64,7 @@ export function CanonicalRouteLip({
         <span className={`flex flex-col leading-tight ${sheet ? 'min-w-0' : 'shrink-0'}`}>
           <strong aria-label={priceAccessibleLabel} className={`truncate ${sheet ? 'font-extrabold text-[15px]' : 'font-black text-[20px]'} tabular-nums ${priceUnavailable ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'} ${priceClassName}`}>{priceLabel}</strong>
           {priceCaption}
-          {distanceLabel && <span className="truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400">{distanceLabel}</span>}
+          {distanceLabel && <span className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">{distanceLabel}</span>}
         </span>
       </div>
       <div className={actionsClassName}>{actions}</div>

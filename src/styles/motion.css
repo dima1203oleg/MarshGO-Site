@@ -1,0 +1,132 @@
+/* MOTION-1 & HORIZON FLOW 5.0 (M1–M9): канонічні примітиви анімації,
+   винесені в окремий модуль, щоб не конфліктувати з паралельними PR у src/index.css.
+   Глобальний блок prefers-reduced-motion у src/index.css перекриває всі тривалості,
+   а локальний @media (prefers-reduced-motion: reduce) нижче вимикає циклічні ефекти. */
+
+/* M0 (MOTION-1): повільне безперервне обертання для статусних гліфів. */
+@keyframes mg-spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: mg-spin 6s linear infinite;
+}
+
+/* M1: тактильне натискання для вторинних плиток, чіпів етапів і карток. */
+.mg-press-subtle {
+  transition:
+    transform var(--mg-dur-instant, 90ms) var(--mg-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)),
+    background-color var(--mg-dur-fast, 160ms) var(--mg-ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+    border-color var(--mg-dur-fast, 160ms) var(--mg-ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow var(--mg-dur-fast, 160ms) var(--mg-ease-standard, cubic-bezier(0.2, 0, 0, 1));
+}
+.mg-press-subtle:active:not(:disabled) {
+  transform: scale(0.982);
+}
+
+/* M2: 180-градусний обмін точок «Звідки ↔ Куди». */
+.mg-swap-spin {
+  transition: transform var(--mg-dur-base, 240ms) var(--mg-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+.mg-swap-spin:active:not(:disabled) {
+  transform: rotate(180deg) scale(0.95);
+}
+
+/* M3: плавне розгортання акордеонів (провайдери, список зупинок маршруту). */
+.mg-accordion-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--mg-dur-base, 240ms) var(--mg-ease-entrance, cubic-bezier(0.22, 1, 0.36, 1)),
+    opacity var(--mg-dur-fast, 160ms) var(--mg-ease-standard, cubic-bezier(0.2, 0, 0, 1));
+}
+.mg-accordion-grid[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.mg-accordion-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* M4: каскадна поява списку карток (до 6 елементів із кроком --mg-stagger-step: 55ms). */
+.mg-stagger-list > * {
+  animation: mg-rise var(--mg-dur-base, 240ms) var(--mg-ease-entrance, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+.mg-stagger-list > *:nth-child(1) { animation-delay: calc(0 * var(--mg-stagger-step, 55ms)); }
+.mg-stagger-list > *:nth-child(2) { animation-delay: calc(1 * var(--mg-stagger-step, 55ms)); }
+.mg-stagger-list > *:nth-child(3) { animation-delay: calc(2 * var(--mg-stagger-step, 55ms)); }
+.mg-stagger-list > *:nth-child(4) { animation-delay: calc(3 * var(--mg-stagger-step, 55ms)); }
+.mg-stagger-list > *:nth-child(5) { animation-delay: calc(4 * var(--mg-stagger-step, 55ms)); }
+.mg-stagger-list > *:nth-child(n+6) { animation-delay: calc(5 * var(--mg-stagger-step, 55ms)); }
+
+/* M5: плавне перемикання пігулок стратегій пошуку та фільтрів поїздок. */
+.mg-pill-switch {
+  transition:
+    background-color var(--mg-dur-fast, 160ms) var(--mg-ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+    border-color var(--mg-dur-fast, 160ms) var(--mg-ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+    color var(--mg-dur-fast, 160ms) var(--mg-ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+    box-shadow var(--mg-dur-fast, 160ms) var(--mg-ease-standard, cubic-bezier(0.2, 0, 0, 1)),
+    transform var(--mg-dur-instant, 90ms) var(--mg-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+.mg-pill-switch:active:not(:disabled) {
+  transform: scale(0.975);
+}
+
+/* M6: пружинна координація 4-станової шторки маршруту. */
+.mg-sheet-spring {
+  transition:
+    height var(--mg-dur-base, 240ms) var(--mg-ease-entrance, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--mg-dur-base, 240ms) var(--mg-ease-standard, cubic-bezier(0.2, 0, 0, 1));
+  will-change: height;
+}
+
+/* M7: GPU-безпечний пульс для живого GPS-транспорту (Автобус №109) та точки зустрічі. */
+@keyframes mg-live-pulse {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
+}
+.mg-live-pulse {
+  animation: mg-live-pulse 2s var(--mg-ease-entrance, cubic-bezier(0.22, 1, 0.36, 1)) infinite;
+}
+
+/* M8: анімований потік вздовж вектора наближення транспорту або пішого підходу. */
+@keyframes mg-route-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+.mg-route-flow {
+  animation: mg-route-flow 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-slow,
+  .mg-stagger-list > *,
+  .mg-live-pulse,
+  .mg-route-flow {
+    animation: none !important;
+  }
+  .mg-press-subtle,
+  .mg-swap-spin,
+  .mg-accordion-grid,
+  .mg-pill-switch,
+  .mg-sheet-spring {
+    transition: none !important;
+  }
+  .mg-press-subtle:active:not(:disabled),
+  .mg-swap-spin:active:not(:disabled),
+  .mg-pill-switch:active:not(:disabled) {
+    transform: none !important;
+  }
+}

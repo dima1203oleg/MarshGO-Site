@@ -142,6 +142,14 @@ describe('transport types and providers', () => {
     assert.equal(choiceFor(toggleProvider(one, 'train', 'train:Test rail'), 'train').all, true);
   });
 
+  it('presses a chip from "Усі провайдери" by removing only that provider, not the whole category', () => {
+    const trainIds = ['train:Укрзалізниця', 'train:Test rail'];
+    const removed = toggleProvider(defaultSelection, 'train', 'train:Test rail', trainIds);
+    assert.deepEqual(choiceFor(removed, 'train'), { all: false, ids: ['train:Укрзалізниця'] });
+    assert.equal(choiceFor(toggleProvider(removed, 'train', 'train:Test rail', trainIds), 'train').all, true);
+    assert.equal(choiceFor(toggleProvider(removed, 'train', 'train:Укрзалізниця', trainIds), 'train').all, true);
+  });
+
   it('remembers the provider choice while a type is switched off', () => {
     let selection = toggleProvider(defaultSelection, 'train', 'train:Укрзалізниця');
     selection = toggleType(selection, 'train');
