@@ -54,7 +54,7 @@ export function StatusBadge({
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border font-bold leading-none select-none ${config.toneClass} ${
-        isSm ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-[11px]'
+        isSm ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs'
       } ${className}`}
       aria-label={`Статус транспорту: ${label ?? config.label}`}
     >

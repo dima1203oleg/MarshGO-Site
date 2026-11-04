@@ -128,7 +128,7 @@ export function DepartureDateTimePicker({ open, value, onChange, onClose, title 
 
       <div className="relative mt-3">
         <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-          {visibleDates.map((item) => <button key={item} type="button" onClick={() => setDate(item)} aria-pressed={date === item} className={`min-w-[58px] rounded-xl border px-2 py-2 text-center ${date === item ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-900/70 bg-[#0d2340] text-slate-300'}`}><span className="block text-[10px] font-semibold">{dateLabel(item, { weekday: 'short' })}</span><span className="mt-1 block text-lg font-bold">{dateLabel(item, { day: 'numeric' })}</span><span className="block text-[10px]">{dateLabel(item, { month: 'short' })}</span></button>)}
+          {visibleDates.map((item) => <button key={item} type="button" onClick={() => setDate(item)} aria-pressed={date === item} className={`min-w-[58px] rounded-xl border px-2 py-2 text-center ${date === item ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-900/70 bg-[#0d2340] text-slate-300'}`}><span className="block text-xs font-semibold">{dateLabel(item, { weekday: 'short' })}</span><span className="mt-1 block text-lg font-bold">{dateLabel(item, { day: 'numeric' })}</span><span className="block text-xs">{dateLabel(item, { month: 'short' })}</span></button>)}
         </div>
         <input ref={dateInput} aria-label="Інша дата" type="date" value={date} min={floor} onChange={(event) => { if (event.target.value) setDate(event.target.value); }} className="pointer-events-none absolute h-px w-px opacity-0"/>
       </div>

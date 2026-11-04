@@ -175,3 +175,23 @@ test('W2 (в): JourneyRouteMapScreen і JourneyResultsPanel дотримують
   }
 });
 
+test('W3a: основні клієнтські екрани дотримуються мінімального кегля 12px (0 входжень text-[9..11px])', () => {
+  const coreFiles = [
+    'src/views/ProductionMarketplace.tsx',
+    'src/views/HomeHero.tsx',
+    'src/views/ProfileSections.tsx',
+    'src/design-system/journey/SavedJourneyCard.tsx',
+    'src/design-system/ui/StatusBadge.tsx',
+    'src/components/DepartureDateTimePicker.tsx',
+    'src/components/OnboardingSlides.tsx',
+  ];
+  for (const file of coreFiles) {
+    const source = readFileSync(file, 'utf8');
+    const undersized = [...source.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)]
+      .filter((m) => Number(m[1]) < 12)
+      .map((m) => `${file} -> ${m[0]}`);
+    assert.deepEqual(undersized, []);
+  }
+});
+
+

@@ -148,13 +148,13 @@ export function ProfileSections({
                 <article key={record.id} className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#16202B]">
                   <div className="flex items-center justify-between gap-2">
                     <b className="text-sm text-[#0E1F35] dark:text-white">{typeLabel[record.verification_type]}</b>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold ${meta.tone}`}>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${meta.tone}`}>
                       <meta.Icon size={12} />
                       {meta.label}
                     </span>
                   </div>
                   {car && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{car}</p>}
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-xs text-slate-400">
                     Подано {dateFormat.format(new Date(record.created_at))}
                     {record.reviewed_at ? ` · перевірено ${dateFormat.format(new Date(record.reviewed_at))}` : ''}
                   </p>
@@ -219,11 +219,11 @@ export function ProfileSections({
                   Використовується лише для побудови маршрутів та рандеву зустрічі. Дані не передаються рекламним мережам.
                 </p>
               </div>
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${gpsPermission === 'granted' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : gpsPermission === 'denied' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${gpsPermission === 'granted' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : gpsPermission === 'denied' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
                 {gpsPermissionLabel[gpsPermission]}
               </span>
             </div>
-            <p className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-xs leading-4 text-slate-500 dark:text-slate-400">
               Дозвіл видає браузер, а не MARSHGO. Вимкнути його можна в налаштуваннях доступу цього сайту.
             </p>
             <button
@@ -256,9 +256,9 @@ export function ProfileSections({
                   <Download size={16} className="text-blue-600" />
                   {exporting ? 'Готуємо файл…' : 'Завантажити копію моїх даних (JSON)'}
                 </span>
-                <span className="text-[10px] text-slate-400">Експорт</span>
+                <span className="text-xs text-slate-400">Експорт</span>
               </button>
-              {exportNote && <p role="status" className="text-[11px] text-rose-700 dark:text-rose-400">{exportNote}</p>}
+              {exportNote && <p role="status" className="text-xs text-rose-700 dark:text-rose-400">{exportNote}</p>}
 
               <button
                 type="button"
@@ -269,9 +269,9 @@ export function ProfileSections({
                   <Trash2 size={16} className="text-rose-600" />
                   Подати запит на повне видалення профілю
                 </span>
-                <span className="text-[10px] text-rose-400">Період очікування</span>
+                <span className="text-xs text-rose-400">Період очікування</span>
               </button>
-              <p className="text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+              <p className="text-xs leading-4 text-slate-500 dark:text-slate-400">
                 Запит підтверджується окремо й має період очікування зі скасуванням. Натискання кнопки саме по собі дані не стирає.
               </p>
             </div>
@@ -306,7 +306,7 @@ export function ProfileSections({
                 Скарги та блокування
               </button>
             </div>
-            <p className="mt-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-xs leading-4 text-slate-500 dark:text-slate-400">
               Скаргу надсилають із чату конкретної поїздки — там видно, на кого саме скаржаться. Окремої кнопки тривоги поза поїздкою в застосунку немає.
             </p>
           </div>
