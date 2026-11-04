@@ -81,15 +81,15 @@ export function toggleType(selection: TransportSelection, type: TransportTypeId)
 
 export function choiceFor(selection: TransportSelection, type: TransportTypeId): ProviderChoice { return selection.providers[type] ?? { all: true, ids: [] }; }
 export function activeTypesForSearch(selection: TransportSelection): TransportTypeId[] { return selection.active.filter(isJourneySearchSupported); }
-export function toggleProvider(selection: TransportSelection, type: TransportTypeId, providerId: string | 'all'): TransportSelection {
+export function toggleProvider(selection: TransportSelection, type: TransportTypeId, providerId: string | 'all', availableIds: readonly string[] = []): TransportSelection {
   const current = choiceFor(selection, type);
-  let next: ProviderChoice;
-  if (providerId === 'all') next = { all: true, ids: [] };
-  else {
-    const ids = current.ids.includes(providerId) ? current.ids.filter((id) => id !== providerId) : [...current.ids, providerId];
-    next = ids.length === 0 ? { all: true, ids: [] } : { all: false, ids };
-  }
-  return { ...selection, providers: { ...selection.providers, [type]: next } };
+  if (providerId === 'all') return { ...selection, providers: { ...selection.providers, [type]: { all: true, ids: [] } } };
+  // `all` means every connected provider is in play, so a chip click there removes one —
+  // treating it as an empty list would silently narrow the category to the single provider.
+  const active = current.all ? [...availableIds] : current.ids;
+  const next = active.includes(providerId) ? active.filter((id) => id !== providerId) : [...active, providerId];
+  const coversEverything = availableIds.length > 0 && next.length === availableIds.length;
+  return { ...selection, providers: { ...selection.providers, [type]: next.length === 0 || coversEverything ? { all: true, ids: [] } : { all: false, ids: next } } };
 }
 /** «Вибрати всі»: every one of the given categories routes with all of its connected providers. */
 export function useAllProviders(selection: TransportSelection, types: readonly TransportTypeId[]): TransportSelection {

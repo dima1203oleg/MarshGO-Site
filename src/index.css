@@ -249,7 +249,7 @@ html.dark .search-screen .journey-search-card .search-trip-details > div > butto
   background: #f6f8fc;
 }
 .search-screen .journey-search-card .trip-tile--stepper { padding: .25rem .25rem .25rem .7rem; }
-.search-screen .journey-search-card .trip-tile small { font-size: 11px; font-weight: 600; line-height: 1.15; color: #5b6a80; }
+.search-screen .journey-search-card .trip-tile small { font-size: 12px; font-weight: 600; line-height: 1.15; color: #5b6a80; }
 .search-screen .journey-search-card .trip-tile .trip-tile__value { font-size: 13px; font-weight: 800; line-height: 1.25; }
 .search-screen .journey-search-card .trip-tile button {
   display: grid;
@@ -260,11 +260,6 @@ html.dark .search-screen .journey-search-card .search-trip-details > div > butto
 html.dark .search-screen .journey-search-card .trip-tile { background: #16202B; color: #F5F9FF; }
 html.dark .search-screen .journey-search-card .trip-tile small { color: #8FA0B3; }
 html.dark .search-screen .journey-search-card .trip-tile button { border-color: #263648; background: #111820; color: #66B2FF; }
-html.dark .search-screen .transport-types-inline > div > button {
-  border-color: #536B86;
-  background: #16202B;
-  color: #66B2FF;
-}
 .journey-search-card label { min-height: 3.65rem; }
 .journey-search-card input { font-size: 16px; } /* Prevent WKWebView input zoom. */
 .journey-search-card button,
@@ -589,7 +584,6 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .production-app .app-tabbar button { min-width: 2.9rem; padding-inline: .35rem; }
   .production-app .journey-search-card { padding: .65rem; }
   .production-app .transport-mode-grid { gap: .35rem; }
-  .production-app .transport-mode-grid button { font-size: 9px; }
   .search-screen .journey-search-card .search-trip-details { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .transport-types-inline > div:first-child { gap: .25rem; }
   .transport-types-inline > div:first-child h2 { white-space: nowrap; font-size: .8rem; }
@@ -604,7 +598,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   }
   .search-screen .home-intro { flex: none; margin: 0; padding: .65rem .85rem; border-radius: 1.2rem; }
   .search-screen .home-title { margin-top: 0 !important; font-size: 1.2rem; }
-  .search-screen .home-description { margin-top: .1rem !important; font-size: 11px; line-height: 1.35; }
+  .search-screen .home-description { margin-top: .1rem !important; font-size: 12px; line-height: 1.35; }
   .search-screen > .home-search-panel { flex: none; margin-top: 0 !important; }
   .search-screen .journey-search-card { padding: .7rem !important; }
   .search-screen .journey-search-card > .relative > [role="group"] { min-height: 3.65rem; padding-block: .55rem; }
@@ -894,15 +888,19 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
+/* Unlayered CSS outranks every Tailwind layer, so this reset outside @layer base was
+   overriding each text-* utility on every control and leaving them all at the inherited size. */
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 
-button {
-  touch-action: manipulation;
+  button {
+    touch-action: manipulation;
+  }
 }
 
 html:has(.auth-screen),
@@ -1133,11 +1131,6 @@ html.dark .home-screen .journey-search-card button:not([type="submit"]) {
   color: var(--mg-ink-primary);
 }
 html.dark .search-screen .home-intro { border-color: #263648 !important; }
-html.dark .transport-mode-grid > button[aria-pressed="true"] {
-  border-color: #1687FF !important;
-  background-color: rgba(22, 135, 255, .14) !important;
-  color: #8CC4FF !important;
-}
 html.dark .transport-mode-grid > button:disabled {
   border-color: var(--mg-border-subtle) !important;
   background-color: var(--mg-surface-secondary) !important;
