@@ -45,14 +45,14 @@ function formatDeparture(value: string): string {
 export function HomeHero({
   onStartNavigation,
   onSearchTrip,
-  onPlanTrip,
+  onPublishTrip,
   onOpenMap,
   onSearchDestination,
   trips = [],
 }: {
   onStartNavigation: () => void;
   onSearchTrip: () => void;
-  onPlanTrip: () => void;
+  onPublishTrip: () => void;
   onOpenMap: () => void;
   onSearchDestination: (city: string) => void;
   trips?: HomeTrip[];
@@ -97,7 +97,7 @@ export function HomeHero({
     if (action === 'navigation') onStartNavigation();
     if (action === 'transport') onOpenMap();
     if (action === 'search') onSearchTrip();
-    if (action === 'publish') onPlanTrip();
+    if (action === 'publish') onPublishTrip();
   };
 
   return <main ref={root} className="home-hero home-hero--canonical mx-auto flex w-full max-w-xl flex-col px-4 pb-1 pt-2" style={availableHeight ? { height: availableHeight, overflowY: 'auto', overscrollBehaviorY: 'contain' } : undefined}>
@@ -122,7 +122,7 @@ export function HomeHero({
       <img src={activeBanner.image} alt="" style={{ objectPosition: activeBanner.imagePosition }} className="home-banner-media absolute inset-0 h-full w-full object-cover"/>
       <span aria-hidden="true" className="home-banner-scrim absolute inset-0"/>
       <div className="home-banner-copy relative z-10 max-w-[78%]"><p className="text-[10px] font-black uppercase tracking-[.12em] text-blue-700 dark:text-blue-300">{activeBanner.eyebrow}</p><h1 className="mt-1 text-[18px] font-black leading-tight tracking-tight text-[#102344] dark:text-white">{activeBanner.title}</h1><p className="mt-1 text-[12px] font-semibold leading-snug text-slate-700 dark:text-slate-200">{activeBanner.description}</p></div>
-      <div className="relative z-10 flex items-center justify-between"><button type="button" onClick={activeBanner.action === 'publish' ? onPlanTrip : onSearchTrip} className="home-action-cta mg-press inline-flex min-h-11 items-center gap-2 rounded-full bg-blue-600 px-4 text-[13px] font-bold text-white shadow-md shadow-blue-900/20">{activeBanner.actionLabel}<ArrowRight size={15}/></button><div className="flex items-center gap-1.5" role="group" aria-label="Банери MARSHGO">{banners.map((banner, index) => <button key={banner.eyebrow} type="button" aria-label={`Показати банер ${index + 1}: ${banner.eyebrow}`} aria-pressed={bannerIndex === index} onClick={() => setBannerIndex(index)} className="grid size-11 shrink-0 place-items-center"><span aria-hidden="true" className={`h-2.5 rounded-full transition-all duration-300 ${bannerIndex === index ? 'w-6 bg-blue-600' : 'w-2.5 bg-slate-400/60 hover:bg-slate-400'}`}/></button>)}</div></div>
+      <div className="relative z-10 flex items-center justify-between"><button type="button" onClick={activeBanner.action === 'publish' ? onPublishTrip : onSearchTrip} className="home-action-cta mg-press inline-flex min-h-11 items-center gap-2 rounded-full bg-blue-600 px-4 text-[13px] font-bold text-white shadow-md shadow-blue-900/20">{activeBanner.actionLabel}<ArrowRight size={15}/></button><div className="flex items-center gap-1.5" role="group" aria-label="Банери MARSHGO">{banners.map((banner, index) => <button key={banner.eyebrow} type="button" aria-label={`Показати банер ${index + 1}: ${banner.eyebrow}`} aria-pressed={bannerIndex === index} onClick={() => setBannerIndex(index)} className="grid size-11 shrink-0 place-items-center"><span aria-hidden="true" className={`h-2.5 rounded-full transition-all duration-300 ${bannerIndex === index ? 'w-6 bg-blue-600' : 'w-2.5 bg-slate-400/60 hover:bg-slate-400'}`}/></button>)}</div></div>
     </section>}
 
     <div className="home-action-grid grid grid-cols-2 gap-2.5" aria-label="Швидкі дії">
