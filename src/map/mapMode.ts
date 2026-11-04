@@ -14,10 +14,13 @@ const perspectiveListeners = new Set<(perspective: MapPerspective) => void>();
 export function getMapLayer(): MapLayer {
   try {
     const saved = localStorage.getItem(LAYER_KEY);
+    // A saved 'satellite' from an environment that has no licensed imagery would paint an empty
+    // background, so the stored preference is only honoured where the base map actually exists.
+    if (saved === 'satellite' && !satelliteBasemapAvailable) return 'simple';
     if (saved === 'simple' || saved === 'satellite') return saved;
     // Keep existing users' selected base layer through this taxonomy cleanup.
     if (saved === 'standard' || saved === 'threeD' || saved === 'navigation') return 'simple';
-    if (saved === 'hybrid') return 'satellite';
+    if (saved === 'hybrid') return satelliteBasemapAvailable ? 'satellite' : 'simple';
   } catch { /* browser storage is optional */ }
   return 'simple';
 }
@@ -46,6 +49,13 @@ export function subscribeMapPerspective(listener: (perspective: MapPerspective) 
 // depend on a public vendor endpoint in a production bundle.
 export const satelliteTiles = (import.meta.env?.VITE_MAP_SATELLITE_TILE_URL as string | undefined)?.trim() || undefined;
 export const satelliteAttribution = (import.meta.env?.VITE_MAP_SATELLITE_ATTRIBUTION as string | undefined)?.trim() || undefined;
+
+/**
+ * A toggle the passenger can press must actually change the picture. When the deployment has no
+ * licensed imagery this is false, and every satellite control has to say so instead of painting
+ * the same scheme map under a new label.
+ */
+export const satelliteBasemapAvailable = Boolean(satelliteTiles && satelliteAttribution);
 
 export function isBasemapConfigured(layer: MapLayer, schemeConfigured: boolean, satelliteConfigured = Boolean(satelliteTiles && satelliteAttribution)): boolean {
   return layer === 'satellite' ? satelliteConfigured : schemeConfigured;

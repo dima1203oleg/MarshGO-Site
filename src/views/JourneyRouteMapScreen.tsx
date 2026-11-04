@@ -8,7 +8,7 @@ import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from
 import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
-import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
+import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
@@ -33,6 +33,7 @@ import { themeService } from '../services/theme';
 import { buildRouteMapAnnotations, formatSegmentCount, formatStopCount, primaryTransitLeg } from './routeMapAnnotations';
 import { priorityLevelOf } from '../map/transportVisualZones';
 import { shortPlace } from './journeyStageNavigation';
+import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
 
 type JourneyLeg = ApiJourney['legs'][number];
 type TimelineItem = {
@@ -68,15 +69,6 @@ function timelineFor(journey: ApiJourney): TimelineItem[] {
     if (Number.isFinite(arrival)) cursor = arrival;
   }
   return items.filter(item => item.durationSeconds > 0);
-}
-
-function isScheduledRouteLeg(leg: JourneyLeg) {
-  return ['BUS', 'MINIBUS', 'TROLLEYBUS', 'TRAM', 'METRO', 'RAIL', 'FERRY', 'FUNICULAR'].includes(leg.mode)
-    || ['bus', 'marshrutka', 'intercity_bus', 'train', 'suburban_train', 'city_train', 'tram', 'trolleybus', 'metro'].includes(leg.transportType ?? '');
-}
-
-function stopTime(stop: NonNullable<JourneyLeg['stops']>[number], index: number, lastIndex: number) {
-  return formatTime(index === 0 ? stop.departureAt : index === lastIndex ? stop.arrivalAt : stop.arrivalAt);
 }
 
 function legTimeLabel(leg: JourneyLeg, durationSeconds: number) {
@@ -598,8 +590,8 @@ export function JourneyRouteMapScreen({
       {(sheetSnap === 'half' || activeSegmentId) && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg${activeSegmentId ? ' is-reset' : ''}`}><Navigation size={19}/></button>}
       <button
         type="button"
-        aria-label={`3D-перспектива: ${mapPerspective === '3d' ? 'увімкнено' : 'вимкнено'}`}
-        title="3D-перспектива"
+        aria-label={mapPerspective === '3d' ? 'Повернути плоский 2D-вигляд' : "Увімкнути об'ємну 3D-перспективу"}
+        title={mapPerspective === '3d' ? '2D' : '3D'}
         aria-pressed={mapPerspective === '3d'}
         onClick={() => {
           const next: MapPerspective = mapPerspective === '3d' ? '2d' : '3d';
@@ -610,21 +602,28 @@ export function JourneyRouteMapScreen({
           mapPerspective === '3d' ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30' : ''
         }`}
       >
-        3D
+        {mapPerspective === '3d' ? '2D' : '3D'}
       </button>
       <button
         type="button"
-        aria-label={`Супутникова карта: ${mapLayer === 'satellite' ? 'увімкнено' : 'вимкнено'}`}
-        title="Супутникова карта"
-        aria-pressed={mapLayer === 'satellite'}
+        aria-label={
+          satelliteBasemapAvailable
+            ? mapLayer === 'satellite' ? 'Повернути схематичну карту' : 'Увімкнути супутникову карту'
+            : 'Супутникові знімки недоступні'
+        }
+        title={satelliteBasemapAvailable ? (mapLayer === 'satellite' ? 'Схема' : 'Супутник') : 'Супутникові знімки не підключені'}
+        aria-pressed={satelliteBasemapAvailable && mapLayer === 'satellite'}
+        aria-disabled={!satelliteBasemapAvailable}
+        disabled={!satelliteBasemapAvailable}
         onClick={() => {
+          if (!satelliteBasemapAvailable) return;
           const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
           setCurrentMapLayer(next);
           setMapLayer(next);
         }}
         className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg transition-all ${
-          mapLayer === 'satellite' ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30' : ''
-        }`}
+          mapLayer === 'satellite' && satelliteBasemapAvailable ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30' : ''
+        }${satelliteBasemapAvailable ? '' : ' opacity-45'}`}
       >
         <Globe size={19} />
       </button>
@@ -806,16 +805,7 @@ export function JourneyRouteMapScreen({
                 </div>
 
                 {scheduled && expanded && <div className="border-t border-[var(--route-border)] px-3 pb-3 pt-2">
-                  {stops.length ? <ol aria-label={`Зупинки сегмента ${leg.routeName ?? journeyLegLabel(leg.mode, leg.transportType)}`} className="ml-1 border-l-2 pl-3">
-                    {stops.map((stop, index) => {
-                      const endpoint = index === 0 || index === stops.length - 1;
-                      return <li key={`${stop.id}:${index}`} className="relative grid min-h-7 grid-cols-[44px_minmax(0,1fr)] gap-2 py-1 text-xs">
-                        <span className="absolute -left-[1.05rem] top-[.55rem] h-2.5 w-2.5 rounded-full border-2 border-[var(--route-card)]" style={{ backgroundColor: color }}/>
-                        <time className="tabular-nums text-[var(--route-subtle)]">{stopTime(stop, index, stops.length - 1)}</time>
-                        <span className={endpoint ? 'font-extrabold text-[var(--route-ink)]' : stop.skipped ? 'text-[var(--route-subtle)] line-through decoration-rose-500/70' : 'text-[var(--route-muted)]'}>{shortPlace(stop.name)}{stop.skipped ? <strong className="ml-1 text-rose-600 no-underline dark:text-rose-300">· ПРОПУСКАЄТЬСЯ</strong> : index === 0 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ПОСАДКА</strong> : index === stops.length - 1 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ВИСАДКА</strong> : null}</span>
-                      </li>;
-                    })}
-                  </ol> : <p className="text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
+                  <JourneyLegStops leg={leg} color={color}/>
                 </div>}
 
                 {leg.mode === 'COMMUNITY' && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--route-border)] px-3 py-2.5">

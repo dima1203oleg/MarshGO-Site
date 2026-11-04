@@ -69,7 +69,7 @@ function NavigationPerspectiveControl() {
   const [perspective, setPerspective] = useState<MapPerspective>(getMapPerspective());
   useEffect(() => subscribeMapPerspective(setPerspective), []);
   const next: MapPerspective = perspective === '3d' ? '2d' : '3d';
-  return <button type="button" aria-label={`${perspective === '3d' ? 'Вимкнути' : 'Увімкнути'} 3D-перспективу`} aria-pressed={perspective === '3d'} onClick={() => setMapPerspective(next)} className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white/95 text-sm font-extrabold text-[#0B1730] shadow-lg backdrop-blur dark:border-white/15 dark:bg-[#0A1D2D]/90 dark:text-white">3D</button>;
+  return <button type="button" aria-label={`${perspective === '3d' ? 'Вимкнути' : 'Увімкнути'} 3D-перспективу`} title={perspective === '3d' ? '2D' : '3D'} aria-pressed={perspective === '3d'} onClick={() => setMapPerspective(next)} className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white/95 text-sm font-extrabold text-[#0B1730] shadow-lg backdrop-blur dark:border-white/15 dark:bg-[#0A1D2D]/90 dark:text-white">{perspective === '3d' ? '2D' : '3D'}</button>;
 }
 
 function previewTileUrl(layer: MapLayer, center: [number, number] | null) {

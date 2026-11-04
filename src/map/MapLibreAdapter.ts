@@ -437,7 +437,13 @@ export class MapLibreAdapter implements MapAdapter {
 
   /** Keep vector roads and labels above the imagery; dim land/building fills to reveal the satellite base. */
   private installSatelliteOverlay() {
-    if (this.layer !== 'satellite' || !this.map.isStyleLoaded()) return;
+    if (this.layer !== 'satellite') return;
+    if (!this.map.isStyleLoaded()) {
+      // setStyle() fires 'style.load' before every style resource is ready, so an immediate
+      // install would silently do nothing and the passenger would see the scheme map twice.
+      this.map.once('idle', () => this.installSatelliteOverlay());
+      return;
+    }
     if (!satelliteTiles || !satelliteAttribution) {
       this.onTransportHint('Супутникові знімки недоступні: не налаштовано ліцензоване джерело карти.');
       this.publish('unconfigured');

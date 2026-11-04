@@ -172,6 +172,15 @@ body {
   --mg-navy: #071b3a;
   --mg-ink: #0b1d3a;
   --mg-muted: #526477;
+  /* The ink and line ramp lives in both themes: a token defined only under html.dark silently
+     resolves to the inherited value in light, so the control looked right and was unstyled.
+     Ratios below are AA on every light surface (white, tint, canvas, blue-tint). */
+  --mg-ink-primary: #14243B;
+  --mg-ink-secondary: #46586E;
+  --mg-ink-muted: #5C6B83;
+  --mg-border-subtle: #E5EDF7;
+  --mg-border-medium: #C6D6E8;
+  --mg-surface-glass: rgba(255, 255, 255, .9);
   --mg-canvas: #f4f8fd;
   --mg-line: #e5edf7;
   --mg-surface-primary: #FFFFFF;
@@ -264,6 +273,19 @@ html.dark .app-header > div:first-child strong { color: #F5F9FF; }
   border-radius: 1.65rem;
   background: #f2f7fd;
 }
+/* A place row has one trailing control, and it has to read as what it is: an action that fills the
+   field, or a ghost that empties it. Both states use tokens so the theme owns the contrast. */
+.journey-search-card button.search-field-action[data-field-action="pick"],
+.journey-search-card button.search-field-action[data-field-action="locate"] {
+  border: 1px solid var(--mg-border-medium);
+  background-color: var(--mg-blue-tint);
+  color: var(--mg-blue-ink);
+}
+.journey-search-card button.search-field-action[data-field-action="clear"] {
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--mg-ink-muted);
+}
 .journey-search-card {
   border-color: rgba(255,255,255,.94);
   box-shadow: 0 14px 34px rgba(23, 68, 126, .09), 0 2px 6px rgba(23, 68, 126, .04);
@@ -294,12 +316,12 @@ html.dark .search-screen .journey-search-card label small,
 html.dark .search-screen .journey-search-card .search-trip-details small { color: #8FA0B3; }
 html.dark .search-screen .journey-search-card input { color: #F5F9FF; }
 html.dark .search-screen .journey-search-card input::placeholder { color: #8FA0B3; }
-html.dark .search-screen .journey-search-card label > button {
+html.dark .search-screen .journey-search-card label > button:not([data-field-action]) {
   border: 1px solid #263648;
   background: #111820;
   color: #66B2FF;
 }
-html.dark .search-screen .journey-search-card [role="group"] > button {
+html.dark .search-screen .journey-search-card [role="group"] > button:not([data-field-action]) {
   border: 1px solid #263648;
   background: #111820;
   color: #66B2FF;
@@ -1133,7 +1155,7 @@ html.dark .home-screen .journey-search-card {
   box-shadow: 0 14px 34px rgba(0, 0, 0, .26);
 }
 html.dark .home-screen .journey-search-card label { background-color: var(--mg-surface-secondary); }
-html.dark .home-screen .journey-search-card button:not([type="submit"]) {
+html.dark .home-screen .journey-search-card button:not([type="submit"]):not([data-field-action]) {
   background-color: var(--mg-surface-secondary);
   color: var(--mg-ink-primary);
 }

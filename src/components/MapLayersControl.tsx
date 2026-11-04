@@ -5,7 +5,7 @@ import { getTransportLayers, setTransportLayers, subscribeTransportLayers, type 
 import { getLayerAvailabilityState, loadLayerAvailability, retryLayerAvailability, subscribeLayerAvailability } from '../map/layerAvailability';
 import { layerUnavailableNote } from '../map/transportLayerConfig';
 import { getMapDisplayPreferences, setMapDisplayPreference, subscribeMapDisplayPreferences, type MapDisplayPreferenceId } from '../map/mapLayerPreferences';
-import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
+import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 
 const canonicalLayerOrder: TransportLayerId[] = ['BUS', 'MINIBUS', 'TROLLEYBUS', 'TRAIN', 'TRAM', 'BICYCLE', 'METRO', 'SCOOTER', 'CARPOOL', 'CARSHARING', 'TAXI', 'TRANSFER'];
 
@@ -110,12 +110,19 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
             <button
               type="button"
               role="radio"
-              aria-checked={mapLayer === 'satellite'}
-              onClick={() => { setMapLayer('satellite'); setLocalMapLayer('satellite'); }}
+              aria-checked={satelliteBasemapAvailable && mapLayer === 'satellite'}
+              aria-disabled={!satelliteBasemapAvailable}
+              title={satelliteBasemapAvailable ? undefined : 'Супутникові знімки не підключені до цього середовища'}
+              onClick={() => {
+                if (!satelliteBasemapAvailable) return;
+                setMapLayer('satellite'); setLocalMapLayer('satellite');
+              }}
               className={`flex-1 rounded-lg py-1.5 text-center text-xs font-bold transition-all ${
-                mapLayer === 'satellite'
+                mapLayer === 'satellite' && satelliteBasemapAvailable
                   ? 'bg-[var(--mg-action)] shadow text-white'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
+                  : satelliteBasemapAvailable
+                    ? 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
+                    : 'text-slate-400 dark:text-slate-500'
               }`}
             >
               Супутник
@@ -150,6 +157,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
             </button>
           </div>
         </div>
+        {!satelliteBasemapAvailable && <p className="mt-2 text-[12px] leading-4 text-slate-500 dark:text-slate-400">Супутникові знімки доступні, якщо підключити ліцензійне джерело знімків.</p>}
       </section>
       {showLayers ? <>
         {layerState.probeFailed && <p role="status" className="mb-2 rounded-xl bg-amber-50 p-2 text-xs leading-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Не вдалося перевірити джерела шарів. Вони тимчасово вимкнені.<button type="button" className="ml-1 font-bold underline" onClick={() => { void retryLayerAvailability(); }}>Повторити</button></p>}
