@@ -581,15 +581,18 @@ export const productionApi = {
     departureAt: string;
     passengers: number;
     strategy: ApiJourneyStrategy;
-    preferences?: Record<string, boolean | string[] | Record<string, string[]>>;
+    preferences?: Record<string, boolean | number | string[] | Record<string, string[]>>;
   }) {
     const send = (body: typeof input) => request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(body) });
     try { return await send(input); } catch (error) {
-      // An older API release does not know the schedule-provider preferences and rejects the request: retry once with the legacy fields only.
-      const { allowedTransportTypes, allowedTransitProviders, allowedTransitProvidersByType, ...legacy } = input.preferences ?? {};
-      if (allowedTransportTypes === undefined && allowedTransitProviders === undefined && allowedTransitProvidersByType === undefined) throw error;
+      // An older API release does not know the schedule-provider preferences or the budget/deadline bounds and rejects the whole request:
+      // retry once with the fields it accepts, so a stale deployment degrades the filters instead of the search.
+      const unsupportedByLegacyRelease = ['allowedTransportTypes', 'allowedTransitProviders', 'allowedTransitProvidersByType', 'maxPriceMinor', 'maxTotalDurationSeconds'] as const;
+      const preferences = { ...input.preferences };
+      if (!unsupportedByLegacyRelease.some((key) => preferences[key] !== undefined)) throw error;
       if (error instanceof Error && /Забагато запитів/.test(error.message)) throw error;
-      return send({ ...input, preferences: legacy });
+      for (const key of unsupportedByLegacyRelease) delete preferences[key];
+      return send({ ...input, preferences });
     }
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },

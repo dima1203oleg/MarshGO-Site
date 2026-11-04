@@ -91,6 +91,23 @@ export function toggleProvider(selection: TransportSelection, type: TransportTyp
   }
   return { ...selection, providers: { ...selection.providers, [type]: next } };
 }
+/** «Вибрати всі»: every one of the given categories routes with all of its connected providers. */
+export function useAllProviders(selection: TransportSelection, types: readonly TransportTypeId[]): TransportSelection {
+  return {
+    ...selection,
+    providers: { ...selection.providers, ...Object.fromEntries(types.map((type) => [type, { all: true, ids: [] } as ProviderChoice])) },
+  };
+}
+/** How many providers the current choice actually hands to the planner; `all` counts every connected one. */
+export function countSelectedProviders(selection: TransportSelection, types: readonly TransportTypeId[], groups: ApiTransportProviders[] | null): number {
+  return types.reduce((total, type) => {
+    const providers = providersForJourneySearch(type, groups);
+    const choice = choiceFor(selection, type);
+    return total + (choice.all ? providers.length : providers.filter((provider) => choice.ids.includes(provider.id)).length);
+  }, 0);
+}
+export const areAllProvidersSelected = (selection: TransportSelection, types: readonly TransportTypeId[]): boolean =>
+  types.every((type) => choiceFor(selection, type).all);
 
 function groupsForCategory(type: TransportTypeId, groups: ApiTransportProviders[] | null) {
   if (!groups) return [];

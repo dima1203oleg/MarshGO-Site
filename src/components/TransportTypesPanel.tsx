@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, SlidersHorizontal } from 'lucide-react';
-import { choiceFor, hasJourneySearchProvider, isAllActive, isJourneySearchSupported, providersForJourneySearch, selectAll, toggleProvider, toggleType, transportTypes, type TransportSelection, type TransportTypeId } from '../domain/transportPreferences';
+import { areAllProvidersSelected, choiceFor, countSelectedProviders, hasJourneySearchProvider, isAllActive, isJourneySearchSupported, providersForJourneySearch, selectAll, toggleProvider, toggleType, transportTypes, useAllProviders, type TransportSelection, type TransportTypeId } from '../domain/transportPreferences';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import type { ApiTransportProviders } from '../services/productionApi';
@@ -34,12 +34,16 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
   const providersOf = (type: TransportTypeId) => providersForJourneySearch(type, groups);
 
   const visibleTypes = compact ? routeSearchOrder.flatMap((id) => transportTypes.filter((type) => type.id === id)) : transportTypes;
+  const routableTypes = transportTypes.filter((type) => selection.active.includes(type.id) && isConnected(type.id)).map((type) => type.id);
+  const availableProviderCount = routableTypes.reduce((total, type) => total + providersOf(type).length, 0);
+  const selectedProviderCount = countSelectedProviders(selection, routableTypes, groups);
+  const allProvidersChosen = areAllProvidersSelected(selection, routableTypes);
 
   return <section aria-label="Види транспорту" className={`${compact ? 'transport-types-inline' : 'mt-4'}`}>
     <div className="mb-1 flex items-center justify-between gap-2"><h2 className="text-sm font-extrabold text-[#0E1F35] dark:text-[#F5F9FF]">Види транспорту</h2>
       <span className="flex shrink-0 items-center gap-1.5">
       {compact && onManageProviders && <button type="button" onClick={onManageProviders} aria-label="Фільтри провайдерів" className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-[#16202B] dark:text-slate-200"><SlidersHorizontal size={16}/></button>}
-      <button type="button" aria-pressed={allActive} onClick={() => onChange(allActive ? { ...selection, active: [] } : selectAll(selection))} className={`min-h-11 rounded-full border px-4 py-1.5 text-xs font-bold ${allActive ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white dark:border-[#0B6EF3] dark:bg-[#0B6EF3]' : 'border-slate-200 bg-white text-[var(--mg-blue)] dark:border-slate-700 dark:bg-[#16202B] dark:text-[#66B2FF]'}`}>Усі</button>
+      <button type="button" aria-pressed={allActive} aria-label={allActive ? 'Вимкнути всі види транспорту' : 'Увімкнути всі види транспорту'} onClick={() => onChange(allActive ? { ...selection, active: [] } : selectAll(selection))} className={`min-h-11 rounded-full border px-4 py-1.5 text-xs font-bold ${allActive ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white dark:border-[#0B6EF3] dark:bg-[#0B6EF3]' : 'border-slate-200 bg-white text-[var(--mg-blue)] dark:border-slate-700 dark:bg-[#16202B] dark:text-[#66B2FF]'}`}>Усі види</button>
       </span>
     </div>
     {groups === null && <p role="status" className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
@@ -47,6 +51,16 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
     </p>}
     {!compact && <p className="mb-3 text-xs leading-5 text-slate-500">Рівно 12 категорій у затвердженому порядку. Неактивні категорії залишаються видимими; «Пішки» додається автоматично до пересадок.</p>}
     <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>
+    {compact && <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-[#E5EDF7] bg-white px-3 py-2 dark:border-[#263648] dark:bg-[#111820]">
+      <p className="min-w-0 text-xs leading-4"><span className="font-extrabold text-[#0E1F35] dark:text-[#F5F9FF]">Провайдери</span>{' '}
+        <span className="font-semibold text-slate-500 dark:text-[#9AAABE]">{groups === null ? 'покриття ще не перевірено'
+          : allProvidersChosen ? `усі наявні (${availableProviderCount})` : `вибрано: ${selectedProviderCount} з ${availableProviderCount}`}</span></p>
+      <span className="flex shrink-0 items-center gap-1.5">
+        {onManageProviders && <button type="button" onClick={onManageProviders} className="min-h-11 rounded-full border border-slate-200 bg-white px-3 text-xs font-bold text-[var(--mg-blue)] dark:border-slate-700 dark:bg-[#16202B] dark:text-[#66B2FF]">Налаштувати</button>}
+        <button type="button" aria-pressed={allProvidersChosen} disabled={availableProviderCount === 0} onClick={() => onChange(useAllProviders(selection, routableTypes))}
+          className={`min-h-11 rounded-full border px-3 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${allProvidersChosen ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white dark:border-[#0B6EF3] dark:bg-[#0B6EF3]' : 'border-[#E5EDF7] bg-white text-[var(--mg-blue)] dark:border-[#263648] dark:bg-[#111820] dark:text-[#66B2FF]'}`}>Вибрати всі</button>
+      </span>
+    </div>}
     {!compact && allActive && <button type="button" onClick={() => setExpandedAll((value) => !value)} className="mt-3 text-xs font-bold text-[var(--mg-blue)]">{expandedAll ? 'Сховати провайдерів' : 'Налаштувати провайдерів'}</button>}
     {!compact && showProviders && <div className="mt-3 space-y-3" aria-label="Провайдери">
       <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Провайдери</h3>
