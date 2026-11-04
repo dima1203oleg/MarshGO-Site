@@ -329,7 +329,69 @@ export class MapLibreAdapter implements MapAdapter {
       this.map.on('mouseenter', 'marshgo-route-hit-target', () => { this.map.getCanvas().style.cursor = 'pointer'; });
       this.map.on('mouseleave', 'marshgo-route-hit-target', () => { this.map.getCanvas().style.cursor = ''; });
     }
-    if (!this.map.getLayer('marshgo-waypoints')) this.map.addLayer({ id: 'marshgo-waypoints', type: 'circle', source: 'marshgo-waypoints', paint: { 'circle-radius': ['match', ['get', 'kind'], 'STOP', 4, 'TRANSFER', 6, 'SELF_LOCATION', 7, 'OTHER_LOCATION', 7, 8], 'circle-color': ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'STOP', '#D6E4F3', 'TRANSFER', '#FFFFFF', 'SELF_LOCATION', '#0878F9', 'OTHER_LOCATION', '#8B5CF6', colors.route], 'circle-stroke-color': ['match', ['get', 'kind'], 'TRANSFER', '#1687FF', 'SELF_LOCATION', '#FFFFFF', 'OTHER_LOCATION', '#FFFFFF', colors.routeCasing], 'circle-stroke-width': ['match', ['get', 'kind'], 'STOP', 1.5, 'SELF_LOCATION', 2.5, 'OTHER_LOCATION', 2.5, 3] } });
+    if (!this.map.getLayer('marshgo-waypoints-halo')) this.map.addLayer({
+      id: 'marshgo-waypoints-halo',
+      type: 'circle',
+      source: 'marshgo-waypoints',
+      filter: ['in', ['get', 'kind'], ['literal', ['PICKUP', 'DROPOFF', 'TRANSFER', 'SELF_LOCATION', 'OTHER_LOCATION']]],
+      paint: {
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          10, ['match', ['get', 'kind'], 'PICKUP', 14, 'DROPOFF', 14, 'TRANSFER', 11, 12],
+          15, ['match', ['get', 'kind'], 'PICKUP', 22, 'DROPOFF', 22, 'TRANSFER', 17, 18],
+        ] as unknown as ExpressionSpecification,
+        'circle-color': ['match', ['get', 'kind'],
+          'PICKUP', colors.pickup,
+          'DROPOFF', colors.dropoff,
+          'TRANSFER', '#1687FF',
+          'SELF_LOCATION', '#0878F9',
+          'OTHER_LOCATION', '#8B5CF6',
+          colors.route,
+        ] as unknown as ExpressionSpecification,
+        'circle-opacity': 0.38,
+        'circle-blur': 0.6,
+      },
+    });
+    if (!this.map.getLayer('marshgo-waypoints')) this.map.addLayer({
+      id: 'marshgo-waypoints',
+      type: 'circle',
+      source: 'marshgo-waypoints',
+      paint: {
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          10, ['match', ['get', 'kind'], 'STOP', 1.5, 'TRANSFER', 5, 'SELF_LOCATION', 6.5, 'OTHER_LOCATION', 6.5, 7.5],
+          13, ['match', ['get', 'kind'], 'STOP', 2.5, 'TRANSFER', 6, 'SELF_LOCATION', 7.5, 'OTHER_LOCATION', 7.5, 8.5],
+          16, ['match', ['get', 'kind'], 'STOP', 4.5, 'TRANSFER', 7.5, 'SELF_LOCATION', 8.5, 'OTHER_LOCATION', 8.5, 9.5],
+        ] as unknown as ExpressionSpecification,
+        'circle-opacity': [
+          'interpolate', ['linear'], ['zoom'],
+          10, ['match', ['get', 'kind'], 'STOP', 0.45, 1.0],
+          13, ['match', ['get', 'kind'], 'STOP', 0.75, 1.0],
+          15, 1.0,
+        ] as unknown as ExpressionSpecification,
+        'circle-color': ['match', ['get', 'kind'],
+          'PICKUP', colors.pickup,
+          'DROPOFF', colors.dropoff,
+          'STOP', '#F8FAFC',
+          'TRANSFER', '#FFFFFF',
+          'SELF_LOCATION', '#0878F9',
+          'OTHER_LOCATION', '#8B5CF6',
+          colors.route,
+        ] as unknown as ExpressionSpecification,
+        'circle-stroke-color': ['match', ['get', 'kind'],
+          'STOP', '#475569',
+          'TRANSFER', '#1687FF',
+          'SELF_LOCATION', '#FFFFFF',
+          'OTHER_LOCATION', '#FFFFFF',
+          '#FFFFFF',
+        ] as unknown as ExpressionSpecification,
+        'circle-stroke-width': [
+          'interpolate', ['linear'], ['zoom'],
+          10, ['match', ['get', 'kind'], 'STOP', 0.8, 'TRANSFER', 2, 2.5],
+          14, ['match', ['get', 'kind'], 'STOP', 1.5, 'TRANSFER', 2.5, 3],
+        ] as unknown as ExpressionSpecification,
+      },
+    });
     if (!this.map.getLayer('marshgo-transit-zone-arrows')) this.map.addLayer({
       id: 'marshgo-transit-zone-arrows', type: 'symbol', source: 'marshgo-transit-zone-arrows',
       layout: {
@@ -894,8 +956,11 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.setPaintProperty('marshgo-route-halo', 'line-color', ['coalesce', ['get', 'modeColor'], colors.route]);
     this.map.setPaintProperty('marshgo-route-casing', 'line-color', colors.routeCasing);
     this.map.setPaintProperty('marshgo-route', 'line-color', ['coalesce', ['get', 'modeColor'], colors.route]);
-    this.map.setPaintProperty('marshgo-waypoints', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'SELF_LOCATION', '#0878F9', 'OTHER_LOCATION', '#8B5CF6', colors.route]);
-    this.map.setPaintProperty('marshgo-waypoints', 'circle-stroke-color', colors.routeCasing);
+    this.map.setPaintProperty('marshgo-waypoints', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'STOP', '#F8FAFC', 'TRANSFER', '#FFFFFF', 'SELF_LOCATION', '#0878F9', 'OTHER_LOCATION', '#8B5CF6', colors.route]);
+    this.map.setPaintProperty('marshgo-waypoints', 'circle-stroke-color', ['match', ['get', 'kind'], 'STOP', '#475569', 'TRANSFER', '#1687FF', 'SELF_LOCATION', '#FFFFFF', 'OTHER_LOCATION', '#FFFFFF', '#FFFFFF']);
+    if (this.map.getLayer('marshgo-waypoints-halo')) {
+      this.map.setPaintProperty('marshgo-waypoints-halo', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'TRANSFER', '#1687FF', 'SELF_LOCATION', '#0878F9', 'OTHER_LOCATION', '#8B5CF6', colors.route]);
+    }
     this.map.setPaintProperty('marshgo-vehicle-halo', 'circle-color', colors.vehicle);
     this.map.setPaintProperty('marshgo-vehicle', 'circle-color', colors.vehicle);
     this.map.setPaintProperty('marshgo-vehicle', 'circle-stroke-color', colors.routeCasing);
