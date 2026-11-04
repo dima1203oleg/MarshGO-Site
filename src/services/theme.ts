@@ -4,8 +4,14 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 
 const STORAGE_KEY = 'mg_theme';
 
+/**
+ * The owner set dark as the product default: a first run paints dark, and only an explicit choice
+ * in Profile (light or system) changes it. The boot shell in index.html reads the same rule.
+ */
+const DEFAULT_THEME: ThemeMode = 'dark';
+
 class ThemeService {
-  private currentTheme: ThemeMode = 'light';
+  private currentTheme: ThemeMode = DEFAULT_THEME;
   private listeners: Set<(theme: ThemeMode, isDark: boolean) => void> = new Set();
 
   constructor() {
@@ -15,13 +21,9 @@ class ThemeService {
   private init() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-      if (saved && (saved === 'light' || saved === 'dark' || saved === 'system')) {
-        this.currentTheme = saved;
-      } else {
-        this.currentTheme = 'light';
-      }
+      this.currentTheme = saved === 'light' || saved === 'dark' || saved === 'system' ? saved : DEFAULT_THEME;
     } catch {
-      this.currentTheme = 'light';
+      this.currentTheme = DEFAULT_THEME;
     }
 
     this.applyTheme();

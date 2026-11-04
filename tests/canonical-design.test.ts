@@ -332,3 +332,15 @@ test('the results card shows the departure window, the feed route number and a r
     'a duplicate heading rule later in the sheet silently wins the cascade and shrinks tile text again');
   assert.doesNotMatch(panel, /text-\[(?:[89]|1[01])(?:\.\d+)?px\]/, 'results-card chrome drifted under the 12 px floor');
 });
+
+// Dark is the product default (owner decision, 2026-11-04). The shell has to agree, or the first
+// frame paints light and the theme arrives only after the bundle boots.
+test('the theme defaults to dark and the boot shell paints it first', async () => {
+  const [html, themeModule] = await Promise.all([
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../index.html'), 'utf8'),
+    import('../src/services/theme'),
+  ]);
+  assert.equal(themeModule.themeService.getTheme(), 'dark', 'a first run with no stored choice must open dark');
+  assert.match(html, /classList\.add\('boot-dark'\)/, 'the boot shell must carry the same dark default');
+  assert.doesNotMatch(html, /getItem\('mg_theme'\) === 'dark'\)/, 'the shell went dark only for an explicit stored choice, so the default flashed light');
+});
