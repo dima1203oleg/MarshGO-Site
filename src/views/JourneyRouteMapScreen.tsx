@@ -428,7 +428,7 @@ export function JourneyRouteMapScreen({
     }
   };
 
-  return <main className="route-map-screen fixed inset-0 z-[80] overflow-hidden text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'} data-route-camera-bearing={routeBearing.toFixed(2)} aria-label="Побудований маршрут">
+  return <main className="route-map-screen fixed inset-0 z-[var(--mg-z-map-chip)] overflow-hidden text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'} data-route-camera-bearing={routeBearing.toFixed(2)} aria-label="Побудований маршрут">
     <div className="absolute inset-0" data-testid="journey-route-map">
       <MarshGoMap
         route={[]}
@@ -500,7 +500,7 @@ export function JourneyRouteMapScreen({
 
     <section
       ref={sheetElement}
-      className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-3xl flex-col overflow-hidden rounded-t-[1.75rem] border border-[var(--route-border)] bg-[var(--route-sheet)] shadow-[var(--route-sheet-shadow)]"
+      className="absolute inset-x-0 bottom-0 z-[var(--mg-z-sticky)] mx-auto flex max-w-3xl flex-col overflow-hidden rounded-t-[var(--mg-radius-3xl)] border border-[var(--route-border)] bg-[var(--route-sheet)] shadow-[var(--route-sheet-shadow)]"
       aria-label="Деталі маршруту"
       data-testid="route-bottom-sheet"
       data-sheet-state={sheetSnap}
@@ -579,7 +579,7 @@ export function JourneyRouteMapScreen({
               data-testid="journey-route-segment"
               data-segment-id={leg.id}
               data-active={selected}
-              className={`overflow-hidden rounded-[1rem] border bg-[var(--route-card)] transition-[border-color,box-shadow,opacity] duration-200 ${selected ? 'border-[var(--mg-blue)] shadow-[0_0_0_1px_rgba(22,135,255,.45),0_0_24px_rgba(22,135,255,.16)]' : 'border-[var(--route-border)]'}`}
+              className={`overflow-hidden rounded-[var(--mg-radius-lg)] border bg-[var(--route-card)] transition-[border-color,box-shadow,opacity] duration-[var(--mg-dur-fast)] ${selected ? 'border-[var(--mg-blue)] shadow-[0_0_0_1px_rgba(22,135,255,.45),0_0_24px_rgba(22,135,255,.16)]' : 'border-[var(--route-border)]'}`}
               style={{ borderLeftWidth: 4, borderLeftColor: color, opacity: activeSegmentId && !selected ? 0.68 : 1, ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}) }}
             >
               <div className="flex items-start gap-2 p-2">

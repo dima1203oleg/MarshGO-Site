@@ -142,6 +142,37 @@ body {
   --mg-action: #0B63D6;
   --mg-action-hover: #0950A8;
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
+
+  /* Radii: measured from the sheet (8/10/16/20/24/28/32 px + pills). */
+  --mg-radius-sm: 8px;
+  --mg-radius-md: 10px;
+  --mg-radius-lg: 16px;
+  --mg-radius-xl: 20px;
+  --mg-radius-2xl: 24px;
+  --mg-radius-3xl: 28px;
+  --mg-radius-sheet: 32px;
+  --mg-radius-pill: 999px;
+
+  /* Stacking. Each level carries the number the app already stacked with. */
+  --mg-z-base: 1;
+  --mg-z-raised: 2;
+  --mg-z-control: 9;
+  --mg-z-sticky: 20;
+  --mg-z-overlay: 40;
+  --mg-z-scrim: 55;
+  --mg-z-scrim-raised: 60;
+  --mg-z-picker-scrim: 65;
+  --mg-z-map-control: 70;
+  --mg-z-map-chip: 80;
+  --mg-z-sheet: 100;
+  --mg-z-sheet-raised: 120;
+  --mg-z-lifecycle: 200;
+  --mg-z-nav-backdrop: 490;
+  --mg-z-nav-chrome: 500;
+  --mg-z-nav-sheet: 510;
+  --mg-z-modal: 1000;
+
+  --mg-stagger-step: 55ms;
 }
 
 html, body, #root { min-height: 100%; }
@@ -164,7 +195,7 @@ html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgb
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: var(--mg-z-sticky);
   padding-top: max(.65rem, env(safe-area-inset-top));
   background: rgba(244, 248, 253, .88);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
@@ -350,12 +381,12 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   height: 11px;
   gap: 2px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--mg-radius-pill);
   background: #d8e1eb;
 }
 .journey-segment-ribbon > span {
   min-width: 3px;
-  border-radius: 999px;
+  border-radius: var(--mg-radius-pill);
   transition: filter .18s ease, opacity .18s ease;
 }
 .journey-segment-tiles-viewport { position: relative; min-width: 0; margin-top: .25rem; }
@@ -393,7 +424,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   transition: background-color .16s ease, opacity .16s ease;
 }
 .journey-segment-tile-button:hover { background: rgba(22,135,255,.07); }
-.journey-segment-tile-button:focus-visible { position: relative; z-index: 1; outline: 2px solid #1687ff; outline-offset: -2px; }
+.journey-segment-tile-button:focus-visible { position: relative; z-index: var(--mg-z-base); outline: 2px solid #1687ff; outline-offset: -2px; }
 .journey-segment-tile.is-active .journey-segment-tile-button { background: rgba(22,135,255,.1); }
 .journey-segment-tile-heading {
   display: flex;
@@ -460,7 +491,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
 }
 .journey-segment-scroll-cue {
   position: absolute;
-  z-index: 2;
+  z-index: var(--mg-z-raised);
   top: 50%;
   right: -.25rem;
   display: grid;
@@ -468,7 +499,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   height: 2.75rem;
   transform: translateY(-50%);
   place-items: center;
-  border-radius: 999px;
+  border-radius: var(--mg-radius-pill);
   color: #526174;
   pointer-events: auto;
 }
@@ -478,7 +509,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   height: 1.65rem;
   place-items: center;
   border: 1px solid #d9e2ec;
-  border-radius: 999px;
+  border-radius: var(--mg-radius-pill);
   background: rgba(255,255,255,.97);
   box-shadow: 0 2px 8px rgba(20,49,87,.12);
 }
@@ -745,11 +776,11 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     -webkit-backdrop-filter: blur(40px) saturate(150%);
     backdrop-filter: blur(40px) saturate(150%);
     border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 32px;
+    border-radius: var(--mg-radius-sheet);
     box-shadow: 0 24px 80px rgba(0,0,0,0.07), inset 0 0 0 1px rgba(255,255,255,0.5);
   }
   @media (max-width: 1279px) {
-    .production-app { grid-template-columns: 224px minmax(0, 1fr); column-gap: 20px; padding: 0 20px 20px; margin: 12px auto; border-radius: 24px; }
+    .production-app { grid-template-columns: 224px minmax(0, 1fr); column-gap: 20px; padding: 0 20px 20px; margin: 12px auto; border-radius: var(--mg-radius-2xl); }
   }
   .production-app > .app-header {
     grid-column: 1 / -1;
@@ -763,14 +794,14 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .production-app > .app-tabbar {
     position: fixed !important;
     inset: auto 0 0;
-    z-index: 40;
+    z-index: var(--mg-z-overlay);
     width: 100%;
     height: auto;
     margin: 0;
     padding: 8px 0 max(.45rem, env(safe-area-inset-bottom)) !important;
     border: 0 !important;
     border-top: 1px solid rgba(255,255,255,.7) !important;
-    border-radius: 24px 24px 0 0;
+    border-radius: var(--mg-radius-2xl) var(--mg-radius-2xl) 0 0;
     background: rgba(255,255,255,.96) !important;
     -webkit-backdrop-filter: blur(22px);
     backdrop-filter: blur(22px);
@@ -793,7 +824,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     justify-content: center;
     gap: 4px;
     padding: 4px 2px;
-    border-radius: 16px;
+    border-radius: var(--mg-radius-lg);
     font-size: 11px;
   }
   .app-tabbar-inner button:not(.app-create-button):hover { background: rgba(37, 99, 235, 0.05); }
@@ -861,7 +892,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     margin: 0;
     padding: 40px 44px 150px;
     border: 0;
-    border-radius: 28px;
+    border-radius: var(--mg-radius-3xl);
     color: white;
     background: #092345 url('/images/welcome-kyiv-v1.jpg') center 53% / cover no-repeat;
     box-shadow: 0 18px 44px rgba(10,36,70,.2);
@@ -878,9 +909,9 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .home-screen .home-title { position: relative; max-width: 650px; margin-top: 10px; color: white !important; font-size: clamp(34px,3.4vw,52px); line-height: 1.04; }
   .home-screen .home-description { max-width: 540px; margin-top: 14px; color: #e2efff !important; font-size: 16px; line-height: 1.6; }
   /* The search card overlaps the photo so it is visible without scrolling; transport choices follow below on a light surface. */
-  .home-screen > .home-search-panel { z-index: 1; grid-column: 1 / -1; grid-row: 2; margin: -128px 28px 0; }
+  .home-screen > .home-search-panel { z-index: var(--mg-z-base); grid-column: 1 / -1; grid-row: 2; margin: -128px 28px 0; }
   .journey-search-card {
-    border-radius: 28px !important;
+    border-radius: var(--mg-radius-3xl) !important;
     padding: 24px !important;
     background: rgba(255,255,255,0.94) !important;
     -webkit-backdrop-filter: blur(20px) !important;
@@ -889,7 +920,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     border: 1px solid rgba(255,255,255,1) !important;
   }
   .home-screen > .home-map-cta { grid-column: 1 / -1; grid-row: 3; width: auto; margin: 0 28px; }
-  .home-screen > .home-transport-panel { grid-column: 1 / -1; grid-row: 4; margin: 0 28px; padding: 20px; border-radius: 24px; background: white; box-shadow: 0 10px 30px rgba(9,35,69,.06); }
+  .home-screen > .home-transport-panel { grid-column: 1 / -1; grid-row: 4; margin: 0 28px; padding: 20px; border-radius: var(--mg-radius-2xl); background: white; box-shadow: 0 10px 30px rgba(9,35,69,.06); }
   .home-screen .transport-mode-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
   .home-screen > .home-demand-cta { grid-column: 1 / -1; grid-row: 2; margin: 0; min-height: 54px; }
   .home-screen > .home-offer-heading { grid-column: 1 / -1; grid-row: 3; margin-top: 4px; }
@@ -1237,7 +1268,7 @@ html.dark .coverage-details[open] { border-color: #263648 !important; }
 .mg-rise { animation-name: mg-rise; }
 .mg-pop { animation-name: mg-pop; }
 .mg-fade { animation: mg-fade var(--mg-dur-base) var(--mg-ease-standard) both; }
-.mg-stagger { animation-delay: calc(var(--mg-stagger-i, 0) * 55ms); }
+.mg-stagger { animation-delay: calc(var(--mg-stagger-i, 0) * var(--mg-stagger-step)); }
 
 /* Tactile press feedback, kept subtle enough to read as weight, not jitter. */
 .mg-press { transition: transform var(--mg-dur-tap) var(--mg-ease-standard), box-shadow var(--mg-dur-fast) var(--mg-ease-standard), background-color var(--mg-dur-fast) var(--mg-ease-standard), border-color var(--mg-dur-fast) var(--mg-ease-standard); }
@@ -1252,7 +1283,7 @@ html.dark .coverage-details[open] { border-color: #263648 !important; }
   background-image: linear-gradient(100deg, rgba(148, 163, 184, .12) 30%, rgba(148, 163, 184, .28) 48%, rgba(148, 163, 184, .12) 66%);
   background-size: 220% 100%;
   animation: mg-shimmer 1.5s linear infinite;
-  border-radius: 10px;
+  border-radius: var(--mg-radius-md);
 }
 .mg-live-dot { animation: mg-breathe 2.4s var(--mg-ease-standard) infinite; }
 
@@ -1327,7 +1358,7 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 .home-action-card {
   --home-ink: #14243B;
   --home-sub: #4E5D75;
-  border-radius: 20px;
+  border-radius: var(--mg-radius-xl);
   border-color: #E2EAF5;
   background: var(--home-surface, #FFFFFF);
   box-shadow: 0 2px 10px rgba(17, 47, 88, .06);
@@ -1365,7 +1396,7 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 .home-popular-route { height: 4rem; }
 .home-banner-copy, .home-banner-media { animation: mg-fade var(--mg-dur-slow) var(--mg-ease-standard) both; }
 .home-marshpass-slot { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) both; }
-.home-action-grid > .home-action-card { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) both; animation-delay: calc(90ms + var(--mg-stagger-i, 0) * 60ms); }
+.home-action-grid > .home-action-card { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) both; animation-delay: calc(90ms + var(--mg-stagger-i, 0) * var(--mg-stagger-step)); }
 .home-popular-routes { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) 260ms both; }
 .home-popular-route { transition: transform var(--mg-dur-base) var(--mg-ease-entrance), box-shadow var(--mg-dur-base) var(--mg-ease-standard); }
 @media (hover: hover) and (pointer: fine) {
@@ -1510,7 +1541,7 @@ html:not(.dark) .home-marshpass-card {
 }
 html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !important; border-color: var(--mg-border-subtle) !important; }
 .home-canonical-banner,
-.home-marshpass-card { border-radius: 20px; }
+.home-marshpass-card { border-radius: var(--mg-radius-xl); }
 .production-app :is(article, .journey-search-card, .journey-offer-card) { border-radius: 18px; }
 
 @media (max-width: 639px) {
