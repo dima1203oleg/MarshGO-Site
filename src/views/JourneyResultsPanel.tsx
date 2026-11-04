@@ -6,6 +6,7 @@ import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
 import type { JourneySegmentStripItem } from '../design-system/journey/JourneySegmentStrip';
 import { journeyLegCaveat } from './journeyLegLabel';
+import { diagnosticsRequested, funnelLines, partialReasonNotices, splitResultNotices } from './resultsDiagnostics';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
@@ -24,10 +25,10 @@ const strategyConfig: Array<{ id: ApiJourneyStrategy; label: string; Icon: typeo
 
 /** Amber = a caveat about the data; rose = something failed; slate = something is simply unavailable here. */
 const noticeTone = {
-  rose: { dot: 'bg-rose-500', text: 'text-rose-800 dark:text-rose-100' },
-  amber: { dot: 'bg-amber-500', text: 'text-amber-900 dark:text-amber-100' },
-  blue: { dot: 'bg-blue-500', text: 'text-blue-900 dark:text-blue-100' },
-  slate: { dot: 'bg-slate-400', text: 'text-slate-600 dark:text-slate-300' },
+  rose: { dot: 'bg-rose-500', text: 'text-rose-800 dark:text-rose-100', softBg: 'bg-rose-50 dark:bg-rose-950/50' },
+  amber: { dot: 'bg-amber-500', text: 'text-amber-900 dark:text-amber-100', softBg: 'bg-amber-50 dark:bg-amber-950/40' },
+  blue: { dot: 'bg-blue-500', text: 'text-blue-900 dark:text-blue-100', softBg: 'bg-blue-50 dark:bg-blue-950/40' },
+  slate: { dot: 'bg-slate-400', text: 'text-slate-600 dark:text-slate-300', softBg: 'bg-slate-100 dark:bg-slate-800/60' },
 } as const;
 
 function formatRouteCount(count: number): string {
@@ -224,8 +225,9 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   // Transport-type tokens are availability facts, not preferences: they get their own honest lines.
   const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences);
   const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
-  if (result.partial && !result.partialReasons?.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
-  if (result.partialReasons?.includes('walking_routing_unavailable')) notices.push({ tone: 'amber', text: 'Пішохідні підходи до зупинок показано приблизно: сервіс побудови точного пішого маршруту не налаштований.' });
+  const reasonNotices = partialReasonNotices(result.partialReasons);
+  reasonNotices.forEach(notice => notices.push(notice));
+  if (result.partial && !reasonNotices.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
   const preferenceTokens = result.unsupportedPreferences.filter(token => !token.startsWith('transportType:'));
   // Provider and preference messages arrive as full sentences (often already
   // ending with a period); trim their terminal punctuation so the wrapper
@@ -237,6 +239,12 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
   if (result.candidateGenerationTruncated) notices.push({ tone: 'amber', text: 'Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.' });
   unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
   sharedCaveats.forEach(text => notices.push({ tone: 'amber', text }));
+  const { headline, technical } = splitResultNotices(notices);
+  const showDiagnostics = diagnosticsRequested(
+    typeof window !== 'undefined' ? window.location.search : '',
+    typeof window !== 'undefined' ? window.localStorage.getItem('marshgo.results.diagnostics') : null,
+  );
+  const funnel = showDiagnostics ? funnelLines(result) : [];
 
   return <section aria-label="Результати мультимодального пошуку" className="mt-2">
     <div role="group" aria-label="Режим пошуку маршрутів" className="mb-2 grid grid-cols-3 gap-1.5">
@@ -251,18 +259,20 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
       })}
     </div>
 
-    {notices.length > 0 && <details className="search-notices mb-3 rounded-2xl border border-slate-200 bg-slate-50 dark:border-[#20354A] dark:bg-[#0D1B28]">
-      <summary aria-label={`Обмеження пошуку та недоступний транспорт: ${notices.length}`} className={`search-notices-summary flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-[11px] font-extrabold ${notices.some(notice => notice.tone === 'rose') ? 'text-rose-800 dark:text-rose-100' : 'text-slate-700 dark:text-slate-200'}`}>
+    {headline && <p role="status" className={`search-headline-note mb-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-[11px] font-bold leading-4 ${noticeTone[headline.tone].softBg} ${noticeTone[headline.tone].text}`}><Info size={13} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{headline.text}</span></p>}
+    {showDiagnostics && (technical.length > 0 || funnel.length > 0) && <details className="search-notices mb-3 rounded-2xl border border-slate-200 bg-slate-50 dark:border-[#20354A] dark:bg-[#0D1B28]">
+      <summary aria-label="Діагностика пошуку для розробників" className="search-notices-summary flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-[11px] font-extrabold text-slate-700 dark:text-slate-200">
         <Info size={14} aria-hidden="true"/>
-        <span className="flex-1">Обмеження пошуку та недоступний транспорт</span>
-        <span className="rounded-full bg-slate-200/70 px-1.5 py-0.5 tabular-nums dark:bg-[#15283A]">{notices.length}</span>
+        <span className="flex-1">Діагностика пошуку</span>
+        <span className="rounded-full bg-slate-200/70 px-1.5 py-0.5 tabular-nums dark:bg-[#15283A]">{technical.length + funnel.length}</span>
         <ChevronRight size={16} aria-hidden="true" className="search-notices-chevron shrink-0"/>
       </summary>
       <ul className="search-notices-list space-y-1.5 px-3 pb-3">
-        {notices.map(notice => <li key={notice.text} className="flex gap-2 text-[11px] leading-4">
+        {technical.map(notice => <li key={notice.text} className="flex gap-2 text-[11px] leading-4">
           <span aria-hidden="true" className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${noticeTone[notice.tone].dot}`}/>
           <span className={noticeTone[notice.tone].text}>{notice.text}</span>
         </li>)}
+        {funnel.map(line => <li key={line} className="font-mono text-[10px] leading-4 text-slate-600 dark:text-slate-300">{line}</li>)}
       </ul>
     </details>}
 

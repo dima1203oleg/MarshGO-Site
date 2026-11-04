@@ -320,6 +320,21 @@ export type ApiJourneySearchResult = {
   resultsTruncated?: boolean;
   candidateGenerationTruncated?: boolean;
   resultSamplingTruncated?: boolean;
+  completeness?: {
+    providersQueried: number;
+    providersSucceeded: number;
+    providersFailed: number;
+    modesAvailable: string[];
+    modesUnavailable: Array<{ mode: string; available: boolean; requested: boolean; reason: string }>;
+    candidatesGenerated: number;
+    candidatesValidated: number;
+    candidatesRejected: number;
+    candidatesDeduplicated: number;
+    resultsReturned: number;
+    searchTruncated: boolean;
+    searchComplete: boolean;
+    transitSearchFailed: boolean;
+  };
   partial: boolean;
   partialReasons?: string[];
   blockedProviders: string[];
