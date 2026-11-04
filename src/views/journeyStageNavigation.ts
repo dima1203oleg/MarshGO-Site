@@ -25,9 +25,10 @@ export function activeTime(value?: string | null): string {
   return timeFormat.format(minute);
 }
 
-/** A city feed names a stop "вул. Соборна, 12, Львів"; navigation only needs the street-level part. */
+/** A city feed names a stop "вул. Соборна, 12, Львів" or "Під Голоском (668)"; navigation needs the clean human name. */
 export function shortPlace(name: string): string {
-  return name.split(',')[0]?.trim() || name;
+  const base = name.split(',')[0]?.trim() || name;
+  return base.replace(/\s*\(\d+\)$/, '').replace(/\s*\(код:?\s*\d+\)$/i, '').trim();
 }
 
 export function activeLegStatus(leg: ActiveLeg, liveStatus?: string | null): ActiveLegStatus {

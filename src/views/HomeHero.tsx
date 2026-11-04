@@ -16,11 +16,6 @@ type HomeTrip = {
   onOpen: () => void;
 };
 
-const banners = [
-  { eyebrow: 'MARSHGO · ПОПУТКИ', title: 'Попутники знайдуться на твоєму маршруті', description: 'Опублікуй поїздку й розділи витрати на дорогу.', image: '/images/welcome-road.jpg', imagePosition: 'center 68%', action: 'publish' as const, actionLabel: 'Опублікувати поїздку' },
-  { eyebrow: 'МІСТО ТА МІЖМІСТО', title: 'Усі способи доїхати в одному пошуку', description: 'Попутки, міський транспорт і подорожі Україною.', image: '/hero_car_route.png', imagePosition: 'center', action: 'search' as const, actionLabel: 'Знайти маршрут' },
-];
-
 const actions = [
   { title: 'Навігація', subtitle: 'Побудувати маршрут', tone: 'navigation', icon: Navigation },
   { title: 'Опублікувати поїздку', subtitle: 'Попутка / маршрут', tone: 'publish', icon: CirclePlus },
@@ -59,18 +54,10 @@ export function HomeHero({
 }) {
   const root = useRef<HTMLElement | null>(null);
   const [availableHeight, setAvailableHeight] = useState<number | null>(null);
-  const [bannerIndex, setBannerIndex] = useState(0);
   const [passIndex, setPassIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const marshPasses = selectHomeMarshPasses(trips);
   const activePass = marshPasses[passIndex] ?? marshPasses[0];
-  const activeBanner = banners[bannerIndex] ?? banners[0];
-
-  useEffect(() => {
-    if (marshPasses.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const timer = window.setInterval(() => setBannerIndex((index) => (index + 1) % banners.length), 5000);
-    return () => window.clearInterval(timer);
-  }, [marshPasses.length]);
 
   useEffect(() => setPassIndex((index) => Math.min(index, Math.max(0, marshPasses.length - 1))), [marshPasses.length]);
 
@@ -112,17 +99,48 @@ export function HomeHero({
         const delta = endX - touchStartX.current;
         if (Math.abs(delta) > 40) setPassIndex((index) => (index + (delta < 0 ? 1 : -1) + marshPasses.length) % marshPasses.length);
         touchStartX.current = null;
-      }} className="home-marshpass-card flex h-full w-full flex-col justify-between overflow-hidden rounded-[var(--mg-radius-xl)] border p-3.5 text-left transition active:scale-[.99]">
-        <span className="flex items-center justify-between gap-2"><span className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-600 text-white"><Ticket size={17}/></span><span className="text-xs font-black tracking-[.1em]">MARSHGO <span className="text-blue-600 dark:text-blue-300">MARSH PASS</span></span></span><span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300"><CheckCircle2 size={12}/>{activePass.status === 'boarding' || activePass.status === 'in_progress' ? 'У дорозі' : 'Підтверджено'}</span></span>
-        <span className="my-1 flex min-w-0 items-center gap-2"><span className="min-w-0 flex-1"><span className="block truncate text-[18px] font-black leading-tight">{activePass.origin.split(',')[0]}</span><span className="block text-xs font-semibold text-slate-500 dark:text-slate-300">{formatDeparture(activePass.departureAt)}</span></span><ArrowRight size={19} className="shrink-0 text-blue-600 dark:text-blue-300"/><span className="min-w-0 flex-1 text-right"><span className="block truncate text-[18px] font-black leading-tight">{activePass.destination.split(',')[0]}</span><span className="block text-xs font-semibold text-slate-500 dark:text-slate-300">{activePass.price ?? 'Ціна уточнюється'}</span></span></span>
-        <span className="flex items-center justify-between gap-2 border-t border-slate-200/70 pt-2 dark:border-slate-700/80"><span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300"><ShieldCheck size={13} className="shrink-0 text-emerald-600 dark:text-emerald-400"/><span className="truncate">{activePass.driverName ?? 'Приватна поїздка'}{activePass.seatCount ? ` · ${activePass.seatCount} ${activePass.seatCount === 1 ? 'місце' : 'місця'}` : ''}</span></span><span className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-300"><QrCode size={14}/>Відкрити квиток</span></span>
+      }} className="home-marshpass-card flex h-full w-full flex-col justify-between overflow-hidden rounded-[var(--mg-radius-xl)] border border-blue-500/40 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 p-4 text-left shadow-lg transition active:scale-[.99]">
+        <span className="flex items-center justify-between gap-2"><span className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-600 text-white shadow-sm"><Ticket size={17}/></span><span className="text-xs font-black tracking-[.12em] text-white">MARSHGO <span className="text-blue-400">MARSH PASS</span></span></span><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 text-xs font-bold text-emerald-300"><CheckCircle2 size={12}/>{activePass.status === 'boarding' || activePass.status === 'in_progress' ? 'У дорозі' : 'Підтверджено'}</span></span>
+        <span className="my-2 flex min-w-0 items-center gap-2"><span className="min-w-0 flex-1"><span className="block truncate text-[19px] font-black leading-tight text-white">{activePass.origin.split(',')[0]}</span><span className="block text-xs font-semibold text-slate-300">{formatDeparture(activePass.departureAt)}</span></span><div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-400"><ArrowRight size={16}/></div><span className="min-w-0 flex-1 text-right"><span className="block truncate text-[19px] font-black leading-tight text-white">{activePass.destination.split(',')[0]}</span><span className="block text-xs font-semibold text-slate-300">{activePass.price ?? 'Ціна уточнюється'}</span></span></span>
+        <span className="flex items-center justify-between gap-2 border-t border-dashed border-slate-700/80 pt-2.5"><span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-300"><ShieldCheck size={14} className="shrink-0 text-emerald-400"/><span className="truncate">{activePass.driverName ?? 'Приватна поїздка'}{activePass.seatCount ? ` · ${activePass.seatCount} ${activePass.seatCount === 1 ? 'місце' : 'місця'}` : ''}</span></span><span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm"><QrCode size={14}/>Відкрити квиток</span></span>
       </button>
-      {marshPasses.length > 1 && <div className="mt-1.5 flex items-center justify-center gap-3"><button type="button" aria-label="Попередній MarshPass" onClick={() => setPassIndex((index) => (index - 1 + marshPasses.length) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-[var(--mg-surface-tint)] dark:text-slate-100"><ChevronLeft size={16}/></button><span aria-live="polite" className="text-xs font-bold text-slate-500 dark:text-slate-300">{passIndex + 1} / {marshPasses.length}</span><button type="button" aria-label="Наступний MarshPass" onClick={() => setPassIndex((index) => (index + 1) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-[var(--mg-surface-tint)] dark:text-slate-100"><ChevronRight size={16}/></button></div>}
-    </section> : <section key={activeBanner.eyebrow} aria-label="MARSHGO: банер про поїздки" className="home-canonical-banner home-banner relative mb-3 flex shrink-0 flex-col justify-between overflow-hidden rounded-[var(--mg-radius-xl)] border border-white/80 p-4 shadow-[0_7px_22px_rgba(26,73,133,.12)]">
-      <img src={activeBanner.image} alt="" style={{ objectPosition: activeBanner.imagePosition }} className="home-banner-media absolute inset-0 h-full w-full object-cover"/>
-      <span aria-hidden="true" className="home-banner-scrim absolute inset-0"/>
-      <div className="home-banner-copy relative z-10 max-w-[78%]"><p className="text-xs font-black uppercase tracking-[.12em] text-blue-700 dark:text-blue-300">{activeBanner.eyebrow}</p><h1 className="mt-1 text-[18px] font-black leading-tight tracking-tight text-[var(--mg-ink)] dark:text-white">{activeBanner.title}</h1><p className="mt-1 text-[12px] font-semibold leading-snug text-slate-700 dark:text-slate-200">{activeBanner.description}</p></div>
-      <div className="relative z-10 flex items-center justify-between"><button type="button" onClick={activeBanner.action === 'publish' ? onPublishTrip : onSearchTrip} className="home-action-cta mg-press inline-flex min-h-11 items-center gap-2 rounded-full bg-blue-600 px-4 text-[13px] font-bold text-white shadow-md shadow-blue-900/20">{activeBanner.actionLabel}<ArrowRight size={15}/></button><div className="flex items-center gap-1.5" role="group" aria-label="Банери MARSHGO">{banners.map((banner, index) => <button key={banner.eyebrow} type="button" aria-label={`Показати банер ${index + 1}: ${banner.eyebrow}`} aria-pressed={bannerIndex === index} onClick={() => setBannerIndex(index)} className="grid size-11 shrink-0 place-items-center"><span aria-hidden="true" className={`h-2.5 rounded-full transition-all duration-[var(--mg-dur-base)] ${bannerIndex === index ? 'w-6 bg-blue-600' : 'w-2.5 bg-slate-400/60 hover:bg-slate-400'}`}/></button>)}</div></div>
+      {marshPasses.length > 1 && <div className="mt-1.5 flex items-center justify-center gap-3"><button type="button" aria-label="Попередній MarshPass" onClick={() => setPassIndex((index) => (index - 1 + marshPasses.length) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-slate-700 bg-slate-800 text-slate-100"><ChevronLeft size={16}/></button><span aria-live="polite" className="text-xs font-bold text-slate-300">{passIndex + 1} / {marshPasses.length}</span><button type="button" aria-label="Наступний MarshPass" onClick={() => setPassIndex((index) => (index + 1) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-slate-700 bg-slate-800 text-slate-100"><ChevronRight size={16}/></button></div>}
+    </section> : <section aria-label="Цифровий квиток MARSHGO MarshPass" className="home-canonical-banner home-banner home-marshpass-card relative mb-3 flex shrink-0 flex-col justify-between overflow-hidden rounded-[var(--mg-radius-xl)] border border-blue-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 p-3.5 shadow-[0_8px_24px_rgba(11,99,214,0.18)] text-left">
+      <span aria-hidden="true" className="home-banner-media absolute inset-0 pointer-events-none hidden" />
+      <span aria-hidden="true" className="home-banner-scrim absolute inset-0 pointer-events-none hidden" />
+      <button type="button" onClick={onSearchTrip} aria-label="Отримати або переглянути квиток MarshPass" className="mg-press-subtle relative z-10 flex h-full w-full flex-col justify-between text-left">
+        <span className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-500/30"><Ticket size={17}/></span>
+            <span className="text-xs font-black tracking-[.12em] text-white">MARSHGO <span className="text-blue-400">MARSH PASS</span></span>
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/20 border border-blue-400/30 px-2.5 py-0.5 text-xs font-bold text-blue-300">
+            <CheckCircle2 size={12} className="text-blue-400"/>Єдиний квиток
+          </span>
+        </span>
+        <span className="my-2 flex min-w-0 items-center justify-between gap-2">
+          <span className="min-w-0">
+            <span className="block text-[17px] font-black leading-tight text-white">Львів</span>
+            <span className="block text-xs font-semibold text-slate-300">Місто та міжмісто</span>
+          </span>
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-600/25 border border-blue-500/30 text-blue-400">
+            <ArrowRight size={15}/>
+          </div>
+          <span className="min-w-0 text-right">
+            <span className="block text-[17px] font-black leading-tight text-white">Куди завгодно</span>
+            <span className="block text-xs font-semibold text-slate-300">Попутки · Транспорт</span>
+          </span>
+        </span>
+        <span className="flex items-center justify-between gap-2 border-t border-dashed border-slate-700/80 pt-2">
+          <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-300">
+            <ShieldCheck size={14} className="shrink-0 text-emerald-400"/>
+            <span className="truncate">QR-посадка · 0% комісії</span>
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-md shadow-blue-900/30 transition">
+            <QrCode size={13}/><span>Отримати квиток</span><ArrowRight size={13}/>
+          </span>
+        </span>
+      </button>
     </section>}
 
     <div className="home-action-grid mg-stagger-list grid grid-cols-2 gap-2.5" aria-label="Швидкі дії">
