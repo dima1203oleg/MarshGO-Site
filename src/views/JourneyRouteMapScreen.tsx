@@ -473,13 +473,13 @@ export function JourneyRouteMapScreen({
 
     <header className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-3xl flex-col gap-2 px-4 pb-2 pt-[max(.75rem,env(safe-area-inset-top))]">
       <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_5.75rem] items-center gap-2">
-        <button type="button" aria-label="Назад до результатів" onClick={onBack} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur">
+        <button type="button" aria-label="Назад до результатів" onClick={onBack} className="mg-press-subtle grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur">
           <ArrowLeft size={20}/>
         </button>
         <span className="truncate text-center text-[17px] font-black tracking-[-.04em] text-[var(--route-ink)]">MARSH<span className="text-[var(--mg-blue)]">GO</span></span>
         <div className="flex shrink-0 justify-end gap-1">
-          <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur hover:bg-[var(--route-hover)]"><Heart size={18} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''}/></button>
-          <button type="button" aria-label="Поділитися маршрутом" onClick={() => void shareRoute()} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur hover:bg-[var(--route-hover)]"><Share2 size={18}/></button>
+          <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur hover:bg-[var(--route-hover)]"><Heart size={18} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''}/></button>
+          <button type="button" aria-label="Поділитися маршрутом" onClick={() => void shareRoute()} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur hover:bg-[var(--route-hover)]"><Share2 size={18}/></button>
         </div>
       </div>
       <div role="group" aria-label={`Звідки: ${firstLeg?.origin.name ?? 'Початок'}. Куди: ${lastLeg?.destination.name ?? 'Кінець'}`} className="route-address-summary flex min-h-10 items-center gap-2 rounded-xl border border-[var(--route-border)] bg-[var(--route-floating)] px-3 py-2 text-[12px] font-extrabold text-[var(--route-ink)] shadow-lg backdrop-blur">
@@ -490,11 +490,11 @@ export function JourneyRouteMapScreen({
     </header>
     <div className="absolute right-4 z-10 mx-auto flex max-w-3xl flex-col gap-2" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 6.5rem)' }}>
       <div className="flex shrink-0 flex-col gap-2">
-        {sheetSnap !== 'expanded' && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--mg-blue)] shadow-lg backdrop-blur"><Navigation size={19}/></button>}
+        {sheetSnap !== 'expanded' && <button type="button" aria-label="Показати маршрут цілком" title="Показати маршрут цілком" onClick={showWholeRoute} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--mg-blue)] shadow-lg backdrop-blur"><Navigation size={19}/></button>}
         <button type="button" aria-label={`Шар карти: ${mapLayers[mapLayer].label}. Перемкнути`} title={`Шар карти: ${mapLayers[mapLayer].label}`} onClick={() => {
           const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
           setCurrentMapLayer(next); setMapLayer(next);
-        }} className="grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur"><Layers size={19}/></button>
+        }} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-[var(--route-border)] bg-[var(--route-floating)] text-[var(--route-ink)] shadow-lg backdrop-blur"><Layers size={19}/></button>
       </div>
     </div>
 
@@ -583,7 +583,7 @@ export function JourneyRouteMapScreen({
               style={{ borderLeftWidth: 4, borderLeftColor: color, opacity: activeSegmentId && !selected ? 0.68 : 1, ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}) }}
             >
               <div className="flex items-start gap-2 p-2">
-                <button type="button" onClick={() => chooseSegment(leg.id)} aria-pressed={selected} aria-label={`Вибрати сегмент: ${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`} className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]">
+                <button type="button" onClick={() => chooseSegment(leg.id)} aria-pressed={selected} aria-label={`Вибрати сегмент: ${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`} className="mg-press-subtle flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_color-mix(in_srgb,var(--segment-color)_48%,transparent)]" style={{ backgroundColor: color, ['--segment-color' as string]: color }}><SegmentIcon leg={leg}/></span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -597,8 +597,8 @@ export function JourneyRouteMapScreen({
                   </span>
                 </button>
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <b className="text-xs tabular-nums" style={{ color: isDark ? color : '#14243B' }}>{legPriceLabel(leg)}</b>
-                  {scheduled && <button type="button" aria-label={`${expanded ? 'Згорнути' : 'Розгорнути'} зупинки: ${journeyLegLabel(leg.mode, leg.transportType)}`} aria-expanded={expanded} onClick={() => toggleExpanded(leg.id)} className="grid h-11 w-11 place-items-center rounded-lg text-[var(--route-muted)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
+                  <b className="text-xs tabular-nums" style={{ color: isDark ? color : 'var(--route-ink)' }}>{legPriceLabel(leg)}</b>
+                  {scheduled && <button type="button" aria-label={`${expanded ? 'Згорнути' : 'Розгорнути'} зупинки: ${journeyLegLabel(leg.mode, leg.transportType)}`} aria-expanded={expanded} onClick={() => toggleExpanded(leg.id)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-lg text-[var(--route-muted)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
                     {expanded ? <ChevronUp size={17}/> : <ChevronDown size={17}/>}
                   </button>}
                 </div>

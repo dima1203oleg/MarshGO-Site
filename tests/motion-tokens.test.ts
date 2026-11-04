@@ -226,6 +226,27 @@ test('W4: src/index.css скорочено та очищено від каска
   }
 });
 
+test('W5: живі екрани результатів, маршруту та головної інтегрують Transit Thread, motion-класи M1–M7 і 0 сирих hex у HomeHero/JourneyResultsPanel', () => {
+  const results = readFileSync('src/views/JourneyResultsPanel.tsx', 'utf8');
+  const routeMap = readFileSync('src/views/JourneyRouteMapScreen.tsx', 'utf8');
+  const homeHero = readFileSync('src/views/HomeHero.tsx', 'utf8');
+  const transportPanel = readFileSync('src/components/TransportTypesPanel.tsx', 'utf8');
+
+  assert.match(results, /data-testid="journey-transit-thread"/, 'картка маршруту має містити пропорційну смугу Transit Thread');
+  assert.match(results, /mg-stagger-list/, 'список результатів має використовувати каскадну появу M4');
+  assert.match(results, /mg-press-subtle/, 'картки та кнопки результатів мають використовувати тактильний прес M1');
+  assert.match(routeMap, /mg-live-pulse/, 'живий статус GPS на екрані маршруту має використовувати пульс M7');
+  assert.match(homeHero, /mg-stagger-list/, 'швидкі дії головної мають використовувати каскадну появу');
+  assert.match(transportPanel, /mg-pill-switch/, 'перемикачі провайдерів і транспорту мають використовувати M5');
+
+  for (const file of ['src/views/HomeHero.tsx', 'src/views/JourneyResultsPanel.tsx']) {
+    const source = readFileSync(file, 'utf8');
+    const rawHex = source.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+    assert.deepEqual(rawHex, [], `${file} не повинен містити сирих hex-кольорів`);
+  }
+});
+
+
 
 
 
