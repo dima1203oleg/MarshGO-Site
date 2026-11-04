@@ -363,15 +363,15 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 2.75rem;
+  min-height: 3.25rem;
   flex-direction: column;
   justify-content: center;
-  gap: .08rem;
+  gap: .1rem;
   padding: .12rem .25rem;
   text-align: left;
 }
 .journey-segment-tile-button {
-  min-height: 2.75rem;
+  min-height: 3.25rem;
   color: inherit;
   transition: background-color .16s ease, opacity .16s ease;
 }
@@ -385,7 +385,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   justify-content: flex-start;
   gap: .25rem;
   color: #172638;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.15;
 }
@@ -399,10 +399,10 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
  * hues falls under the WCAG AA the board itself demands.
  */
 .journey-segment-tile-badge {
-  min-width: 2.05rem;
+  min-width: 2.2rem;
   padding: .12rem .3rem;
   border-radius: .45rem;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1.2;
   text-align: center;
@@ -411,17 +411,23 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   background-color: color-mix(in srgb, var(--segment-color) 18%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--segment-color) 55%, transparent);
 }
+/*
+ * The meta line carries the per-leg time and cost, so it may not be truncated away: two clamped
+ * lines at the 12 px floor beat one ellipsized line that hides the fare.
+ */
 .journey-segment-tile-meta {
-  display: block;
+  display: -webkit-box;
   min-width: 0;
   overflow: hidden;
   padding-left: 1.25rem;
   color: #64748b;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   font-variant-numeric: tabular-nums;
 }
 .journey-segment-tile-meta-value { font-weight: 700; }
@@ -513,12 +519,13 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   .journey-segment-tile--scroll { flex-basis: 0; }
 }
 @media (max-width: 479px) {
-  .journey-segment-tile-heading { gap: .125rem; font-size: clamp(10px, 2.8vw, 11px); }
+  /* Only the icon width and the meta indent are screen-specific; the 12 px floor lives in the
+     base rules above and must not be re-declared here, or the small screen loses legibility. */
+  .journey-segment-tile-heading { gap: .125rem; }
   .journey-segment-tile-icon { flex-basis: 1rem; }
   .journey-segment-tile:not(.journey-segment-tile--scroll) .journey-segment-tile-meta {
-    padding-left: 1.25rem;
+    padding-left: 1.125rem;
     text-align: left;
-    font-size: 10px;
   }
 }
 @media (max-width: 379px) {

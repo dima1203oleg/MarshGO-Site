@@ -38,11 +38,11 @@ test('canonical MARSHGO design references stay owner-approved', async () => {
 
 // A duplicate rule later in the sheet silently wins the cascade, which is how tile
 // text drifted back to 8.5 px after the legibility pass.
-test('route-result segment tiles stay at or above the 9 px legibility floor', async () => {
+test('route-result segment tiles stay at or above the 12 px legibility floor', async () => {
   const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
   const undersized = [...css.matchAll(/([^{}]*journey-segment-tile[^{}]*)\{([^}]*)\}/g)]
     .flatMap(([, selector, body]) => [...body.matchAll(/font-size:\s*(?:clamp\(\s*)?([\d.]+)px/g)]
-      .filter(size => Number(size[1]) < 9)
+      .filter(size => Number(size[1]) < 12)
       .map(size => `${selector.trim()} → ${size[1]}px`));
   assert.deepEqual(undersized, []);
 });
@@ -343,4 +343,20 @@ test('the theme defaults to dark and the boot shell paints it first', async () =
   assert.equal(themeModule.themeService.getTheme(), 'dark', 'a first run with no stored choice must open dark');
   assert.match(html, /classList\.add\('boot-dark'\)/, 'the boot shell must carry the same dark default');
   assert.doesNotMatch(html, /getItem\('mg_theme'\) === 'dark'\)/, 'the shell went dark only for an explicit stored choice, so the default flashed light');
+});
+
+// At 320–390 px the summary row cannot hold duration + price + action chips on one line, and the
+// children are shrink-0 on purpose — a cut-off fare is worse than a taller header. So the row has to
+// wrap. With a zero flex basis the line-break test never sees the real content width, the left group
+// shrinks and the chips paint over «≈ 23 ₴», which is exactly the 2026-11-04 visual-pass defect.
+test('the compact route lip wraps instead of painting action chips over the price', async () => {
+  const lip = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/design-system/journey/CanonicalRouteLip.tsx'), 'utf8');
+  const compactRow = lip.match(/'flex min-h-9[^']*'/);
+  assert.ok(compactRow, 'the compact summary row lost its own class string');
+  assert.match(compactRow[0], /flex-wrap/, 'a nowrap summary row overflows and hides the price under the action chips');
+  assert.match(lip, /flex-\[1_1_auto\]/, 'a zero flex basis hides the content width from the wrap test');
+  const undersized = [...lip.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)]
+    .filter(size => Number(size[1]) < 12)
+    .map(size => `${size[1]}px`);
+  assert.deepEqual(undersized, [], `the lip carries the numbers a passenger compares, so 12 px is its floor: ${undersized.join(', ')}`);
 });
