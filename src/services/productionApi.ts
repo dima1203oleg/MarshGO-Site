@@ -93,6 +93,9 @@ export type ApiBooking = {
   origin_name: string;
   destination_name: string;
   departure_at: string;
+  /** The boarding pass prints arrival and duration only when the offer actually carries them. */
+  arrival_at?: string | null;
+  duration_s?: number | null;
   driver_name: string;
   passenger_name: string;
   current_user_is_driver: boolean;

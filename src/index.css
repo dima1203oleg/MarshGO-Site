@@ -1066,6 +1066,23 @@ html.dark body {
   font-family: 'Syne', 'Plus Jakarta Sans', sans-serif;
 }
 
+/* The boarding pass is a printed artifact, not app chrome: it keeps one navy contract in both
+   themes so the same QR tile and stroke stay legible on any screen it is opened from. */
+.marsh-pass-ticket {
+  --pass-screen: var(--mg-canvas);
+  --pass-screen-ink: var(--mg-ink-primary);
+  --pass-surface: #071C33;
+  --pass-stroke: #1687FF;
+  --pass-ink: #F5F9FF;
+  --pass-ink-secondary: #B6C2D0;
+  --pass-ink-muted: #8FA0B3;
+  --pass-track: rgba(22, 135, 255, .32);
+  --pass-confirm: #2CD67D;
+  --pass-confirm-surface: rgba(44, 214, 125, .14);
+  --pass-badge-top: #1687FF;
+  --pass-badge-bottom: #0B6EF3;
+}
+
 /* Safe area padding utilities */
 .pb-safe {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));

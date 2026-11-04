@@ -4,3 +4,10 @@ export function passengersLabel(count: number): string {
   const word = mod10 === 1 && mod100 !== 11 ? 'пасажир' : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? 'пасажири' : 'пасажирів';
   return `${count} ${word}`;
 }
+
+/** The same rule for seats, which are neuter: 1 місце, 2–4 місця, 5+ місць. */
+export function seatsLabel(count: number): string {
+  const mod10 = count % 10, mod100 = count % 100;
+  const word = mod10 === 1 && mod100 !== 11 ? 'місце' : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? 'місця' : 'місць';
+  return `${count} ${word}`;
+}
