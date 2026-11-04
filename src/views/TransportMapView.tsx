@@ -19,7 +19,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
   const [status, setStatus] = useState<MapStatus>('loading');
   const [hint, setHint] = useState<string | null>(null);
   const [cities, setCities] = useState<ApiTransportCity[]>([]);
-  const [cityId, setCityId] = useState('kyiv');
+  const [cityId, setCityId] = useState('');
   const [selected, setSelected] = useState(getTransportLayers());
   const [layerState, setLayerState] = useState(getLayerAvailabilityState);
   const [quality, setQuality] = useState<VehicleQuality | null>(getVehicleQuality());
@@ -34,7 +34,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
     void productionApi.transportCities(controller.signal).then((response) => {
       if (controller.signal.aborted) return;
       setCities(response);
-      if (!response.some((city) => city.id === cityId) && response[0]) setCityId(response[0].id);
+      if (!response.some((city) => city.id === cityId)) setCityId((response.find((city) => city.name === 'Львів') ?? response[0])?.id ?? cityId);
     }).catch(() => { if (!controller.signal.aborted) setHint('Не вдалося завантажити список міст.'); });
     return () => controller.abort();
   }, []);
