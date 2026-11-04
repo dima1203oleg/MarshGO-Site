@@ -2,6 +2,12 @@ import { routeResultSchema, type RouteRequest, type RouteResult } from '../../sh
 import { NavigationProviderError } from '../../shared/navigation/errors';
 import { NETWORK_ERROR_CODE, networkFailureMessage, requestErrorMessage } from './requestErrorMessage';
 import { normalizePlaceQuery } from './placeQuery';
+import {
+  createRealtimeChannel,
+  type RealtimeChannel,
+  type RealtimeSocket,
+  type RealtimeStatus,
+} from './realtimeChannel';
 import type { TransitZoneGeometry, VehiclePriority } from '../map/transportVisualZones';
 
 export interface TransitArrival {
@@ -523,6 +529,61 @@ async function requestLayer(path: string, signal?: AbortSignal): Promise<Transpo
   return { collection: data, dataQuality: meta?.dataQuality ?? null, failedProviderCount: meta?.failedProviderCount ?? 0, truncated: meta?.truncated === true };
 }
 
+/** Event types the passenger UI is allowed to react to; anything else is dropped. */
+const REALTIME_EVENT_ALLOW_LIST = new Set([
+  'conversation.message.created',
+  'journey.updated',
+  'navigation.route-updated',
+]);
+
+const isAllowedRealtimeType = (type: string) => REALTIME_EVENT_ALLOW_LIST.has(type)
+  || type.startsWith('booking.') || type.startsWith('trip.') || type.startsWith('proposal.')
+  || type.startsWith('navigation.match.') || type.startsWith('rendezvous.');
+
+/**
+ * The session-wide realtime channel. Created lazily so a visitor who never signs in
+ * never requests a ticket, and shared by every screen that asks for live events.
+ */
+let realtimeChannel: RealtimeChannel<ApiRealtimeEvent> | null = null;
+
+function getRealtimeChannel(): RealtimeChannel<ApiRealtimeEvent> {
+  if (realtimeChannel) return realtimeChannel;
+  realtimeChannel = createRealtimeChannel<ApiRealtimeEvent>({
+    fetchTicket: () => request<{ ticket: string }>('/realtime/ticket', { method: 'POST' }).then(({ ticket }) => ticket),
+    socketUrl: (ticket) => {
+      const url = new URL(`${apiBase}/api/v1/realtime`, window.location.href);
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      // The ticket is single-use, so it travels in the query of exactly one upgrade.
+      url.searchParams.set('ticket', ticket);
+      return url.toString();
+    },
+    // One cast at the DOM boundary: the browser hands its handlers an Event argument
+    // that the channel never reads, so the structural socket interface differs only there.
+    createSocket: (url) => new WebSocket(url) as unknown as RealtimeSocket,
+    parseEvent: (raw) => {
+      try {
+        const event = JSON.parse(String(raw)) as ApiRealtimeEvent | { type?: string };
+        if (!event || typeof event.type !== 'string' || !isAllowedRealtimeType(event.type)) return null;
+        return event as ApiRealtimeEvent;
+      } catch {
+        // Malformed frames are ignored: persisted REST history stays authoritative.
+        return null;
+      }
+    },
+    addReconnectSignal: (retryNow) => {
+      const onOnline = () => retryNow();
+      const onVisible = () => { if (document.visibilityState === 'visible') retryNow(); };
+      window.addEventListener('online', onOnline);
+      document.addEventListener('visibilitychange', onVisible);
+      return () => {
+        window.removeEventListener('online', onOnline);
+        document.removeEventListener('visibilitychange', onVisible);
+      };
+    },
+  });
+  return realtimeChannel;
+}
+
 export const productionApi = {
   async restoreSession() {
     const controller = new AbortController();
@@ -901,48 +962,27 @@ export const productionApi = {
   sendMessage(conversationId: string, body: string) {
     return request<ApiMessage>(`/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
   },
+  /**
+   * Live events for this session. Every caller shares one WebSocket managed by
+   * `realtimeChannel`; the returned handle only registers and unregisters a
+   * listener, so screens can subscribe freely without leaking connections.
+   */
   subscribeRealtime(onEvent: (event: ApiRealtimeEvent) => void, onState: (connected: boolean) => void) {
-    let active = true;
-    let socket: WebSocket | null = null;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
-    let retryDelay = 1000;
-    const reconnect = () => {
-      if (!active || retryTimer) return;
-      onState(false);
-      retryTimer = setTimeout(() => { retryTimer = null; void connect(); }, retryDelay);
-      retryDelay = Math.min(30_000, retryDelay * 2);
-    };
-    const connect = async () => {
-      if (!active) return;
-      try {
-        const { ticket } = await request<{ ticket: string }>('/realtime/ticket', { method: 'POST' });
-        if (!active) return;
-        const url = new URL(`${apiBase}/api/v1/realtime`, window.location.href);
-        url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-        url.searchParams.set('ticket', ticket);
-        const next = new WebSocket(url);
-        socket = next;
-        next.onopen = () => { retryDelay = 1000; onState(true); };
-        next.onmessage = (message) => {
-          try {
-            const event = JSON.parse(String(message.data)) as ApiRealtimeEvent | { type: string };
-            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type === 'navigation.route-updated' || event.type.startsWith('booking.') || event.type.startsWith('trip.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.') || event.type.startsWith('rendezvous.')) onEvent(event as ApiRealtimeEvent);
-          } catch { /* Ignore malformed realtime frames; persisted REST history remains authoritative. */ }
-        };
-        next.onerror = () => next.close();
-        next.onclose = () => { if (socket === next) socket = null; reconnect(); };
-      } catch { reconnect(); }
-    };
-    void connect();
+    const channel = getRealtimeChannel();
+    const unsubscribeStatus = channel.onStatus((status) => onState(status === 'online'));
+    const unsubscribeEvents = channel.subscribe(onEvent);
     return () => {
-      active = false;
-      if (retryTimer) clearTimeout(retryTimer);
-      retryTimer = null;
-      const current = socket;
-      socket = null;
-      current?.close(1000, 'chat closed');
-      onState(false);
+      unsubscribeStatus();
+      unsubscribeEvents();
     };
+  },
+  /** Connection state of the shared channel — for honest status UI. */
+  realtimeStatus() { return getRealtimeChannel().status(); },
+  onRealtimeStatus(listener: (status: RealtimeStatus) => void) { return getRealtimeChannel().onStatus(listener); },
+  /** Diagnostics only: how many live listeners and sockets the session holds. */
+  realtimeDiagnostics() {
+    const channel = getRealtimeChannel();
+    return { subscribers: channel.subscriberCount(), sockets: channel.socketCount(), status: channel.status() };
   },
   book(offerId: string, seats: number, journey?: { journeyId: string; journeyLegId: string }) {
     const context = [offerId, seats, journey?.journeyId ?? '', journey?.journeyLegId ?? ''].join(':');
