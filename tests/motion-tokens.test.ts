@@ -194,4 +194,24 @@ test('W3a: основні клієнтські екрани дотримують
   }
 });
 
+test('W3b: навігація, карта транспорту, QR-посадка та адмін-панель дотримуються мінімального кегля 12px', () => {
+  const navAndMapFiles = [
+    'src/views/ProductionNavigation.tsx',
+    'src/views/MobilityAdminPanel.tsx',
+    'src/views/TransportMapView.tsx',
+    'src/components/MapLayersControl.tsx',
+    'src/components/QrScanner.tsx',
+    'src/components/TicketQr.tsx',
+    'src/components/VehiclePhoto.tsx',
+  ];
+  for (const file of navAndMapFiles) {
+    const source = readFileSync(file, 'utf8');
+    const undersized = [...source.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)]
+      .filter((m) => Number(m[1]) < 12)
+      .map((m) => `${file} -> ${m[0]}`);
+    assert.deepEqual(undersized, []);
+  }
+});
+
+
 

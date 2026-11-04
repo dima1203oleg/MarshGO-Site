@@ -67,18 +67,18 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
           const selectable = isLayerSelectable(layerState.availability, id);
           return <button key={id} type="button" disabled={!selectable} aria-pressed={selected.has(id)} aria-label={selectable ? label : `${label}: ${layerUnavailableNote(layerState.probeFailed)}`} onClick={() => toggleTransportLayer(id)} className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold shadow ${selected.has(id) ? 'bg-[var(--mg-action)] text-white' : 'bg-white text-slate-700 dark:bg-[#16202B] dark:text-slate-200'} ${selectable ? '' : 'cursor-not-allowed bg-slate-50 text-slate-400 dark:bg-[#141C25] dark:text-slate-500'}`}>
             <Icon size={15}/>{label}
-            {!selectable && <span className="text-[10px] font-semibold">· {layerUnavailableNote(layerState.probeFailed)}</span>}
+            {!selectable && <span className="text-xs font-semibold">· {layerUnavailableNote(layerState.probeFailed)}</span>}
           </button>;
         })}
       </div>
-      {hint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-[11px] font-semibold leading-snug text-slate-600 shadow dark:bg-[#111820]/95 dark:text-slate-300">{hint}</p>}
+      {hint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold leading-snug text-slate-600 shadow dark:bg-[#111820]/95 dark:text-slate-300">{hint}</p>}
       {quality && <p role="status" aria-label="Якість даних живого транспорту" className="pointer-events-auto self-start shadow"><StatusBadge status={quality.status} label={quality.label} size="sm"/></p>}
-      {selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-[10px] font-semibold text-slate-700 shadow">
+      {selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow">
         {selectedCity.routeCount} маршрутів · {selectedCity.stopCount} зупинок · статичний розклад{selectedCity.realtimeAvailable ? ' · realtime джерело підключене' : ''}
         {selectedCity.sourceUrl && <><span aria-hidden="true"> · </span><a className="text-blue-700 underline" href={selectedCity.sourceUrl} target="_blank" rel="noreferrer">Джерело даних</a></>}
         <span> · {selectedCity.licenses.length ? selectedCity.licenses.join(', ') : 'умови використання уточнюються'}</span>
       </p>}
-      {status === 'failed' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">Не вдалося завантажити карту. Перевірте мережу.</p>}
+      {status === 'failed' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">Не вдалося завантажити карту. Перевірте мережу.</p>}
     </div>
     <div className="absolute right-4 top-1/2 z-[500] -translate-y-1/2"><MapLayersControl overlays/></div>
   </main>;
