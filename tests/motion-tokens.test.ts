@@ -213,5 +213,19 @@ test('W3b: навігація, карта транспорту, QR-посадк�
   }
 });
 
+test('W4: src/index.css скорочено та очищено від каскадних !important (≤ 25 замість 184), а модулі транспорту й профілю не містять сирих hex', () => {
+  const css = readFileSync('src/index.css', 'utf8');
+  const importantCount = (css.match(/!important/g) ?? []).length;
+  assert.ok(importantCount <= 25, `очікувалося ≤ 25 !important у src/index.css, знайдено ${importantCount}`);
+  assert.ok(css.split('\n').length <= 1480, 'src/index.css має бути скорочено після дедуплікації темної теми');
+
+  for (const file of ['src/components/TransportTypesPanel.tsx', 'src/views/ProfileSections.tsx']) {
+    const source = readFileSync(file, 'utf8');
+    const rawHex = source.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+    assert.deepEqual(rawHex, [], `${file} не повинен містити сирих hex-кольорів`);
+  }
+});
+
+
 
 

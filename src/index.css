@@ -207,7 +207,7 @@ html.dark .app-header {
   background: rgba(11, 15, 20, .9);
   border-bottom: 1px solid rgba(83, 107, 134, .18);
 }
-html.dark .app-header > div:first-child strong { color: #F5F9FF !important; }
+html.dark .app-header > div:first-child strong { color: #F5F9FF; }
 .home-screen { padding-top: .35rem; }
 .transport-types-inline { margin-top: .7rem; }
 .transport-types-inline .transport-mode-grid {
@@ -225,8 +225,8 @@ html.dark .app-header > div:first-child strong { color: #F5F9FF !important; }
   background: #f2f7fd;
 }
 .journey-search-card {
-  border-color: rgba(255,255,255,.94) !important;
-  box-shadow: 0 14px 34px rgba(23, 68, 126, .09), 0 2px 6px rgba(23, 68, 126, .04) !important;
+  border-color: rgba(255,255,255,.94);
+  box-shadow: 0 14px 34px rgba(23, 68, 126, .09), 0 2px 6px rgba(23, 68, 126, .04);
 }
 html.dark .search-screen .home-intro {
   border-color: rgba(83, 107, 134, .45);
@@ -236,18 +236,18 @@ html.dark .search-screen .home-greeting { color: #66B2FF; }
 html.dark .search-screen .home-title { color: #F5F9FF; }
 html.dark .search-screen .home-description { color: #B6C2D0; }
 html.dark .search-screen .journey-search-card {
-  border-color: #263648 !important;
-  background: #111820 !important;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .28) !important;
+  border-color: #263648;
+  background: #111820;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .28);
 }
 html.dark .search-screen .journey-search-card label,
 html.dark .search-screen .journey-search-card .search-trip-details > button,
 html.dark .search-screen .journey-search-card .search-trip-details > div {
-  background: #16202B !important;
+  background: #16202B;
   color: #F5F9FF;
 }
 html.dark .search-screen .journey-search-card [role="group"] {
-  background: #16202B !important;
+  background: #16202B;
   color: #F5F9FF;
 }
 html.dark .search-screen .journey-search-card label small,
@@ -316,9 +316,9 @@ html.dark .search-screen .journey-search-card .trip-tile--stepper > button { bor
 .journey-results button { touch-action: manipulation; }
 .transport-mode-grid button { min-height: 4.6rem; }
 .journey-offer-card {
-  border-color: var(--mg-line) !important;
-  border-radius: 1.35rem !important;
-  box-shadow: var(--mg-card-shadow) !important;
+  border-color: var(--mg-line);
+  border-radius: 1.35rem;
+  box-shadow: var(--mg-card-shadow);
 }
 .journey-results { padding-top: .15rem; }
 .journey-results {
@@ -330,20 +330,20 @@ html.dark .search-screen .journey-search-card .trip-tile--stepper > button { bor
   border-radius: 14px;
 }
 .journey-result-card {
-  border-radius: 16px !important;
+  border-radius: 16px;
   background-image: linear-gradient(145deg, #FFFFFF 0%, #FBFDFF 56%, #F7FAFE 100%);
-  box-shadow: 0 5px 16px rgba(11, 45, 82, .075) !important;
+  box-shadow: 0 5px 16px rgba(11, 45, 82, .075);
 }
-.journey-result-card-content { padding: .25rem .5rem !important; }
+.journey-result-card-content { padding: .25rem .5rem; }
 .journey-result-header { min-height: 2.75rem; }
 html.dark .journey-results {
   background: linear-gradient(180deg, #0A1D2D 0%, #061522 100%);
 }
 html.dark .journey-results .journey-result-card {
-  background-color: #091B2A !important;
-  background-image: linear-gradient(145deg, #0D2030 0%, #091B2A 56%, #081724 100%) !important;
-  border-color: #20384D !important;
-  box-shadow: 0 7px 20px rgba(0, 0, 0, .24) !important;
+  background-color: #091B2A;
+  background-image: linear-gradient(145deg, #0D2030 0%, #091B2A 56%, #081724 100%);
+  border-color: #20384D;
+  box-shadow: 0 7px 20px rgba(0, 0, 0, .24);
 }
 /*
  * Position in the list is not selection. The rank-1 journey of the active mode is marked with a
@@ -351,27 +351,27 @@ html.dark .journey-results .journey-result-card {
  * other cards — a full ring here read as "already opened" while nothing was selected.
  */
 .journey-result-card[data-top-pick="true"] { border-color: #B9D8F7; }
-html.dark .journey-results .journey-result-card[data-top-pick="true"] { border-color: rgba(22,135,255,.5) !important; }
+html.dark .journey-results .journey-result-card[data-top-pick="true"] { border-color: rgba(22,135,255,.5); }
 /*
  * The card the passenger actually opened is a fact, not a ranking, so it owns a real selection
  * marker: a ring around the border. It comes after the rank-1 rules and repeats the dark
- * `!important` so it wins over the stronger-looking top pick.
+ * `` so it wins over the stronger-looking top pick.
  */
 .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mg-blue) 30%, transparent), 0 5px 16px rgba(11, 45, 82, .075) !important; }
 html.dark .journey-results .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue) !important; box-shadow: 0 0 0 2px rgba(22,135,255,.45) !important; }
 .journey-result-window { overflow-wrap: anywhere; }
 html.dark .journey-results .journey-result-duration {
-  color: #F5F9FF !important;
+  color: #F5F9FF;
 }
 html.dark .journey-results [aria-label="Режим пошуку маршрутів"] > button:not([aria-pressed="true"]) {
-  border-color: #20384D !important;
-  background-color: #0A1D2D !important;
+  border-color: #20384D;
+  background-color: #0A1D2D;
 }
 .route-immersive-shell {
   height: 100svh;
   min-height: 100svh;
   overflow: hidden;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
 }
 .journey-results-header { flex: 0 0 auto; }
 .journey-result-card-content { min-width: 0; }
@@ -521,13 +521,13 @@ html.dark .journey-segment-tile-meta { color: #9aabbd; }
 html.dark .journey-segment-scroll-cue { color: #d6e4f3; }
 html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background: #111820; }
 .route-map-screen[data-theme="light"] .journey-segment-tile { border-color: #d9e2ec; }
-.route-map-screen[data-theme="light"] .journey-segment-tile-heading { color: #172638 !important; }
+.route-map-screen[data-theme="light"] .journey-segment-tile-heading { color: #172638; }
 .route-map-screen[data-theme="light"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #172638 !important; }
-.route-map-screen[data-theme="light"] .journey-segment-tile-meta { color: #64748b !important; }
+.route-map-screen[data-theme="light"] .journey-segment-tile-meta { color: #64748b; }
 .route-map-screen[data-theme="dark"] .journey-segment-tile { border-color: #20354a; }
-.route-map-screen[data-theme="dark"] .journey-segment-tile-heading { color: #f4f8fd !important; }
+.route-map-screen[data-theme="dark"] .journey-segment-tile-heading { color: #f4f8fd; }
 .route-map-screen[data-theme="dark"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #f4f8fd !important; }
-.route-map-screen[data-theme="dark"] .journey-segment-tile-meta { color: #9aabbd !important; }
+.route-map-screen[data-theme="dark"] .journey-segment-tile-meta { color: #9aabbd; }
 .journey-result-card-content > .journey-segment-strip { margin-top: .25rem; }
 .journey-result-action-badge,
 .journey-result-transfer-badge,
@@ -541,14 +541,14 @@ html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background
 .journey-result-actions > span:last-child { width: 2.75rem; height: 2.75rem; }
 html.dark .journey-result-action-badge,
 html.dark .journey-result-transfer-badge,
-html.dark .journey-result-save-visual { border-color: #223C52 !important; }
-html.dark .journey-result-save-button { background-color: transparent !important; }
+html.dark .journey-result-save-visual { border-color: #223C52; }
+html.dark .journey-result-save-button { background-color: transparent; }
 .journey-result-action-badge[data-strategy="BALANCED"] { background-color: #EAF3FF; color: #1687FF; }
 .journey-result-action-badge[data-strategy="FASTEST"] { background-color: #FFF3E5; color: #E87919; }
 .journey-result-action-badge[data-strategy="CHEAPEST"] { background-color: #E9FBF1; color: #10A765; }
-html.dark .journey-result-action-badge[data-strategy="BALANCED"] { background-color: rgba(22,135,255,.16) !important; color: #42A5FF !important; }
-html.dark .journey-result-action-badge[data-strategy="FASTEST"] { background-color: rgba(232,121,25,.16) !important; color: #FFAB5C !important; }
-html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-color: rgba(16,167,101,.16) !important; color: #36D98B !important; }
+html.dark .journey-result-action-badge[data-strategy="BALANCED"] { background-color: rgba(22,135,255,.16); color: #42A5FF; }
+html.dark .journey-result-action-badge[data-strategy="FASTEST"] { background-color: rgba(232,121,25,.16); color: #FFAB5C; }
+html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-color: rgba(16,167,101,.16); color: #36D98B; }
 .journey-result-card-content > .journey-segment-strip .journey-segment-scroll-cue { right: -.3rem; }
 .journey-result-card-content .journey-result-duration {
   max-width: 100%;
@@ -614,21 +614,21 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   -webkit-line-clamp: 2;
 }
 html.dark .route-immersive-shell {
-  background-color: #061522 !important;
-  background-image: radial-gradient(ellipse at 50% -12%, rgba(15, 83, 139, .12), transparent 34rem) !important;
+  background-color: #061522;
+  background-image: radial-gradient(ellipse at 50% -12%, rgba(15, 83, 139, .12), transparent 34rem);
 }
-html.dark .journey-result-card { background-color: #0B1A27 !important; border-color: #1B3348; }
+html.dark .journey-result-card { background-color: #0B1A27; border-color: #1B3348; }
 html.dark .journey-result-card [data-segment-mode] { filter: saturate(1.08); }
 .app-tabbar {
   padding-bottom: max(.45rem, env(safe-area-inset-bottom)) !important;
-  background: rgba(255,255,255,.94) !important;
+  background: rgba(255,255,255,.94);
   box-shadow: 0 -8px 28px rgba(20, 49, 87, .07);
 }
 .app-tabbar button { min-height: 2.9rem; }
 .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
 html.dark .app-tabbar {
-  border-color: #263648 !important;
-  background: rgba(17, 24, 32, .96) !important;
+  border-color: #263648;
+  background: rgba(17, 24, 32, .96);
   box-shadow: 0 -8px 28px rgba(0, 0, 0, .28);
   color: #B6C2D0;
 }
@@ -643,7 +643,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
  * The default card surface lives in @layer components: unlayered rules beat every Tailwind layer,
  * and this rule used to sit outside them, repainting every <article> white and forcing its own
  * radius — a vehicle tile written as bg-[#f6f8fc] rounded-xl rendered as a plain white card.
- * The surface now comes from --color-marshgo-card, which html.dark already flips, so no !important
+ * The surface now comes from --color-marshgo-card, which html.dark already flips, so no
  * dark-mode override is needed here anymore; the canonical card radius is normalised further down.
  */
 @layer components {
@@ -668,7 +668,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .production-app .journey-search-card { padding: .65rem; }
   .production-app .transport-mode-grid { gap: .35rem; }
   /* At 320 px a half-card leaves the departure value 107 px against 117 px of text, so the date pair
-     stacks too; the !important two-column pin here is what produced that 14 px clip. */
+     stacks too; the two-column pin here is what produced that 14 px clip. */
   .search-screen .journey-search-card .search-trip-details { grid-template-columns: minmax(0, 1fr); }
   .transport-types-inline > div:first-child { gap: .25rem; }
   .transport-types-inline > div:first-child h2 { white-space: nowrap; font-size: .8rem; }
@@ -682,10 +682,10 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     padding: .25rem 1rem .5rem;
   }
   .search-screen .home-intro { flex: none; margin: 0; padding: .65rem .85rem; border-radius: 1.2rem; }
-  .search-screen .home-title { margin-top: 0 !important; font-size: 1.2rem; }
-  .search-screen .home-description { margin-top: .1rem !important; font-size: 12px; line-height: 1.35; }
-  .search-screen > .home-search-panel { flex: none; margin-top: 0 !important; }
-  .search-screen .journey-search-card { padding: .7rem !important; }
+  .search-screen .home-title { margin-top: 0; font-size: 1.2rem; }
+  .search-screen .home-description { margin-top: .1rem; font-size: 12px; line-height: 1.35; }
+  .search-screen > .home-search-panel { flex: none; margin-top: 0; }
+  .search-screen .journey-search-card { padding: .7rem; }
   .search-screen .journey-search-card > .relative > [role="group"] { min-height: 3.65rem; padding-block: .55rem; }
   .search-screen .journey-search-card .search-trip-details { gap: .4rem; margin-top: .5rem; }
   .search-screen .transport-types-inline { margin-top: .55rem; }
@@ -705,7 +705,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
 @media (min-width: 640px) {
   .production-app { padding-bottom: 1.5rem; }
   .app-header { position: relative; background: transparent; backdrop-filter: none; }
-  .app-tabbar { position: sticky !important; margin: 1rem auto; width: min(100% - 2rem, 36rem); border: 1px solid var(--mg-line) !important; border-radius: 1.25rem; }
+  .app-tabbar { position: sticky; margin: 1rem auto; width: min(100% - 2rem, 36rem); border: 1px solid var(--mg-line); border-radius: 1.25rem; }
 }
 
 /* Desktop is a wider presentation of the same production screens used by the
@@ -761,7 +761,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .auth-intro-screen > section > div:nth-of-type(3) { grid-column: 2; grid-row: 3; align-self: end; }
   .auth-intro-screen > section > div:nth-of-type(3) button { min-height: 58px; }
   body {
-    background: #0e1f35 radial-gradient(1200px 700px at 12% -10%, rgba(23,137,244,.55), transparent 60%), radial-gradient(900px 600px at 100% 0%, rgba(125,92,255,.28), transparent 55%), linear-gradient(160deg, #0e1f35 0%, #123a73 55%, #1789f4 120%) fixed !important;
+    background: #0e1f35 radial-gradient(1200px 700px at 12% -10%, rgba(23,137,244,.55), transparent 60%), radial-gradient(900px 600px at 100% 0%, rgba(125,92,255,.28), transparent 55%), linear-gradient(160deg, #0e1f35 0%, #123a73 55%, #1789f4 120%) fixed;
   }
   .production-app {
     display: grid;
@@ -793,17 +793,17 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     border-bottom: 1px solid rgba(0,0,0,0.05);
   }
   .production-app > .app-tabbar {
-    position: fixed !important;
+    position: fixed;
     inset: auto 0 0;
     z-index: var(--mg-z-overlay);
     width: 100%;
     height: auto;
     margin: 0;
-    padding: 8px 0 max(.45rem, env(safe-area-inset-bottom)) !important;
-    border: 0 !important;
-    border-top: 1px solid rgba(255,255,255,.7) !important;
+    padding: 8px 0 max(.45rem, env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid rgba(255,255,255,.7);
     border-radius: var(--mg-radius-2xl) var(--mg-radius-2xl) 0 0;
-    background: rgba(255,255,255,.96) !important;
+    background: rgba(255,255,255,.96);
     -webkit-backdrop-filter: blur(22px);
     backdrop-filter: blur(22px);
     box-shadow: 0 -8px 28px rgba(20,49,87,.1);
@@ -830,7 +830,7 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   }
   .app-tabbar-inner button:not(.app-create-button):hover { background: rgba(37, 99, 235, 0.05); }
   .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
-    color: var(--mg-blue) !important;
+    color: var(--mg-blue);
     background: transparent;
     box-shadow: none;
   }
@@ -906,19 +906,19 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
     pointer-events: none;
   }
   .home-screen > .home-intro::after { display: none; }
-  .home-screen .home-greeting { color: #d9ecff !important; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
-  .home-screen .home-title { position: relative; max-width: 650px; margin-top: 10px; color: white !important; font-size: clamp(34px,3.4vw,52px); line-height: 1.04; }
-  .home-screen .home-description { max-width: 540px; margin-top: 14px; color: #e2efff !important; font-size: 16px; line-height: 1.6; }
+  .home-screen .home-greeting { color: #d9ecff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
+  .home-screen .home-title { position: relative; max-width: 650px; margin-top: 10px; color: white; font-size: clamp(34px,3.4vw,52px); line-height: 1.04; }
+  .home-screen .home-description { max-width: 540px; margin-top: 14px; color: #e2efff; font-size: 16px; line-height: 1.6; }
   /* The search card overlaps the photo so it is visible without scrolling; transport choices follow below on a light surface. */
   .home-screen > .home-search-panel { z-index: var(--mg-z-base); grid-column: 1 / -1; grid-row: 2; margin: -128px 28px 0; }
   .journey-search-card {
-    border-radius: var(--mg-radius-3xl) !important;
-    padding: 24px !important;
-    background: rgba(255,255,255,0.94) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
-    backdrop-filter: blur(20px) !important;
-    box-shadow: 0 20px 48px rgba(9,35,69,0.14) !important;
-    border: 1px solid rgba(255,255,255,1) !important;
+    border-radius: var(--mg-radius-3xl);
+    padding: 24px;
+    background: rgba(255,255,255,0.94);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 48px rgba(9,35,69,0.14);
+    border: 1px solid rgba(255,255,255,1);
   }
   .home-screen > .home-map-cta { grid-column: 1 / -1; grid-row: 3; width: auto; margin: 0 28px; }
   .home-screen > .home-transport-panel { grid-column: 1 / -1; grid-row: 4; margin: 0 28px; padding: 20px; border-radius: var(--mg-radius-2xl); background: white; box-shadow: 0 10px 30px rgba(9,35,69,.06); }
@@ -939,25 +939,25 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
 
   /* Make lists and articles grid-based on desktop */
   .production-app .space-y-3 {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)) !important;
-    gap: 20px !important;
-    row-gap: 20px !important;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 20px;
+    row-gap: 20px;
   }
   .production-app .space-y-3 > * {
-    margin-top: 0 !important;
-    border-radius: 24px !important;
-    background: rgba(255,255,255,0.7) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
-    backdrop-filter: blur(20px) !important;
-    border: 1px solid rgba(255,255,255,0.6) !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.03) !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin-top: 0;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.7);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.6);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .production-app .space-y-3 > *:hover {
-    transform: translateY(-4px) scale(1.01) !important;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.08) !important;
-    background: rgba(255,255,255,0.95) !important;
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+    background: rgba(255,255,255,0.95);
   }
 }
 @media (min-width: 1024px) and (max-height: 760px) {
@@ -1034,132 +1034,6 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   background: #254774;
 }
 
-/* Dark Theme Comprehensive UI Overrides for Night Visibility */
-html.dark .bg-white {
-  background-color: #0D1E36 !important;
-}
-
-html.dark .bg-\[\#F5F8FD\] {
-  background-color: #122542 !important;
-}
-
-html.dark .border-\[\#DFE7F1\] {
-  border-color: #1D3455 !important;
-}
-
-html.dark .border-slate-200 {
-  border-color: #1D3455 !important;
-}
-
-html.dark .border-slate-100 {
-  border-color: #152742 !important;
-}
-
-html.dark .border-slate-300 {
-  border-color: #27456F !important;
-}
-
-html.dark .text-\[\#14243B\] {
-  color: #F8FAFC !important;
-}
-
-html.dark .text-\[\#62718A\] {
-  color: #94A3B8 !important;
-}
-
-html.dark .text-slate-700 {
-  color: #E2E8F0 !important;
-}
-
-html.dark .text-slate-600 {
-  color: #CBD5E1 !important;
-}
-
-html.dark .text-slate-800 {
-  color: #F8FAFC !important;
-}
-
-html.dark .text-slate-900 {
-  color: #FFFFFF !important;
-}
-
-html.dark .hover\:bg-slate-50:hover {
-  background-color: #132644 !important;
-}
-
-html.dark .hover\:bg-slate-100:hover {
-  background-color: #172D50 !important;
-}
-
-html.dark .hover\:bg-slate-200:hover {
-  background-color: #1D3760 !important;
-}
-
-html.dark .bg-slate-50 {
-  background-color: #0E2039 !important;
-}
-
-html.dark .bg-slate-100 {
-  background-color: #132644 !important;
-}
-
-html.dark .bg-slate-200 {
-  background-color: #1A3258 !important;
-}
-
-html.dark .bg-blue-50 {
-  background-color: #0C2346 !important;
-}
-
-html.dark .text-blue-900 {
-  color: #BAE6FD !important;
-}
-
-html.dark .border-blue-200 {
-  border-color: #1D437A !important;
-}
-
-html.dark .bg-emerald-50 {
-  background-color: #062820 !important;
-}
-
-html.dark .border-emerald-200 {
-  border-color: #0D4E3F !important;
-}
-
-html.dark .bg-rose-50 {
-  background-color: #2A0E18 !important;
-}
-
-html.dark .border-rose-200 {
-  border-color: #55192C !important;
-}
-
-html.dark .bg-amber-50 {
-  background-color: #281B08 !important;
-}
-
-html.dark .border-amber-200 {
-  border-color: #573A12 !important;
-}
-
-/* Ensure inputs remain easily readable and styled in dark mode */
-html.dark input,
-html.dark select,
-html.dark textarea {
-  color: #F8FAFC !important;
-}
-
-html.dark input::placeholder,
-html.dark textarea::placeholder {
-  color: #64748B !important;
-}
-
-/* Keep floating white badges or high-contrast chips legible */
-html.dark .bg-white\/90 {
-  background-color: rgba(13, 30, 54, 0.95) !important;
-}
-
 /* Horizontal chip rows scroll by swipe/drag; the native bar only adds visual noise. */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -1167,62 +1041,68 @@ html.dark .bg-white\/90 {
 /* ---- Dark theme: remaps the light palette used by Tailwind utilities across the production UI ---- */
 html.dark body { background-color: var(--mg-canvas); color: var(--mg-ink-primary); }
 html.dark .production-app, html.dark .journey-results, html.dark .home-screen { color: var(--mg-ink-primary); }
-html.dark :is(.bg-white, .bg-white\/95, .bg-white\/90, .bg-white\/80, .bg-\[\#101E38\], .bg-\[\#0B1730\]) { background-color: var(--mg-surface-primary) !important; }
-html.dark .journey-results .journey-result-card { background-color: #091B2A !important; }
-html.dark .journey-results [aria-label="Режим пошуку маршрутів"] > button:not([aria-pressed="true"]) { background-color: #0A1D2D !important; }
-html.dark :is(.bg-slate-50, .bg-\[\#f6f8fc\], .bg-\[\#F1F5F9\], .bg-\[\#f5f8fd\]) { background-color: var(--mg-canvas) !important; }
-html.dark :is(.bg-blue-50, .bg-\[\#EAF3FF\], .bg-\[\#E8F8F1\]) { background-color: rgba(22, 135, 255, .14) !important; }
-html.dark :is(.bg-emerald-50, .bg-\[\#F0FDF4\]) { background-color: rgba(44, 214, 125, .12) !important; }
-html.dark :is(.bg-amber-50, .bg-\[\#FFF4DB\]) { background-color: rgba(255, 176, 32, .12) !important; }
+html.dark :is(.bg-white, .bg-white\/95, .bg-white\/90, .bg-white\/80, .bg-\[\#101E38\], .bg-\[\#0B1730\]) { background-color: var(--mg-surface-primary); }
+html.dark .journey-results .journey-result-card { background-color: #091B2A; }
+html.dark .journey-results [aria-label="Режим пошуку маршрутів"] > button:not([aria-pressed="true"]) { background-color: #0A1D2D; }
+html.dark :is(.bg-slate-50, .bg-\[\#f6f8fc\], .bg-\[\#F1F5F9\], .bg-\[\#f5f8fd\], .bg-\[\#F5F8FD\]) { background-color: var(--mg-canvas); }
+html.dark :is(.bg-slate-100, .hover\:bg-slate-50:hover) { background-color: #132644; }
+html.dark :is(.bg-slate-200, .hover\:bg-slate-100:hover, .hover\:bg-slate-200:hover) { background-color: #1A3258; }
+html.dark :is(.bg-blue-50, .bg-\[\#EAF3FF\], .bg-\[\#E8F8F1\]) { background-color: rgba(22, 135, 255, .14); }
+html.dark :is(.bg-emerald-50, .bg-\[\#F0FDF4\]) { background-color: rgba(44, 214, 125, .12); }
+html.dark :is(.bg-amber-50, .bg-\[\#FFF4DB\]) { background-color: rgba(255, 176, 32, .12); }
 /* The amber surfaces above collapse to a faint dark tint, so their brown ink has to flip with them:
    measured on the public build, every warning badge sat at 2.4:1 against that tint. */
 html.dark :is(.bg-amber-50, .bg-\[\#FFF4DB\]) :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-\[\#8A5A12\], .text-\[\#AE6C00\]),
-html.dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-\[\#8A5A12\], .text-\[\#AE6C00\]):is(.bg-amber-50, .bg-\[\#FFF4DB\]) { color: #F3D38C !important; }
-html.dark :is(.bg-rose-50, .bg-red-50) { background-color: rgba(255, 90, 106, .12) !important; }
-html.dark :is(.text-\[\#0E1F35\], .text-\[\#081b35\], .text-slate-900, .text-slate-800, .text-slate-700, .text-\[\#14243B\]) { color: var(--mg-ink-primary) !important; }
-html.dark :is(.text-slate-600, .text-slate-500) { color: var(--mg-ink-secondary) !important; }
-html.dark :is(.text-slate-400, .text-slate-300) { color: var(--mg-ink-muted) !important; }
-html.dark :is(.text-blue-700, .text-blue-800) { color: #8CC4FF !important; }
-html.dark :is(.text-emerald-700, .text-green-700) { color: #74E0A1 !important; }
-html.dark :is(.text-amber-700, .text-amber-800) { color: #FFD27A !important; }
-html.dark :is(.text-rose-700, .text-red-700) { color: #FF9CA7 !important; }
-html.dark :is(.border-slate-100, .border-slate-200, .border-\[\#E5EDF7\], .border-\[\#EEF3F9\], .border-\[\#DFE7F1\], .border-t, .border-b) { border-color: var(--mg-border-subtle) !important; }
+html.dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-\[\#8A5A12\], .text-\[\#AE6C00\]):is(.bg-amber-50, .bg-\[\#FFF4DB\]) { color: #F3D38C; }
+html.dark :is(.bg-rose-50, .bg-red-50) { background-color: rgba(255, 90, 106, .12); }
+html.dark :is(.text-\[\#0E1F35\], .text-\[\#081b35\], .text-slate-900, .text-slate-800, .text-slate-700, .text-\[\#14243B\]) { color: var(--mg-ink-primary); }
+html.dark :is(.text-slate-600, .text-slate-500, .text-\[\#62718A\]) { color: var(--mg-ink-secondary); }
+html.dark :is(.text-slate-400, .text-slate-300) { color: var(--mg-ink-muted); }
+html.dark :is(.text-blue-700, .text-blue-800, .text-blue-900) { color: #8CC4FF; }
+html.dark :is(.text-emerald-700, .text-green-700) { color: #74E0A1; }
+html.dark :is(.text-amber-700, .text-amber-800) { color: #FFD27A; }
+html.dark :is(.text-rose-700, .text-red-700) { color: #FF9CA7; }
+html.dark :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-\[\#E5EDF7\], .border-\[\#EEF3F9\], .border-\[\#DFE7F1\], .border-t, .border-b) { border-color: var(--mg-border-subtle); }
+html.dark .border-blue-200 { border-color: #1D437A; }
+html.dark .border-emerald-200 { border-color: #0D4E3F; }
+html.dark .border-rose-200 { border-color: #55192C; }
+html.dark .border-amber-200 { border-color: #573A12; }
 html.dark .journey-results [aria-label="Ранжування маршрутів"] > button:disabled {
-  opacity: 1 !important;
-  background-color: var(--mg-canvas) !important;
-  border-color: var(--mg-border-subtle) !important;
-  color: var(--mg-ink-muted) !important;
+  opacity: 1;
+  background-color: var(--mg-canvas);
+  border-color: var(--mg-border-subtle);
+  color: var(--mg-ink-muted);
 }
-html.dark :is(.divide-slate-100 > :not([hidden]) ~ :not([hidden])) { border-color: var(--mg-border-subtle) !important; }
-html.dark :is(input, textarea, select) { background-color: var(--mg-surface-secondary) !important; color: var(--mg-ink-primary) !important; border-color: var(--mg-border-subtle) !important; }
-html.dark ::placeholder { color: var(--mg-ink-muted) !important; }
-html.dark :is(.shadow-sm, .shadow-md) { box-shadow: 0 6px 18px rgba(0,0,0,.35) !important; }
-html.dark .app-tabbar, html.dark .app-header { background-color: var(--mg-surface-glass) !important; }
-html.dark .journey-search-card { background: var(--mg-surface-primary) !important; border-color: var(--mg-border-subtle) !important; }
+html.dark :is(.divide-slate-100 > :not([hidden]) ~ :not([hidden])) { border-color: var(--mg-border-subtle); }
+html.dark :is(input, textarea, select) { background-color: var(--mg-surface-secondary); color: var(--mg-ink-primary); border-color: var(--mg-border-subtle); }
+html.dark ::placeholder { color: var(--mg-ink-muted); }
+html.dark :is(.shadow-sm, .shadow-md) { box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+html.dark .app-tabbar, html.dark .app-header { background-color: var(--mg-surface-glass); }
+html.dark .journey-search-card { background: var(--mg-surface-primary); border-color: var(--mg-border-subtle); }
 html.dark .maplibregl-ctrl-group { background: var(--mg-surface-primary); }
 html.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
-html.dark .home-screen .home-intro { background: linear-gradient(145deg, var(--mg-surface-primary), var(--mg-surface-secondary)) !important; border-color: var(--mg-border-subtle) !important; box-shadow: none !important; }
-html.dark .home-screen .home-title { color: var(--mg-ink-primary) !important; }
-html.dark .home-screen .home-description { color: var(--mg-ink-secondary) !important; }
-html.dark .home-screen .home-greeting { color: #8CC4FF !important; }
+html.dark .home-screen .home-intro { background: linear-gradient(145deg, var(--mg-surface-primary), var(--mg-surface-secondary)); border-color: var(--mg-border-subtle); box-shadow: none; }
+html.dark .home-screen .home-title { color: var(--mg-ink-primary); }
+html.dark .home-screen .home-description { color: var(--mg-ink-secondary); }
+html.dark .home-screen .home-greeting { color: #8CC4FF; }
 html.dark .home-screen .journey-search-card {
-  border-color: var(--mg-border-subtle) !important;
-  background: var(--mg-surface-primary) !important;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .26) !important;
+  border-color: var(--mg-border-subtle);
+  background: var(--mg-surface-primary);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .26);
 }
 html.dark .home-screen .journey-search-card label { background-color: var(--mg-surface-secondary); }
 html.dark .home-screen .journey-search-card button:not([type="submit"]) {
   background-color: var(--mg-surface-secondary);
   color: var(--mg-ink-primary);
 }
-html.dark .search-screen .home-intro { border-color: #263648 !important; }
+html.dark .search-screen .home-intro { border-color: #263648; }
 html.dark .transport-mode-grid > button:disabled {
-  border-color: var(--mg-border-subtle) !important;
-  background-color: var(--mg-surface-secondary) !important;
-  color: var(--mg-ink-muted) !important;
+  border-color: var(--mg-border-subtle);
+  background-color: var(--mg-surface-secondary);
+  color: var(--mg-ink-muted);
 }
-html.dark .journey-result-card { border-color: #263648 !important; box-shadow: 0 8px 24px rgba(0,0,0,.22) !important; }
-html.dark .coverage-details[open] { border-color: #263648 !important; }
+html.dark .journey-result-card { border-color: #263648; box-shadow: 0 8px 24px rgba(0,0,0,.22); }
+html.dark .coverage-details[open] { border-color: #263648; }
 .coverage-details[open] .coverage-chevron { transform: rotate(180deg); }
 
 /* ---- Motion foundation -------------------------------------------------
@@ -1404,12 +1284,12 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
   .home-popular-route:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(17, 47, 88, .16); }
 }
 html.dark .home-canonical-banner > span[aria-hidden="true"] { background: linear-gradient(90deg,rgba(7,20,38,.94),rgba(7,20,38,.78) 60%,rgba(7,20,38,.16)); }
-html.dark .home-canonical-banner { border-color: rgba(83,107,134,.56) !important; box-shadow: 0 10px 28px rgba(0,0,0,.24); }
+html.dark .home-canonical-banner { border-color: rgba(83,107,134,.56); box-shadow: 0 10px 28px rgba(0,0,0,.24); }
 html.dark .home-trip-card { background: #0a261e; color: #eff6ff; }
 html.dark .home-canonical-banner h1 { color: #eff6ff; }
 html.dark .home-canonical-banner p { color: #bfdbfe; }
 html.dark .home-trip-card > span:nth-child(2) > span:nth-child(2) { color: #eff6ff; }
-html.dark .home-hero--canonical .home-city-pill { background: #111820; color: #eff6ff; border-color: #263648 !important; }
+html.dark .home-hero--canonical .home-city-pill { background: #111820; color: #eff6ff; border-color: #263648; }
 html.dark .home-screen .home-intro { border-radius: 1.4rem; }
 html.dark .home-action-card { --home-ink: #F5F9FF; --home-sub: #B6C2D0; --home-surface: #111820; border-color: #263648; box-shadow: 0 4px 16px rgba(0,0,0,.24); }
 html.dark .home-action-card--navigation { --home-surface: #12233B; border-color: #24486F; }
@@ -1421,18 +1301,18 @@ html.dark .home-action-card--navigation .home-action-icon { background: #1687FF;
 html.dark .home-action-card--transport .home-action-icon { background: #17B58A; }
 html.dark .home-action-card--publish .home-action-icon { background: #E0842B; }
 html.dark .home-action-card--search .home-action-icon { background: rgba(255,255,255,.2); }
-html.dark .home-popular-routes h2 { color: #F5F9FF !important; }
-html.dark .home-popular-route { border-color: #263648 !important; }
+html.dark .home-popular-routes h2 { color: #F5F9FF; }
+html.dark .home-popular-route { border-color: #263648; }
 
 /* Shared interaction and dark-surface polish from the production navigation. */
 html.dark .production-app .app-tabbar {
-  background-color: var(--color-marshgo-card) !important;
+  background-color: var(--color-marshgo-card);
   color: var(--color-marshgo-text);
 }
 html.dark .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
   background: #142d4d;
 }
-html.dark .app-tabbar { border-color: var(--mg-line) !important; }
+html.dark .app-tabbar { border-color: var(--mg-line); }
 .production-app button:disabled { cursor: not-allowed; }
 .production-app :is(button, a) {
   transition: background-color .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
@@ -1461,7 +1341,7 @@ html.dark .app-tabbar { border-color: var(--mg-line) !important; }
   .home-canonical-banner h1 { font-size: 1rem; }
   .home-canonical-banner p { margin-top: .1rem; font-size: .625rem; }
   .home-action-grid { grid-template-rows: repeat(2, 4.6rem); gap: .4rem; }
-  .home-action-grid > .home-action-card { min-height: 0 !important; padding: .5rem; }
+  .home-action-grid > .home-action-card { min-height: 0; padding: .5rem; }
   .home-action-card > span:first-of-type { width: 1.75rem; height: 1.75rem; }
   .home-action-card > span:first-of-type svg { width: 1rem; height: 1rem; }
   .home-action-card > span:last-child > span:first-child > span:first-child { font-size: .75rem; }
@@ -1479,25 +1359,25 @@ html.dark .app-tabbar { border-color: var(--mg-line) !important; }
 
   /* Desktop side-by-side layout: map on the right, floating sheet on the left */
   .route-map-screen > header {
-    inset-inline-start: 1.5rem !important;
-    inset-inline-end: auto !important;
-    width: 460px !important;
-    max-width: 460px !important;
-    padding-inline: 0 !important;
+    inset-inline-start: 1.5rem;
+    inset-inline-end: auto;
+    width: 460px;
+    max-width: 460px;
+    padding-inline: 0;
   }
   .route-map-screen [data-testid="route-bottom-sheet"] {
-    inset-inline-start: 1.5rem !important;
-    inset-inline-end: auto !important;
-    top: calc(max(0.75rem, env(safe-area-inset-top)) + 7.5rem) !important;
-    bottom: 1.5rem !important;
-    width: 460px !important;
-    max-width: 460px !important;
-    height: auto !important;
-    border-radius: 1.75rem !important;
-    box-shadow: 0 20px 60px rgba(18, 48, 86, 0.22) !important;
+    inset-inline-start: 1.5rem;
+    inset-inline-end: auto;
+    top: calc(max(0.75rem, env(safe-area-inset-top)) + 7.5rem);
+    bottom: 1.5rem;
+    width: 460px;
+    max-width: 460px;
+    height: auto;
+    border-radius: 1.75rem;
+    box-shadow: 0 20px 60px rgba(18, 48, 86, 0.22);
   }
   .route-map-screen [data-testid="route-bottom-sheet"] .route-sheet-grabber {
-    display: none !important;
+    display: none;
   }
 }
 
@@ -1519,8 +1399,8 @@ html.dark .production-app {
 }
 html.dark .app-header,
 html.dark .app-tabbar {
-  background-color: rgba(11, 15, 20, .94) !important;
-  border-color: #263648 !important;
+  background-color: rgba(11, 15, 20, .94);
+  border-color: #263648;
 }
 html.dark .home-hero--canonical .home-city-pill { background: #111820; color: #F5F9FF; border-color: #263648; }
 html.dark .home-banner-scrim {
@@ -1540,7 +1420,7 @@ html:not(.dark) .home-marshpass-card {
   background: linear-gradient(125deg, #FFFFFF 0%, #F0F7FF 62%, #E3F0FF 100%);
   box-shadow: 0 9px 24px rgba(23, 68, 126, .1), inset 0 1px #fff;
 }
-html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !important; border-color: var(--mg-border-subtle) !important; }
+html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); border-color: var(--mg-border-subtle); }
 .home-canonical-banner,
 .home-marshpass-card { border-radius: var(--mg-radius-xl); }
 .production-app :is(article, .journey-search-card, .journey-offer-card) { border-radius: 18px; }
@@ -1557,7 +1437,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
   }
   .home-action-grid > .home-action-card {
     height: auto;
-    min-height: 0 !important;
+    min-height: 0;
     aspect-ratio: 1 / 1;
     padding: .7rem;
   }
@@ -1565,7 +1445,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary) !i
 }
 @media (max-width: 639px) and (max-height: 730px) {
   .home-hero--canonical {
-    overflow-y: auto !important;
+    overflow-y: auto;
     padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
     scroll-padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
   }
