@@ -233,7 +233,8 @@ html.dark .search-screen .journey-search-card [role="group"] > button {
   color: #66B2FF;
 }
 html.dark .search-screen .journey-search-card .search-trip-details > button { color: #66B2FF; }
-html.dark .search-screen .journey-search-card .search-trip-details > div > button { color: #66B2FF; }
+/* The arrival tile used to carry the same blue through its inner button, which made «По» the only
+   value in the card tinted like a link; the tile's own ink already matches the departure tile. */
 /*
  * Date, time and seat count are one control family, so they share a surface, a radius and a
  * height instead of each carrying its own Tailwind soup. These rules are unlayered, which is
@@ -251,7 +252,11 @@ html.dark .search-screen .journey-search-card .search-trip-details > div > butto
 .search-screen .journey-search-card .trip-tile--stepper { padding: .25rem .25rem .25rem .7rem; }
 .search-screen .journey-search-card .trip-tile small { font-size: 12px; font-weight: 600; line-height: 1.15; color: #5b6a80; }
 .search-screen .journey-search-card .trip-tile .trip-tile__value { font-size: 13px; font-weight: 800; line-height: 1.25; }
-.search-screen .journey-search-card .trip-tile button {
+/* The boxy square treatment belongs to the seat stepper's two icon buttons only. Scoped here as
+   `.trip-tile button` it also captured the arrival tile's inner button, which stacked its icon above
+   the value, painted a bordered box inside the tile and re-tinted the text — so «З» and «По» read as
+   two different controls. */
+.search-screen .journey-search-card .trip-tile--stepper > button {
   display: grid;
   place-items: center;
   border: 1px solid rgba(148, 170, 196, .38);
@@ -259,7 +264,19 @@ html.dark .search-screen .journey-search-card .search-trip-details > div > butto
 }
 html.dark .search-screen .journey-search-card .trip-tile { background: #16202B; color: #F5F9FF; }
 html.dark .search-screen .journey-search-card .trip-tile small { color: #8FA0B3; }
-html.dark .search-screen .journey-search-card .trip-tile button { border-color: #263648; background: #111820; color: #66B2FF; }
+html.dark .search-screen .journey-search-card .trip-tile--stepper > button { border-color: #263648; background: #111820; color: #66B2FF; }
+/*
+ * A seat stepper needs 88 px for two 44 px buttons and the budget needs its value on one line, but
+ * half of a 390 px card leaves the text column 24 px — that is how «1 пасажир» wrapped under the
+ * minus button and «Без обмеж…» lost its tail. Below 430 px these two controls take the whole row.
+ * An armed arrival tile needs the same treatment: measured at 390 px, its 164 px half could not hold
+ * a 44 px clear button and the 95 px «5 лист., 20:00» together, so the pair stacks once a limit is set.
+ */
+@media (max-width: 430px) {
+  .search-screen .journey-search-card .search-trip-details--stack { grid-template-columns: minmax(0, 1fr); }
+  .search-screen .journey-search-card .search-trip-details--armed { grid-template-columns: minmax(0, 1fr); }
+  .search-screen .journey-search-card .trip-tile--stepper { padding: .5rem .7rem; }
+}
 .journey-search-card label { min-height: 3.65rem; }
 .journey-search-card input { font-size: 16px; } /* Prevent WKWebView input zoom. */
 .journey-search-card button,
@@ -618,7 +635,9 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .production-app .app-tabbar button { min-width: 2.9rem; padding-inline: .35rem; }
   .production-app .journey-search-card { padding: .65rem; }
   .production-app .transport-mode-grid { gap: .35rem; }
-  .search-screen .journey-search-card .search-trip-details { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  /* At 320 px a half-card leaves the departure value 107 px against 117 px of text, so the date pair
+     stacks too; the !important two-column pin here is what produced that 14 px clip. */
+  .search-screen .journey-search-card .search-trip-details { grid-template-columns: minmax(0, 1fr); }
   .transport-types-inline > div:first-child { gap: .25rem; }
   .transport-types-inline > div:first-child h2 { white-space: nowrap; font-size: .8rem; }
 }

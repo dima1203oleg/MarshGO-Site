@@ -360,3 +360,40 @@ test('the compact route lip wraps instead of painting action chips over the pric
     .map(size => `${size[1]}px`);
   assert.deepEqual(undersized, [], `the lip carries the numbers a passenger compares, so 12 px is its floor: ${undersized.join(', ')}`);
 });
+
+// Measured on 2026-11-04 at 390 px: each place row carried two 44 px buttons (map pin + clear), the
+// value column got 179 px and «Аеропорт, Торгмаш, вул. Мічурина» lost 103 px; the seat stepper squeezed
+// its own text to 24 px so «1 пасажир» wrapped under the minus button. The board gives a place row one
+// trailing control, so the map picker became a named control and the wide tiles take the whole row.
+test('the search screen gives each field the width its value needs', async () => {
+  const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
+  const [css, marketplace] = await Promise.all([read('../src/index.css'), read('../src/views/ProductionMarketplace.tsx')]);
+  // Every assertion below is scoped to the search card: the same place-row markup also exists in the
+  // offer and demand forms, and a strip that only has to sit under the search rows passes a file-wide
+  // grep from anywhere in the file.
+  const searchFormStart = marketplace.indexOf('const searchForm = <form');
+  assert.notEqual(searchFormStart, -1, 'the search card left the markup');
+  const searchForm = marketplace.slice(searchFormStart, marketplace.indexOf('</form>', searchFormStart));
+  const placeRows = [...searchForm.matchAll(/<div role="group" aria-label="(?:Початкова|Кінцева) точка"[\s\S]*?<\/div>/g)];
+  assert.equal(placeRows.length, 2, 'the place rows left the shared group markup');
+  for (const row of placeRows)
+    assert.equal((row[0].match(/aria-label="Обрати на мапі"/g) || []).length, 0, 'a second 44 px button in a place row costs the value 52 px of text');
+  assert.equal((searchForm.match(/aria-label="Обрати на мапі"/g) || []).length, 0, 'the search card may only carry the named strip');
+  assert.match(searchForm, /Обрати на мапі: \{\(routePlaceField \?\? 'destination'\) === 'origin' \? 'Звідки' : 'Куди'\}/,
+    'the map picker has to name the field it fills inside the search card now that it left the rows');
+  assert.match(searchForm, /setPicker\(\{ form: 'search', field \}\)/, 'the strip must fill the search route, not another form');
+  assert.match(searchForm, /<input required title=\{(?:origin|destination) \|\| undefined\}/, 'a clipped address must still be readable in full');
+  assert.equal((searchForm.match(/aria-label="Вибрати дату й час (?:відправлення|прибуття)"[\s\S]{0,700}?<ChevronDown/g) || []).length, 0,
+    'the chevron inside a date tile is decoration on a control that is already a button, and it costs the value its last characters');
+  assert.match(searchForm, /search-trip-details search-trip-details--stack/, 'the seat stepper and the budget need a full row below 430 px');
+  assert.match(searchForm, /search-trip-details--armed/, 'an armed arrival tile carries a 44 px clear button next to its value');
+  assert.doesNotMatch(searchForm, /Скасувати обмеження прибуття[\s\S]{0,220}?size-8/, 'a 32 px clear button breaks the 44 px target rule');
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]{0,320}\.search-trip-details--armed \{ grid-template-columns: minmax\(0, 1fr\); \}/,
+    'without the armed stack the 164 px half clips «5 лист., 20:00» by 18 px');
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]{0,260}\.search-trip-details--stack \{ grid-template-columns: minmax\(0, 1fr\); \}/,
+    'the stack rule that gives the stepper and budget their width is gone');
+  assert.doesNotMatch(css, /\.search-trip-details:not\(\.search-trip-details--stack\)[\s\S]{0,80}!important/,
+    'a forced two-column date row came back; at 320 px it clips the departure time');
+  assert.doesNotMatch(css, /\.trip-tile button\s*\{/,
+    'the square-button treatment leaked from the seat stepper to the arrival tile and made «З» and «По» look like different controls');
+});
