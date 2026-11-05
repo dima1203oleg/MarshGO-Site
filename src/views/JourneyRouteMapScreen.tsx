@@ -17,7 +17,7 @@ import {
   formatJourneyDistance,
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay } from './cashFare';
-import { routeSheetHeights, settleRouteSheetSnap, type RouteSheetSnap } from './routeSheet';
+import { createFrameWriter, prefersReducedMotion, routeSheetHeights, routeSheetTransition, settleRouteSheetSnap, subscribeReducedMotion, type RouteSheetSnap } from './routeSheet';
 import { themeService } from '../services/theme';
 import { buildRouteMapAnnotations, formatSegmentCount, formatStopCount, primaryTransitLeg } from './routeMapAnnotations';
 import { priorityLevelOf } from '../map/transportVisualZones';
@@ -114,7 +114,8 @@ export function JourneyRouteMapScreen({
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
   const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 316 : routeSheetHeights(window.innerHeight).half);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
-  const [dragging, setDragging] = useState(false);
+  // See JourneyActiveNavigation: the drag stays out of React state so touch-down costs no render.
+  const draggingRef = useRef(false);
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [mapSegmentChoices, setMapSegmentChoices] = useState<{ ids: string[]; x: number; y: number } | null>(null);
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
@@ -137,6 +138,22 @@ export function JourneyRouteMapScreen({
   const segmentCards = useRef(new Map<string, HTMLElement>());
   const dragStart = useRef<{ y: number; height: number; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
   const suppressHandleClick = useRef(false);
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  const dragWriter = useRef<ReturnType<typeof createFrameWriter> | null>(null);
+  if (dragWriter.current === null) {
+    dragWriter.current = createFrameWriter((height) => {
+      const sheet = sheetElement.current;
+      if (!sheet) return;
+      sheet.style.transition = 'none';
+      sheet.style.height = `${height}px`;
+    });
+  }
+
+  useEffect(() => subscribeReducedMotion(setReducedMotion), []);
+  useEffect(() => {
+    const writer = dragWriter.current;
+    return () => writer?.discard();
+  }, []);
 
   useEffect(() => themeService.subscribe((_theme, dark) => setIsDark(dark)), []);
 
@@ -312,7 +329,7 @@ export function JourneyRouteMapScreen({
   }, [mapPadding, routeLinePoints]);
 
   useEffect(() => {
-    if (dragging || !mapAdapterReady) return;
+    if (draggingRef.current || !mapAdapterReady) return;
     const adapter = mapAdapter.current;
     if (!adapter) return;
     adapter.setActiveRouteSegment?.(activeSegmentId);
@@ -329,7 +346,7 @@ export function JourneyRouteMapScreen({
     }
     if (routeLinePoints.length >= 2) adapter.focusCoordinates?.(routeLinePoints, { ...mapPadding, bearing: 0 }, 15.2);
     else adapter.fitRoute(mapPadding);
-  }, [activeSegmentId, dragging, mapAdapterReady, mapPadding, routeFitKey, segmentFocusKey, sheetSnap]);
+  }, [activeSegmentId, mapAdapterReady, mapPadding, routeFitKey, segmentFocusKey, sheetSnap]);
 
   useEffect(() => {
     if (sheetSnap === 'expanded') return;
@@ -400,14 +417,14 @@ export function JourneyRouteMapScreen({
     const now = performance.now();
     const renderedHeight = sheetElement.current?.getBoundingClientRect().height ?? sheetHeightRef.current;
     sheetHeightRef.current = renderedHeight;
-    setSheetHeight(renderedHeight);
+    draggingRef.current = true;
     if (sheetElement.current) {
-      sheetElement.current.style.transition = 'none';
+      sheetElement.current.dataset.dragging = 'true';
+      sheetElement.current.style.transition = routeSheetTransition(true, reducedMotion);
       sheetElement.current.style.height = `${renderedHeight}px`;
     }
     dragStart.current = { y: event.clientY, height: renderedHeight, pointerId: event.pointerId, moved: false, lastY: event.clientY, lastAt: now, velocity: 0 };
     event.currentTarget.setPointerCapture(event.pointerId);
-    setDragging(true);
   };
   const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStart.current;
@@ -423,22 +440,26 @@ export function JourneyRouteMapScreen({
     start.lastAt = now;
     const heights = routeSheetHeights(viewportHeight);
     const nextHeight = Math.min(heights.expanded, Math.max(heights.collapsed, start.height + delta));
+    // The ref settles the snap on release, so it stays synchronous; only the paint is coalesced.
     sheetHeightRef.current = nextHeight;
-    if (sheetElement.current) {
-      sheetElement.current.style.transition = 'none';
-      sheetElement.current.style.height = `${nextHeight}px`;
-    }
+    dragWriter.current?.schedule(nextHeight);
   };
   const handlePointerEnd = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = dragStart.current;
     if (!start || start.pointerId !== event.pointerId) return;
+    dragWriter.current?.flush();
     if (start.moved) {
       const heights = routeSheetHeights(viewportHeight);
       const next = settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height);
       moveToSnap(next);
     }
     dragStart.current = null;
-    setDragging(false);
+    draggingRef.current = false;
+    if (sheetElement.current) {
+      sheetElement.current.dataset.dragging = 'false';
+      // Restored imperatively because settling on the current detent causes no React render.
+      sheetElement.current.style.transition = routeSheetTransition(false, reducedMotion);
+    }
   };
 
   const setCardRef = (id: string, node: HTMLElement | null) => {
@@ -560,7 +581,7 @@ export function JourneyRouteMapScreen({
       <i style={{ width: scale.widthPx }}/>
     </div>}
 
-    {showChrome && liveLeg && <div className="pointer-events-none absolute inset-x-0 z-10 mx-auto flex max-w-3xl justify-center px-4" style={{ bottom: sheetHeight + 10, transition: dragging ? 'none' : 'bottom var(--mg-dur-base) var(--mg-ease-entrance)' }}>
+    {showChrome && liveLeg && <div className="pointer-events-none absolute inset-x-0 z-10 mx-auto flex max-w-3xl justify-center px-4" style={{ bottom: sheetHeight + 10, transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}>
       <button type="button" onClick={() => chooseSegment(liveLeg.id)} aria-pressed={activeSegmentId === liveLeg.id} aria-label={activeSegmentId === liveLeg.id ? `${legLabel(liveLeg)} — натисніть, щоб показати весь маршрут` : `${legLabel(liveLeg)} — натисніть, щоб наблизити цей відрізок`} className="pointer-events-auto route-mode-chip flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-2 text-left">
         <span className="route-mode-chip__icon grid h-9 w-9 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: journeyModeColor(liveLeg.mode, liveLeg.transportType) }}>
           <TransportIcon mode={liveLeg.mode} transportType={liveLeg.transportType} size={19} strokeWidth={2.3}/>
@@ -580,7 +601,8 @@ export function JourneyRouteMapScreen({
       aria-label="Деталі маршруту"
       data-testid="route-bottom-sheet"
       data-sheet-state={sheetSnap}
-      style={{ height: `${sheetHeight}px`, transition: dragging ? 'none' : `height var(--mg-dur-base) var(--mg-ease-entrance)`, paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
+      data-dragging={draggingRef.current ? 'true' : 'false'}
+      style={{ height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`, transition: routeSheetTransition(draggingRef.current, reducedMotion), paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
     >
       <button
         type="button"
@@ -734,7 +756,7 @@ export function JourneyRouteMapScreen({
         </div>
       </div>
     </section>
-    <div aria-live="polite" className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-6" style={{ bottom: 'calc(var(--route-map-inset) + 10px)', transition: dragging ? 'none' : 'bottom var(--mg-dur-base) var(--mg-ease-entrance)' }}>
+    <div aria-live="polite" className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-6" style={{ bottom: 'calc(var(--route-map-inset) + 10px)', transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}>
       {feedback && <p key={feedback} role="status" className="route-toast max-w-full truncate rounded-full px-4 py-2.5 text-[12.5px] font-extrabold">{feedback}</p>}
     </div>
   </main>;

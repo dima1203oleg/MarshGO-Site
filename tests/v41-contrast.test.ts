@@ -29,7 +29,9 @@ test('v41: no white text sits on a -600 emerald/amber fill (below AA at badge si
 
 test('v41: the light-theme secondary ink keeps the AA-checked hex', () => {
   const css = fs.readFileSync(path.join(srcRoot, 'index.css'), 'utf8');
-  const lightBlock = css.slice(css.indexOf(':root {\n  --mg-blue: #0877f9;'));
+  // Read the light token source itself, not a marker string inside it: CP1 merged the three
+  // :root blocks into one, so an anchor like "--mg-blue: #0877f9" is no longer a block boundary.
+  const lightBlock = /^:root \{[\s\S]*?\n\}/m.exec(css)?.[0] ?? '';
   const muted = /--mg-muted:\s*(#[0-9a-fA-F]{6})/.exec(lightBlock)?.[1]?.toLowerCase();
   assert.equal(muted, '#526477', '#64748b measured 4.76:1 on white; #526477 measures 6.09:1');
 });

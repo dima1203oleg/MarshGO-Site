@@ -126,10 +126,14 @@ test('journey search enters the results screen and shows a pending panel while p
 
 // Moving this onto a CSS class would strand the imperative style.transition='none' the drag
 // handlers set, and the sheet would stop snapping back with animation.
+// CP4 widened the condition to the reduced-motion preference, which an inline transition cannot
+// inherit from the CSS media guard without !important, and CP4's own measurement moved the drag
+// out of React state. Both live behind one helper now. The invariant this test protects is
+// unchanged: the curve stays in the style prop and comes from the motion tokens, never a literal.
 test('route sheet snap uses the motion tokens without leaving the style prop', async () => {
   const sheet = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/JourneyRouteMapScreen.tsx'), 'utf8');
   assert.doesNotMatch(sheet, /280ms cubic-bezier/, 'the sheet snap reverted to an off-system curve');
-  assert.match(sheet, /style=\{\{[\s\S]{0,120}transition: dragging \? 'none' : `height var\(--mg-dur-base\) var\(--mg-ease-entrance\)`/,
+  assert.match(sheet, /style=\{\{[\s\S]{0,120}transition: routeSheetTransition\(draggingRef\.current, reducedMotion\)/,
     'sheet snap must keep its transition in the React style prop, on the motion tokens');
 });
 
