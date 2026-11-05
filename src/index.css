@@ -1723,6 +1723,18 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   box-shadow: 0 0 0 2px var(--route-ribbon-ring), 0 0 18px color-mix(in srgb, #8B3CE6 55%, transparent);
 }
 .mg-route-ribbon__pill:active { transform: scale(.97); }
+/*
+ * The bar stays 26 px tall — that is the canonical ribbon — but a stage is a tap
+ * action and the ergonomic floor is 44 px. Extend the button's hit area over its
+ * own label and detail lines instead of inflating the bar and pushing the sheet
+ * content down; the extra 9 px above and below clear the floor exactly.
+ */
+.mg-route-ribbon__pill::before {
+  content: '';
+  position: absolute;
+  inset: -9px 0;
+  border-radius: 999px;
+}
 .mg-route-ribbon__label {
   overflow: hidden;
   color: var(--route-ink);
