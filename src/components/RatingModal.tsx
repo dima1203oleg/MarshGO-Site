@@ -56,7 +56,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-slideUp">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden mg-rise">
         {/* Header */}
         <div className="p-5 bg-[#081B35] text-white flex items-center justify-between">
           <div>

@@ -342,7 +342,8 @@ export function JourneyRouteMapScreen({
     setMapSegmentChoices(null);
     setActiveSegmentId(current => current === id ? null : id);
     haptic(8);
-    requestAnimationFrame(() => segmentCards.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    // MOTION-1: honor prefers-reduced-motion for the programmatic scroll.
+    requestAnimationFrame(() => segmentCards.current.get(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' }));
   }, []);
 
   const allDuration = journey.totalDurationSeconds;

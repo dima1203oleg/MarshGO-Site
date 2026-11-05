@@ -1,0 +1,19 @@
+/* MOTION-1: motion primitives that components reference but index.css never
+   defined. Kept in its own file so open PRs touching index.css (radii, single
+   blue, short-screen rules) do not collide here. The global
+   prefers-reduced-motion guard in index.css wins over everything below. */
+
+/* Slow continuous rotation for status glyphs (theme sun, map-picker compass).
+   Same self-timed cycle style as mg-breathe / mg-cta-sheen: UI duration tokens
+   (--mg-dur-*) describe transitions, not ambient cycles, so the cycle length
+   lives in the primitive itself. Transform-only, GPU-cheap. */
+@keyframes mg-spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: mg-spin 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-slow { animation: none; }
+}

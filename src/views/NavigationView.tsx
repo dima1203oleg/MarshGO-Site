@@ -231,7 +231,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
 
             {/* ACTIVE CORRIDOR MATCH CANDIDATE PROMPT (FLOW D) */}
             {session.matchmakingOptIn && activeCandidate && (
-              <div className="bg-gradient-to-r from-[#1769F4]/20 via-[#0F284E] to-[#16845C]/20 rounded-2xl border-2 border-[#1769F4] p-5 shadow-2xl space-y-4 animate-slideUp">
+              <div className="bg-gradient-to-r from-[#1769F4]/20 via-[#0F284E] to-[#16845C]/20 rounded-2xl border-2 border-[#1769F4] p-5 shadow-2xl space-y-4 mg-rise">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <img

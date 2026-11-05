@@ -16,7 +16,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl border border-slate-200 animate-slideUp">
+      <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl border border-slate-200 mg-rise">
         {/* Top drag handle indicator */}
         <div className="pt-3 pb-1 flex justify-center sm:hidden">
           <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
