@@ -12,6 +12,7 @@ import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { buildRouteMapAnnotations, formatStopCount, isTransitLeg } from './routeMapAnnotations';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
+import { nextStopsLegId } from './journeyStopsPanel';
 import {
   createFrameWriter,
   prefersReducedMotion,
@@ -508,40 +509,43 @@ export function JourneyActiveNavigation({
               const stops = item.stops ?? [];
               const stopsOpen = openStopsLegId === item.id;
               return <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => jumpToLeg(index)}
-                  aria-pressed={selected}
-                  className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors ${selected ? 'border-[var(--mg-blue)] bg-[var(--route-card-alt)]' : 'border-[var(--route-border)] bg-[var(--route-card)]'}`}
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}>
-                    <TransportIcon mode={item.mode} transportType={item.transportType} size={18} strokeWidth={2.2}/>
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <b className="truncate text-[13px] font-extrabold">{activeLegTitle(item)}</b>
-                      <span className="ml-auto shrink-0 text-xs font-bold text-[var(--route-muted)]">Етап {index + 1}</span>
-                    </span>
-                    <span className="mt-0.5 block truncate text-xs font-semibold tabular-nums text-[var(--route-muted)]">{activeLegTimes(item)} · {formatJourneyDurationTile(item.durationSeconds)}{priceText}</span>
-                    <span className="mt-0.5 block truncate text-xs text-[var(--route-subtle)]">{shortPlace(item.origin.name)} → {shortPlace(item.destination.name)}</span>
-                  </span>
-                </button>
-                {scheduled && <div className="mt-1">
+                <div className={`overflow-hidden rounded-2xl border transition-colors ${selected ? 'border-[var(--mg-blue)] bg-[var(--route-card-alt)]' : 'border-[var(--route-border)] bg-[var(--route-card)]'}`}>
                   <button
                     type="button"
-                    aria-expanded={stopsOpen}
-                    aria-controls={`active-navigation-stops-${item.id}`}
-                    aria-label={`${stopsOpen ? 'Згорнути' : 'Показати'} зупинки: ${activeLegTitle(item)}`}
-                    onClick={() => setOpenStopsLegId(stopsOpen ? null : item.id)}
-                    className="mg-press-subtle inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-xs font-extrabold text-[var(--route-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"
+                    onClick={() => jumpToLeg(index)}
+                    aria-pressed={selected}
+                    className="flex w-full items-start gap-3 px-3 py-2.5 text-left"
                   >
-                    <ChevronDown size={15} aria-hidden="true" className={`route-stops-chevron${stopsOpen ? ' is-open' : ''}`}/>
-                    {stops.length ? formatStopCount(stops.length) : 'Зупинки від перевізника'}
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}>
+                      <TransportIcon mode={item.mode} transportType={item.transportType} size={18} strokeWidth={2.2}/>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <b className="truncate text-[13px] font-extrabold">{activeLegTitle(item)}</b>
+                        <span className="ml-auto shrink-0 text-xs font-bold text-[var(--route-muted)]">Етап {index + 1}</span>
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs font-semibold tabular-nums text-[var(--route-muted)]">{activeLegTimes(item)} · {formatJourneyDurationTile(item.durationSeconds)}{priceText}</span>
+                      <span className="mt-0.5 block truncate text-xs text-[var(--route-subtle)]">{shortPlace(item.origin.name)} → {shortPlace(item.destination.name)}</span>
+                    </span>
                   </button>
-                  {stopsOpen && <div id={`active-navigation-stops-${item.id}`} className="mt-1 rounded-2xl border border-[var(--route-border)] bg-[var(--route-card)] px-3 py-2.5">
-                    <JourneyLegStops leg={item} color={item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType)}/>
+                  {scheduled && <div className="border-t border-[var(--route-border)] px-3 py-1.5">
+                    {stops.length > 0 ? <>
+                      <button
+                        type="button"
+                        aria-expanded={stopsOpen}
+                        aria-controls={`active-navigation-stops-${item.id}`}
+                        onClick={() => setOpenStopsLegId(nextStopsLegId(openStopsLegId, item.id))}
+                        className="mg-press-subtle inline-flex min-h-11 items-center gap-1 rounded-xl px-1 text-xs font-extrabold text-[var(--route-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"
+                      >
+                        <ChevronDown size={15} aria-hidden="true" className={`route-stops-chevron${stopsOpen ? ' is-open' : ''}`}/>
+                        {formatStopCount(stops.length)}
+                      </button>
+                      {stopsOpen && <div id={`active-navigation-stops-${item.id}`} className="mg-route-stops pb-1.5">
+                        <JourneyLegStops leg={item} color={item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType)}/>
+                      </div>}
+                    </> : <p className="py-1.5 text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
                   </div>}
-                </div>}
+                </div>
               </li>;
             })}
           </ol>
