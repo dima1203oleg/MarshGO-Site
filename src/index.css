@@ -53,12 +53,18 @@ html.dark {
   --mg-surface-secondary: #16202B;
   --mg-surface-card: #111820;
   --mg-surface-tint: #16202B;
+  /* Raised above the surface it sits on: dropdown lists, floating control chips. Derived from the
+     dark card ramp so it never needs a hand-picked hex, and stays one clear step above secondary. */
+  --mg-surface-elevated: color-mix(in srgb, var(--mg-surface-secondary) 90%, var(--mg-ink));
   --mg-amber: #FFB020;
   --mg-green: #2CD67D;
   /* --mg-action fills a control with white text; --mg-blue is the accent for text and strokes. */
   --mg-action: #0B63D6;
   --mg-action-subtle: color-mix(in srgb, var(--mg-blue) 50%, var(--mg-surface-card));
   --mg-action-hover: #0A57BC;
+  /* The hover affordance below the action colour: the accent diluted into the card it borders, so a
+     card hints at being selectable without looking selected. */
+  --mg-action-subtle: color-mix(in srgb, var(--mg-blue) 50%, var(--mg-surface-card));
   --mg-surface-glass: rgba(11, 15, 20, .94);
   --mg-ink-primary: #F5F9FF;
   --mg-ink-secondary: #B6C2D0;
@@ -103,6 +109,8 @@ html.dark {
   --route-ribbon-walk: #A9B6C7;
   --route-ribbon-ring: #14243B;
   --route-control-bg: rgba(255, 255, 255, .92);
+  --route-control-active-bg: var(--mg-action);
+  --route-control-active-ink: #FFFFFF;
   --route-control-border: rgba(20, 36, 59, .1);
   --route-scale-ink: #213650;
   --mg-label-bg: rgba(255, 255, 255, .97);
@@ -140,6 +148,8 @@ html.dark {
   --route-ribbon-walk: #3B4658;
   --route-ribbon-ring: #EAF1FB;
   --route-control-bg: rgba(17, 25, 38, .9);
+  --route-control-active-bg: var(--mg-action);
+  --route-control-active-ink: #FFFFFF;
   --route-control-border: rgba(255, 255, 255, .09);
   --route-scale-ink: #E8EEF8;
   --mg-label-bg: rgba(10, 16, 25, .93);
@@ -188,9 +198,13 @@ body {
   --mg-surface-secondary: #f6f8fc;
   --mg-surface-card: #FFFFFF;
   --mg-surface-tint: #f6f8fc;
+  /* A panel raised over the card behind it (suggestion lists, floating controls). In the light theme
+     the raised step is the secondary surface; the dark theme mixes one out of the card ramp. */
+  --mg-surface-elevated: var(--mg-surface-secondary);
   --mg-action: #0B63D6;
   --mg-action-subtle: color-mix(in srgb, var(--mg-action) 45%, var(--mg-surface-card));
   --mg-action-hover: #0950A8;
+  --mg-action-subtle: color-mix(in srgb, var(--mg-action) 45%, var(--mg-surface-card));
   --mg-amber: #AE6C00;
   --mg-green: #16845C;
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
@@ -1563,18 +1577,6 @@ html.dark .home-banner-scrim {
 }
 .home-banner-scrim { background: linear-gradient(90deg, rgba(255,255,255,.96), rgba(255,255,255,.86) 58%, rgba(255,255,255,.08)); }
 .home-marshpass-slot--multiple .home-marshpass-card { height: calc(100% - 3.25rem); }
-html.dark .home-marshpass-card {
-  color: #F5F9FF;
-  border-color: rgba(83, 107, 134, .56);
-  background: linear-gradient(125deg, #101923 0%, #13263B 58%, #0F1A28 100%);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, .3), inset 0 1px rgba(255, 255, 255, .05);
-}
-html:not(.dark) .home-marshpass-card {
-  color: #102344;
-  border-color: #D4E2F1;
-  background: linear-gradient(125deg, #FFFFFF 0%, #F0F7FF 62%, #E3F0FF 100%);
-  box-shadow: 0 9px 24px rgba(23, 68, 126, .1), inset 0 1px #fff;
-}
 html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); border-color: var(--mg-border-subtle); }
 .home-canonical-banner,
 .home-marshpass-card { border-radius: var(--mg-radius-xl); }
@@ -1662,6 +1664,25 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   transition: transform .16s var(--mg-ease-entrance), background-color .16s ease;
+}
+/* An unlayered rule outranks every Tailwind @layer, so the `bg-[var(--mg-action)]` the call
+   sites append for the pressed state never won — the chip measured the same
+   rgba(17, 25, 38, .9) whether 3D or satellite was on or off. The on-state is therefore owned
+   here, by the same rule that owns the off-state, and keyed on the state the control already
+   publishes to assistive technology. */
+.route-map-control[aria-pressed="true"] {
+  background: var(--route-control-active-bg);
+  border-color: transparent;
+  color: var(--route-control-active-ink);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .24);
+}
+.route-map-control[aria-pressed="true"]:hover { background: var(--route-control-active-bg); }
+/* A control that cannot do its job has to look like it cannot do its job. */
+.route-map-control[aria-disabled="true"] {
+  color: var(--route-muted);
+  cursor: not-allowed;
+  opacity: .55;
+  box-shadow: none;
 }
 .route-map-control:active { transform: scale(.94); }
 

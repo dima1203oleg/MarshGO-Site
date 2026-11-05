@@ -7,20 +7,46 @@ export const mapLayers: Record<MapLayer, { label: string }> = {
 };
 export const PERSPECTIVE_PITCH = 52;
 
+// Imagery must come from the deployment's licensed provider. A build with no
+// VITE_MAP_SATELLITE_TILE_URL keeps the toggle honestly disabled instead of quietly
+// spending a third party's licensed imagery from inside the bundle. The workspace `.env`
+// declares the provider; `scripts/with-map-env.mjs` and the worktree-aware `envDir` in
+// vite.config.ts are what deliver it to the build.
+export const satelliteTiles = (import.meta.env?.VITE_MAP_SATELLITE_TILE_URL as string | undefined)?.trim() || undefined;
+export const satelliteAttribution = (import.meta.env?.VITE_MAP_SATELLITE_ATTRIBUTION as string | undefined)?.trim() || undefined;
+
+/** Single source of truth for «this build can actually show satellite imagery».
+ *  Every satellite control must read it: promising a basemap we cannot fetch is a
+ *  false-success UI, and the passenger should get the plain reason, not a dead button. */
+export const satelliteBasemapAvailable = Boolean(satelliteTiles && satelliteAttribution);
+export const SATELLITE_UNAVAILABLE_NOTE = 'Супутникові знімки не підключені.';
+
 const LAYER_KEY = 'mg_map_layer';
 const PERSPECTIVE_KEY = 'mg_map_perspective';
 const layerListeners = new Set<(layer: MapLayer) => void>();
 const perspectiveListeners = new Set<(perspective: MapPerspective) => void>();
+
+/** Satellite selections are dropped when the deployment has no imagery source,
+ *  including values stored by an earlier session on a differently configured build. */
+function honorLayerAvailability(layer: MapLayer): MapLayer {
+  return layer === 'satellite' && !satelliteBasemapAvailable ? 'simple' : layer;
+}
+
 export function getMapLayer(): MapLayer {
   try {
     const saved = localStorage.getItem(LAYER_KEY);
-    // A saved 'satellite' from an environment that has no licensed imagery would paint an empty
-    // background, so the stored preference is only honoured where the base map actually exists.
-    if (saved === 'satellite' && !satelliteBasemapAvailable) return 'simple';
-    if (saved === 'simple' || saved === 'satellite') return saved;
-    // Keep existing users' selected base layer through this taxonomy cleanup.
-    if (saved === 'standard' || saved === 'threeD' || saved === 'navigation') return 'simple';
-    if (saved === 'hybrid') return satelliteBasemapAvailable ? 'satellite' : 'simple';
+    // A saved 'satellite' from an environment with no licensed imagery would paint an empty
+    // background, so the stored preference is honoured only where the base map exists. The
+    // refusal is written back once, so a later read cannot disagree with this one.
+    const resolved = saved === 'simple' || saved === 'satellite'
+      ? honorLayerAvailability(saved)
+      : (saved === 'standard' || saved === 'threeD' || saved === 'navigation')
+        ? 'simple'
+        : saved === 'hybrid' ? honorLayerAvailability('satellite') : null;
+    if (resolved !== null) {
+      if (resolved !== saved) { try { localStorage.setItem(LAYER_KEY, resolved); } catch { /* read-only storage */ } }
+      return resolved;
+    }
   } catch { /* browser storage is optional */ }
   return 'simple';
 }
@@ -35,8 +61,9 @@ export function getMapPerspective(): MapPerspective {
   return '2d';
 }
 export function setMapLayer(layer: MapLayer) {
-  try { localStorage.setItem(LAYER_KEY, layer); } catch { /* mode still applies in memory */ }
-  layerListeners.forEach((listener) => listener(layer));
+  const next = honorLayerAvailability(layer);
+  try { localStorage.setItem(LAYER_KEY, next); } catch { /* mode still applies in memory */ }
+  layerListeners.forEach((listener) => listener(next));
 }
 export function setMapPerspective(perspective: MapPerspective) {
   try { localStorage.setItem(PERSPECTIVE_KEY, perspective); } catch { /* mode still applies in memory */ }
@@ -45,23 +72,8 @@ export function setMapPerspective(perspective: MapPerspective) {
 export function subscribeMapLayer(listener: (layer: MapLayer) => void) { layerListeners.add(listener); return () => { layerListeners.delete(listener); }; }
 export function subscribeMapPerspective(listener: (perspective: MapPerspective) => void) { perspectiveListeners.add(listener); return () => { perspectiveListeners.delete(listener); }; }
 
-// Imagery must come from the deployment's licensed provider. A build that has no
-// VITE_MAP_SATELLITE_TILE_URL keeps the toggle honestly disabled instead of quietly
-// spending a third party's licensed imagery from inside the bundle. The workspace
-// `.env` is the place that declares the provider; `scripts/with-map-env.mjs` and the
-// worktree-aware `envDir` in vite.config.ts are what deliver it to the build.
-export const satelliteTiles = (import.meta.env?.VITE_MAP_SATELLITE_TILE_URL as string | undefined)?.trim() || undefined;
-export const satelliteAttribution = (import.meta.env?.VITE_MAP_SATELLITE_ATTRIBUTION as string | undefined)?.trim() || undefined;
-
-/**
- * A toggle the passenger can press must actually change the picture. When the deployment has no
- * licensed imagery this is false, and every satellite control has to say so instead of painting
- * the same scheme map under a new label.
- */
-export const satelliteBasemapAvailable = Boolean(satelliteTiles && satelliteAttribution);
-
-export function isBasemapConfigured(layer: MapLayer, schemeConfigured: boolean, satelliteConfigured = Boolean(satelliteTiles && satelliteAttribution)): boolean {
-  return layer === 'satellite' ? satelliteConfigured : schemeConfigured;
+export function isBasemapConfigured(layer: MapLayer, schemeConfigured: boolean, satelliteReady = satelliteBasemapAvailable): boolean {
+  return layer === 'satellite' ? satelliteReady : schemeConfigured;
 }
 
 /** Satellite is a raster base; the active journey remains a normal vector overlay above it. */

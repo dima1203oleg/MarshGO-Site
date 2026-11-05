@@ -12,7 +12,7 @@ export type { TransportLayerId } from './transportLayerConfig';
  * 2D information layers. They are MapLibre sources/layers (no DOM markers), loaded per viewport and only for the layers the user switched on.
  * Static geometry is cached on the server for hours; vehicle positions are polled every 15 s only while a line layer is visible.
  */
-// ---- selection store (all layers are off by default) ----
+// ---- selection store ----
 const STORAGE_KEY = 'marshgo.map.transport-layers.v1';
 const hiddenLayerIds: TransportLayerId[] = ['PUBLIC_TRANSPORT', 'CITY_TRAIN', 'FUNICULAR', 'STOPS', 'RENTAL_POINTS'];
 const validLayerIds = new Set<TransportLayerId>([...transportLayerList.map((item) => item.id), ...hiddenLayerIds]);
@@ -22,6 +22,12 @@ function restoreSelectedLayers(): Set<TransportLayerId> {
     return new Set(Array.isArray(values) ? values.filter((value): value is TransportLayerId => typeof value === 'string' && validLayerIds.has(value as TransportLayerId)) : []);
   } catch { return new Set(); }
 }
+/**
+ * Whether this browser has ever recorded a layer choice. "Never chosen" and "chosen: nothing" are different
+ * states: only the first one lets the transport map switch the city's layers on by itself, while an explicit
+ * empty choice is respected on every later visit.
+ */
+export const hasStoredLayerChoice = (): boolean => { try { return localStorage.getItem(STORAGE_KEY) !== null; } catch { return true; } };
 const selected = restoreSelectedLayers();
 const listeners = new Set<(layers: ReadonlySet<TransportLayerId>) => void>();
 export const getTransportLayers = (): ReadonlySet<TransportLayerId> => new Set(selected);
@@ -34,7 +40,12 @@ export function toggleTransportLayer(id: TransportLayerId) {
   publishSelection();
 }
 export function setTransportLayers(ids: readonly TransportLayerId[], enabled: boolean) {
-  ids.forEach((id) => enabled ? selected.add(id) : selected.delete(id));
+  // Only a real change may be stored and broadcast. The availability probe calls this with the layers it
+  // cannot serve, and on a first visit that list is switched off while nothing is switched on: persisting
+  // that no-op would write "[]" and destroy the "the visitor has never chosen anything yet" signal.
+  const changed = ids.filter((id) => selected.has(id) !== enabled);
+  if (!changed.length) return;
+  changed.forEach((id) => (enabled ? selected.add(id) : selected.delete(id)));
   publishSelection();
 }
 export function clearTransportLayers() { selected.clear(); publishSelection(); }

@@ -424,3 +424,35 @@ test('the search screen gives each field the width its value needs', async () =>
   assert.doesNotMatch(css, /\.trip-tile button\s*\{/,
     'the square-button treatment leaked from the seat stepper to the arrival tile and made «З» and «По» look like different controls');
 });
+
+// FIELD-X-1 (2026-11-05, seen in /tmp/mgshots11/70-dark-route-form.png at 390×844): the «Куди» row offered
+// «Очистити кінцеву точку» while the field was empty — a destructive control with nothing to destroy. The
+// owner's rule is a × only once there is text. Main shipped the stronger form of the same rule: the slot
+// never goes inert, it changes job — clear when there is text, «Обрати на мапі» when there is not. The
+// origin row keeps its own second job (the location arrow). Both keep one 44 px box so the card cannot jump
+// on the first keystroke.
+test('a place row only offers to clear a value that is actually there', async () => {
+  const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
+  const marketplace = await read('../src/views/ProductionMarketplace.tsx');
+  const searchFormStart = marketplace.indexOf('const searchForm = <form');
+  assert.notEqual(searchFormStart, -1, 'the search card left the markup');
+  const searchForm = marketplace.slice(searchFormStart, marketplace.indexOf('</form>', searchFormStart));
+  const rowFor = (label: string) => searchForm.match(new RegExp(`<div role="group" aria-label="${label}"[\\s\\S]*?</div>`))?.[0] ?? '';
+  const originRow = rowFor('Початкова точка');
+  assert.match(originRow, /\{origin \? <X size=\{16\}\/> : <Navigation size=\{16\}\/>\}/,
+    'the origin row must keep its empty-state job — the location arrow, not a dead ×');
+  assert.match(originRow, /data-field-action=\{origin \? 'clear' : 'locate'\}/,
+    'the origin slot must name the job it is doing, so the icon is never the only signal');
+  const destinationRow = rowFor('Кінцева точка');
+  assert.notEqual(destinationRow, '', 'the destination row left the shared group markup');
+  assert.match(destinationRow, /\{destination \? <X size=\{16\}\/> : <MapPin size=\{16\}\/>\}/,
+    'the × on «Куди» has to be guarded by the field holding text, not rendered always');
+  assert.match(destinationRow, /aria-label=\{destination \? 'Очистити кінцеву точку' : 'Обрати на мапі: Куди'\}/,
+    'an empty «Куди» must announce the affordance it actually offers, never a clearing');
+  assert.match(destinationRow, /data-field-action=\{destination \? 'clear' : 'pick'\}/);
+  assert.doesNotMatch(destinationRow, /aria-label="Очистити кінцеву точку"/,
+    'a static clear label re-creates the destructive control FIELD-X-1 removed');
+  for (const row of [originRow, destinationRow]) {
+    assert.match(row, /className="grid h-11 w-11/, 'both place slots keep the 44 px box so typing does not shift the card');
+  }
+});
