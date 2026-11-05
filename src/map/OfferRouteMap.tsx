@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Navigation, RefreshCw } from 'lucide-react';
 import { MarshGoMap } from './MarshGoMap';
+import { mapStatusDetail } from './mapStatusCopy';
 import type { MapAdapter, MapStatus } from './MapAdapter';
 
 interface OfferRouteMapProps {
@@ -10,11 +11,11 @@ interface OfferRouteMapProps {
 }
 
 const statusCopy: Record<MapStatus, string> = {
-  unconfigured: 'Карта очікує на налаштування джерела картографічних даних.',
-  loading: 'Завантажуємо карту маршруту…',
-  available: 'Карта маршруту готова.',
-  degraded: 'Карта завантажена частково. Маршрут залишається доступним.',
-  failed: 'Не вдалося завантажити карту.',
+  unconfigured: mapStatusDetail('unconfigured', 'preview'),
+  loading: mapStatusDetail('loading', 'preview'),
+  available: '',
+  degraded: mapStatusDetail('degraded', 'preview'),
+  failed: mapStatusDetail('failed', 'preview'),
 };
 
 /** Offer preview only renders route geometry supplied by the routing backend. */

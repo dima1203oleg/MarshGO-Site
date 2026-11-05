@@ -4,6 +4,7 @@ import { productionApi, type ApiTransportCity } from '../services/productionApi'
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
+import { mapStatusDetail } from '../map/mapStatusCopy';
 import { cityTransportLayerIds, getTransportLayers, hasStoredLayerChoice, minZoom, setTransportLayers, subscribeTransportLayers, toggleTransportLayer, type TransportLayerId } from '../map/transportLayers';
 import { getLayerAvailabilityState, loadLayerAvailability, subscribeLayerAvailability } from '../map/layerAvailability';
 import { isLayerSelectable, layerUnavailableNote } from '../map/transportLayerConfig';
@@ -110,8 +111,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
       {selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow">
         {selectedCity.routeCount} маршрутів · {selectedCity.stopCount} зупинок · статичний розклад{selectedCity.realtimeAvailable ? ' · realtime джерело підключене' : ''}
       </p>}
-      {status === 'failed' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">Не вдалося завантажити карту. Перевірте мережу.</p>}
-      {status === 'unconfigured' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">Не налаштовано базову карту — фон мапи порожній.</p>}
+      {(status === 'failed' || status === 'unconfigured' || status === 'degraded') && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">{mapStatusDetail(status, 'transport')}</p>}
     </div>
     <div className="absolute right-4 top-1/2 z-[500] flex -translate-y-1/2 flex-col gap-2">
       <button

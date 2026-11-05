@@ -8,6 +8,7 @@ import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from
 import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
+import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
 import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, satelliteConfigured, SATELLITE_UNAVAILABLE_NOTE, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
@@ -408,15 +409,14 @@ export function JourneyRouteMapScreen({
   }), [timeline]);
 
   const communityLeg = journey.legs.find(leg => leg.mode === 'COMMUNITY' && leg.offerId && leg.availabilityStatus !== 'UNAVAILABLE');
-  const dataNote = mapStatus === 'failed' ? 'Карта недоступна'
-    : mapStatus === 'degraded' ? 'Карта завантажена частково'
-      : mapStatus === 'unconfigured' ? 'Базові тайли карти не налаштовані'
-        : liveJourneyRequestState === 'failed' ? 'Не вдалося оновити рух; показано розклад'
+  // A basemap problem wins the pill: it is the reason the map looks empty.
+  const dataNote = mapStatusNote(mapStatus)
+    || (liveJourneyRequestState === 'failed' ? 'Не вдалося оновити рух; показано розклад'
           : liveJourneyRequestState === 'loading' ? 'Перевіряємо дані руху…'
             : liveJourney?.segments[0]?.reason === 'provider_unavailable' ? 'Джерело руху недоступне; лінію не домальовуємо'
               : liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' ? 'Немає свіжих позицій транспорту'
                 : model.missingShapeCount > 0 ? 'Частину маршруту без лінії на карті'
-                  : model.approximateWalkCount > 0 ? 'Частина піших відрізків — оцінка' : '';
+                  : model.approximateWalkCount > 0 ? 'Частина піших відрізків — оцінка' : '');
   const mapStatusIsWarning = mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured'
     || liveJourneyRequestState === 'failed' || liveJourney?.segments[0]?.reason === 'provider_unavailable'
     || liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' || model.missingShapeCount > 0 || model.approximateWalkCount > 0;
@@ -591,7 +591,7 @@ export function JourneyRouteMapScreen({
         <ArrowRight size={17} aria-hidden="true" className="shrink-0 text-[var(--route-muted)]"/>
         <span className="min-w-0 flex-1 truncate text-right"><span aria-hidden="true" className="route-address-dot route-address-dot--destination"/>{lastLeg?.destination.name ?? 'Кінець'}</span>
       </div>
-      {mapStatusIsWarning && dataNote && <p role="status" className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-3 py-1 text-xs font-bold">{dataNote}</p>}
+      {mapStatusIsWarning && dataNote && <p role="status" title={mapStatus === 'available' ? undefined : mapStatusDetail(mapStatus)} className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-3 py-1 text-xs font-bold">{dataNote}</p>}
     </header>}
 
     <div className="absolute right-4 z-10 flex flex-col gap-2" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 8.2rem)' }}>
