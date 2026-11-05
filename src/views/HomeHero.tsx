@@ -131,13 +131,15 @@ export function HomeHero({
             <span className="block text-xs font-semibold text-slate-300">Попутки · Транспорт</span>
           </span>
         </span>
-        <span className="flex items-center justify-between gap-2 border-t border-dashed border-slate-700/80 pt-2">
-          <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-300">
+        {/* The commission line and the ticket button share one row when they fit and
+            wrap onto their own rows at 320 px, instead of truncating the claim to «0% к…». */}
+        <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-t border-dashed border-slate-700/80 pt-2">
+          <span className="flex min-w-0 flex-1 basis-[9rem] items-center gap-1.5 text-xs font-semibold text-slate-300">
             <ShieldCheck size={14} className="shrink-0 text-emerald-400"/>
             <span className="truncate">QR-посадка · 0% комісії</span>
           </span>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-md shadow-blue-900/30 transition">
-            <QrCode size={13}/><span>Отримати квиток</span><ArrowRight size={13}/>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-2.5 py-1.5 text-xs font-bold text-white shadow-md shadow-blue-900/30 transition">
+            <QrCode size={13}/><span>Отримати квиток</span>
           </span>
         </span>
       </button>
