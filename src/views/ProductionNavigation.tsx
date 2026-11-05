@@ -469,7 +469,6 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     autoStartTried.current = true;
     if (initialDestination) {
       setDestination(initialDestination);
-      setDestinationText(initialDestination.label);
     }
     void start(initialDestination);
   }, [isPresented, restoring, session, busy, initialDestination]);
@@ -484,7 +483,6 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     if (!isPresented || restoring || !session || !initialDestination) return;
     if (destination?.providerId === initialDestination.providerId && session.destination_name === initialDestination.label) return;
     setDestination(initialDestination);
-    setDestinationText(initialDestination.label);
     setBusy(true);
     setGpsMessage('Оновлюємо пункт призначення активної навігації…');
     void productionApi.setNavigationDestination(session.id, {

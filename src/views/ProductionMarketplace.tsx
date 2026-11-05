@@ -541,8 +541,11 @@ export function ProductionMarketplace() {
         } else if (route.kind === 'journey') {
           const journey = await productionApi.journey(entityId);
           if (!active) return;
-          setSelectedOffer(null); setSelectedJourney(journey); activateTab('trips');
+          setSelectedRouteMap(storedJourneyToApiJourney(journey));
           resumeActiveNavigation(journey);
+          setSelectedOffer(null);
+          setSelectedJourney(journey);
+          activateTab('trips');
         } else if (route.kind === 'conversation') {
           const conversation = await productionApi.conversationById(entityId);
           const currentBookings = await productionApi.bookings();
