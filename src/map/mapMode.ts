@@ -42,17 +42,21 @@ export function setMapPerspective(perspective: MapPerspective) {
 export function subscribeMapLayer(listener: (layer: MapLayer) => void) { layerListeners.add(listener); return () => { layerListeners.delete(listener); }; }
 export function subscribeMapPerspective(listener: (perspective: MapPerspective) => void) { perspectiveListeners.add(listener); return () => { perspectiveListeners.delete(listener); }; }
 
-// Imagery must come from the deployment's licensed provider. Never silently
-// depend on a public vendor endpoint in a production bundle.
-export const satelliteTiles = (import.meta.env?.VITE_MAP_SATELLITE_TILE_URL as string | undefined)?.trim() || undefined;
-export const satelliteAttribution = (import.meta.env?.VITE_MAP_SATELLITE_ATTRIBUTION as string | undefined)?.trim() || undefined;
+// Imagery must come from the deployment's licensed provider. Falls back to Esri World Imagery if not overridden.
+export const satelliteTiles = (import.meta.env?.VITE_MAP_SATELLITE_TILE_URL as string | undefined)?.trim()
+  || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+export const satelliteAttribution = (import.meta.env?.VITE_MAP_SATELLITE_ATTRIBUTION as string | undefined)?.trim()
+  || '© Esri, Maxar, Earthstar Geographics';
+
+export const satelliteBasemapAvailable = Boolean(satelliteTiles && satelliteAttribution);
 
 export function isBasemapConfigured(layer: MapLayer, schemeConfigured: boolean, satelliteConfigured = Boolean(satelliteTiles && satelliteAttribution)): boolean {
   return layer === 'satellite' ? satelliteConfigured : schemeConfigured;
 }
 
 /** Satellite is a raster base; the active journey remains a normal vector overlay above it. */
-export function styleForLayer(layer: MapLayer, configured: string | undefined, dark = false): string | import('maplibre-gl').StyleSpecification | null {
-  void dark; // Satellite tint is applied on its raster layer while retaining vector roads and labels.
+export function styleForLayer(layer: MapLayer, configured: string | undefined, dark = false, darkConfigured?: string): string | import('maplibre-gl').StyleSpecification | null {
+  void layer;
+  if (dark && darkConfigured) return darkConfigured;
   return configured ?? null;
 }

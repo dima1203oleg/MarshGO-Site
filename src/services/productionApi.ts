@@ -2,6 +2,12 @@ import { routeResultSchema, type RouteRequest, type RouteResult } from '../../sh
 import { NavigationProviderError } from '../../shared/navigation/errors';
 import { NETWORK_ERROR_CODE, networkFailureMessage, requestErrorMessage } from './requestErrorMessage';
 import { normalizePlaceQuery } from './placeQuery';
+import {
+  createRealtimeChannel,
+  type RealtimeChannel,
+  type RealtimeSocket,
+  type RealtimeStatus,
+} from './realtimeChannel';
 import type { TransitZoneGeometry, VehiclePriority } from '../map/transportVisualZones';
 
 export interface TransitArrival {
@@ -93,6 +99,9 @@ export type ApiBooking = {
   origin_name: string;
   destination_name: string;
   departure_at: string;
+  /** The boarding pass prints arrival and duration only when the offer actually carries them. */
+  arrival_at?: string | null;
+  duration_s?: number | null;
   driver_name: string;
   passenger_name: string;
   current_user_is_driver: boolean;
@@ -444,6 +453,32 @@ const apiBase = (typeof import.meta !== 'undefined' && (import.meta as unknown a
 let accessToken: string | null = null;
 let refreshInFlight: Promise<{ user: ApiUser; accessToken: string }> | null = null;
 
+/**
+ * The refresh cookie is httpOnly, so the page cannot read whether a session
+ * exists. Without a local marker every cold start POSTed /auth/refresh and a
+ * first-time visitor always got a 401 in the console. The marker is written
+ * only after the server issued a session, cleared on logout and on a 401 from
+ * refresh, and kept on network errors so a flaky link does not sign anyone out.
+ */
+const SESSION_HINT_KEY = 'mg_session_hint';
+function readSessionHint(): boolean {
+  try { return window.localStorage.getItem(SESSION_HINT_KEY) === '1'; } catch { return false; }
+}
+function writeSessionHint(active: boolean): void {
+  try {
+    if (active) window.localStorage.setItem(SESSION_HINT_KEY, '1');
+    else window.localStorage.removeItem(SESSION_HINT_KEY);
+  } catch {
+    // Private mode or blocked storage: the hint is an optimisation, not a contract.
+  }
+}
+
+/**
+ * Whether a bearer token is currently held. Anonymous browsing is a supported state, and endpoints
+ * that require a session (live vehicle position) must not be polled until one exists.
+ */
+export function hasApiSession(): boolean { return Boolean(accessToken); }
+
 const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 async function uploadPhotoFile<T>(path: string, file: File): Promise<T> {
   // Phones often report an empty type for camera files; infer it from the extension before validating.
@@ -485,13 +520,14 @@ async function requestEnvelope<T>(path: string, init: RequestInit = {}, retryAut
     if (tokenUsed !== accessToken) return requestEnvelope<T>(path, init, false);
     try {
       refreshInFlight ??= requestEnvelope<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false)
-        .then((session) => { accessToken = session.data.accessToken; return session.data; })
+        .then((session) => { accessToken = session.data.accessToken; writeSessionHint(true); return session.data; })
         .finally(() => { refreshInFlight = null; });
       const session = await refreshInFlight;
       accessToken = session.accessToken;
       return requestEnvelope<T>(path, init, false);
-    } catch {
+    } catch (error) {
       accessToken = null;
+      if (error instanceof ProductionApiError && error.status === 401) writeSessionHint(false);
     }
   }
   if (!response.ok) {
@@ -514,8 +550,67 @@ async function requestLayer(path: string, signal?: AbortSignal): Promise<Transpo
   return { collection: data, dataQuality: meta?.dataQuality ?? null, failedProviderCount: meta?.failedProviderCount ?? 0, truncated: meta?.truncated === true };
 }
 
+/** Event types the passenger UI is allowed to react to; anything else is dropped. */
+const REALTIME_EVENT_ALLOW_LIST = new Set([
+  'conversation.message.created',
+  'journey.updated',
+  'navigation.route-updated',
+]);
+
+const isAllowedRealtimeType = (type: string) => REALTIME_EVENT_ALLOW_LIST.has(type)
+  || type.startsWith('booking.') || type.startsWith('trip.') || type.startsWith('proposal.')
+  || type.startsWith('navigation.match.') || type.startsWith('rendezvous.');
+
+/**
+ * The session-wide realtime channel. Created lazily so a visitor who never signs in
+ * never requests a ticket, and shared by every screen that asks for live events.
+ */
+let realtimeChannel: RealtimeChannel<ApiRealtimeEvent> | null = null;
+
+function getRealtimeChannel(): RealtimeChannel<ApiRealtimeEvent> {
+  if (realtimeChannel) return realtimeChannel;
+  realtimeChannel = createRealtimeChannel<ApiRealtimeEvent>({
+    fetchTicket: () => request<{ ticket: string }>('/realtime/ticket', { method: 'POST' }).then(({ ticket }) => ticket),
+    socketUrl: (ticket) => {
+      const url = new URL(`${apiBase}/api/v1/realtime`, window.location.href);
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      // The ticket is single-use, so it travels in the query of exactly one upgrade.
+      url.searchParams.set('ticket', ticket);
+      return url.toString();
+    },
+    // One cast at the DOM boundary: the browser hands its handlers an Event argument
+    // that the channel never reads, so the structural socket interface differs only there.
+    createSocket: (url) => new WebSocket(url) as unknown as RealtimeSocket,
+    parseEvent: (raw) => {
+      try {
+        const event = JSON.parse(String(raw)) as ApiRealtimeEvent | { type?: string };
+        if (!event || typeof event.type !== 'string' || !isAllowedRealtimeType(event.type)) return null;
+        return event as ApiRealtimeEvent;
+      } catch {
+        // Malformed frames are ignored: persisted REST history stays authoritative.
+        return null;
+      }
+    },
+    addReconnectSignal: (retryNow) => {
+      const onOnline = () => retryNow();
+      const onVisible = () => { if (document.visibilityState === 'visible') retryNow(); };
+      window.addEventListener('online', onOnline);
+      document.addEventListener('visibilitychange', onVisible);
+      return () => {
+        window.removeEventListener('online', onOnline);
+        document.removeEventListener('visibilitychange', onVisible);
+      };
+    },
+  });
+  return realtimeChannel;
+}
+
 export const productionApi = {
-  async restoreSession() {
+  async restoreSession(): Promise<ApiUser | null> {
+    // No marker means this browser never received a session here, so asking the
+    // server would only produce an expected 401. A marker without a cookie still
+    // costs one request; the 401 path below clears it.
+    if (!readSessionHint()) return null;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
     try {
@@ -524,7 +619,11 @@ export const productionApi = {
         signal: controller.signal,
       });
       accessToken = session.accessToken;
+      writeSessionHint(true);
       return session.user;
+    } catch (error) {
+      if (error instanceof ProductionApiError && error.status === 401) writeSessionHint(false);
+      throw error;
     } finally {
       window.clearTimeout(timeoutId);
     }
@@ -535,6 +634,7 @@ export const productionApi = {
       body: JSON.stringify({ email, password }),
     });
     accessToken = session.accessToken;
+    writeSessionHint(true);
     return session.user;
   },
   async register(input: { email: string; password: string; displayName: string; phone?: string }) {
@@ -543,6 +643,7 @@ export const productionApi = {
       body: JSON.stringify(input),
     });
     accessToken = session.accessToken;
+    writeSessionHint(true);
     return session.user;
   },
   async requestOtp(phone: string, displayName: string) {
@@ -555,13 +656,14 @@ export const productionApi = {
       method: 'POST', body: JSON.stringify({ phone, code }),
     });
     accessToken = session.accessToken;
+    writeSessionHint(true);
     return session.user;
   },
   async logout() {
-    try { await request('/auth/logout', { method: 'POST' }); } finally { accessToken = null; }
+    try { await request('/auth/logout', { method: 'POST' }); } finally { accessToken = null; writeSessionHint(false); }
   },
   async logoutAll() {
-    try { await request('/auth/logout-all', { method: 'POST' }); } finally { accessToken = null; }
+    try { await request('/auth/logout-all', { method: 'POST' }); } finally { accessToken = null; writeSessionHint(false); }
   },
   offers(params: { origin: string; destination: string; date: string; seats: number; originCoordinates?: [number, number]; destinationCoordinates?: [number, number] }) {
     const query = new URLSearchParams({ origin: params.origin, destination: params.destination, date: params.date, seats: String(params.seats) });
@@ -892,48 +994,27 @@ export const productionApi = {
   sendMessage(conversationId: string, body: string) {
     return request<ApiMessage>(`/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
   },
+  /**
+   * Live events for this session. Every caller shares one WebSocket managed by
+   * `realtimeChannel`; the returned handle only registers and unregisters a
+   * listener, so screens can subscribe freely without leaking connections.
+   */
   subscribeRealtime(onEvent: (event: ApiRealtimeEvent) => void, onState: (connected: boolean) => void) {
-    let active = true;
-    let socket: WebSocket | null = null;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
-    let retryDelay = 1000;
-    const reconnect = () => {
-      if (!active || retryTimer) return;
-      onState(false);
-      retryTimer = setTimeout(() => { retryTimer = null; void connect(); }, retryDelay);
-      retryDelay = Math.min(30_000, retryDelay * 2);
-    };
-    const connect = async () => {
-      if (!active) return;
-      try {
-        const { ticket } = await request<{ ticket: string }>('/realtime/ticket', { method: 'POST' });
-        if (!active) return;
-        const url = new URL(`${apiBase}/api/v1/realtime`, window.location.href);
-        url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-        url.searchParams.set('ticket', ticket);
-        const next = new WebSocket(url);
-        socket = next;
-        next.onopen = () => { retryDelay = 1000; onState(true); };
-        next.onmessage = (message) => {
-          try {
-            const event = JSON.parse(String(message.data)) as ApiRealtimeEvent | { type: string };
-            if (event.type === 'conversation.message.created' || event.type === 'journey.updated' || event.type === 'navigation.route-updated' || event.type.startsWith('booking.') || event.type.startsWith('trip.') || event.type.startsWith('proposal.') || event.type.startsWith('navigation.match.') || event.type.startsWith('rendezvous.')) onEvent(event as ApiRealtimeEvent);
-          } catch { /* Ignore malformed realtime frames; persisted REST history remains authoritative. */ }
-        };
-        next.onerror = () => next.close();
-        next.onclose = () => { if (socket === next) socket = null; reconnect(); };
-      } catch { reconnect(); }
-    };
-    void connect();
+    const channel = getRealtimeChannel();
+    const unsubscribeStatus = channel.onStatus((status) => onState(status === 'online'));
+    const unsubscribeEvents = channel.subscribe(onEvent);
     return () => {
-      active = false;
-      if (retryTimer) clearTimeout(retryTimer);
-      retryTimer = null;
-      const current = socket;
-      socket = null;
-      current?.close(1000, 'chat closed');
-      onState(false);
+      unsubscribeStatus();
+      unsubscribeEvents();
     };
+  },
+  /** Connection state of the shared channel — for honest status UI. */
+  realtimeStatus() { return getRealtimeChannel().status(); },
+  onRealtimeStatus(listener: (status: RealtimeStatus) => void) { return getRealtimeChannel().onStatus(listener); },
+  /** Diagnostics only: how many live listeners and sockets the session holds. */
+  realtimeDiagnostics() {
+    const channel = getRealtimeChannel();
+    return { subscribers: channel.subscriberCount(), sockets: channel.socketCount(), status: channel.status() };
   },
   book(offerId: string, seats: number, journey?: { journeyId: string; journeyLegId: string }) {
     const context = [offerId, seats, journey?.journeyId ?? '', journey?.journeyLegId ?? ''].join(':');

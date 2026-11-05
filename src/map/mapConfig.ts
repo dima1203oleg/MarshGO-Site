@@ -12,6 +12,7 @@ const attribution = (import.meta.env.VITE_MAP_TILE_ATTRIBUTION as string | undef
 const manifestUrl = (import.meta.env.VITE_MAP_STYLE_MANIFEST_URL as string | undefined)?.trim();
 
 export const configuredMapStyleUrl = styleUrl || undefined;
+export const configuredMapDarkStyleUrl = darkStyleUrl || undefined;
 export const schemePreviewTiles = tileUrl || undefined;
 export const schemePreviewAttribution = attribution;
 export const mapAttribution = attribution;
