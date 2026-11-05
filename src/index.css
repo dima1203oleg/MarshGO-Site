@@ -53,11 +53,17 @@ html.dark {
   --mg-surface-secondary: #16202B;
   --mg-surface-card: #111820;
   --mg-surface-tint: #16202B;
+  /* Raised above the surface it sits on: dropdown lists, floating control chips. Derived from the
+     dark card ramp so it never needs a hand-picked hex, and stays one clear step above secondary. */
+  --mg-surface-elevated: color-mix(in srgb, var(--mg-surface-secondary) 90%, var(--mg-ink));
   --mg-amber: #FFB020;
   --mg-green: #2CD67D;
   /* --mg-action fills a control with white text; --mg-blue is the accent for text and strokes. */
   --mg-action: #0B63D6;
   --mg-action-hover: #0A57BC;
+  /* The hover affordance below the action colour: the accent diluted into the card it borders, so a
+     card hints at being selectable without looking selected. */
+  --mg-action-subtle: color-mix(in srgb, var(--mg-blue) 50%, var(--mg-surface-card));
   --mg-surface-glass: rgba(11, 15, 20, .94);
   --mg-ink-primary: #F5F9FF;
   --mg-ink-secondary: #B6C2D0;
@@ -178,8 +184,12 @@ body {
   --mg-surface-secondary: #f6f8fc;
   --mg-surface-card: #FFFFFF;
   --mg-surface-tint: #f6f8fc;
+  /* A panel raised over the card behind it (suggestion lists, floating controls). In the light theme
+     the raised step is the secondary surface; the dark theme mixes one out of the card ramp. */
+  --mg-surface-elevated: var(--mg-surface-secondary);
   --mg-action: #0B63D6;
   --mg-action-hover: #0950A8;
+  --mg-action-subtle: color-mix(in srgb, var(--mg-action) 45%, var(--mg-surface-card));
   --mg-amber: #AE6C00;
   --mg-green: #16845C;
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
