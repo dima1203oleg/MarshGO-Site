@@ -4,7 +4,7 @@ import { productionApi, type ApiTransportCity } from '../services/productionApi'
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
-import { clearTransportLayers, getTransportLayers, subscribeTransportLayers, toggleTransportLayer, type TransportLayerId } from '../map/transportLayers';
+import { cityTransportLayerIds, getTransportLayers, hasStoredLayerChoice, minZoom, setTransportLayers, subscribeTransportLayers, toggleTransportLayer, type TransportLayerId } from '../map/transportLayers';
 import { getLayerAvailabilityState, loadLayerAvailability, subscribeLayerAvailability } from '../map/layerAvailability';
 import { isLayerSelectable, layerUnavailableNote } from '../map/transportLayerConfig';
 import { getVehicleQuality, subscribeVehicleQuality, type VehicleQuality } from '../map/transportQuality';
@@ -26,7 +26,10 @@ const chips: Array<{ label: string; id: TransportLayerId; Icon: LucideIcon }> = 
   { label: 'Каршерінг', id: 'CARSHARING', Icon: CarFront },
 ];
 
-/** 2D map for planning: the user switches on only the layers they need; everything is off by default. */
+/** Arrival zoom: above the vehicle gate, so a city chosen from the dropdown shows live movement at once. */
+const arrivalZoom = minZoom.vehicles + 0.2;
+
+/** 2D map for planning: city transport is on until the user chooses otherwise, and that choice survives leaving the screen. */
 export function TransportMapView({ onBack }: { onBack: () => void }) {
   const [status, setStatus] = useState<MapStatus>('loading');
   const [hint, setHint] = useState<string | null>(null);
@@ -42,6 +45,20 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
   useEffect(() => subscribeTransportLayers(setSelected), []);
   useEffect(() => subscribeLayerAvailability(setLayerState), []);
   useEffect(() => { void loadLayerAvailability(); }, []);
+  /**
+   * A first visit has never chosen anything, and an empty canvas that still says "realtime джерело
+   * підключене" reads as a broken map. Once the server registry answers, switch on exactly the public
+   * transport this city can serve. An explicit choice — including switching everything off — is stored
+   * and never overwritten.
+   */
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || hasStoredLayerChoice()) return;
+    const ids = cityTransportLayerIds(layerState.availability);
+    if (!ids.length) return;
+    seeded.current = true;
+    setTransportLayers(ids, true);
+  }, [layerState.availability]);
   useEffect(() => subscribeVehicleQuality(setQuality), []);
   useEffect(() => subscribeMapLayer(setLocalMapLayer), []);
   useEffect(() => subscribeMapPerspective(setLocalPerspective), []);
@@ -54,18 +71,19 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
     }).catch(() => { if (!controller.signal.aborted) setHint('Не вдалося завантажити список міст.'); });
     return () => controller.abort();
   }, []);
-  useEffect(() => () => clearTransportLayers(), []);
+  // Leaving the screen already destroys the map adapter (polling, sources, layers) in MarshGoMap;
+  // clearing the selection here would silently store "no layers" and blank the map on the next visit.
   const located = useRef(false);
   const onAdapter = (next: MapAdapter | null) => {
     adapter.current = next;
     if (!next || located.current || !('geolocation' in navigator)) return;
     located.current = true;
-    navigator.geolocation.getCurrentPosition((position) => next.focus([position.coords.longitude, position.coords.latitude], 13), () => next.focus([30.5234, 50.4501], 10), { timeout: 8000, maximumAge: 300_000 });
+    navigator.geolocation.getCurrentPosition((position) => next.focus([position.coords.longitude, position.coords.latitude], 13), () => next.focus([30.5234, 50.4501], arrivalZoom), { timeout: 8000, maximumAge: 300_000 });
   };
   const chooseCity = (nextId: string) => {
     setCityId(nextId);
     const city = cities.find((entry) => entry.id === nextId);
-    if (city?.bbox) adapter.current?.focus([(city.bbox[0] + city.bbox[2]) / 2, (city.bbox[1] + city.bbox[3]) / 2], 10.5);
+    if (city?.bbox) adapter.current?.focus([(city.bbox[0] + city.bbox[2]) / 2, (city.bbox[1] + city.bbox[3]) / 2], arrivalZoom);
   };
   return <main className="relative h-[100svh] overflow-hidden bg-[#dbeafe] text-[#17243a] dark:bg-[#0B141C] dark:text-[#E7F0FA]">
     <MarshGoMap route={[]} overlays onStatus={setStatus} onTransportHint={setHint} onAdapter={onAdapter}/>
