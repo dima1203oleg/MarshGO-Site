@@ -9,11 +9,8 @@ const bikeNetwork: ApiTransportProviders[] = [{
 }];
 
 describe('transport availability presentation', () => {
-  it('does not claim an unregistered provider exists when a mode has no search router', () => {
-    assert.match(transportUnavailableMessage('taxi', []) ?? '', /не підтримується/);
-  });
-
-  it('distinguishes missing local coverage for a supported mode', () => {
+  it('distinguishes missing local coverage for a mode', () => {
+    assert.match(transportUnavailableMessage('taxi', []) ?? '', /Немає підключеного провайдера/);
     assert.match(transportUnavailableMessage('bus', []) ?? '', /Немає підключеного провайдера/);
   });
 

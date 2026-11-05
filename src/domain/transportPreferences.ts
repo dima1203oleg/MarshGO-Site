@@ -12,7 +12,8 @@ export const transportTypes: TransportTypeInfo[] = transportModes.map(({ id, lab
  * bikes require a confirmed return network, scooters require GBFS coverage.
  */
 export const supportedJourneySearchTypes: readonly TransportTypeId[] = [
-  'bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'carpool', 'train', 'bike', 'scooter',
+  'bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'carpool',
+  'taxi', 'train', 'bike', 'scooter', 'carsharing', 'transfer',
 ];
 const supportedTypeSet = new Set<TransportTypeId>(supportedJourneySearchTypes);
 export const isJourneySearchSupported = (type: TransportTypeId): boolean => supportedTypeSet.has(type);
@@ -122,6 +123,9 @@ function providerCanRoute(type: TransportTypeId, provider: ApiTransportProviders
     || (provider.sources.includes('geojson') && provider.services.includes('metro'));
   if (type === 'marshrutka') return provider.sources.includes('gtfs')
     || provider.sources.includes('geojson') || provider.sources.includes('json');
+  if (type === 'taxi') return provider.services.includes('taxi') || provider.sources.includes('taxi-ridehailing-api') || provider.sources.includes('rest');
+  if (type === 'carsharing') return provider.services.includes('carsharing') || provider.sources.includes('carsharing-api') || provider.sources.includes('rest');
+  if (type === 'transfer') return provider.services.includes('transfer') || provider.sources.includes('transfer-api') || provider.sources.includes('rest') || provider.sources.includes('tsv');
   return provider.sources.includes('gtfs');
 }
 export function hasJourneySearchProvider(type: TransportTypeId, groups: ApiTransportProviders[] | null): boolean {
@@ -200,9 +204,11 @@ export function toJourneyPreferences(selection: TransportSelection, groups: ApiT
   }
   return {
     allowCommunity: withProviders.includes('carpool'),
-    allowTaxi: false,
-    allowCarsharing: false,
-    allowTransfer: false,
+    allowTaxi: withProviders.includes('taxi'),
+    allowCarsharing: withProviders.includes('carsharing'),
+    allowTransfer: withProviders.includes('transfer'),
+    allowBicycle: withProviders.includes('bike'),
+    allowScooter: withProviders.includes('scooter'),
     allowBus: withProviders.some((type) => type === 'bus' || type === 'trolleybus' || type === 'tram' || type === 'metro'),
     allowMinibus: withProviders.includes('marshrutka'),
     allowRail: withProviders.includes('train'),
