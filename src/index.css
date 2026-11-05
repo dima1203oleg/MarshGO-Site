@@ -542,15 +542,20 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   font-variant-numeric: tabular-nums;
 }
 .journey-segment-tile-meta-value { font-weight: 700; }
-/* The scroll cue floats over the strip, so the last tile needs reserved space to stay readable. */
-.journey-segment-tiles:has(+ .journey-segment-scroll-cue) { padding-inline-end: 2.3rem; }
+/*
+ * The scroll cue is a floating 44 px button over the row's right edge. Padding the scroller only
+ * added empty space *after the last tile*, so mid-scroll the button still covered a stage's time
+ * and price («Пішки 2 хв» in a saved route). Reserve the gutter on the viewport instead: the
+ * scrollport ends before the button, so no tile can ever paint underneath it.
+ */
+.journey-segment-tiles-viewport:has(> .journey-segment-scroll-cue) { padding-right: 2.9rem; }
 /*
  * A stage chip sliced in half by the viewport edge reads as a rendering bug. The fade says the row
  * continues; it lifts at the end of the row, where nothing is sliced anymore.
  */
 .journey-segment-tiles-viewport:not([data-cue-at-end="true"]) .journey-segment-tiles:has(+ .journey-segment-scroll-cue) {
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3.4rem), transparent calc(100% - 1.1rem));
-  mask-image: linear-gradient(to right, #000 calc(100% - 3.4rem), transparent calc(100% - 1.1rem));
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.4rem), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 2.4rem), transparent 100%);
 }
 .journey-segment-scroll-cue {
   position: absolute;
@@ -582,6 +587,19 @@ html.dark .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #f4f8fd !im
 html.dark .journey-segment-tile-meta { color: #9aabbd; }
 html.dark .journey-segment-scroll-cue { color: #d6e4f3; }
 html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background: #111820; }
+/*
+ * At 320 px five section labels cannot share one row, so the strip scrolls. A label cut
+ * mid-word at either edge («ивні») reads as a clipped render; fade the scrolled edges
+ * instead. The flags are set from the strip's own scroll position.
+ */
+[data-testid="trips-section-tabs"] {
+  --trips-fade-start: 0px;
+  --trips-fade-end: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--trips-fade-start), #000 calc(100% - var(--trips-fade-end)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--trips-fade-start), #000 calc(100% - var(--trips-fade-end)), transparent 100%);
+}
+[data-testid="trips-section-tabs"][data-fade-start="true"] { --trips-fade-start: 1.25rem; }
+[data-testid="trips-section-tabs"][data-fade-end="true"] { --trips-fade-end: 1.25rem; }
 .route-map-screen[data-theme="light"] .journey-segment-tile { border-color: #d9e2ec; }
 .route-map-screen[data-theme="light"] .journey-segment-tile-heading { color: #172638; }
 .route-map-screen[data-theme="light"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #172638 !important; }

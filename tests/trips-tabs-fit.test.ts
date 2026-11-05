@@ -27,4 +27,10 @@ describe('trips section strip fits the canonical mobile widths', () => {
       'a 320 px strip must centre the active tab instead of leaving half a word',
     );
   });
+
+  it('fades the neighbour left by the scroll instead of slicing it mid-word', () => {
+    const css = readFileSync('src/index.css', 'utf8');
+    assert.match(css, /\[data-testid="trips-section-tabs"\]\[data-fade-start="true"\] \{ --trips-fade-start: 1\.25rem; \}/);
+    assert.match(marketplace(), /strip\.dataset\.fadeStart = strip\.scrollLeft > 4/, 'the fade must follow the real scroll position');
+  });
 });
