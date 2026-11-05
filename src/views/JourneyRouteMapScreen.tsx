@@ -40,6 +40,13 @@ import {
   shouldShowRecenterButton,
   type RouteCameraMode,
 } from '../map/routeCameraController';
+import {
+  calloutIconType,
+  generateSmartStepSummary,
+  interpolateLineProgress,
+  type CinematicCallout,
+} from '../map/cinematicRouteEngine';
+import { GlassGuidanceCallouts } from './GlassGuidanceCallouts';
 
 type JourneyLeg = ApiJourney['legs'][number];
 type TimelineItem = {
@@ -153,6 +160,9 @@ export function JourneyRouteMapScreen({
   const [expandedSegments, setExpandedSegments] = useState<Set<string>>(() => new Set(
     journey.legs.filter(leg => isScheduledRouteLeg(leg) && (leg.stops?.length ?? 0) > 0).map(leg => leg.id),
   ));
+  const [callouts, setCallouts] = useState<CinematicCallout[]>([]);
+  const revealAnimRef = useRef<number | null>(null);
+  const activeRevealLegId = useRef<string | null>(null);
   const [scale, setScale] = useState<{ label: string; widthPx: number } | null>(null);
   const [saved, setSaved] = useState(() => {
     try { return (JSON.parse(window.localStorage.getItem('marshgo.saved-route-results.v1') ?? '[]') as unknown[]).includes(journey.id); }
@@ -378,8 +388,111 @@ export function JourneyRouteMapScreen({
     };
   }, [mapPadding, mapAdapterReady, routeFitKey, segmentFocusKey, sheetSnap]);
 
+  const updateCalloutScreenPositions = useCallback(() => {
+    const adapter = mapAdapter.current;
+    if (!adapter?.project) return;
+    setCallouts(prev => {
+      if (prev.length === 0) return prev;
+      let changed = false;
+      const updated = prev.map(c => {
+        const screen = adapter.project!(c.coordinates);
+        if (!screen) return c;
+        if (!c.screenPos || Math.abs(c.screenPos.x - screen.x) > 0.5 || Math.abs(c.screenPos.y - screen.y) > 0.5) {
+          changed = true;
+          return { ...c, screenPos: screen };
+        }
+        return c;
+      });
+      return changed ? updated : prev;
+    });
+  }, []);
+
+  const buildCalloutsForLeg = useCallback((leg: JourneyLeg, nextLeg?: JourneyLeg): CinematicCallout[] => {
+    const result: CinematicCallout[] = [];
+    const coords = leg.coordinates ?? [];
+    const color = journeyModeColor(leg.mode, leg.transportType);
+    const icon = calloutIconType(leg);
+
+    const startCoord: [number, number] | null = leg.origin?.coordinates
+      ? [leg.origin.coordinates[0], leg.origin.coordinates[1]]
+      : coords[0] ? [coords[0][0], coords[0][1]] : null;
+
+    const endCoord: [number, number] | null = leg.destination?.coordinates
+      ? [leg.destination.coordinates[0], leg.destination.coordinates[1]]
+      : coords.length > 0 ? [coords.at(-1)![0], coords.at(-1)![1]] : null;
+
+    if (startCoord) {
+      result.push({
+        id: `callout-boarding-${leg.id}`,
+        type: 'BOARDING',
+        coordinates: startCoord,
+        title: leg.mode === 'WALK' ? 'ПОЧАТОК ПІШКИ' : 'ПОСАДКА',
+        subtitle: leg.origin?.name ? shortPlace(leg.origin.name) : 'Початкова точка',
+        time: formatTime(leg.departureAt),
+        accentColor: color,
+        iconType: icon,
+        stage: 'enter',
+      });
+    }
+
+    if (coords.length >= 3 && leg.mode !== 'WALK') {
+      const midIdx = Math.floor(coords.length / 2);
+      const midCoord: [number, number] = [coords[midIdx]![0], coords[midIdx]![1]];
+      const stopCount = leg.stops?.length ?? 0;
+      result.push({
+        id: `callout-stops-${leg.id}`,
+        type: 'STOPS_COUNT',
+        coordinates: midCoord,
+        title: 'У ДОРОЗІ',
+        subtitle: stopCount > 0 ? `${formatStopCount(stopCount)} до висадки` : `${formatDuration(leg.durationSeconds)} у русі`,
+        time: formatDuration(leg.durationSeconds),
+        accentColor: color,
+        iconType: icon,
+        stage: 'enter',
+      });
+    }
+
+    if (endCoord) {
+      const isLast = leg.id === journey.legs.at(-1)?.id;
+      result.push({
+        id: `callout-alighting-${leg.id}`,
+        type: 'ALIGHTING',
+        coordinates: endCoord,
+        title: isLast ? 'ПРИБУТТЯ' : 'ВИСАДКА',
+        subtitle: leg.destination?.name ? shortPlace(leg.destination.name) : 'Кінцева точка',
+        time: formatTime(leg.arrivalAt),
+        accentColor: isLast ? '#10B981' : color,
+        iconType: 'pin',
+        stage: 'enter',
+      });
+
+      if (nextLeg) {
+        result.push({
+          id: `callout-transfer-${leg.id}`,
+          type: 'TRANSFER',
+          coordinates: endCoord,
+          title: 'ПЕРЕСАДКА',
+          subtitle: nextLeg.mode === 'WALK'
+            ? `Пішки ${nextLeg.distanceMeters ?? 100} м (${Math.max(1, Math.round(nextLeg.durationSeconds / 60))} хв)`
+            : `Пересадка на ${nextLeg.routeName || journeyLegLabel(nextLeg.mode, nextLeg.transportType)}`,
+          accentColor: 'var(--mg-blue)',
+          iconType: 'transfer',
+          stage: 'enter',
+        });
+      }
+    }
+
+    return result;
+  }, [journey.legs]);
+
   const showWholeRoute = useCallback(() => {
     haptic(6);
+    if (revealAnimRef.current) {
+      cancelAnimationFrame(revealAnimRef.current);
+      revealAnimRef.current = null;
+    }
+    mapAdapter.current?.clearSegmentReveal?.();
+    setCallouts([]);
     cameraController.current?.showOverview(routeLinePoints);
   }, [routeLinePoints]);
 
@@ -387,18 +500,83 @@ export function JourneyRouteMapScreen({
     setMapSegmentChoices(null);
     haptic(8);
     if (activeSegmentId === id) {
-      cameraController.current?.showOverview(routeLinePoints);
+      showWholeRoute();
     } else {
+      const legIndex = journey.legs.findIndex(l => l.id === id);
+      const leg = journey.legs[legIndex];
+      const nextLeg = journey.legs[legIndex + 1];
       const seg = model.routeSegments.find(s => s.id === id);
       const contextLines = (liveJourney?.segments.find(s => s.legId === id)?.lineRoutes ?? []).flatMap(r => [r.coordinates]);
       const target = seg ? calculateSegmentFocusTarget(seg.coordinates, contextLines, id) : null;
       cameraController.current?.focusSegment(id, target, routeLinePoints);
+
+      if (leg) {
+        const rawCallouts = buildCalloutsForLeg(leg, nextLeg);
+        const adapter = mapAdapter.current;
+        const initialProjected = rawCallouts.map(c => {
+          const s = adapter?.project?.(c.coordinates);
+          return s ? { ...c, screenPos: s } : c;
+        });
+        setCallouts(initialProjected);
+
+        if (revealAnimRef.current) {
+          cancelAnimationFrame(revealAnimRef.current);
+          revealAnimRef.current = null;
+        }
+        if (!reducedMotion && leg.coordinates && leg.coordinates.length >= 2) {
+          const fullCoords = leg.coordinates;
+          const color = journeyModeColor(leg.mode, leg.transportType);
+          const startTime = performance.now();
+          const duration = 750;
+          activeRevealLegId.current = id;
+
+          const animateReveal = (now: number) => {
+            if (activeRevealLegId.current !== id) return;
+            const elapsed = now - startTime;
+            const progress = Math.min(1, elapsed / duration);
+            const easeProgress = 1 - (1 - progress) * (1 - progress);
+            const subCoords = interpolateLineProgress(fullCoords, easeProgress);
+            mapAdapter.current?.revealSegmentProgress?.(subCoords, color);
+            updateCalloutScreenPositions();
+
+            if (progress < 1) {
+              revealAnimRef.current = requestAnimationFrame(animateReveal);
+            } else {
+              revealAnimRef.current = null;
+              window.setTimeout(() => {
+                if (activeRevealLegId.current === id) {
+                  mapAdapter.current?.clearSegmentReveal?.();
+                }
+              }, 400);
+            }
+          };
+
+          revealAnimRef.current = requestAnimationFrame(animateReveal);
+        } else {
+          mapAdapter.current?.clearSegmentReveal?.();
+        }
+      }
     }
     requestAnimationFrame(() => segmentCards.current.get(id)?.scrollIntoView({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       block: 'nearest',
     }));
-  }, [activeSegmentId, liveJourney?.segments, model.routeSegments, routeLinePoints]);
+  }, [activeSegmentId, buildCalloutsForLeg, journey.legs, liveJourney?.segments, model.routeSegments, reducedMotion, routeLinePoints, showWholeRoute, updateCalloutScreenPositions]);
+
+  useEffect(() => {
+    return () => {
+      if (revealAnimRef.current) {
+        cancelAnimationFrame(revealAnimRef.current);
+      }
+      mapAdapter.current?.clearSegmentReveal?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (callouts.length === 0) return;
+    const t = window.setTimeout(updateCalloutScreenPositions, 120);
+    return () => window.clearTimeout(t);
+  }, [callouts.length, sheetHeight, sheetSnap, updateCalloutScreenPositions]);
 
   const handleStopSelect = useCallback((stop: { id: string; name: string; coordinates?: [number, number] }, coordinate?: [number, number]) => {
     const coords = coordinate ?? stop.coordinates;
@@ -689,6 +867,9 @@ export function JourneyRouteMapScreen({
               adapter.onCameraModeChange = (mode) => {
                 if (mode === 'FREE') cameraController.current?.onUserMapInteraction();
               };
+              adapter.onCameraMove = () => {
+                updateCalloutScreenPositions();
+              };
             }
           }}
           activeRouteSegmentId={activeSegmentId}
@@ -707,6 +888,12 @@ export function JourneyRouteMapScreen({
           }}
         />
       </div>
+
+      {/* Cinematic Glass Guidance Callouts anchored to points */}
+      <GlassGuidanceCallouts
+        callouts={callouts}
+        onDismiss={id => setCallouts(prev => prev.filter(c => c.id !== id))}
+      />
 
       {mapSegmentChoices && (
         <div role="group" aria-label="Виберіть відрізок маршруту" className="absolute z-[30] w-[min(15rem,calc(100vw-1.5rem))] rounded-2xl border border-[var(--route-border)] bg-[var(--route-floating)] p-2 text-[var(--route-ink)] shadow-2xl backdrop-blur-xl" style={{ left: mapSegmentChoices.x, top: mapSegmentChoices.y }}>
@@ -1008,6 +1195,35 @@ export function JourneyRouteMapScreen({
 
           {/* Pinned CTA in all four snap states */}
           <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-2 pt-1' : 'pb-3 pt-1.5'}`}>
+            {sheetSnap !== 'peek' && (() => {
+              const activeLeg = selectedLeg ?? firstLeg;
+              if (!activeLeg) return null;
+              const legIdx = journey.legs.findIndex(l => l.id === activeLeg.id);
+              const nextLeg = journey.legs[legIdx + 1];
+              const summary = generateSmartStepSummary(activeLeg, nextLeg);
+              return (
+                <aside
+                  data-testid="smart-step-guidance"
+                  aria-label="Пояснення наступного етапу"
+                  className="mb-2 rounded-2xl border border-[var(--route-border)] bg-[var(--route-card-alt)] p-2.5 text-xs shadow-sm backdrop-blur-md"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 font-extrabold text-[var(--mg-blue)]">
+                      <Navigation size={13} className="shrink-0" />
+                      <span>{selectedLeg ? summary.headline : `Ваш 1-й етап: ${summary.headline}`}</span>
+                    </span>
+                    {summary.transitBadge && (
+                      <span className="rounded-full bg-[var(--route-card)] px-2 py-0.5 text-xs font-extrabold text-[var(--route-muted)]">
+                        {summary.transitBadge}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 font-semibold leading-relaxed text-[var(--route-ink)]">
+                    {summary.narrative}
+                  </p>
+                </aside>
+              );
+            })()}
             {sheetSnap !== 'peek' && communityLeg?.offerId && onBookOffer && (() => {
               const communityPrice = legPriceDisplay(communityLeg).value;
               return (
