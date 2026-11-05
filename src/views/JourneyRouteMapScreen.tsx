@@ -199,6 +199,16 @@ export function JourneyRouteMapScreen({
     return () => window.clearTimeout(timer);
   }, [feedback]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onBack();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack]);
+
   const haptic = (ms: number | number[]) => {
     try { navigator.vibrate?.(ms); } catch { /* ignored */ }
   };
