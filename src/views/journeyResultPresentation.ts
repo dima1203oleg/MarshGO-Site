@@ -106,7 +106,7 @@ export function journeyRouteBadge(routeName?: string | null): string | null {
 }
 
 export function formatJourneyLegPrice(leg: ApiJourney['legs'][number], currency = 'UAH'): string {
-  if (leg.mode === 'WALK') return '0 ₴';
+  if (leg.mode === 'WALK' || leg.mode === 'BICYCLE' || leg.mode === 'SCOOTER') return '0 ₴';
   if (leg.fareIncludedByPreviousSegment) return 'у квитку';
   if (leg.priceMinor === null || !Number.isFinite(leg.priceMinor)) return '—';
   const price = formatMoneyMinor(leg.priceMinor, leg.currency ?? currency);
