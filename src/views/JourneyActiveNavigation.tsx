@@ -7,6 +7,7 @@ import {
 import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
+import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
@@ -340,9 +341,7 @@ export function JourneyActiveNavigation({
   const showRibbon = sheetSnap === 'expanded' || (sheetSnap === 'half' && viewportHeight >= 700);
   const showAction = sheetSnap !== 'collapsed';
   const destination = activeNavigationDestination(legs);
-  const mapWarning = mapStatus === 'failed' ? 'Карта недоступна'
-    : mapStatus === 'unconfigured' ? 'Мапа без вулиць — маршруту це не заважає'
-      : mapStatus === 'degraded' ? 'Карта завантажена частково' : '';
+  const mapWarning = mapStatusNote(mapStatus);
   const liveLabel = liveJourneyRequestState === 'failed' ? 'Рух недоступний · за розкладом' : null;
 
   const advance = () => {
@@ -394,7 +393,7 @@ export function JourneyActiveNavigation({
           <Layers size={20}/>
         </button>
       </div>
-      {(mapWarning || liveLabel) && <p role="status" className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-3 py-1 text-xs font-bold">{mapWarning || liveLabel}</p>}
+      {(mapWarning || liveLabel) && <p role="status" title={mapStatusDetail(mapStatus)} className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-3 py-1 text-xs font-bold">{mapWarning || liveLabel}</p>}
     </header>
 
     <div className="absolute right-4 z-10" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 5rem)' }}>

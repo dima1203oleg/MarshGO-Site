@@ -7,6 +7,7 @@ import { MapLayersControl } from '../components/MapLayersControl';
 import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from '../map/journeyRouteModel';
 import { corridorFitPoints } from '../map/routeContextCorridor';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
+import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
 import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
@@ -973,8 +974,8 @@ export function JourneyRouteMapScreen({
             </span>
           </div>
           {mapStatus === 'failed' && (
-            <p role="status" className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-bold">
-              Карта недоступна
+            <p role="status" title={mapStatusDetail(mapStatus, 'journey')} className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-bold">
+              {mapStatusNote(mapStatus)}
             </p>
           )}
         </header>
@@ -1009,9 +1010,7 @@ export function JourneyRouteMapScreen({
             setMapPerspective(next);
             setLocalPerspective(next);
           }}
-          className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full text-xs font-black shadow-lg transition-all ${
-            mapPerspective === '3d' ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30' : ''
-          }`}
+          className="route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full text-xs font-black shadow-lg transition-all"
         >
           {mapPerspective === '3d' ? '2D' : '3D'}
         </button>
@@ -1032,9 +1031,7 @@ export function JourneyRouteMapScreen({
             setCurrentMapLayer(next);
             setMapLayer(next);
           }}
-          className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg transition-all ${
-            mapLayer === 'satellite' && satelliteBasemapAvailable ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30' : ''
-          }${satelliteBasemapAvailable ? '' : ' opacity-45'}`}
+          className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg transition-all ${satelliteBasemapAvailable ? '' : ' opacity-45'}`}
         >
           <Globe size={19} />
         </button>

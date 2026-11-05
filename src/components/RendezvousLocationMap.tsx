@@ -3,6 +3,7 @@ import { Maximize2, Minimize2 } from 'lucide-react';
 import type { ApiRendezvous } from '../services/productionApi';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
 import { MarshGoMap } from '../map/MarshGoMap';
+import { mapStatusDetail } from '../map/mapStatusCopy';
 import { interpolateRendezvousMapPoints, rendezvousDistanceToPickup, rendezvousMapPoints } from '../domain/rendezvousMapPoints';
 import { productionApi, type ApiRendezvousApproaches } from '../services/productionApi';
 
@@ -140,7 +141,7 @@ export function RendezvousLocationMap({ session, currentUserIsDriver, onArrived 
       <MarshGoMap route={[]} routeSegments={routeSegments} routeWaypoints={animatedPoints} onStatus={setStatus} onAdapter={(next) => { adapter.current = next; }} />
       {!expanded && <button type="button" aria-label="Розгорнути карту зустрічі" onClick={() => setExpanded(true)} className="absolute right-2 top-2 z-20 grid h-11 w-11 place-items-center rounded-xl border border-white/80 bg-white/95 text-slate-800 shadow-md"><Maximize2 size={17}/></button>}
       {status !== 'available' && <div className="absolute inset-x-3 top-3 z-10 rounded-xl bg-white/95 px-3 py-2 text-center text-xs font-semibold text-slate-600 shadow-sm" role="status">
-        {status === 'loading' ? 'Завантажуємо карту зустрічі…' : status === 'degraded' ? 'Карта завантажилась не повністю.' : 'Карта тимчасово недоступна; статус точок доступний нижче.'}
+        {mapStatusDetail(status, 'meet')}
       </div>}
     </div>
     <div className="grid shrink-0 grid-cols-3 gap-1 border-t border-slate-100 px-2 py-2 text-center text-xs font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
