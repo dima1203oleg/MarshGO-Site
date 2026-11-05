@@ -5,7 +5,6 @@ import { getTransportLayers, setTransportLayers, subscribeTransportLayers, type 
 import { getLayerAvailabilityState, loadLayerAvailability, retryLayerAvailability, subscribeLayerAvailability } from '../map/layerAvailability';
 import { layerUnavailableNote } from '../map/transportLayerConfig';
 import { getMapDisplayPreferences, setMapDisplayPreference, subscribeMapDisplayPreferences, type MapDisplayPreferenceId } from '../map/mapLayerPreferences';
-import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, satelliteConfigured, SATELLITE_UNAVAILABLE_NOTE, type MapLayer, type MapPerspective } from '../map/mapMode';
 
 const canonicalLayerOrder: TransportLayerId[] = ['BUS', 'MINIBUS', 'TROLLEYBUS', 'TRAIN', 'TRAM', 'BICYCLE', 'METRO', 'SCOOTER', 'CARPOOL', 'CARSHARING', 'TAXI', 'TRANSFER'];
 
@@ -60,14 +59,10 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
   const [selected, setSelected] = useState<ReadonlySet<TransportLayerId>>(getTransportLayers());
   const [layerState, setLayerState] = useState(getLayerAvailabilityState);
   const [displayPreferences, setDisplayPreferences] = useState(getMapDisplayPreferences());
-  const [mapLayer, setLocalMapLayer] = useState<MapLayer>(getMapLayer);
-  const [mapPerspective, setLocalPerspective] = useState<MapPerspective>(getMapPerspective);
 
   useEffect(() => subscribeTransportLayers(setSelected), []);
   useEffect(() => subscribeLayerAvailability(setLayerState), []);
   useEffect(() => subscribeMapDisplayPreferences(setDisplayPreferences), []);
-  useEffect(() => subscribeMapLayer(setLocalMapLayer), []);
-  useEffect(() => subscribeMapPerspective(setLocalPerspective), []);
   useEffect(() => { if (!visible) setOpen(false); }, [visible]);
   useEffect(() => { if (open && overlays) void loadLayerAvailability(); }, [open, overlays]);
 
@@ -91,75 +86,6 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
         <div><h2 className="font-extrabold text-sm">Налаштування карти</h2></div>
         <button type="button" onClick={() => setOpen(false)} aria-label="Закрити шари карти" className="grid h-11 w-11 place-items-center rounded-full hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:hover:bg-white/10"><X size={18}/></button>
       </header>
-      <section className="mb-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-2 dark:border-slate-700 dark:bg-[#0c2031]">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex rounded-xl bg-slate-200/70 p-1 dark:bg-white/5" role="radiogroup" aria-label="Базова карта">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={mapLayer === 'simple'}
-              onClick={() => { setMapLayer('simple'); setLocalMapLayer('simple'); }}
-              className={`flex-1 rounded-lg py-1.5 text-center text-xs font-bold transition-all ${
-                mapLayer === 'simple'
-                  ? 'bg-white shadow text-slate-900 dark:bg-slate-700 dark:text-white'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
-              }`}
-            >
-              Схема
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={satelliteConfigured && mapLayer === 'satellite'}
-              aria-disabled={satelliteConfigured ? undefined : true}
-              title={satelliteConfigured ? 'Супутник' : SATELLITE_UNAVAILABLE_NOTE}
-              onClick={() => {
-                if (!satelliteConfigured) return;
-                setMapLayer('satellite');
-                setLocalMapLayer('satellite');
-              }}
-              className={`flex-1 rounded-lg py-1.5 text-center text-xs font-bold transition-all ${
-                !satelliteConfigured
-                  ? 'cursor-not-allowed text-slate-400 dark:text-slate-500'
-                  : mapLayer === 'satellite'
-                    ? 'bg-[var(--mg-action)] shadow text-white'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
-              }`}
-            >
-              Супутник
-              {!satelliteConfigured && <small className="mt-0.5 block text-xs font-normal leading-tight">не налаштовано</small>}
-            </button>
-          </div>
-          <div className="flex rounded-xl bg-slate-200/70 p-1 dark:bg-white/5" role="radiogroup" aria-label="Перспектива">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={mapPerspective === '2d'}
-              onClick={() => { setMapPerspective('2d'); setLocalPerspective('2d'); }}
-              className={`flex-1 rounded-lg py-1.5 text-center text-xs font-bold transition-all ${
-                mapPerspective === '2d'
-                  ? 'bg-white shadow text-slate-900 dark:bg-slate-700 dark:text-white'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
-              }`}
-            >
-              2D
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={mapPerspective === '3d'}
-              onClick={() => { setMapPerspective('3d'); setLocalPerspective('3d'); }}
-              className={`flex-1 rounded-lg py-1.5 text-center text-xs font-bold transition-all ${
-                mapPerspective === '3d'
-                  ? 'bg-[var(--mg-action)] shadow text-white'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
-              }`}
-            >
-              3D
-            </button>
-          </div>
-        </div>
-      </section>
       {showLayers ? <>
         {layerState.probeFailed && <p role="status" className="mb-2 rounded-xl bg-amber-50 p-2 text-xs leading-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Не вдалося перевірити джерела шарів. Вони тимчасово вимкнені.<button type="button" className="ml-1 font-bold underline" onClick={() => { void retryLayerAvailability(); }}>Повторити</button></p>}
         <section className="mb-0 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-[#0c2031]">

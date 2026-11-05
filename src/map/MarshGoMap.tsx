@@ -6,7 +6,7 @@ import { getMapLayer, getMapPerspective, styleForLayer, subscribeMapLayer, subsc
 import { getTransportLayers, subscribeTransportLayers } from './transportLayers';
 import { getMapDisplayPreferences, subscribeMapDisplayPreferences } from './mapLayerPreferences';
 import { visibleTransportLayers } from './focusMode';
-import { configuredMapStyleUrl } from './mapConfig';
+import { configuredMapDarkStyleUrl, configuredMapStyleUrl } from './mapConfig';
 import { themeService } from '../services/theme';
 
 type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: RouteWaypoint[]; routeLabels?: MapAnnotation[]; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; focusMode?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
@@ -50,9 +50,9 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeLabels, 
     const initialTheme = theme ?? themeForMapLayer(initialLayer, themeService.isDark());
     void Promise.all([import('./MapLibreAdapter'), import('maplibre-gl/dist/maplibre-gl.css'), resolveMapAssets(initialTheme)]).then(([{ MapLibreAdapter }, _css, assets]) => {
       if (cancelled || !container.current) return;
-      const initialStyle = initialLayer === 'satellite'
-        ? styleForLayer(initialLayer, configuredMapStyleUrl, initialTheme.endsWith('_DARK')) ?? assets.style
-        : assets.styles?.[initialTheme] ?? styleForLayer(initialLayer, configuredMapStyleUrl, initialTheme.endsWith('_DARK')) ?? assets.style;
+      const initialStyle = assets.styles?.[initialTheme]
+        ?? styleForLayer(initialLayer, configuredMapStyleUrl, initialTheme.endsWith('_DARK'), configuredMapDarkStyleUrl)
+        ?? assets.style;
       const instance = new MapLibreAdapter(container.current, initialStyle, onStatus, schemeBasemapConfigured(), assets.styles, initialTheme);
       instance.setLayer(initialLayer);
       instance.setPerspective(getMapPerspective());

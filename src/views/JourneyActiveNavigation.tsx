@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, ArrowRight, Flag, Layers, Navigation } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, Flag, Layers, Navigation } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import {
   buildJourneyRouteMapModel, formatTransferCount, journeyModeColor,
@@ -9,9 +9,11 @@ import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
-import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
+import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
-import { buildRouteMapAnnotations, isTransitLeg } from './routeMapAnnotations';
+import { buildRouteMapAnnotations, formatStopCount, isTransitLeg } from './routeMapAnnotations';
+import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
+import { nextStopsLegId } from './journeyStopsPanel';
 import {
   createFrameWriter,
   prefersReducedMotion,
@@ -73,6 +75,10 @@ export function JourneyActiveNavigation({
   const leg = legs[Math.min(legIndex, Math.max(0, legs.length - 1))];
   const liveLeg = leg && isTransitLeg(leg) ? leg : undefined;
   const liveLegId = liveLeg?.id ?? null;
+  const [openStopsLegId, setOpenStopsLegId] = useState<string | null>(() => {
+    const startingLeg = legs[legIndex];
+    return startingLeg && isScheduledRouteLeg(startingLeg) ? startingLeg.id : null;
+  });
 
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
@@ -124,26 +130,35 @@ export function JourneyActiveNavigation({
       setLiveJourneyRequestState('idle');
       return;
     }
+    // Live vehicle position is an authenticated endpoint: without a session every poll would be
+    // rejected, so stay quiet instead of firing a 401 every 15 seconds during the trip.
+    if (!hasApiSession()) {
+      setLiveJourney(null);
+      setLiveJourneyRequestState('idle');
+      return;
+    }
     let stopped = false;
     let timer: number | undefined;
     let controller: AbortController | undefined;
+    let reschedule = true;
     setLiveJourneyRequestState('loading');
     const poll = async () => {
       controller = new AbortController();
+      reschedule = true;
       try {
         const live = await productionApi.journeyLive(journey.id, liveLegId, controller.signal);
         if (!stopped) {
           setLiveJourney(live);
           setLiveJourneyRequestState('ready');
         }
-      } catch {
+      } catch (error) {
         if (!stopped) {
           setLiveJourney(null);
           setLiveJourneyRequestState('failed');
+          if (error instanceof ProductionApiError && error.status === 401) reschedule = false;
         }
-      } finally {
-        if (!stopped) timer = window.setTimeout(() => void poll(), 15_000);
       }
+      if (!stopped && reschedule) timer = window.setTimeout(() => void poll(), 15_000);
     };
     void poll();
     return () => { stopped = true; controller?.abort(); if (timer !== undefined) window.clearTimeout(timer); };
@@ -489,25 +504,47 @@ export function JourneyActiveNavigation({
               const selected = index === legIndex;
               const price = legPriceDisplay(item);
               const priceText = item.mode === 'WALK' ? '' : price.value !== '—' ? ` · ${price.value}` : '';
+              const scheduled = isScheduledRouteLeg(item);
+              const stops = item.stops ?? [];
+              const stopsOpen = openStopsLegId === item.id;
               return <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => jumpToLeg(index)}
-                  aria-pressed={selected}
-                  className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors ${selected ? 'border-[var(--mg-blue)] bg-[var(--route-card-alt)]' : 'border-[var(--route-border)] bg-[var(--route-card)]'}`}
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}>
-                    <TransportIcon mode={item.mode} transportType={item.transportType} size={18} strokeWidth={2.2}/>
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <b className="truncate text-[13px] font-extrabold">{activeLegTitle(item)}</b>
-                      <span className="ml-auto shrink-0 text-xs font-bold text-[var(--route-muted)]">Етап {index + 1}</span>
+                <div className={`overflow-hidden rounded-2xl border transition-colors ${selected ? 'border-[var(--mg-blue)] bg-[var(--route-card-alt)]' : 'border-[var(--route-border)] bg-[var(--route-card)]'}`}>
+                  <button
+                    type="button"
+                    onClick={() => jumpToLeg(index)}
+                    aria-pressed={selected}
+                    className="flex w-full items-start gap-3 px-3 py-2.5 text-left"
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}>
+                      <TransportIcon mode={item.mode} transportType={item.transportType} size={18} strokeWidth={2.2}/>
                     </span>
-                    <span className="mt-0.5 block truncate text-xs font-semibold tabular-nums text-[var(--route-muted)]">{activeLegTimes(item)} · {formatJourneyDurationTile(item.durationSeconds)}{priceText}</span>
-                    <span className="mt-0.5 block truncate text-xs text-[var(--route-subtle)]">{shortPlace(item.origin.name)} → {shortPlace(item.destination.name)}</span>
-                  </span>
-                </button>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <b className="truncate text-[13px] font-extrabold">{activeLegTitle(item)}</b>
+                        <span className="ml-auto shrink-0 text-xs font-bold text-[var(--route-muted)]">Етап {index + 1}</span>
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs font-semibold tabular-nums text-[var(--route-muted)]">{activeLegTimes(item)} · {formatJourneyDurationTile(item.durationSeconds)}{priceText}</span>
+                      <span className="mt-0.5 block truncate text-xs text-[var(--route-subtle)]">{shortPlace(item.origin.name)} → {shortPlace(item.destination.name)}</span>
+                    </span>
+                  </button>
+                  {scheduled && <div className="border-t border-[var(--route-border)] px-3 py-1.5">
+                    {stops.length > 0 ? <>
+                      <button
+                        type="button"
+                        aria-expanded={stopsOpen}
+                        aria-controls={`active-navigation-stops-${item.id}`}
+                        onClick={() => setOpenStopsLegId(nextStopsLegId(openStopsLegId, item.id))}
+                        className="mg-press-subtle inline-flex min-h-11 items-center gap-1 rounded-xl px-1 text-xs font-extrabold text-[var(--route-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"
+                      >
+                        <ChevronDown size={15} aria-hidden="true" className={`route-stops-chevron${stopsOpen ? ' is-open' : ''}`}/>
+                        {formatStopCount(stops.length)}
+                      </button>
+                      {stopsOpen && <div id={`active-navigation-stops-${item.id}`} className="mg-route-stops pb-1.5">
+                        <JourneyLegStops leg={item} color={item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType)}/>
+                      </div>}
+                    </> : <p className="py-1.5 text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
+                  </div>}
+                </div>
               </li>;
             })}
           </ol>

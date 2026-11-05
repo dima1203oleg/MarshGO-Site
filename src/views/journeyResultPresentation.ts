@@ -106,7 +106,7 @@ export function journeyRouteBadge(routeName?: string | null): string | null {
 }
 
 export function formatJourneyLegPrice(leg: ApiJourney['legs'][number], currency = 'UAH'): string {
-  if (leg.mode === 'WALK') return '0 ₴';
+  if (leg.mode === 'WALK' || leg.mode === 'BICYCLE' || leg.mode === 'SCOOTER') return '0 ₴';
   if (leg.fareIncludedByPreviousSegment) return 'у квитку';
   if (leg.priceMinor === null || !Number.isFinite(leg.priceMinor)) return '—';
   const price = formatMoneyMinor(leg.priceMinor, leg.currency ?? currency);
@@ -221,6 +221,22 @@ export function searchPendingCopy(elapsedSeconds: number): { title: string; note
     return { title: `Шукаємо маршрути · ${seconds} с`, note: 'Паралельно перевіряємо розклади й позиції кількох перевізників.' };
   }
   return { title: seconds > 0 ? `Шукаємо маршрути · ${seconds} с` : 'Шукаємо маршрути…', note: null };
+}
+
+/**
+ * The edge proxy answers a still-running search with 504 at ~60 s, and before that happened the
+ * screen only counted up. Stopping our own request short of that cut keeps slow successes intact
+ * while giving the passenger a message instead of an endless spinner.
+ */
+export const JOURNEY_SEARCH_DEADLINE_MS = 45_000;
+
+export type JourneySearchAbortReason = 'cancelled' | 'timeout';
+
+/** A cancel and a give-up are different facts; reporting one as the other is a lie about the product. */
+export function journeySearchAbortMessage(reason: unknown): string {
+  return reason === 'timeout'
+    ? `Перевізники не відповідатимуть довше ${JOURNEY_SEARCH_DEADLINE_MS / 1000} с — пошук зупинено. Спробуйте ще раз або звузьте умови.`
+    : 'Пошук маршруту скасовано.';
 }
 
 const transportModeNames: Record<string, string> = {

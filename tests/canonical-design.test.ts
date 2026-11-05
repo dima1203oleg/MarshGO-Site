@@ -116,8 +116,16 @@ test('journey search enters the results screen and shows a pending panel while p
     'search must move the passenger to the results screen before awaiting providers');
   assert.match(marketplace, /journeySearchStartedAt !== null \? <JourneySearchPending/,
     'results body lost its pending branch');
-  assert.match(marketplace, /finally \{ setBusy\(false\); setJourneySearchStartedAt\(null\); \}/,
+  assert.match(marketplace, /setTimeout\(\(\) => controller\.abort\('timeout'\), JOURNEY_SEARCH_DEADLINE_MS\)/,
+    'search must stop on its own deadline instead of waiting for the gateway to cut it');
+  assert.match(marketplace, /signal: controller\.signal,/,
+    'the search request must carry the abort signal, or cancel does nothing');
+  assert.match(marketplace, /window\.clearTimeout\(deadlineId\);[\s\S]{0,200}setBusy\(false\); setJourneySearchStartedAt\(null\);/,
     'the pending clock must stop when the search settles');
+  assert.match(marketplace, /<JourneySearchPending startedAt=\{journeySearchStartedAt\} onCancel=\{cancelJourneySearch\}/,
+    'the pending panel lost its way out');
+  assert.match(panel, /data-testid="journey-search-cancel"/,
+    'a passenger who waits 45 s must be able to stop waiting');
   assert.match(panel, /data-testid="journey-search-pending"[\s\S]{0,200}aria-live="polite"/,
     'pending state must be announced to screen readers');
   assert.match(panel, /mg-skeleton/, 'pending cards stopped using the shimmer placeholder');
@@ -175,15 +183,20 @@ test('result cards mark the ranked pick instead of faking a selection state', as
 // appear for flex rounding alone. Keep a measured floor for the cue and a caption beside the dash.
 test('segment scroll cue ignores rounding and unknown fare explains itself', async () => {
   const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
-  const [strip, lip, panel] = await Promise.all([
+  const [strip, lip, panel, fare] = await Promise.all([
     read('../src/design-system/journey/JourneySegmentStrip.tsx'),
     read('../src/design-system/journey/CanonicalRouteLip.tsx'),
     read('../src/views/JourneyResultsPanel.tsx'),
+    read('../src/views/cashFare.ts'),
   ]);
   assert.match(strip, /hidden >= 24/, 'the cue needs a floor a real stage chip can actually cross');
   assert.doesNotMatch(strip, /clientWidth \+ 2/, 'the cue threshold drifted back to 2 px, where rounding alone triggers it');
   assert.match(lip, /priceCaption\?: ReactNode;/, 'the shared lip needs one caption slot for unavailable prices');
-  assert.match(panel, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
+  assert.match(fare, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
+  // The card may not print a bare cash amount: the same journey is cheaper on
+  // the card product the planner ranked it by, so the caption is the promise.
+  assert.match(panel, /priceCaption=\{priceCaptionText \?/, 'the card must render the qualifier the price model provides');
+  assert.match(panel, /spokenJourneyPrice\(journeyPrice\)/, 'the spoken price has to carry the qualifier too');
   assert.match(panel, /max-w-\[7\.5rem\] truncate/, 'the caption must not widen the summary row on 360 px phones');
 });
 
@@ -414,9 +427,10 @@ test('the search screen gives each field the width its value needs', async () =>
 
 // FIELD-X-1 (2026-11-05, seen in /tmp/mgshots11/70-dark-route-form.png at 390×844): the «Куди» row offered
 // «Очистити кінцеву точку» while the field was empty — a destructive control with nothing to destroy. The
-// owner's rule is a × only once there is text. The origin row already answers the empty state with the
-// location arrow; the destination row has no second job, so its slot stays inert but keeps the 44 px box —
-// dropping the box would take 8 px off the row and make the card jump on the first keystroke.
+// owner's rule is a × only once there is text. Main shipped the stronger form of the same rule: the slot
+// never goes inert, it changes job — clear when there is text, «Обрати на мапі» when there is not. The
+// origin row keeps its own second job (the location arrow). Both keep one 44 px box so the card cannot jump
+// on the first keystroke.
 test('a place row only offers to clear a value that is actually there', async () => {
   const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
   const marketplace = await read('../src/views/ProductionMarketplace.tsx');
@@ -424,14 +438,21 @@ test('a place row only offers to clear a value that is actually there', async ()
   assert.notEqual(searchFormStart, -1, 'the search card left the markup');
   const searchForm = marketplace.slice(searchFormStart, marketplace.indexOf('</form>', searchFormStart));
   const rowFor = (label: string) => searchForm.match(new RegExp(`<div role="group" aria-label="${label}"[\\s\\S]*?</div>`))?.[0] ?? '';
-  assert.match(rowFor('Початкова точка'), /\{origin \? <X size=\{16\}\/> : <Navigation size=\{16\}\/>\}/,
+  const originRow = rowFor('Початкова точка');
+  assert.match(originRow, /\{origin \? <X size=\{16\}\/> : <Navigation size=\{16\}\/>\}/,
     'the origin row must keep its empty-state job — the location arrow, not a dead ×');
+  assert.match(originRow, /data-field-action=\{origin \? 'clear' : 'locate'\}/,
+    'the origin slot must name the job it is doing, so the icon is never the only signal');
   const destinationRow = rowFor('Кінцева точка');
   assert.notEqual(destinationRow, '', 'the destination row left the shared group markup');
-  const clearStart = destinationRow.indexOf('<button type="button" aria-label="Очистити кінцеву точку"');
-  assert.notEqual(clearStart, -1, 'the destination row lost its clear affordance altogether');
-  assert.equal(destinationRow.slice(clearStart - '{destination ? '.length, clearStart), '{destination ? ',
+  assert.match(destinationRow, /\{destination \? <X size=\{16\}\/> : <MapPin size=\{16\}\/>\}/,
     'the × on «Куди» has to be guarded by the field holding text, not rendered always');
-  assert.match(destinationRow, /: <span aria-hidden="true" className="size-11 shrink-0" \/>}/,
-    'the empty destination keeps a 44 px inert slot, so typing does not shift the card');
+  assert.match(destinationRow, /aria-label=\{destination \? 'Очистити кінцеву точку' : 'Обрати на мапі: Куди'\}/,
+    'an empty «Куди» must announce the affordance it actually offers, never a clearing');
+  assert.match(destinationRow, /data-field-action=\{destination \? 'clear' : 'pick'\}/);
+  assert.doesNotMatch(destinationRow, /aria-label="Очистити кінцеву точку"/,
+    'a static clear label re-creates the destructive control FIELD-X-1 removed');
+  for (const row of [originRow, destinationRow]) {
+    assert.match(row, /className="grid h-11 w-11/, 'both place slots keep the 44 px box so typing does not shift the card');
+  }
 });

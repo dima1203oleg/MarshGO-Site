@@ -66,6 +66,10 @@ export interface MapAdapter {
   focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;
   onRouteSegmentSelect: (id: string) => void;
   onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void;
+  onCameraMove?: () => void;
+  project?(coordinate: Coordinate): ScreenPoint | null;
+  revealSegmentProgress?(coordinates: Coordinate[], color: string): void;
+  clearSegmentReveal?(): void;
   setVehicle(point: Coordinate, heading?: number | null): void;
   onCameraModeChange: (mode: CameraMode) => void;
   setWaypoints(points: RouteWaypoint[]): void;

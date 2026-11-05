@@ -22,7 +22,7 @@ export type MapStatusSubject = 'journey' | 'transport' | 'meet' | 'preview';
 /** What keeps working when the streets are missing but the canvas itself rendered. */
 const STILL_VISIBLE: Record<MapStatusSubject, string> = {
   journey: 'маршрут і зупинки видно',
-  transport: 'транспорт і маршрути видно',
+  transport: 'зупинки й маршрути видно у списку нижче',
   meet: 'точку зустрічі й статус нижче видно',
   preview: 'лінію маршруту видно',
 };
@@ -44,8 +44,8 @@ export function mapStatusDetail(status: MapStatus, subject: MapStatusSubject = '
   switch (status) {
     case 'available': return '';
     case 'loading': return 'Завантажуємо карту…';
-    case 'unconfigured': return `Підкладку з вулицями не налаштовано — ${still}.`;
-    case 'degraded': return `Карта завантажилася частково — ${still}.`;
+    case 'unconfigured': return `Мапа тимчасово без вулиць і будинків — ${still}.`;
+    case 'degraded': return `Мапа завантажилася частково — ${still}.`;
     case 'failed': return 'Карта не завантажилася — перевірте мережу й спробуйте ще раз.';
   }
 }

@@ -10,6 +10,8 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "typecheck": "tsc --noEmit",
     "build": "vite build",
+    "build:map": "node scripts/with-map-env.mjs vite build",
+    "preview:map": "node scripts/with-map-env.mjs vite preview",
     "preview": "vite preview",
     "lint": "npm run lint:all",
     "lint:all": "eslint src scripts shared vite.config.ts eslint.config.js",

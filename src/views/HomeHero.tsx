@@ -100,56 +100,58 @@ export function HomeHero({
         if (Math.abs(delta) > 40) setPassIndex((index) => (index + (delta < 0 ? 1 : -1) + marshPasses.length) % marshPasses.length);
         touchStartX.current = null;
       }} className="home-marshpass-card flex h-full w-full flex-col justify-between overflow-hidden rounded-[var(--mg-radius-xl)] border border-blue-500/40 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 p-4 text-left shadow-lg transition active:scale-[.99]">
-        <span className="flex items-center justify-between gap-2"><span className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-xl bg-[var(--pass-fill)] text-[var(--pass-fill-ink)] shadow-sm"><Ticket size={17}/></span><span className="text-xs font-black tracking-[.12em] text-[var(--pass-ink)]">MARSHGO <span className="text-[var(--pass-accent)]">MARSH PASS</span></span></span><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 text-xs font-bold text-emerald-300"><CheckCircle2 size={12}/>{activePass.status === 'boarding' || activePass.status === 'in_progress' ? 'У дорозі' : 'Підтверджено'}</span></span>
-        <span className="my-2 flex min-w-0 items-center gap-2"><span className="min-w-0 flex-1"><span className="block truncate text-[19px] font-black leading-tight text-[var(--pass-ink)]">{activePass.origin.split(',')[0]}</span><span className="block text-xs font-semibold text-[var(--pass-ink-muted)]">{formatDeparture(activePass.departureAt)}</span></span><div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-600/20 border border-blue-500/30 text-[var(--pass-accent)]"><ArrowRight size={16}/></div><span className="min-w-0 flex-1 text-right"><span className="block truncate text-[19px] font-black leading-tight text-[var(--pass-ink)]">{activePass.destination.split(',')[0]}</span><span className="block text-xs font-semibold text-[var(--pass-ink-muted)]">{activePass.price ?? 'Ціна уточнюється'}</span></span></span>
-        <span className="flex items-center justify-between gap-2 border-t border-dashed border-slate-700/80 pt-2.5"><span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[var(--pass-ink-muted)]"><ShieldCheck size={14} className="shrink-0 text-emerald-400"/><span className="truncate">{activePass.driverName ?? 'Приватна поїздка'}{activePass.seatCount ? ` · ${activePass.seatCount} ${activePass.seatCount === 1 ? 'місце' : 'місця'}` : ''}</span></span><span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--pass-fill)] px-3 py-1.5 text-xs font-bold text-[var(--pass-fill-ink)] shadow-sm"><QrCode size={14}/>Відкрити квиток</span></span>
+        <span className="flex items-center justify-between gap-2"><span className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-600 text-white shadow-sm"><Ticket size={17}/></span><span className="text-xs font-black tracking-[.12em] text-white">MARSHGO <span className="text-blue-400">MARSH PASS</span></span></span><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 text-xs font-bold text-emerald-300"><CheckCircle2 size={12}/>{activePass.status === 'boarding' || activePass.status === 'in_progress' ? 'У дорозі' : 'Підтверджено'}</span></span>
+        <span className="my-2 flex min-w-0 items-center gap-2"><span className="min-w-0 flex-1"><span className="block truncate text-[19px] font-black leading-tight text-white">{activePass.origin.split(',')[0]}</span><span className="block text-xs font-semibold text-slate-300">{formatDeparture(activePass.departureAt)}</span></span><div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-400"><ArrowRight size={16}/></div><span className="min-w-0 flex-1 text-right"><span className="block truncate text-[19px] font-black leading-tight text-white">{activePass.destination.split(',')[0]}</span><span className="block text-xs font-semibold text-slate-300">{activePass.price ?? 'Ціна уточнюється'}</span></span></span>
+        <span className="flex items-center justify-between gap-2 border-t border-dashed border-slate-700/80 pt-2.5"><span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-300"><ShieldCheck size={14} className="shrink-0 text-emerald-400"/><span className="truncate">{activePass.driverName ?? 'Приватна поїздка'}{activePass.seatCount ? ` · ${activePass.seatCount} ${activePass.seatCount === 1 ? 'місце' : 'місця'}` : ''}</span></span><span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm"><QrCode size={14}/>Відкрити квиток</span></span>
       </button>
-      {marshPasses.length > 1 && <div className="mt-1.5 flex items-center justify-center gap-3"><button type="button" aria-label="Попередній MarshPass" onClick={() => setPassIndex((index) => (index - 1 + marshPasses.length) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] text-[var(--mg-ink-primary)]"><ChevronLeft size={16}/></button><span aria-live="polite" className="text-xs font-bold text-[var(--mg-ink-secondary)]">{passIndex + 1} / {marshPasses.length}</span><button type="button" aria-label="Наступний MarshPass" onClick={() => setPassIndex((index) => (index + 1) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] text-[var(--mg-ink-primary)]"><ChevronRight size={16}/></button></div>}
+      {marshPasses.length > 1 && <div className="mt-1.5 flex items-center justify-center gap-3"><button type="button" aria-label="Попередній MarshPass" onClick={() => setPassIndex((index) => (index - 1 + marshPasses.length) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-slate-700 bg-slate-800 text-slate-100"><ChevronLeft size={16}/></button><span aria-live="polite" className="text-xs font-bold text-slate-300">{passIndex + 1} / {marshPasses.length}</span><button type="button" aria-label="Наступний MarshPass" onClick={() => setPassIndex((index) => (index + 1) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-slate-700 bg-slate-800 text-slate-100"><ChevronRight size={16}/></button></div>}
     </section> : <section aria-label="Цифровий квиток MARSHGO MarshPass" className="home-canonical-banner home-banner home-marshpass-card relative mb-3 flex shrink-0 flex-col justify-between overflow-hidden rounded-[var(--mg-radius-xl)] border border-blue-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 p-3.5 shadow-[0_8px_24px_rgba(11,99,214,0.18)] text-left">
       <span aria-hidden="true" className="home-banner-media absolute inset-0 pointer-events-none hidden" />
       <span aria-hidden="true" className="home-banner-scrim absolute inset-0 pointer-events-none hidden" />
       <button type="button" onClick={onSearchTrip} aria-label="Отримати або переглянути квиток MarshPass" className="mg-press-subtle relative z-10 flex h-full w-full flex-col justify-between text-left">
         <span className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-[var(--pass-fill)] text-[var(--pass-fill-ink)] shadow-sm shadow-blue-500/30"><Ticket size={17}/></span>
-            <span className="text-xs font-black tracking-[.12em] text-[var(--pass-ink)]">MARSHGO <span className="text-[var(--pass-accent)]">MARSH PASS</span></span>
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-500/30"><Ticket size={17}/></span>
+            <span className="text-xs font-black tracking-[.12em] text-white">MARSHGO <span className="text-blue-400">MARSH PASS</span></span>
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/20 border border-blue-400/30 px-2.5 py-0.5 text-xs font-bold text-[var(--pass-accent)]">
-            <CheckCircle2 size={12} className="text-[var(--pass-accent)]"/>Єдиний квиток
+          <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/20 border border-blue-400/30 px-2.5 py-0.5 text-xs font-bold text-blue-300">
+            <CheckCircle2 size={12} className="text-blue-400"/>Єдиний квиток
           </span>
         </span>
         <span className="my-2 flex min-w-0 items-center justify-between gap-2">
           <span className="min-w-0">
-            <span className="block text-[17px] font-black leading-tight text-[var(--pass-ink)]">Львів</span>
-            <span className="block text-xs font-semibold text-[var(--pass-ink-muted)]">Місто та міжмісто</span>
+            <span className="block text-[17px] font-black leading-tight text-white">Львів</span>
+            <span className="block text-xs font-semibold text-slate-300">Місто та міжмісто</span>
           </span>
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-600/25 border border-blue-500/30 text-[var(--pass-accent)]">
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-600/25 border border-blue-500/30 text-blue-400">
             <ArrowRight size={15}/>
           </div>
           <span className="min-w-0 text-right">
-            <span className="block text-[17px] font-black leading-tight text-[var(--pass-ink)]">Куди завгодно</span>
-            <span className="block text-xs font-semibold text-[var(--pass-ink-muted)]">Попутки · Транспорт</span>
+            <span className="block text-[17px] font-black leading-tight text-white">Куди завгодно</span>
+            <span className="block text-xs font-semibold text-slate-300">Попутки · Транспорт</span>
           </span>
         </span>
-        <span className="flex items-center justify-between gap-2 border-t border-dashed border-slate-700/80 pt-2">
-          <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[var(--pass-ink-muted)]">
+        {/* The commission line and the ticket button share one row when they fit and
+            wrap onto their own rows at 320 px, instead of truncating the claim to «0% к…». */}
+        <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-t border-dashed border-slate-700/80 pt-2">
+          <span className="flex min-w-0 flex-1 basis-[9rem] items-center gap-1.5 text-xs font-semibold text-slate-300">
             <ShieldCheck size={14} className="shrink-0 text-emerald-400"/>
             <span className="truncate">QR-посадка · 0% комісії</span>
           </span>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--pass-fill)] hover:bg-[var(--pass-fill)] px-3 py-1.5 text-xs font-bold text-[var(--pass-fill-ink)] shadow-md shadow-blue-900/30 transition">
-            <QrCode size={13}/><span>Отримати квиток</span><ArrowRight size={13}/>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-2.5 py-1.5 text-xs font-bold text-white shadow-md shadow-blue-900/30 transition">
+            <QrCode size={13}/><span>Отримати квиток</span>
           </span>
         </span>
       </button>
     </section>}
 
-    <div className="home-action-grid mg-stagger-list grid grid-cols-2 gap-2.5" aria-label="Швидкі дії">
-      {actions.map(({ title, subtitle, tone, icon: Icon }, index) => <button key={tone} type="button" style={{ '--mg-stagger-i': index } as CSSProperties} onClick={() => runAction(tone)} className={`home-action-card home-action-card--${tone} mg-press relative flex min-h-[112px] flex-col items-center justify-center gap-3 overflow-hidden rounded-[var(--mg-radius-xl)] border p-3 text-center transition active:scale-[.98]`}>
-        <span className="home-action-icon relative z-10 grid h-11 w-11 place-items-center rounded-2xl"><Icon size={22} strokeWidth={2.3}/></span>
+    <div className="home-action-grid mg-stagger-list grid grid-cols-2 gap-2" aria-label="Швидкі дії">
+      {actions.map(({ title, subtitle, tone, icon: Icon }, index) => <button key={tone} type="button" style={{ '--mg-stagger-i': index } as CSSProperties} onClick={() => runAction(tone)} className={`home-action-card home-action-card--${tone} mg-press relative flex min-h-[92px] flex-col items-center justify-center gap-2 overflow-hidden rounded-[var(--mg-radius-xl)] border p-2.5 text-center transition active:scale-[.98]`}>
+        <span className="home-action-icon relative z-10 grid h-10 w-10 place-items-center rounded-2xl"><Icon size={20} strokeWidth={2.3}/></span>
         <span className="relative z-10 w-full">
-          <span className="min-w-0"><span className="home-action-card__title block text-[15px] font-black leading-tight tracking-tight">{title}</span><span className="home-action-card__subtitle mt-1 block text-[12px] font-semibold leading-snug">{subtitle}</span></span>
+          <span className="min-w-0"><span className="home-action-card__title block text-[14px] font-black leading-tight tracking-tight">{title}</span><span className="home-action-card__subtitle mt-0.5 block text-xs font-semibold leading-snug">{subtitle}</span></span>
         </span>
-        <ArrowRight size={16} className="home-action-card__hint z-10" aria-hidden="true"/>
+        <ArrowRight size={15} className="home-action-card__hint z-10" aria-hidden="true"/>
       </button>)}
     </div>
 

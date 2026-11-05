@@ -4,6 +4,12 @@ export type TransportModeId =
   | 'bus' | 'marshrutka' | 'trolleybus' | 'tram' | 'metro' | 'carpool'
   | 'taxi' | 'train' | 'bike' | 'scooter' | 'carsharing' | 'transfer';
 
+export const canonicalTransportTypes: readonly TransportModeId[] = [
+  'bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'carpool',
+  'taxi', 'train', 'bike', 'scooter', 'carsharing', 'transfer',
+] as const;
+export type CanonicalTransportTypeId = TransportModeId;
+
 export interface TransportMode { id: TransportModeId; label: string; group: TransportGroup }
 
 /** Order is part of the product contract; do not alphabetize or add legacy feed types here. */
