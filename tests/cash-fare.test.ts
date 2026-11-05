@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { cashFareForLeg, journeyPriceDisplay, legPriceDisplay, summarizeLegPrices } from '../src/views/cashFare';
+import { spokenJourneyPrice } from '../src/views/JourneyResultsPanel';
 import type { ApiJourney } from '../src/services/productionApi';
 
 type Leg = ApiJourney['legs'][number];
@@ -66,7 +67,7 @@ test('transfers and unknown legs keep honest labels', () => {
     destination: { name: 'Одеса', coordinates: [30.75, 46.49] },
   });
   assert.deepEqual(legPriceDisplay(unknown), { value: '—', caption: '', source: 'api' });
-  assert.deepEqual(summarizeLegPrices([walk(), unknown]), { totalMinor: null, cashLegCount: 0 });
+  assert.deepEqual(summarizeLegPrices([walk(), unknown]), { totalMinor: null, cashLegCount: 0, quotedLegCount: 0 });
 });
 
 test('a cash rider pays every boarding even when the planner marks a transfer', () => {
@@ -75,15 +76,15 @@ test('a cash rider pays every boarding even when the planner marks a transfer', 
   const tram = leg({ id: 'tram', mode: 'TRAM', transportType: 'tram' });
   const bus = leg({ id: 'bus', mode: 'BUS', transportType: 'bus', fareIncludedByPreviousSegment: true, priceMinor: 0 });
   assert.deepEqual(legPriceDisplay(bus), { value: '30\u00a0₴', caption: 'готівкою', source: 'cash' });
-  assert.deepEqual(summarizeLegPrices([walk(), tram, walk(), bus, walk()]), { totalMinor: 6_000, cashLegCount: 2 });
+  assert.deepEqual(summarizeLegPrices([walk(), tram, walk(), bus, walk()]), { totalMinor: 6_000, cashLegCount: 2, quotedLegCount: 0 });
 });
 
 test('summary adds cash amounts for every municipality ride', () => {
   assert.deepEqual(summarizeLegPrices([
     walk(), leg(), leg({ id: 'leg-2', fareIncludedByPreviousSegment: true, priceMinor: 0 }), walk(),
-  ]), { totalMinor: 6_000, cashLegCount: 2 });
+  ]), { totalMinor: 6_000, cashLegCount: 2, quotedLegCount: 0 });
   assert.deepEqual(summarizeLegPrices([leg({ offerId: 'offer-1', mode: 'COMMUNITY', transportType: 'car', priceMinor: 15_000, priceStatus: 'LOCKED' })]),
-    { totalMinor: 15_000, cashLegCount: 0 });
+    { totalMinor: 15_000, cashLegCount: 0, quotedLegCount: 1 });
 });
 
 test('no cash label without a server price or a verified city tariff', () => {
@@ -102,11 +103,11 @@ test('list and details share one total: cash for transit, planner quote elsewher
     legs, totalPriceMinor, confirmedPriceMinor: null, currency: 'UAH', priceStatus: 'ESTIMATED',
   }) as unknown as Parameters<typeof journeyPriceDisplay>[0];
   assert.deepEqual(journeyPriceDisplay(journey([walk(), leg(), walk(), leg({ id: 'leg-2', mode: 'TRAM', transportType: 'tram' }), walk()], 2_300)),
-    { label: '60\u00a0₴', cashOnly: true });
+    { label: '60\u00a0₴', source: 'cash', caption: 'готівкою' });
   assert.deepEqual(journeyPriceDisplay(journey([walk(), leg({ offerId: 'offer-1', mode: 'COMMUNITY', transportType: 'car', priceMinor: 15_000, priceStatus: 'LOCKED' }), walk()], 15_000)),
-    { label: '≈ 150\u00a0₴', cashOnly: false });
+    { label: '≈ 150\u00a0₴', source: 'api', caption: '' });
   assert.deepEqual(journeyPriceDisplay(journey([walk(), leg({ id: 'leg-3', priceMinor: null, origin: { name: 'Одеса', coordinates: [30.7326, 46.4825] }, destination: { name: 'Одеса', coordinates: [30.75, 46.49] } })], null)),
-    { label: '—', cashOnly: false });
+    { label: '—', source: 'unknown', caption: 'тариф невідомий' });
 });
 
 test('the server cash price wins over the client table and covers cities the table lacks', () => {
@@ -123,8 +124,8 @@ test('the server cash price wins over the client table and covers cities the tab
   assert.deepEqual(legPriceDisplay(uzhorod), { value: '8\u00a0₴', caption: 'готівкою', source: 'cash' });
 
   const total = (legs: Leg[]) => journeyPriceDisplay({ legs, totalPriceMinor: 2_300, confirmedPriceMinor: null, currency: 'UAH', priceStatus: 'ESTIMATED' } as unknown as Parameters<typeof journeyPriceDisplay>[0]);
-  assert.deepEqual(summarizeLegPrices([walk(), lvivFromApi, walk(), uzhorod, walk()]), { totalMinor: 4_300, cashLegCount: 2 });
-  assert.deepEqual(total([walk(), lvivFromApi, walk(), uzhorod, walk()]), { label: '43\u00a0₴', cashOnly: true });
+  assert.deepEqual(summarizeLegPrices([walk(), lvivFromApi, walk(), uzhorod, walk()]), { totalMinor: 4_300, cashLegCount: 2, quotedLegCount: 0 });
+  assert.deepEqual(total([walk(), lvivFromApi, walk(), uzhorod, walk()]), { label: '43\u00a0₴', source: 'cash', caption: 'готівкою' });
 });
 
 test('a published free fare and a second boarding both come from the server price', () => {
@@ -148,4 +149,31 @@ test('malformed server cash values never reach the rider', () => {
       destination: { name: 'Привокзальна', coordinates: [30.75, 46.49] } });
     assert.equal(cashFareForLeg(odessa), null, `string ${String(bad)} must not price Odesa`);
   }
+});
+
+test('a journey that pays part in cash says so instead of claiming one basis', () => {
+  const bus = leg();
+  const carpool = leg({ id: 'carpool', mode: 'COMMUNITY', transportType: 'car', priceMinor: 15_000 });
+  const quote = (priceStatus: string, confirmedPriceMinor: number | null) => journeyPriceDisplay({
+    legs: [walk(), bus, walk(), carpool, walk()], totalPriceMinor: 18_000, confirmedPriceMinor, currency: 'UAH', priceStatus,
+  } as unknown as Parameters<typeof journeyPriceDisplay>[0]);
+  assert.deepEqual(quote('ESTIMATED', null), { label: '≈ 180\u00a0₴', source: 'mixed', caption: 'частина готівкою' });
+  assert.deepEqual(quote('LOCKED', 18_000), { label: '180\u00a0₴', source: 'mixed', caption: 'частина готівкою' });
+});
+
+test('a known cash leg does not hide an unknown later boarding', () => {
+  const odessa = leg({ id: 'odessa', priceMinor: null,
+    origin: { name: 'Дерібасівська', coordinates: [30.7326, 46.4825] },
+    destination: { name: 'Привокзальна', coordinates: [30.75, 46.49] } });
+  const price = journeyPriceDisplay({
+    legs: [walk(), leg(), walk(), odessa, walk()], totalPriceMinor: null, confirmedPriceMinor: null, currency: 'UAH', priceStatus: 'ESTIMATED',
+  } as unknown as Parameters<typeof journeyPriceDisplay>[0]);
+  assert.deepEqual(price, { label: '—', source: 'unknown', caption: 'частково невідомий тариф' });
+});
+
+test('the spoken price names the basis, and an unknown total never sounds like a price', () => {
+  assert.equal(spokenJourneyPrice({ label: '60\u00a0₴', source: 'cash', caption: 'готівкою' }), '60\u00a0₴ готівкою');
+  assert.equal(spokenJourneyPrice({ label: '≈ 180\u00a0₴', source: 'mixed', caption: 'частина готівкою' }), '≈ 180\u00a0₴ частина готівкою');
+  assert.equal(spokenJourneyPrice({ label: '≈ 150\u00a0₴', source: 'api', caption: '' }), '≈ 150\u00a0₴');
+  assert.equal(spokenJourneyPrice({ label: '—', source: 'unknown', caption: 'тариф невідомий' }), 'ціна уточнюється');
 });
