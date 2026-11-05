@@ -8,6 +8,7 @@ import {
   isOpenJourneyState,
   maximumActiveJourneyAgeMs,
 } from '../src/navigation/ActiveJourneyNavigationStore';
+import { productionRouteForPath, resumesActiveJourneyFrom } from '../src/routing/productionRoutes';
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -147,4 +148,23 @@ test('CP2: navigation is entered, exited and logged out through the store, not o
   }
   // Restoring is a server read: the record only names the journey.
   assert.match(source, /const journey = await productionApi\.journey\(entityId\);[\s\S]{0,200}resumeActiveNavigation\(journey\);/);
+});
+
+test('BOOT-ROUTE-HIJACK-1: only a reopen at the entry point may take over the screen', () => {
+  assert.equal(resumesActiveJourneyFrom(productionRouteForPath('/')), true);
+  // Tabs the passenger can ask for on purpose — a bookmark, a notification, a
+  // shared link — must survive a pointer that is up to twelve hours old.
+  for (const pathname of ['/map', '/navigate', '/trips', '/profile', '/journeys/search', '/demands', '/demands/mine', '/messages', '/admin/verification']) {
+    assert.equal(resumesActiveJourneyFrom(productionRouteForPath(pathname)), false, pathname);
+  }
+  for (const pathname of [`/journeys/${journeyId}`, '/offers/offer-1', '/bookings/booking-1', '/messages/conversation-1']) {
+    assert.equal(resumesActiveJourneyFrom(productionRouteForPath(pathname)), false, pathname);
+  }
+  assert.equal(resumesActiveJourneyFrom(null), false);
+});
+
+test('BOOT-ROUTE-HIJACK-1: the resume effect asks that rule instead of «any tab is overridable»', () => {
+  const source = readFileSync(path.resolve(import.meta.dirname, '../src/views/ProductionMarketplace.tsx'), 'utf8');
+  assert.match(source, /if \(!resumesActiveJourneyFrom\(route\)\) return;/);
+  assert.doesNotMatch(source, /if \(route && route\.kind !== 'tab'\) return;/);
 });
