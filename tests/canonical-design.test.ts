@@ -411,3 +411,27 @@ test('the search screen gives each field the width its value needs', async () =>
   assert.doesNotMatch(css, /\.trip-tile button\s*\{/,
     'the square-button treatment leaked from the seat stepper to the arrival tile and made «З» and «По» look like different controls');
 });
+
+// FIELD-X-1 (2026-11-05, seen in /tmp/mgshots11/70-dark-route-form.png at 390×844): the «Куди» row offered
+// «Очистити кінцеву точку» while the field was empty — a destructive control with nothing to destroy. The
+// owner's rule is a × only once there is text. The origin row already answers the empty state with the
+// location arrow; the destination row has no second job, so its slot stays inert but keeps the 44 px box —
+// dropping the box would take 8 px off the row and make the card jump on the first keystroke.
+test('a place row only offers to clear a value that is actually there', async () => {
+  const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
+  const marketplace = await read('../src/views/ProductionMarketplace.tsx');
+  const searchFormStart = marketplace.indexOf('const searchForm = <form');
+  assert.notEqual(searchFormStart, -1, 'the search card left the markup');
+  const searchForm = marketplace.slice(searchFormStart, marketplace.indexOf('</form>', searchFormStart));
+  const rowFor = (label: string) => searchForm.match(new RegExp(`<div role="group" aria-label="${label}"[\\s\\S]*?</div>`))?.[0] ?? '';
+  assert.match(rowFor('Початкова точка'), /\{origin \? <X size=\{16\}\/> : <Navigation size=\{16\}\/>\}/,
+    'the origin row must keep its empty-state job — the location arrow, not a dead ×');
+  const destinationRow = rowFor('Кінцева точка');
+  assert.notEqual(destinationRow, '', 'the destination row left the shared group markup');
+  const clearStart = destinationRow.indexOf('<button type="button" aria-label="Очистити кінцеву точку"');
+  assert.notEqual(clearStart, -1, 'the destination row lost its clear affordance altogether');
+  assert.equal(destinationRow.slice(clearStart - '{destination ? '.length, clearStart), '{destination ? ',
+    'the × on «Куди» has to be guarded by the field holding text, not rendered always');
+  assert.match(destinationRow, /: <span aria-hidden="true" className="size-11 shrink-0" \/>}/,
+    'the empty destination keeps a 44 px inert slot, so typing does not shift the card');
+});
