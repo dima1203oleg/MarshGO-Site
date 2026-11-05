@@ -184,7 +184,7 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
               <label className="block text-xs font-bold text-[#14243B]">
                 Скільки ви готові заплатити?
               </label>
-              <div className="flex items-center gap-1 p-0.5 bg-white rounded-lg border border-blue-200 text-[11px]">
+              <div className="flex items-center gap-1 p-0.5 bg-white rounded-lg border border-blue-200 text-xs">
                 <button
                   type="button"
                   onClick={() => setBudgetType('total_all')}
@@ -219,7 +219,7 @@ export const DemandNewView: React.FC<DemandNewViewProps> = ({
               <span className="absolute right-4 top-3.5 text-sm font-bold text-slate-500">UAH</span>
             </div>
 
-            <p className="text-[11px] text-[#62718A]">
+            <p className="text-xs text-[#62718A]">
               {budgetType === 'total_all'
                 ? `Сума ${totalBudget} грн є загальним бюджетом за всіх ${passengerCount} пасажирів.`
                 : `Сума ${totalBudget} грн за одне місце (загалом ${totalBudget * passengerCount} грн).`}

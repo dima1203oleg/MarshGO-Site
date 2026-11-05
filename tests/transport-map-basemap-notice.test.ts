@@ -7,7 +7,9 @@ const view = () => readFileSync('src/views/TransportMapView.tsx', 'utf8');
 describe('live map basemap states', () => {
   it('explains an unconfigured basemap instead of leaving a blank canvas', () => {
     assert.match(view(), /status === 'unconfigured'/);
-    assert.match(view(), /Не налаштовано базову карту/);
+    // Passenger copy, not build vocabulary: say what is missing and where the data still lives.
+    assert.match(view(), /Мапа тимчасово без вулиць і будинків/);
+    assert.doesNotMatch(view(), /тайл|manifest|налаштован/i);
   });
 
   it('keeps a missing basemap separate from a network failure and promises nothing it cannot show', () => {

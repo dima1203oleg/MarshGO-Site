@@ -49,7 +49,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
             <div>
               <h1 className="text-base font-bold flex items-center gap-2">
                 <span>MARSHGO Операційна панель</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-[#38BDF8]">
+                <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-500/20 text-[#38BDF8]">
                   Admin v1.2
                 </span>
               </h1>
@@ -112,24 +112,24 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <div className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-white p-4 rounded-xl border border-slate-200">
-                <span className="text-[11px] text-[#62718A] uppercase font-bold">Активні рейси</span>
+                <span className="text-xs text-[#62718A] uppercase font-bold">Активні рейси</span>
                 <div className="text-2xl font-black text-[#14243B] mt-1 tabular-nums">{offers.length}</div>
-                <div className="text-[10px] text-emerald-600 mt-0.5">Всі напрямки валідні</div>
+                <div className="text-xs text-emerald-600 mt-0.5">Всі напрямки валідні</div>
               </div>
               <div className="bg-white p-4 rounded-xl border border-slate-200">
-                <span className="text-[11px] text-[#62718A] uppercase font-bold">Відкритий попит</span>
+                <span className="text-xs text-[#62718A] uppercase font-bold">Відкритий попит</span>
                 <div className="text-2xl font-black text-[#1769F4] mt-1 tabular-nums">{demands.length}</div>
-                <div className="text-[10px] text-blue-600 mt-0.5">Біржа попиту</div>
+                <div className="text-xs text-blue-600 mt-0.5">Біржа попиту</div>
               </div>
               <div className="bg-white p-4 rounded-xl border border-slate-200">
-                <span className="text-[11px] text-[#62718A] uppercase font-bold">Комісія Community</span>
+                <span className="text-xs text-[#62718A] uppercase font-bold">Комісія Community</span>
                 <div className="text-2xl font-black text-emerald-600 mt-1 tabular-nums">0%</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Справжній carpool</div>
+                <div className="text-xs text-slate-500 mt-0.5">Справжній carpool</div>
               </div>
               <div className="bg-white p-4 rounded-xl border border-slate-200">
-                <span className="text-[11px] text-[#62718A] uppercase font-bold">GPS Навігація</span>
+                <span className="text-xs text-[#62718A] uppercase font-bold">GPS Навігація</span>
                 <div className="text-2xl font-black text-purple-600 mt-1">Beta</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Foreground safe</div>
+                <div className="text-xs text-slate-500 mt-0.5">Foreground safe</div>
               </div>
             </div>
 

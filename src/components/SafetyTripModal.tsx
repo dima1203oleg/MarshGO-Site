@@ -133,7 +133,7 @@ export const SafetyTripModal: React.FC<SafetyTripModalProps> = ({
                 <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-[#14243B] dark:text-white">Верифікація особистості</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Перевірка документів та номеру телефону через Дія / BankID.
                   </div>
                 </div>
@@ -143,7 +143,7 @@ export const SafetyTripModal: React.FC<SafetyTripModalProps> = ({
                 <Lock className="w-4 h-4 text-[#1769F4] dark:text-sky-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-[#14243B] dark:text-white">Захист конфіденційності</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Номери авто та прямі телефони відкриваються лише після підтвердження.
                   </div>
                 </div>
@@ -153,7 +153,7 @@ export const SafetyTripModal: React.FC<SafetyTripModalProps> = ({
                 <HeartHandshake className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-[#14243B] dark:text-white">Страховий захист</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Усі пасажири застраховані полісом ОСЦПВ на весь час поїздки.
                   </div>
                 </div>
@@ -163,7 +163,7 @@ export const SafetyTripModal: React.FC<SafetyTripModalProps> = ({
                 <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold text-[#14243B] dark:text-white">Справжні фото авто</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Модерація фотографій салону та екстер'єру для кожної поїздки.
                   </div>
                 </div>
@@ -181,7 +181,7 @@ export const SafetyTripModal: React.FC<SafetyTripModalProps> = ({
                 <div className="font-extrabold text-red-900 dark:text-red-200">
                   Екстрена допомога (SOS 112)
                 </div>
-                <div className="text-[11px] text-red-700 dark:text-red-300">
+                <div className="text-xs text-red-700 dark:text-red-300">
                   Єдиний номер екстрених служб в Україні
                 </div>
               </div>

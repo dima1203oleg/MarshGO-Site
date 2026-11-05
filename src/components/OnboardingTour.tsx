@@ -197,7 +197,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#1769F4] bg-blue-100/70 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#1769F4] bg-blue-100/70 px-2 py-0.5 rounded-full">
                   {currentStep.badge}
                 </span>
                 <span className="text-xs font-semibold text-slate-400">
@@ -231,7 +231,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
 
           {/* Key Points Bullet List */}
           <div className="bg-[#F8FAFC] border border-slate-200/70 rounded-2xl p-4 space-y-2.5">
-            <div className="text-[11px] font-extrabold text-[#14243B] uppercase tracking-wider flex items-center gap-1.5">
+            <div className="text-xs font-extrabold text-[#14243B] uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-[#1769F4]" />
               <span>Ключові можливості:</span>
             </div>

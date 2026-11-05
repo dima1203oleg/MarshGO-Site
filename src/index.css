@@ -51,7 +51,10 @@ html.dark {
   --mg-line: #263648;
   --mg-surface-primary: #111820;
   --mg-surface-secondary: #16202B;
+  --mg-surface-card: #111820;
   --mg-surface-tint: #16202B;
+  --mg-amber: #FFB020;
+  --mg-green: #2CD67D;
   /* --mg-action fills a control with white text; --mg-blue is the accent for text and strokes. */
   --mg-action: #0B63D6;
   --mg-action-hover: #0A57BC;
@@ -169,11 +172,25 @@ body {
   --mg-navy: #071b3a;
   --mg-ink: #0b1d3a;
   --mg-muted: #526477;
+  /* The ink and line ramp lives in both themes: a token defined only under html.dark silently
+     resolves to the inherited value in light, so the control looked right and was unstyled.
+     Ratios below are AA on every light surface (white, tint, canvas, blue-tint). */
+  --mg-ink-primary: #14243B;
+  --mg-ink-secondary: #46586E;
+  --mg-ink-muted: #5C6B83;
+  --mg-border-subtle: #E5EDF7;
+  --mg-border-medium: #C6D6E8;
+  --mg-surface-glass: rgba(255, 255, 255, .9);
   --mg-canvas: #f4f8fd;
   --mg-line: #e5edf7;
+  --mg-surface-primary: #FFFFFF;
+  --mg-surface-secondary: #f6f8fc;
+  --mg-surface-card: #FFFFFF;
   --mg-surface-tint: #f6f8fc;
   --mg-action: #0B63D6;
   --mg-action-hover: #0950A8;
+  --mg-amber: #AE6C00;
+  --mg-green: #16845C;
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
 
   /* Radii: measured from the sheet (8/10/16/20/24/28/32 px + pills). */
@@ -256,6 +273,19 @@ html.dark .app-header > div:first-child strong { color: #F5F9FF; }
   border-radius: 1.65rem;
   background: #f2f7fd;
 }
+/* A place row has one trailing control, and it has to read as what it is: an action that fills the
+   field, or a ghost that empties it. Both states use tokens so the theme owns the contrast. */
+.journey-search-card button.search-field-action[data-field-action="pick"],
+.journey-search-card button.search-field-action[data-field-action="locate"] {
+  border: 1px solid var(--mg-border-medium);
+  background-color: var(--mg-blue-tint);
+  color: var(--mg-blue-ink);
+}
+.journey-search-card button.search-field-action[data-field-action="clear"] {
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--mg-ink-muted);
+}
 .journey-search-card {
   border-color: rgba(255,255,255,.94);
   box-shadow: 0 14px 34px rgba(23, 68, 126, .09), 0 2px 6px rgba(23, 68, 126, .04);
@@ -286,12 +316,12 @@ html.dark .search-screen .journey-search-card label small,
 html.dark .search-screen .journey-search-card .search-trip-details small { color: #8FA0B3; }
 html.dark .search-screen .journey-search-card input { color: #F5F9FF; }
 html.dark .search-screen .journey-search-card input::placeholder { color: #8FA0B3; }
-html.dark .search-screen .journey-search-card label > button {
+html.dark .search-screen .journey-search-card label > button:not([data-field-action]) {
   border: 1px solid #263648;
   background: #111820;
   color: #66B2FF;
 }
-html.dark .search-screen .journey-search-card [role="group"] > button {
+html.dark .search-screen .journey-search-card [role="group"] > button:not([data-field-action]) {
   border: 1px solid #263648;
   background: #111820;
   color: #66B2FF;
@@ -512,15 +542,20 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   font-variant-numeric: tabular-nums;
 }
 .journey-segment-tile-meta-value { font-weight: 700; }
-/* The scroll cue floats over the strip, so the last tile needs reserved space to stay readable. */
-.journey-segment-tiles:has(+ .journey-segment-scroll-cue) { padding-inline-end: 2.3rem; }
+/*
+ * The scroll cue is a floating 44 px button over the row's right edge. Padding the scroller only
+ * added empty space *after the last tile*, so mid-scroll the button still covered a stage's time
+ * and price («Пішки 2 хв» in a saved route). Reserve the gutter on the viewport instead: the
+ * scrollport ends before the button, so no tile can ever paint underneath it.
+ */
+.journey-segment-tiles-viewport:has(> .journey-segment-scroll-cue) { padding-right: 2.9rem; }
 /*
  * A stage chip sliced in half by the viewport edge reads as a rendering bug. The fade says the row
  * continues; it lifts at the end of the row, where nothing is sliced anymore.
  */
 .journey-segment-tiles-viewport:not([data-cue-at-end="true"]) .journey-segment-tiles:has(+ .journey-segment-scroll-cue) {
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3.4rem), transparent calc(100% - 1.1rem));
-  mask-image: linear-gradient(to right, #000 calc(100% - 3.4rem), transparent calc(100% - 1.1rem));
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.4rem), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 2.4rem), transparent 100%);
 }
 .journey-segment-scroll-cue {
   position: absolute;
@@ -552,6 +587,19 @@ html.dark .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #f4f8fd !im
 html.dark .journey-segment-tile-meta { color: #9aabbd; }
 html.dark .journey-segment-scroll-cue { color: #d6e4f3; }
 html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background: #111820; }
+/*
+ * At 320 px five section labels cannot share one row, so the strip scrolls. A label cut
+ * mid-word at either edge («ивні») reads as a clipped render; fade the scrolled edges
+ * instead. The flags are set from the strip's own scroll position.
+ */
+[data-testid="trips-section-tabs"] {
+  --trips-fade-start: 0px;
+  --trips-fade-end: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--trips-fade-start), #000 calc(100% - var(--trips-fade-end)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--trips-fade-start), #000 calc(100% - var(--trips-fade-end)), transparent 100%);
+}
+[data-testid="trips-section-tabs"][data-fade-start="true"] { --trips-fade-start: 1.25rem; }
+[data-testid="trips-section-tabs"][data-fade-end="true"] { --trips-fade-end: 1.25rem; }
 .route-map-screen[data-theme="light"] .journey-segment-tile { border-color: #d9e2ec; }
 .route-map-screen[data-theme="light"] .journey-segment-tile-heading { color: #172638; }
 .route-map-screen[data-theme="light"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #172638 !important; }
@@ -636,6 +684,22 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
 .route-summary-segments::-webkit-scrollbar { display: none; }
 .route-sheet-grabber { cursor: grab; }
 .route-sheet-grabber:active { cursor: grabbing; }
+.route-map-screen section[data-testid="route-bottom-sheet"] {
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-top-left-radius: 2rem;
+  border-top-right-radius: 2rem;
+}
+.route-sheet-grabber__handle {
+  width: 3.25rem;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--route-grabber);
+  transition: transform 0.2s var(--mg-ease-entrance), background-color 0.2s ease;
+}
+.route-sheet-grabber:hover .route-sheet-grabber__handle {
+  background-color: var(--mg-action, #1687FF);
+}
 .route-sheet-summary--compact .route-summary-eyebrow { display: none; }
 .route-sheet-summary--compact .route-summary-heading {
   grid-template-areas: "title actions";
@@ -1036,6 +1100,23 @@ html.dark body {
   font-family: 'Syne', 'Plus Jakarta Sans', sans-serif;
 }
 
+/* The boarding pass is a printed artifact, not app chrome: it keeps one navy contract in both
+   themes so the same QR tile and stroke stay legible on any screen it is opened from. */
+.marsh-pass-ticket {
+  --pass-screen: var(--mg-canvas);
+  --pass-screen-ink: var(--mg-ink-primary);
+  --pass-surface: #071C33;
+  --pass-stroke: #1687FF;
+  --pass-ink: #F5F9FF;
+  --pass-ink-secondary: #B6C2D0;
+  --pass-ink-muted: #8FA0B3;
+  --pass-track: rgba(22, 135, 255, .32);
+  --pass-confirm: #2CD67D;
+  --pass-confirm-surface: rgba(44, 214, 125, .14);
+  --pass-badge-top: #1687FF;
+  --pass-badge-bottom: #0B6EF3;
+}
+
 /* Safe area padding utilities */
 .pb-safe {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
@@ -1092,15 +1173,49 @@ html.dark :is(.bg-rose-50, .bg-red-50) { background-color: rgba(255, 90, 106, .1
 html.dark :is(.text-\[\#0E1F35\], .text-\[\#081b35\], .text-slate-900, .text-slate-800, .text-slate-700, .text-\[\#14243B\]) { color: var(--mg-ink-primary); }
 html.dark :is(.text-slate-600, .text-slate-500, .text-\[\#62718A\]) { color: var(--mg-ink-secondary); }
 html.dark :is(.text-slate-400, .text-slate-300) { color: var(--mg-ink-muted); }
-html.dark :is(.text-blue-700, .text-blue-800, .text-blue-900) { color: #8CC4FF; }
-html.dark :is(.text-emerald-700, .text-green-700) { color: #74E0A1; }
-html.dark :is(.text-amber-700, .text-amber-800) { color: #FFD27A; }
-html.dark :is(.text-rose-700, .text-red-700) { color: #FF9CA7; }
+html.dark :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900) { color: #8CC4FF; }
+html.dark :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900, .text-green-600, .text-green-700) { color: #74E0A1; }
+html.dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-900\/80) { color: #FFD27A; }
+html.dark :is(.text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900, .text-red-600, .text-red-700, .text-red-800, .text-red-900) { color: #FF9CA7; }
+/* Every remaining palette family the canonical screens still reach (map layer chips, onboarding,
+   lifecycle simulator). -600…-900 brown/dark steps are invisible on a graphite canvas, so each hue
+   keeps its own light partner instead of being flattened to blue. */
+html.dark :is(.text-indigo-600, .text-indigo-700, .text-violet-600, .text-violet-700, .text-purple-600, .text-purple-700) { color: #A9B8FF; }
+html.dark :is(.text-cyan-600, .text-cyan-700, .text-sky-600, .text-sky-700) { color: #7DD3FC; }
+html.dark :is(.text-teal-600, .text-teal-700, .text-teal-800) { color: #6EE7D6; }
+html.dark :is(.text-orange-600, .text-orange-700, .text-orange-800) { color: #FFB877; }
 html.dark :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-\[\#E5EDF7\], .border-\[\#EEF3F9\], .border-\[\#DFE7F1\], .border-t, .border-b) { border-color: var(--mg-border-subtle); }
 html.dark .border-blue-200 { border-color: #1D437A; }
 html.dark .border-emerald-200 { border-color: #0D4E3F; }
 html.dark .border-rose-200 { border-color: #55192C; }
 html.dark .border-amber-200 { border-color: #573A12; }
+/* ---- Dark theme: the rest of the registry ----
+   Two classes of defect hid here. Alpha tints (bg-blue-50/70, bg-slate-50/80, bg-amber-50/95) are
+   separate Tailwind selectors, so `:is(.bg-blue-50)` never matched them and whole panels stayed
+   #eff6ff near-white over a graphite canvas — with their text-slate ink already flipped to light,
+   that is white-on-white. And the -100 chips of every accent hue were unmapped for the same reason.
+   Each maps to the same hue family as its -50 partner, so one transport/semantic colour still reads
+   as one colour in both themes. */
+html.dark :is(.bg-blue-50\/70, .bg-blue-50\/60, .bg-blue-50\/40) { background-color: rgba(22, 135, 255, .12); }
+html.dark :is(.bg-emerald-50\/80, .bg-emerald-50\/70) { background-color: rgba(44, 214, 125, .11); }
+html.dark :is(.bg-amber-50\/95, .bg-amber-50\/70) { background-color: rgba(255, 176, 32, .12); }
+html.dark :is(.bg-slate-50\/80, .bg-slate-50\/70) { background-color: var(--mg-canvas); }
+html.dark :is(.bg-slate-100\/70, .bg-slate-100\/80) { background-color: #132644; }
+html.dark :is(.bg-slate-200\/70, .bg-slate-200\/80) { background-color: #1A3258; }
+html.dark :is(.bg-blue-100) { background-color: rgba(22, 135, 255, .18); }
+html.dark :is(.bg-emerald-100, .bg-green-100) { background-color: rgba(44, 214, 125, .16); }
+html.dark :is(.bg-amber-100) { background-color: rgba(255, 176, 32, .16); }
+html.dark :is(.bg-rose-100, .bg-red-100) { background-color: rgba(255, 90, 106, .16); }
+html.dark :is(.bg-indigo-50, .bg-indigo-100, .bg-violet-100, .bg-purple-50) { background-color: rgba(140, 160, 255, .16); }
+html.dark :is(.bg-cyan-50, .bg-cyan-100, .bg-sky-50, .bg-sky-100) { background-color: rgba(103, 232, 249, .14); }
+html.dark :is(.bg-teal-50, .bg-teal-50\/70) { background-color: rgba(45, 212, 191, .14); }
+html.dark :is(.bg-orange-50, .bg-orange-100) { background-color: rgba(255, 145, 60, .16); }
+html.dark :is(.border-blue-100, .border-blue-200\/60, .border-blue-200\/40) { border-color: #1D437A; }
+html.dark :is(.border-emerald-100, .border-emerald-200\/60) { border-color: #0D4E3F; }
+html.dark :is(.border-rose-100, .border-red-200, .border-red-200\/60, .border-red-100) { border-color: #55192C; }
+html.dark :is(.border-amber-100) { border-color: #573A12; }
+html.dark :is(.border-teal-200) { border-color: #14464A; }
+html.dark :is(.border-slate-200\/80, .border-slate-200\/70, .border-slate-200\/60, .border-slate-200\/50, .border-slate-100\/70) { border-color: var(--mg-border-subtle); }
 html.dark .journey-results [aria-label="Ранжування маршрутів"] > button:disabled {
   opacity: 1;
   background-color: var(--mg-canvas);
@@ -1125,7 +1240,7 @@ html.dark .home-screen .journey-search-card {
   box-shadow: 0 14px 34px rgba(0, 0, 0, .26);
 }
 html.dark .home-screen .journey-search-card label { background-color: var(--mg-surface-secondary); }
-html.dark .home-screen .journey-search-card button:not([type="submit"]) {
+html.dark .home-screen .journey-search-card button:not([type="submit"]):not([data-field-action]) {
   background-color: var(--mg-surface-secondary);
   color: var(--mg-ink-primary);
 }
@@ -1146,6 +1261,8 @@ html.dark .coverage-details[open] { border-color: #263648; }
   --mg-ease-standard: cubic-bezier(.32, .72, 0, 1);
   --mg-ease-entrance: cubic-bezier(.16, .84, .28, 1);
   --mg-ease-exit: cubic-bezier(.4, 0, 1, 1);
+  --mg-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --mg-dur-instant: 90ms;
   --mg-dur-tap: 120ms;
   --mg-dur-fast: 180ms;
   --mg-dur-base: 260ms;
@@ -1418,10 +1535,10 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
 }
 
 /* Driver puck on the navigation map (Apple-Maps-like arrow with a soft accuracy halo). */
-.marshgo-puck { position: relative; width: 40px; height: 40px; }
-.marshgo-puck__arrow { position: relative; width: 40px; height: 40px; filter: drop-shadow(0 3px 6px rgba(9, 35, 69, .35)); }
-.marshgo-puck__halo { position: absolute; inset: -14px; border-radius: 9999px; background: rgba(23, 137, 244, .18); animation: marshgo-puck-pulse 2.4s ease-out infinite; }
-@keyframes marshgo-puck-pulse { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.25); opacity: 0; } }
+.marshgo-puck { position: relative; width: 44px; height: 44px; }
+.marshgo-puck__arrow { position: relative; width: 44px; height: 44px; filter: drop-shadow(0 4px 10px rgba(9, 35, 69, .4)); }
+.marshgo-puck__halo { position: absolute; inset: -16px; border-radius: 9999px; background: radial-gradient(circle, rgba(23, 137, 244, .25) 0%, rgba(23, 137, 244, 0) 70%); animation: marshgo-puck-pulse 2.2s cubic-bezier(0.2, 0, 0, 1) infinite; }
+@keyframes marshgo-puck-pulse { 0% { transform: scale(.5); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .marshgo-puck__halo { animation: none; } }
 
 /* Canonical MARSHGO matte-graphite theme and square Home composition. */
@@ -1614,14 +1731,27 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   height: 26px;
   border-radius: 999px;
   color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .32), 0 2px 6px rgba(0, 0, 0, .14);
   transition: transform .18s var(--mg-ease-entrance), box-shadow .18s ease, filter .18s ease;
   touch-action: manipulation;
 }
 .mg-route-ribbon__pill.is-active {
-  box-shadow: 0 0 0 2px var(--route-ribbon-ring), 0 0 18px color-mix(in srgb, #8B3CE6 55%, transparent);
+  box-shadow: 0 0 0 2.5px var(--route-ribbon-ring), 0 0 20px color-mix(in srgb, #1687FF 55%, transparent);
+  transform: scale(1.02);
 }
 .mg-route-ribbon__pill:active { transform: scale(.97); }
+/*
+ * The bar stays 26 px tall — that is the canonical ribbon — but a stage is a tap
+ * action and the ergonomic floor is 44 px. Extend the button's hit area over its
+ * own label and detail lines instead of inflating the bar and pushing the sheet
+ * content down; the extra 9 px above and below clear the floor exactly.
+ */
+.mg-route-ribbon__pill::before {
+  content: '';
+  position: absolute;
+  inset: -9px 0;
+  border-radius: 999px;
+}
 .mg-route-ribbon__label {
   overflow: hidden;
   color: var(--route-ink);

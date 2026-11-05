@@ -25,7 +25,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           }`}
         >
           <Search className="w-5 h-5" />
-          <span className="text-[11px] font-medium mt-1">Пошук</span>
+          <span className="text-xs font-medium mt-1">Пошук</span>
         </button>
 
         {/* Tab 2: Requests / Demands */}
@@ -38,7 +38,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           }`}
         >
           <Compass className="w-5 h-5" />
-          <span className="text-[11px] font-medium mt-1">Заявки</span>
+          <span className="text-xs font-medium mt-1">Заявки</span>
         </button>
 
         {/* Tab 3: Central Action Button (+) */}
@@ -60,7 +60,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           }`}
         >
           <Clock className="w-5 h-5" />
-          <span className="text-[11px] font-medium mt-1">Поїздки</span>
+          <span className="text-xs font-medium mt-1">Поїздки</span>
         </button>
 
         {/* Tab 5: Profile / Driver */}
@@ -71,7 +71,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           }`}
         >
           <UserIcon className="w-5 h-5" />
-          <span className="text-[11px] font-medium mt-1">{isDriver ? 'Водій' : 'Профіль'}</span>
+          <span className="text-xs font-medium mt-1">{isDriver ? 'Водій' : 'Профіль'}</span>
         </button>
       </div>
     </nav>

@@ -63,15 +63,15 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
             <div className="flex items-center gap-3 text-xs">
               <div className="bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 text-center">
                 <div className="text-amber-400 font-extrabold text-sm">★ {user.rating.toFixed(1)}</div>
-                <div className="text-[10px] text-slate-300">Рейтинг</div>
+                <div className="text-xs text-slate-300">Рейтинг</div>
               </div>
               <div className="bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 text-center">
                 <div className="text-white font-extrabold text-sm">{user.tripsCount}</div>
-                <div className="text-[10px] text-slate-300">Поїздок</div>
+                <div className="text-xs text-slate-300">Поїздок</div>
               </div>
               <div className="bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 text-center">
                 <div className="text-emerald-400 font-extrabold text-sm">98%</div>
-                <div className="text-[10px] text-slate-300">Пунктуальність</div>
+                <div className="text-xs text-slate-300">Пунктуальність</div>
               </div>
             </div>
           </div>
@@ -95,7 +95,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
               <div className="flex items-center gap-2">
                 <h2 className="font-extrabold text-base text-[#14243B]">Основне авто</h2>
                 {vehicleCount > 1 && (
-                  <span className="text-[11px] font-bold bg-blue-50 text-[#1769F4] px-2 py-0.5 rounded-full border border-blue-100">
+                  <span className="text-xs font-bold bg-blue-50 text-[#1769F4] px-2 py-0.5 rounded-full border border-blue-100">
                     Гараж: {vehicleCount} авто
                   </span>
                 )}
@@ -135,13 +135,13 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
                 <span>Місць: <strong>{vehicle.seats}</strong></span>
               </div>
               <div className="pt-2 flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[11px] font-semibold">
+                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 text-xs font-semibold">
                   Фото перевірено
                 </span>
-                <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 text-[11px] font-semibold">
+                <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 text-xs font-semibold">
                   Кондиціонер
                 </span>
-                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-semibold">
+                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-semibold">
                   Місце для багажу
                 </span>
               </div>
@@ -182,7 +182,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-sm text-[#14243B]">Створити попутку</h3>
-                <span className="text-[10px] font-bold px-1.5 rounded bg-emerald-100 text-emerald-800">0%</span>
+                <span className="text-xs font-bold px-1.5 rounded bg-emerald-100 text-emerald-800">0%</span>
               </div>
               <p className="text-xs text-[#62718A] mt-1">
                 Опублікуйте свій регулярний або разовий маршрут для спільного розподілу витрат.
@@ -205,7 +205,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-sm text-white">MARSHGO Навігація</h3>
-                <span className="text-[10px] font-bold px-1.5 rounded bg-blue-500/30 text-[#38BDF8]">Beta</span>
+                <span className="text-xs font-bold px-1.5 rounded bg-blue-500/30 text-[#38BDF8]">Beta</span>
               </div>
               <p className="text-xs text-slate-300 mt-1">
                 Їдьте трасою. Навігатор підбере пасажирів дорогою без зайвого відхилення.
@@ -256,21 +256,21 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="text-[11px] text-slate-500 font-medium">Компенсовано пального</div>
+              <div className="text-xs text-slate-500 font-medium">Компенсовано пального</div>
               <div className="text-lg font-black text-[#14243B] mt-1 flex items-baseline gap-1">
                 <span>~14 850 ₴</span>
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="text-[11px] text-slate-500 font-medium">Пасажирів перевезено</div>
+              <div className="text-xs text-slate-500 font-medium">Пасажирів перевезено</div>
               <div className="text-lg font-black text-[#1769F4] mt-1">
                 210 людей
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="text-[11px] text-slate-500 font-medium">Зниження викидів CO₂</div>
+              <div className="text-xs text-slate-500 font-medium">Зниження викидів CO₂</div>
               <div className="text-lg font-black text-emerald-600 mt-1 flex items-center gap-1">
                 <Leaf className="w-4 h-4" />
                 <span>-1.84 т CO₂</span>
@@ -278,7 +278,7 @@ export const DriverDashboardView: React.FC<DriverDashboardViewProps> = ({
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="text-[11px] text-slate-500 font-medium">Безпека та безаварійність</div>
+              <div className="text-xs text-slate-500 font-medium">Безпека та безаварійність</div>
               <div className="text-lg font-black text-emerald-700 mt-1">
                 100% захист
               </div>

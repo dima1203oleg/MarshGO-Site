@@ -120,7 +120,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
             <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-[#14243B]">
               <span>Рейс #{offer.id.slice(-6)}</span>
               {isCommunity && (
-                <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">
+                <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-xs">
                   0% комісії
                 </span>
               )}
@@ -316,22 +316,22 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
             {/* Waypoint details cards below the map */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900 flex items-start gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#1769F4] text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                <span className="w-5 h-5 rounded-full bg-[#1769F4] text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                   А
                 </span>
                 <div>
                   <div className="font-bold text-[#14243B] dark:text-white">Відправлення: {offer.origin}</div>
-                  <div className="text-[11px] text-[#62718A] dark:text-slate-400 truncate">{offer.originAddress}</div>
+                  <div className="text-xs text-[#62718A] dark:text-slate-400 truncate">{offer.originAddress}</div>
                 </div>
               </div>
 
               <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900 flex items-start gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#16845C] text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                <span className="w-5 h-5 rounded-full bg-[#16845C] text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                   Б
                 </span>
                 <div>
                   <div className="font-bold text-[#14243B] dark:text-white">Прибуття: {offer.destination}</div>
-                  <div className="text-[11px] text-[#62718A] dark:text-slate-400 truncate">{offer.destinationAddress}</div>
+                  <div className="text-xs text-[#62718A] dark:text-slate-400 truncate">{offer.destinationAddress}</div>
                 </div>
               </div>
             </div>
@@ -384,7 +384,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
             <div className="flex items-center justify-between p-3 rounded-xl bg-[#F5F8FD]">
               <div>
                 <div className="text-xs font-bold text-[#14243B]">Кількість місць:</div>
-                <div className="text-[11px] text-[#62718A]">Доступно для вибору: {offer.availableSeats}</div>
+                <div className="text-xs text-[#62718A]">Доступно для вибору: {offer.availableSeats}</div>
               </div>
               <div className="flex items-center gap-2">
                 {[1, 2, 3].filter((n) => n <= offer.availableSeats).map((num) => (
@@ -420,7 +420,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
                 />
                 <div>
                   <div className="font-bold text-[#14243B]">Готівкою водію</div>
-                  <div className="text-[11px] text-[#62718A]">Оплата під час посадки</div>
+                  <div className="text-xs text-[#62718A]">Оплата під час посадки</div>
                 </div>
               </label>
 
@@ -436,7 +436,7 @@ export const OfferDetailView: React.FC<OfferDetailViewProps> = ({
                 />
                 <div>
                   <div className="font-bold text-[#14243B]">Онлайн (Тестовий режим)</div>
-                  <div className="text-[11px] text-[#62718A]">Безпечний холдер коштів</div>
+                  <div className="text-xs text-[#62718A]">Безпечний холдер коштів</div>
                 </div>
               </label>
             </div>

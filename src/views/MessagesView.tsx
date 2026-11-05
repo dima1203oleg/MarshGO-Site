@@ -47,7 +47,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               </div>
               <div>
                 <h1 className="text-sm font-bold text-[#14243B]">Олександр (Toyota Camry)</h1>
-                <p className="text-[11px] text-emerald-600 font-medium">Онлайн · Запит Одеса → Київ</p>
+                <p className="text-xs text-emerald-600 font-medium">Онлайн · Запит Одеса → Київ</p>
               </div>
             </div>
           </div>
@@ -76,7 +76,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
               key={msg.id}
               className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
             >
-              <div className="text-[10px] text-slate-400 px-1 mb-0.5">{msg.senderName} · {msg.timestamp}</div>
+              <div className="text-xs text-slate-400 px-1 mb-0.5">{msg.senderName} · {msg.timestamp}</div>
 
               {/* Chat bubble */}
               <div
@@ -99,7 +99,7 @@ export const MessagesView: React.FC<MessagesViewProps> = ({
                       <span>Офіційна пропозиція ціни:</span>
                       <span className="text-sm tabular-nums">{msg.proposalCard.amount} грн</span>
                     </div>
-                    <div className="text-[10px] opacity-80 mt-0.5">
+                    <div className="text-xs opacity-80 mt-0.5">
                       Статус: {msg.proposalCard.status === 'active' ? 'Очікує рішення' : msg.proposalCard.status}
                     </div>
                   </div>

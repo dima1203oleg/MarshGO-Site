@@ -10,7 +10,7 @@ interface OfferRouteMapProps {
 }
 
 const statusCopy: Record<MapStatus, string> = {
-  unconfigured: 'Карта очікує на налаштування джерела картографічних даних.',
+  unconfigured: 'Мапа тимчасово без вулиць і будинків — маршрут видно лінією.',
   loading: 'Завантажуємо карту маршруту…',
   available: 'Карта маршруту готова.',
   degraded: 'Карта завантажена частково. Маршрут залишається доступним.',

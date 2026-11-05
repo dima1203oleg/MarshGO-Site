@@ -14,10 +14,13 @@ const perspectiveListeners = new Set<(perspective: MapPerspective) => void>();
 export function getMapLayer(): MapLayer {
   try {
     const saved = localStorage.getItem(LAYER_KEY);
+    // A saved 'satellite' from an environment that has no licensed imagery would paint an empty
+    // background, so the stored preference is only honoured where the base map actually exists.
+    if (saved === 'satellite' && !satelliteBasemapAvailable) return 'simple';
     if (saved === 'simple' || saved === 'satellite') return saved;
     // Keep existing users' selected base layer through this taxonomy cleanup.
     if (saved === 'standard' || saved === 'threeD' || saved === 'navigation') return 'simple';
-    if (saved === 'hybrid') return 'satellite';
+    if (saved === 'hybrid') return satelliteBasemapAvailable ? 'satellite' : 'simple';
   } catch { /* browser storage is optional */ }
   return 'simple';
 }
@@ -42,17 +45,28 @@ export function setMapPerspective(perspective: MapPerspective) {
 export function subscribeMapLayer(listener: (layer: MapLayer) => void) { layerListeners.add(listener); return () => { layerListeners.delete(listener); }; }
 export function subscribeMapPerspective(listener: (perspective: MapPerspective) => void) { perspectiveListeners.add(listener); return () => { perspectiveListeners.delete(listener); }; }
 
-// Imagery must come from the deployment's licensed provider. Never silently
-// depend on a public vendor endpoint in a production bundle.
+// Imagery must come from the deployment's licensed provider. A build that has no
+// VITE_MAP_SATELLITE_TILE_URL keeps the toggle honestly disabled instead of quietly
+// spending a third party's licensed imagery from inside the bundle. The workspace
+// `.env` is the place that declares the provider; `scripts/with-map-env.mjs` and the
+// worktree-aware `envDir` in vite.config.ts are what deliver it to the build.
 export const satelliteTiles = (import.meta.env?.VITE_MAP_SATELLITE_TILE_URL as string | undefined)?.trim() || undefined;
 export const satelliteAttribution = (import.meta.env?.VITE_MAP_SATELLITE_ATTRIBUTION as string | undefined)?.trim() || undefined;
+
+/**
+ * A toggle the passenger can press must actually change the picture. When the deployment has no
+ * licensed imagery this is false, and every satellite control has to say so instead of painting
+ * the same scheme map under a new label.
+ */
+export const satelliteBasemapAvailable = Boolean(satelliteTiles && satelliteAttribution);
 
 export function isBasemapConfigured(layer: MapLayer, schemeConfigured: boolean, satelliteConfigured = Boolean(satelliteTiles && satelliteAttribution)): boolean {
   return layer === 'satellite' ? satelliteConfigured : schemeConfigured;
 }
 
 /** Satellite is a raster base; the active journey remains a normal vector overlay above it. */
-export function styleForLayer(layer: MapLayer, configured: string | undefined, dark = false): string | import('maplibre-gl').StyleSpecification | null {
-  void dark; // Satellite tint is applied on its raster layer while retaining vector roads and labels.
+export function styleForLayer(layer: MapLayer, configured: string | undefined, dark = false, darkConfigured?: string): string | import('maplibre-gl').StyleSpecification | null {
+  void layer;
+  if (dark && darkConfigured) return darkConfigured;
   return configured ?? null;
 }

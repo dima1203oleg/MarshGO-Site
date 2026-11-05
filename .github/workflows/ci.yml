@@ -16,5 +16,10 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm test
+      - run: npm run check-tokens
       - run: npm run build
       - run: npm run check:bundle
+      - run: npm run check-single-react
+      - run: npx playwright install --with-deps chromium
+      - run: npm run boot-smoke

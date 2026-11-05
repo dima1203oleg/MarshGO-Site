@@ -152,7 +152,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
             {/* Route Summary Badge */}
             <div className="bg-[#EFF6FF] border border-blue-200 rounded-2xl p-4 flex items-center justify-between gap-3">
               <div className="space-y-1">
-                <span className="text-[10px] font-extrabold text-[#1769F4] uppercase tracking-wider">
+                <span className="text-xs font-extrabold text-[#1769F4] uppercase tracking-wider">
                   Обраний напрямок:
                 </span>
                 <div className="text-sm font-extrabold text-[#14243B] flex items-center gap-2">
@@ -167,7 +167,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
               </div>
 
               <div className="text-right shrink-0">
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   Автопошук 24/7
                 </span>
@@ -201,7 +201,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
                       <div className="p-1.5 rounded-lg bg-white shadow-xs shrink-0">{ch.icon}</div>
                       <div className="space-y-0.5">
                         <div className="text-xs font-bold text-[#14243B]">{ch.label}</div>
-                        <div className="text-[10px] text-slate-500">{ch.desc}</div>
+                        <div className="text-xs text-slate-500">{ch.desc}</div>
                       </div>
                     </button>
                   );
@@ -252,7 +252,7 @@ export const RouteSubscriptionModal: React.FC<RouteSubscriptionModalProps> = ({
                     onChange={(e) => setMaxPrice(Number(e.target.value))}
                     className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#1769F4]"
                   />
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
                     <span>від 300 грн</span>
                     <span>до 2500 грн</span>
                   </div>

@@ -31,7 +31,7 @@ export const DemandCard: React.FC<DemandCardProps> = ({
               <h4 className="font-bold text-sm text-[#14243B]">{demand.passengerName}</h4>
               <span className="text-xs text-amber-500 font-semibold">★ {demand.passengerRating.toFixed(1)}</span>
             </div>
-            <span className="text-[11px] text-[#62718A]">{demand.createdAt}</span>
+            <span className="text-xs text-[#62718A]">{demand.createdAt}</span>
           </div>
         </div>
 
@@ -41,7 +41,7 @@ export const DemandCard: React.FC<DemandCardProps> = ({
           <div className="text-lg sm:text-xl font-extrabold text-[#1769F4] tabular-nums">
             {demand.totalBudget} грн
           </div>
-          <div className="text-[10px] text-slate-500 font-medium">
+          <div className="text-xs text-slate-500 font-medium">
             {demand.budgetType === 'total_all' ? `загалом за ${demand.passengerCount} пасажирів` : 'за одне місце'}
           </div>
         </div>
@@ -62,13 +62,13 @@ export const DemandCard: React.FC<DemandCardProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-slate-600 text-[11px]">
+        <div className="flex items-center gap-2 text-slate-600 text-xs">
           <Clock className="w-3.5 h-3.5 text-slate-400" />
           <span>Часове вікно: {demand.departureDate} ({demand.timeWindowStart} – {demand.timeWindowEnd})</span>
         </div>
 
         {demand.notes && (
-          <p className="text-[11px] text-slate-600 italic border-t border-slate-200/60 pt-1 mt-1">
+          <p className="text-xs text-slate-600 italic border-t border-slate-200/60 pt-1 mt-1">
             "{demand.notes}"
           </p>
         )}

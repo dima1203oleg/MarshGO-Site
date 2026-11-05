@@ -182,7 +182,7 @@ export const AvatarGeneratorModal: React.FC<AvatarGeneratorModalProps> = ({
                       className="w-10 h-10 rounded-full object-cover"
                       referrerPolicy="no-referrer"
                     />
-                    <span className="text-[10px] font-bold text-[#14243B] text-center truncate w-full">
+                    <span className="text-xs font-bold text-[#14243B] text-center truncate w-full">
                       {preset.title}
                     </span>
                   </button>

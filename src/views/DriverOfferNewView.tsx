@@ -140,7 +140,7 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
           </button>
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-[#14243B]">Нова попутка</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
               0% комісії
             </span>
           </div>
@@ -205,10 +205,10 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
                       <div className="font-bold text-xs text-[#14243B] truncate">
                         {veh.make} {veh.model}
                       </div>
-                      <div className="text-[11px] text-slate-500 truncate">
+                      <div className="text-xs text-slate-500 truncate">
                         {veh.year} р. · {veh.color}
                       </div>
-                      <div className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                      <div className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded inline-block mt-0.5">
                         {veh.seats} місць
                       </div>
                     </div>
@@ -356,7 +356,7 @@ export const DriverOfferNewView: React.FC<DriverOfferNewViewProps> = ({
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>Справедливий розрахунок витрат MARSHGO</span>
             </div>
-            <p className="text-[11px] text-emerald-800 leading-relaxed">
+            <p className="text-xs text-emerald-800 leading-relaxed">
               Орієнтовна компенсація пального на відстань 475 км: ~{availableSeats * priceAmount} грн за {availableSeats} місць.
               Це повністю покриває витрати на бензин/дизель або зарядку авто без комерційної націнки.
             </p>
