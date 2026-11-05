@@ -270,16 +270,33 @@ export function JourneyRouteMapScreen({
     return () => window.removeEventListener('resize', updateViewport);
   }, [sheetSnap, snapHeight]);
 
+  const dataNote = mapStatus === 'failed' ? 'Карта недоступна'
+    : mapStatus === 'degraded' ? 'Карта завантажена частково'
+      : mapStatus === 'unconfigured' ? 'Мапа без вулиць — маршрут видно'
+        : liveJourneyRequestState === 'failed' ? 'Не вдалося оновити рух; показано розклад'
+          : liveJourneyRequestState === 'loading' ? 'Перевіряємо дані руху…'
+            : liveJourney?.segments[0]?.reason === 'provider_unavailable' ? 'Джерело руху недоступне; лінію не домальовуємо'
+              : liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' ? 'Немає свіжих позицій транспорту'
+                : model.missingShapeCount > 0 ? 'Частину маршруту без лінії на карті'
+                  : model.approximateWalkCount > 0 ? 'Частина піших відрізків — оцінка' : '';
+  const mapStatusIsWarning = mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured'
+    || liveJourneyRequestState === 'failed' || liveJourney?.segments[0]?.reason === 'provider_unavailable'
+    || liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' || model.missingShapeCount > 0 || model.approximateWalkCount > 0;
+
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
   const chipHeight = sheetSnap === 'peek' ? 0 : 54;
   const mapPadding = useMemo<RouteFitPadding>(() => {
     if (isDesktop) return { top: 100, left: 500, right: 40, bottom: 40 };
     return {
-      // 124 px already clears the top chip row (>= 64 px), and the ~96 px sides
-      // keep a centred callout at the route terminus (up to ~216 px wide) from
-      // spilling past the viewport edge; the edge-anchor fallback in
-      // routeLabelPlacement covers the remainder on very narrow screens.
-      top: 124,
+      // The header stack (back row + address + the amber status chip when it is
+      // shown) is 142 px tall; a terminus callout is vertically centred on its
+      // point and reaches ~22 px above it. 150 px keeps the address summary
+      // clear, the extra 34 px keeps the callout below the status chip instead
+      // of printing underneath it. The ~96 px sides keep a centred callout at
+      // the route terminus (up to ~216 px wide) from spilling past the viewport
+      // edge; the edge-anchor fallback in routeLabelPlacement covers the
+      // remainder on very narrow screens.
+      top: 150 + (mapStatusIsWarning && dataNote ? 34 : 0),
       left: 96,
       right: 96,
       // Follow the sheet's resting height: pulling the sheet down uncovers more
@@ -288,7 +305,7 @@ export function JourneyRouteMapScreen({
       // height never reaches this padding.
       bottom: sheetHeight + chipHeight + 12,
     };
-  }, [chipHeight, isDesktop, sheetHeight]);
+  }, [chipHeight, dataNote, isDesktop, mapStatusIsWarning, sheetHeight]);
 
   const routeLinePoints = useMemo(() => {
     const itinerary = model.routeSegments.flatMap(segment => segment.coordinates);
@@ -414,18 +431,6 @@ export function JourneyRouteMapScreen({
   }), [timeline]);
 
   const communityLeg = journey.legs.find(leg => leg.mode === 'COMMUNITY' && leg.offerId && leg.availabilityStatus !== 'UNAVAILABLE');
-  const dataNote = mapStatus === 'failed' ? 'Карта недоступна'
-    : mapStatus === 'degraded' ? 'Карта завантажена частково'
-      : mapStatus === 'unconfigured' ? 'Мапа без вулиць — маршрут видно'
-        : liveJourneyRequestState === 'failed' ? 'Не вдалося оновити рух; показано розклад'
-          : liveJourneyRequestState === 'loading' ? 'Перевіряємо дані руху…'
-            : liveJourney?.segments[0]?.reason === 'provider_unavailable' ? 'Джерело руху недоступне; лінію не домальовуємо'
-              : liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' ? 'Немає свіжих позицій транспорту'
-                : model.missingShapeCount > 0 ? 'Частину маршруту без лінії на карті'
-                  : model.approximateWalkCount > 0 ? 'Частина піших відрізків — оцінка' : '';
-  const mapStatusIsWarning = mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured'
-    || liveJourneyRequestState === 'failed' || liveJourney?.segments[0]?.reason === 'provider_unavailable'
-    || liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' || model.missingShapeCount > 0 || model.approximateWalkCount > 0;
 
   const heightForSnap = (snap: RouteSheetSnap) => snapHeight(snap);
   const moveToSnap = (next: RouteSheetSnap) => {

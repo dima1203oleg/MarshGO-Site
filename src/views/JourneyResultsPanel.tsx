@@ -261,14 +261,20 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap }: {
   const funnel = showDiagnostics ? funnelLines(result) : [];
 
   return <section aria-label="Результати мультимодального пошуку" className="mt-2">
-    <div role="group" aria-label="Режим пошуку маршрутів" className="mb-2 grid grid-cols-3 gap-1.5">
+    {/* Stacked under 390 px: three 1fr tracks leave 81–86 px for a label at 360–389 px,
+        and «Найдешевший» needs 89 px at the 12 px floor. From 390 px up the canonical
+        three-chip row returns and the widest label stays on one line. */}
+    <div role="group" aria-label="Режим пошуку маршрутів" className="mb-2 grid grid-cols-1 gap-1.5 min-[390px]:grid-cols-3">
       {strategyConfig.map(({ id, label, Icon, tone }) => {
         const count = strategyJourneys(result, id).length;
         const active = activeStrategy === id;
         const disabled = count === 0;
         const filled = active && !disabled;
-        return <button key={id} type="button" disabled={disabled} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`mg-pill-switch mg-press-subtle flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed ${filled ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : `border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] ${active ? 'border-[var(--mg-action)]' : disabled ? 'opacity-70' : 'hover:border-[var(--mg-blue)]'}`}`}>
-          <Icon size={18} className={`shrink-0 ${filled ? 'text-white' : tone}`} aria-hidden="true"/><span className="whitespace-nowrap text-xs font-extrabold leading-tight">{label}</span>
+        return <button key={id} type="button" disabled={disabled} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`mg-pill-switch mg-press-subtle flex min-h-11 min-w-0 items-center justify-center gap-0.5 rounded-xl border px-0.5 text-center transition-colors disabled:cursor-not-allowed ${filled ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : `border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] ${active ? 'border-[var(--mg-action)]' : disabled ? 'opacity-70' : 'hover:border-[var(--mg-blue)]'}`}`}>
+          {/* No whitespace-nowrap: each chip is a minmax(0,1fr) track, so a nowrap label
+              (Найдешевший is the longest) pushed the third chip past a 390 px viewport.
+              The span shrinks and wraps instead; type stays at the 12 px floor. */}
+          <Icon size={16} className={`shrink-0 ${filled ? 'text-white' : tone}`} aria-hidden="true"/><span className="min-w-0 break-words text-center text-xs font-extrabold leading-[1.15] tracking-[-0.03em]">{label}</span>
         </button>;
       })}
     </div>
