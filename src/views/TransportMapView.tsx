@@ -75,8 +75,8 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
       {quality && <p role="status" aria-label="Якість даних живого транспорту" className="pointer-events-auto self-start shadow"><StatusBadge status={quality.status} label={quality.label} size="sm"/></p>}
       {selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-[10px] font-semibold text-slate-700 shadow">
         {selectedCity.routeCount} маршрутів · {selectedCity.stopCount} зупинок · статичний розклад{selectedCity.realtimeAvailable ? ' · realtime джерело підключене' : ''}
-        {selectedCity.sourceUrl && <><span aria-hidden="true"> · </span><a className="text-blue-700 underline" href={selectedCity.sourceUrl} target="_blank" rel="noreferrer">Джерело даних</a></>}
-        <span> · {selectedCity.licenses.length ? selectedCity.licenses.join(', ') : 'умови використання уточнюються'}</span>
+        {/* Provenance (первинне джерело, ліцензії) moved to Профіль › Джерела даних: on the map it
+            was a legal footnote competing with the layers the passenger is actually choosing. */}
       </p>}
       {status === 'failed' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">Не вдалося завантажити карту. Перевірте мережу.</p>}
       {status === 'unconfigured' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow">Не налаштовано базову карту — фон мапи порожній.</p>}

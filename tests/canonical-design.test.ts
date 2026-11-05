@@ -306,3 +306,45 @@ test('the journey screens read one accent token set and the sort tabs stay AA-sa
   assert.match(results, /bg-\[var\(--mg-action\)\] text-white/, 'the active sort tab is a filled AA control: --mg-action is 5.57:1 under white, #1687FF was 3.53:1');
   assert.doesNotMatch(results, /bg-gradient-to-b from-\[#1687FF\]/, 'the sort-tab gradient put half of its white label under AA');
 });
+
+// PREMIUM-8 CP3 — every results card carried the strategy badge of the tab the passenger had
+// already tapped, and the badge alone needed six theme rules (three of them !important). The
+// card keeps only what the tab does not say: transfers and saving.
+test('results cards stop repeating the strategy the passenger already chose', async () => {
+  const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
+  const [panel, css] = await Promise.all([read('../src/views/JourneyResultsPanel.tsx'), read('../src/index.css')]);
+  assert.doesNotMatch(panel, /journey-result-action-badge|rankedStrategy/, 'the strategy badge came back next to the tab that already shows it');
+  assert.doesNotMatch(css, /\.journey-result-action-badge/, 'six dead theme rules for a removed badge freeze the sheet against CP5 tokens');
+  assert.match(panel, /data-testid="journey-result-transfers"/, 'the transfer count is the card-only fact and must stay');
+  // Guard against the opposite mistake: removing the duplicate together with the data behind it.
+  assert.match(css, /\.journey-result-transfer-badge \{[\s\S]{0,120}min-width: 2\.5rem/, 'the transfer badge lost its thumb-sized shared surface');
+});
+
+// The map header printed a legal footnote («Джерело даних», ліцензії) over the layers the
+// passenger was choosing. Provenance is now a profile section reading the real providers.
+test('transport provenance moved from the map into the profile and keeps the real payload', async () => {
+  const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
+  const [map, profile, marketplace] = await Promise.all([
+    read('../src/views/TransportMapView.tsx'),
+    read('../src/views/ProfileSections.tsx'),
+    read('../src/views/ProductionMarketplace.tsx'),
+  ]);
+  assert.doesNotMatch(map, /Джерело даних/, 'the map footnote is the duplicate CP3 removes — but only because the section below exists');
+  assert.match(map, /routeCount/, 'coverage counts stay on the map: they are about what the map can show right now');
+  assert.match(profile, /productionApi\.transportCities\(/, 'the profile must read the same server provenance, never a hand-written list');
+  assert.match(profile, /provider\.sourceRef \?\? fallbackHref/, 'per-provider source links take priority over the city-level fallback');
+  assert.match(profile, /Первинне джерело цього міста не опубліковане\./, 'a city without a published source says so instead of hiding the row');
+  assert.match(profile, /data-testid="profile-source-city"/, 'the relocated capability needs a stable handle for verification');
+  assert.match(marketplace, /\['sources','Джерела даних'/, 'provenance is only a replacement while the profile menu actually reaches it');
+});
+
+// The rendezvous card explained itself with infrastructure vocabulary (Redis, TTL) that the
+// passenger neither uses nor can act on; the live-source notice argued with itself.
+test('state cards speak about retention and outages in human Ukrainian', async () => {
+  const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
+  const [profile, routeScreen] = await Promise.all([read('../src/views/ProfileSections.tsx'), read('../src/views/JourneyRouteMapScreen.tsx')]);
+  assert.doesNotMatch(profile, /Redis|TTL/, 'cache machinery is not a privacy answer');
+  assert.match(profile, /близько двох хвилин/, 'the honest retention window still has to be stated, in words a person reads');
+  assert.doesNotMatch(routeScreen, /лінію не домальовуємо/, 'the notice repeated the consequence the map had just shown');
+  assert.match(routeScreen, /Джерело руху недоступне/, 'shortening must not drop the state: an unavailable feed is still unavailable');
+});

@@ -42,9 +42,8 @@ function journeyCaveats(journey: ApiJourney): string[] {
   return [...new Set(journey.legs.map(leg => journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource)).filter((text): text is string => Boolean(text)))];
 }
 
-function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
+function RouteResultCard({ journey, index, caveats, onOpen }: {
   journey: ApiJourney;
-  strategy: ApiJourneyStrategy;
   index: number;
   caveats: string[];
   onOpen: (journey: ApiJourney) => void;
@@ -74,9 +73,6 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
 
 
   if (!firstLeg || !lastLeg) return null;
-  const rankedStrategy = strategyConfig.find(item => journey.strategyRanks?.[item.id] === 1)?.id;
-  const strategyItem = strategyConfig.find(item => item.id === (rankedStrategy ?? strategy)) ?? strategyConfig[0];
-  const StrategyIcon = strategyItem.Icon;
   const totalPrice = journeyPriceDisplay(journey).label;
   const legPrice = (leg: ApiJourney['legs'][number] | undefined) => (leg ? legPriceDisplay(leg).value : '—');
   const stripItems: JourneySegmentStripItem[] = segments.map(segment => ({
@@ -135,8 +131,9 @@ function RouteResultCard({ journey, strategy, index, caveats, onOpen }: {
         actionsClassName="journey-result-actions flex shrink-0 items-center gap-1"
         summaryRowClassName="journey-result-header"
         actions={<>
-          <span data-strategy={strategyItem.id} aria-label={strategyItem.label} title={strategyItem.label} className={`journey-result-action-badge grid h-8 w-8 shrink-0 place-items-center rounded-full border ${strategyItem.id === 'FASTEST' ? 'bg-orange-50 text-orange-600 dark:bg-orange-950/60 dark:text-orange-300' : strategyItem.id === 'CHEAPEST' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300'}`}><StrategyIcon size={18} strokeWidth={2.2} aria-hidden="true"/></span>
-          <span aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="journey-result-transfer-badge inline-flex h-8 shrink-0 items-center gap-1 rounded-full border bg-slate-100 px-1.5 text-[10px] font-extrabold tabular-nums text-slate-700 dark:bg-[#15283A] dark:text-slate-200"><ArrowLeftRight size={13} aria-hidden="true"/>{journey.transfers}</span>
+          {/* The strategy the passenger already tapped is the strategy of every card here, so the
+              card carries only what is not on screen yet: transfers and saving. */}
+          <span data-testid="journey-result-transfers" aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="journey-result-transfer-badge inline-flex h-8 shrink-0 items-center gap-1 rounded-full border bg-slate-100 px-1.5 text-[10px] font-extrabold tabular-nums text-slate-700 dark:bg-[#15283A] dark:text-slate-200"><ArrowLeftRight size={13} aria-hidden="true"/>{journey.transfers}</span>
           <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} onPointerDown={event => event.stopPropagation()} className="journey-result-save-button pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-transparent text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800" title={saved ? 'Збережено на цьому пристрої' : 'Зберегти маршрут'}>
             <span className="journey-result-save-visual"><Heart size={19} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''} aria-hidden="true"/></span>
           </button>
@@ -273,7 +270,7 @@ export function JourneyResultsPanel({ result, onOpenMap }: {
       </ul>
     </details>}
 
-    {shownJourneys.length ? <div className="space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} strategy={activeStrategy} index={index} caveats={shownCaveats[index].filter(text => !sharedCaveats.includes(text))} onOpen={onOpenMap}/>)}</div>
+    {shownJourneys.length ? <div className="space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} index={index} caveats={shownCaveats[index].filter(text => !sharedCaveats.includes(text))} onOpen={onOpenMap}/>)}</div>
       : <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-[#111820]">
         <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{result.journeys.length
