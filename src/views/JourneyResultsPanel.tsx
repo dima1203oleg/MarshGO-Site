@@ -12,7 +12,7 @@ import {
   formatJourneyDurationTile, journeyBoardingNote,
   journeyRouteBadge, searchPendingCopy, unavailableTransportNotices,
 } from './journeyResultPresentation';
-import { journeyPriceDisplay, legPriceDisplay } from './cashFare';
+import { journeyPriceDisplay, legPriceDisplay, type JourneyPriceDisplay } from './cashFare';
 import { strategyJourneys } from './journeyStrategySelection';
 import { diagnosticsRequested, funnelLines, partialReasonNotices, splitResultNotices } from './resultsDiagnostics';
 
@@ -36,6 +36,12 @@ function formatRouteCount(count: number): string {
   const plural = new Intl.PluralRules('uk-UA').select(count);
   const noun = plural === 'one' ? 'маршрут' : plural === 'few' ? 'маршрути' : 'маршрутів';
   return `${count} ${noun}`;
+}
+
+/** The spoken price carries its basis: 45 ₴ paid in the vehicle is a different promise than a 45 ₴ quote. */
+export function spokenJourneyPrice(price: JourneyPriceDisplay): string {
+  if (price.label === '—') return 'ціна уточнюється';
+  return price.caption ? `${price.label} ${price.caption}` : price.label;
 }
 
 function journeyCaveats(journey: ApiJourney): string[] {
@@ -72,7 +78,9 @@ function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
   }, [journey.id]);
 
   if (!firstLeg || !lastLeg) return null;
-  const totalPrice = journeyPriceDisplay(journey).label;
+  const journeyPrice = journeyPriceDisplay(journey);
+  const totalPrice = journeyPrice.label;
+  const priceCaptionText = journeyPrice.caption;
   const legPrice = (leg: ApiJourney['legs'][number] | undefined) => (!leg || leg.mode === 'WALK' ? '' : legPriceDisplay(leg).value);
   const stripItems: JourneySegmentStripItem[] = segments.map(segment => {
     const priceText = legPrice(segment.leg);
@@ -95,7 +103,7 @@ function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
   // A journey that boards at once already says that time in «Відправлення»; the note only earns
   // its line when the passenger walks first and the vehicle leaves later.
   const showsBoarding = Boolean(boardingLabel) && !boardingLabel.endsWith(formatJourneyClock(startAt));
-  const openLabel = `Відкрити маршрут: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}${showsBoarding ? `, ${boardingLabel}` : ''}`;
+  const openLabel = `Відкрити маршрут: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${spokenJourneyPrice(journeyPrice)}${showsBoarding ? `, ${boardingLabel}` : ''}`;
 
   const toggleSaved = () => {
     let ids: string[] = [];
@@ -129,10 +137,10 @@ function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
         durationLabel={formatJourneyDuration(journey.totalDurationSeconds)}
         durationClassName="journey-result-duration"
         priceLabel={totalPrice}
-        priceAccessibleLabel={`Загальна вартість: ${totalPrice === '—' ? 'невідома' : totalPrice}`}
+        priceAccessibleLabel={`Загальна вартість: ${totalPrice === '—' ? 'невідома' : spokenJourneyPrice(journeyPrice)}`}
         priceClassName="journey-result-total-price"
         priceUnavailable={totalPrice === '—'}
-        priceCaption={totalPrice === '—' ? <span data-testid="journey-result-price-caption" className="block max-w-[7.5rem] truncate text-xs font-semibold leading-4 text-slate-500 dark:text-slate-400">тариф невідомий</span> : undefined}
+        priceCaption={priceCaptionText ? <span data-testid="journey-result-price-caption" className="block max-w-[7.5rem] truncate text-xs font-semibold leading-4 text-slate-500 dark:text-slate-400">{priceCaptionText}</span> : undefined}
         summaryNote={index === 0 ? <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-[var(--mg-blue-tint)] px-2 py-[3px] text-xs font-extrabold uppercase tracking-[.07em] text-[var(--mg-blue-ink)]"><Star size={10} className="shrink-0 fill-current" aria-hidden="true"/>Рекомендований</span> : undefined}
         actionsClassName="journey-result-actions flex shrink-0 items-center gap-1"
         summaryRowClassName="journey-result-header"

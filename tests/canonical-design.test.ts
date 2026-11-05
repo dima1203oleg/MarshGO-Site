@@ -175,15 +175,20 @@ test('result cards mark the ranked pick instead of faking a selection state', as
 // appear for flex rounding alone. Keep a measured floor for the cue and a caption beside the dash.
 test('segment scroll cue ignores rounding and unknown fare explains itself', async () => {
   const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
-  const [strip, lip, panel] = await Promise.all([
+  const [strip, lip, panel, fare] = await Promise.all([
     read('../src/design-system/journey/JourneySegmentStrip.tsx'),
     read('../src/design-system/journey/CanonicalRouteLip.tsx'),
     read('../src/views/JourneyResultsPanel.tsx'),
+    read('../src/views/cashFare.ts'),
   ]);
   assert.match(strip, /hidden >= 24/, 'the cue needs a floor a real stage chip can actually cross');
   assert.doesNotMatch(strip, /clientWidth \+ 2/, 'the cue threshold drifted back to 2 px, where rounding alone triggers it');
   assert.match(lip, /priceCaption\?: ReactNode;/, 'the shared lip needs one caption slot for unavailable prices');
-  assert.match(panel, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
+  assert.match(fare, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
+  // The card may not print a bare cash amount: the same journey is cheaper on
+  // the card product the planner ranked it by, so the caption is the promise.
+  assert.match(panel, /priceCaption=\{priceCaptionText \?/, 'the card must render the qualifier the price model provides');
+  assert.match(panel, /spokenJourneyPrice\(journeyPrice\)/, 'the spoken price has to carry the qualifier too');
   assert.match(panel, /max-w-\[7\.5rem\] truncate/, 'the caption must not widen the summary row on 360 px phones');
 });
 
