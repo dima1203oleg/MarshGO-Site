@@ -1543,6 +1543,39 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
 @keyframes marshgo-puck-pulse { 0% { transform: scale(.5); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .marshgo-puck__halo { animation: none; } }
 
+/* Live approaching transit marker animation */
+.marshgo-transit-live-marker {
+  position: relative;
+  z-index: 25;
+  transition: transform 0.3s var(--mg-ease-standard);
+}
+.marshgo-transit-live-marker::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.45) 0%, rgba(16, 185, 129, 0) 75%);
+  animation: mg-vehicle-radar 2.2s cubic-bezier(0.2, 0, 0, 1) infinite;
+  pointer-events: none;
+}
+@keyframes mg-vehicle-radar {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .marshgo-transit-live-marker::before { animation: none; } }
+
+.mg-approaching-banner {
+  box-shadow: 0 4px 16px rgba(8, 120, 249, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: transform 0.18s var(--mg-ease-entrance), border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.mg-approaching-banner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(8, 120, 249, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.mg-approaching-banner:active {
+  transform: scale(0.99);
+}
+
 /* Canonical MARSHGO matte-graphite theme and square Home composition. */
 html.dark body,
 html.dark .production-app {

@@ -37,15 +37,16 @@ export function calculateSegmentFocusTarget(
   segmentId = '',
 ): SegmentFocusTarget | null {
   if (segmentCoordinates.length < 2) return null;
-  const points = corridorFitPoints(segmentCoordinates, contextLines, 0.5);
+  // Target segment coordinates directly to ensure the street is centered cleanly in the visible viewport
+  const points = segmentCoordinates.length >= 2 && contextLines.length === 0
+    ? segmentCoordinates
+    : corridorFitPoints(segmentCoordinates, contextLines, 0.2);
   const bounds = boundsOf(points);
-  const bearing = extentMeters(segmentCoordinates) > 60 ? principalBearing(segmentCoordinates) : null;
   const boundsKey = bounds ? bounds.map((val) => val.toFixed(5)).join(',') : '';
-  const bearingKey = bearing === null ? 'flat' : bearing.toFixed(1);
   return {
     points,
-    bearing,
-    key: `${segmentId}:${points.length}:${bearingKey}:${boundsKey}`,
+    bearing: null,
+    key: `${segmentId}:${points.length}:flat:${boundsKey}`,
   };
 }
 
@@ -130,8 +131,8 @@ export class RouteCameraController {
       activeStopId: stopId,
       activeStopCoordinate: coordinate,
     });
-    // Smoothly focus on stop position with clear zoom
-    this.adapter?.focus(coordinate, 16.5);
+    // Smoothly focus on stop position with clear zoom and adaptive viewport padding
+    this.adapter?.focus(coordinate, 16.5, this.padding);
   }
 
   /**
@@ -147,7 +148,7 @@ export class RouteCameraController {
       return;
     }
     if (this.state.mode === 'STOP_FOCUS' && this.state.activeStopCoordinate) {
-      this.adapter?.focus(this.state.activeStopCoordinate, 16.5);
+      this.adapter?.focus(this.state.activeStopCoordinate, 16.5, this.padding);
       return;
     }
     if (this.state.mode === 'SEGMENT_FOCUS' && options.segmentTarget) {

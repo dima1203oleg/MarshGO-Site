@@ -298,6 +298,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.on('move', () => { this.onCameraMove?.(); });
     this.map.on('moveend', () => {
       const center = this.map.getCenter();
+      if (!center || typeof center.lng !== 'number' || typeof center.lat !== 'number') return;
       container.dataset.marshgoCameraZoom = this.map.getZoom().toFixed(2);
       container.dataset.marshgoCameraCenter = `${center.lng.toFixed(6)},${center.lat.toFixed(6)}`;
       container.dataset.marshgoCameraBearing = this.map.getBearing().toFixed(2);
@@ -796,7 +797,7 @@ export class MapLibreAdapter implements MapAdapter {
     return true;
   }
   focusCoordinates(points: Coordinate[], padding: RouteFitPadding = {}, maxZoom = 15) {
-    if (points.length === 1) { this.focus(points[0], maxZoom); return; }
+    if (points.length === 1) { this.focus(points[0], maxZoom, padding); return; }
     this.cameraMode = 'FREE';
     this.fitCoordinates(points, padding, maxZoom);
   }
@@ -878,7 +879,11 @@ export class MapLibreAdapter implements MapAdapter {
       const dot = document.createElement('span');
       dot.setAttribute('aria-hidden', 'true');
       this.liveTransitElement.append(dot);
-      this.liveTransitMarker = new maplibregl.Marker({ element: this.liveTransitElement, anchor: 'center' }).addTo(this.map);
+      this.liveTransitMarker = new maplibregl.Marker({ element: this.liveTransitElement, anchor: 'center' })
+        .setLngLat(position.coordinates)
+        .addTo(this.map);
+    } else {
+      this.liveTransitMarker?.setLngLat(position.coordinates);
     }
     this.liveTransitElement.setAttribute('aria-label', `${position.label}: GPS оновлено ${position.updatedAt}`);
     this.liveTransitElement.title = `${position.label} · GPS ${position.updatedAt}`;
@@ -1231,7 +1236,23 @@ export class MapLibreAdapter implements MapAdapter {
     this.transportDisplayPreferences = preferences;
     this.transport?.setDisplayPreferences(preferences);
   }
-  focus(point: Coordinate, zoom = 13) { this.cameraMode = 'FREE'; this.markCameraRequest(); this.map.easeTo({ center: point, zoom, duration: 600, essential: true }); }
+  focus(point: Coordinate, zoom = 13, padding?: RouteFitPadding) {
+    this.cameraMode = 'FREE';
+    this.markCameraRequest();
+    const pad = padding ? {
+      top: padding.top ?? 0,
+      bottom: padding.bottom ?? 0,
+      left: padding.left ?? 0,
+      right: padding.right ?? 0,
+    } : undefined;
+    this.map.easeTo({
+      center: point,
+      zoom,
+      duration: 650,
+      essential: true,
+      ...(pad ? { padding: pad } : {}),
+    });
+  }
   setCameraMode(mode: CameraMode) { this.setCameraModeInternal(mode); }
   setTheme(theme: MapTheme) {
     const nextTheme = this.themeForLayer(this.layer, theme);

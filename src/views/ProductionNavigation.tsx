@@ -750,7 +750,26 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
             {session.maneuvers.map((m, idx) => {
               const Icon = maneuverIcon(m);
               return (
-                <li key={m.id || idx} className="flex items-start gap-3 py-2 text-xs">
+                <li
+                  key={m.id || idx}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Вулиця: ${m.streetName || instructionText(m)}`}
+                  onClick={() => {
+                    if (m.location && m.location.length === 2) {
+                      mapRef.current?.focus(m.location as [number, number], 16.5);
+                    }
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (m.location && m.location.length === 2) {
+                        mapRef.current?.focus(m.location as [number, number], 16.5);
+                      }
+                    }
+                  }}
+                  className="flex cursor-pointer items-start gap-3 rounded-xl px-1.5 py-2 text-xs transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:hover:bg-white/5"
+                >
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-600 dark:bg-white/10 dark:text-blue-300">
                     <Icon size={16} />
                   </span>

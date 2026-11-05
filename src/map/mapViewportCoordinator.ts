@@ -60,11 +60,11 @@ export function calculateAdaptiveMapPadding(options: ViewportCoordinateOptions):
   // Top padding clears the compact header
   const top = topBarHeight + (hasWarningNote ? 26 : 0) + 6;
 
-  // Bottom padding clears the bottom sheet height.
+  // Bottom padding clears the bottom sheet height with a safe 12px breathing margin.
   // In expanded state, guarantee at least 96–120 px of top interactive map strip.
   const minVisibleMapHeight = Math.min(120, Math.max(96, Math.round(viewportHeight * 0.14)));
   const maxSafeBottom = Math.max(60, viewportHeight - top - minVisibleMapHeight);
-  const bottom = Math.min(sheetHeight + 8, maxSafeBottom);
+  const bottom = Math.min(sheetHeight + 12, maxSafeBottom);
 
   // Side margins: compact 18–24px to maximize horizontal route span.
   const side = Math.min(24, Math.max(16, Math.round(viewportWidth * 0.05)));

@@ -22,10 +22,10 @@ export const ROUTE_SHEET_LOGICAL_LABELS: Readonly<Record<RouteSheetSnap, RouteSh
  */
 export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
   const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
-  const expanded = Math.min(840, viewport * 0.9, Math.max(0, viewport - 172));
-  const half = Math.min(430, Math.max(300, viewport * 0.375));
-  const collapsed = Math.min(300, Math.max(240, Math.round(viewport * 0.29)), Math.max(180, half - 44));
-  const peek = Math.min(collapsed - 36, Math.max(176, Math.min(208, Math.round(viewport * 0.225))));
+  const expanded = Math.min(860, Math.max(560, viewport - 80));
+  const half = Math.min(520, Math.max(380, Math.round(viewport * 0.48)));
+  const collapsed = Math.min(270, Math.max(200, Math.round(viewport * 0.26)));
+  const peek = Math.min(160, Math.max(110, Math.round(viewport * 0.15)));
   return { peek, collapsed, half, expanded };
 }
 
