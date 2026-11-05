@@ -93,7 +93,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
         {selectedCity.routeCount} маршрутів · {selectedCity.stopCount} зупинок · статичний розклад{selectedCity.realtimeAvailable ? ' · realtime джерело підключене' : ''}
       </p>}
       {status === 'failed' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">Не вдалося завантажити карту. Перевірте мережу.</p>}
-      {status === 'unconfigured' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">Не налаштовано базову карту — фон мапи порожній.</p>}
+      {status === 'unconfigured' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">Мапа тимчасово без вулиць і будинків — зупинки й маршрути є у списку нижче.</p>}
     </div>
     <div className="absolute right-4 top-1/2 z-[500] flex -translate-y-1/2 flex-col gap-2">
       <button

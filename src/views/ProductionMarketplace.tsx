@@ -711,7 +711,7 @@ export function ProductionMarketplace() {
 
   const searchJourney = async () => {
     if (!origin.trim() || !destination.trim()) { setStatusMessage('Вкажіть початок і кінець маршруту.'); return; }
-    if (!searchOriginPlace || !searchDestinationPlace) { setStatusMessage('Для планування оберіть обидві точки з результатів геокодера.'); return; }
+    if (!searchOriginPlace || !searchDestinationPlace) { setStatusMessage('Щоб побудувати маршрут, оберіть обидві точки зі списку підказок.'); return; }
     const departure = kyivDateTimeInputToDate(journeyDeparture);
     if (!departure || departure.getTime() <= Date.now()) {
       setStatusMessage('Час відправлення вже минув — оберіть майбутню годину у вікні «Час маршруту».');
@@ -1144,7 +1144,7 @@ export function ProductionMarketplace() {
     const vehicle = vehicles.find((item) => item.id === offerVehicleId && vehicleUsable(item));
     const departure = kyivDateTimeInputToDate(offerDeparture);
     const priceMinor = Math.round(Number(offerPrice.replace(',', '.')) * 100);
-    if (!offerOrigin || !offerDestination) { setStatusMessage('Оберіть звідки й куди зі справжніх результатів геокодера.'); return; }
+    if (!offerOrigin || !offerDestination) { setStatusMessage('Оберіть звідки і куди зі списку підказок — так мапа отримає реальні точки.'); return; }
     if (!vehicle) { setStatusMessage('Оберіть своє авто після проходження перевірки.'); return; }
     if (!departure || departure <= new Date()) { setStatusMessage('Час відправлення має бути коректним київським часом у майбутньому.'); return; }
     if (!Number.isInteger(priceMinor) || priceMinor < 1) { setStatusMessage('Ціна за місце має бути більшою за 0.'); return; }
@@ -1177,7 +1177,7 @@ export function ProductionMarketplace() {
 
   const publishDemand = async (event: FormEvent) => {
     event.preventDefault();
-    if (!demandOrigin || !demandDestination) { setStatusMessage('Оберіть обидва місця зі справжніх результатів геокодера.'); return; }
+    if (!demandOrigin || !demandDestination) { setStatusMessage('Оберіть обидва місця зі списку підказок — так пошук буде точним.'); return; }
     const earliest = kyivDateTimeInputToDate(demandEarliest); const latest = kyivDateTimeInputToDate(demandLatest);
     if (!earliest || !latest || latest < earliest) { setStatusMessage('Перевірте часовий інтервал за київським часом.'); return; }
     const budget = demandBudget.trim() ? Math.round(Number(demandBudget.replace(',', '.')) * 100) : undefined;

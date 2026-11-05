@@ -416,7 +416,7 @@ export function JourneyRouteMapScreen({
   const communityLeg = journey.legs.find(leg => leg.mode === 'COMMUNITY' && leg.offerId && leg.availabilityStatus !== 'UNAVAILABLE');
   const dataNote = mapStatus === 'failed' ? 'Карта недоступна'
     : mapStatus === 'degraded' ? 'Карта завантажена частково'
-      : mapStatus === 'unconfigured' ? 'Базові тайли карти не налаштовані'
+      : mapStatus === 'unconfigured' ? 'Мапа без вулиць — маршрут видно'
         : liveJourneyRequestState === 'failed' ? 'Не вдалося оновити рух; показано розклад'
           : liveJourneyRequestState === 'loading' ? 'Перевіряємо дані руху…'
             : liveJourney?.segments[0]?.reason === 'provider_unavailable' ? 'Джерело руху недоступне; лінію не домальовуємо'

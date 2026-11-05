@@ -340,7 +340,7 @@ export function JourneyActiveNavigation({
   const showAction = sheetSnap !== 'collapsed';
   const destination = activeNavigationDestination(legs);
   const mapWarning = mapStatus === 'failed' ? 'Карта недоступна'
-    : mapStatus === 'unconfigured' ? 'Базові тайли карти недоступні'
+    : mapStatus === 'unconfigured' ? 'Мапа без вулиць — маршруту це не заважає'
       : mapStatus === 'degraded' ? 'Карта завантажена частково' : '';
   const liveLabel = liveJourneyRequestState === 'failed' ? 'Рух недоступний · за розкладом' : null;
 
