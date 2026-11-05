@@ -214,6 +214,21 @@ export function ProductionMarketplace() {
   const [vehicleToDelete, setVehicleToDelete] = useState<ApiVehicle | null>(null);
   const [tripsSection, setTripsSection] = useState<TripsSection>('upcoming');
   const tripsSectionChosen = useRef(false);
+  const tripsTabsRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    // All five sections share one pill strip. At 320–360 px they overflow it, so
+    // the chosen section must be scrolled fully into view instead of sitting half
+    // outside the rounded container.
+    if (tab !== 'trips') return;
+    const strip = tripsTabsRef.current;
+    const active = strip?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    if (!strip || !active) return;
+    const stripRect = strip.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    if (activeRect.left < stripRect.left || activeRect.right > stripRect.right) {
+      strip.scrollLeft += activeRect.left - stripRect.left - (strip.clientWidth - activeRect.width) / 2;
+    }
+  }, [tab, tripsSection]);
   const [providerGroups, setProviderGroups] = useState<Awaited<ReturnType<typeof productionApi.providersByTransport>> | null>(null);
   useEffect(() => {
     if (!transportPickerOpen || tab !== 'search') return;
@@ -1766,7 +1781,7 @@ export function ProductionMarketplace() {
   const sectionBookings = route?.kind === 'booking' && route.entityId ? visibleBookings : visibleBookings.filter((booking) => bookingSection(booking) === tripsSection);
   const tripSectionCounts = { active: visibleBookings.filter((b) => bookingSection(b) === 'active').length, upcoming: visibleBookings.filter((b) => bookingSection(b) === 'upcoming').length, past: visibleBookings.filter((b) => bookingSection(b) === 'past').length };
 
-  const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">{tripsTabSubtitle[tripsSection]}</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div><div role="tablist" aria-label="Розділи поїздок" className="no-scrollbar mb-4 flex gap-1 overflow-x-auto rounded-2xl bg-[#EEF3F9] p-1 text-xs dark:bg-[#0C1D30]">{tripsTabs.map(([key, label]) => { const count = isBookingSection(key) ? tripSectionCounts[key] : 0; return <button key={key} type="button" role="tab" aria-selected={tripsSection===key} onClick={()=>{tripsSectionChosen.current=true;setTripsSection(key);}} className={`flex min-h-11 shrink-0 items-center justify-center rounded-xl px-3 py-2 font-bold transition-colors ${tripsSection===key?'bg-white text-[var(--mg-blue-ink)] shadow-sm':'text-[var(--mg-ink-secondary)] dark:text-[var(--mg-ink-secondary)]'}`}>{label}{count>0?` · ${count}`:''}</button>; })}</div>
+  const tripsScreen = <div className="mx-auto w-full max-w-xl px-5 pb-8"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">{tripsTabSubtitle[tripsSection]}</p><h1 className="mt-1 text-2xl font-extrabold">Мої поїздки</h1></div><div ref={tripsTabsRef} role="tablist" aria-label="Розділи поїздок" className="no-scrollbar mb-4 flex snap-x scroll-px-1 gap-1 overflow-x-auto rounded-2xl bg-[#EEF3F9] p-1 text-xs dark:bg-[#0C1D30]">{tripsTabs.map(([key, label]) => { const count = isBookingSection(key) ? tripSectionCounts[key] : 0; return <button key={key} type="button" role="tab" aria-selected={tripsSection===key} onClick={()=>{tripsSectionChosen.current=true;setTripsSection(key);}} className={`flex min-h-11 shrink-0 grow snap-start items-center justify-center whitespace-nowrap rounded-xl px-0.5 py-2 font-bold transition-colors ${tripsSection===key?'bg-white text-[var(--mg-blue-ink)] shadow-sm':'text-[var(--mg-ink-secondary)] dark:text-[var(--mg-ink-secondary)]'}`}>{label}{count>0?` · ${count}`:''}</button>; })}</div>
     {showsSavedRoutes(tripsSection) && journeys.length > 0 && <section className="mb-5" aria-label="Збережені маршрути"><div className="mb-2 flex items-center justify-between"><h2 className="font-extrabold">Збережені маршрути</h2><button onClick={() => void refreshJourneys().catch(error => setStatusMessage(error instanceof Error ? error.message : 'Маршрути недоступні.'))} className="min-h-11 rounded-lg px-2 text-xs font-bold text-[var(--mg-blue-ink)] dark:text-[var(--mg-blue-ink)]">Оновити</button></div><div className="space-y-2.5">{journeys.map(journey => <SavedJourneyCard key={journey.id} journey={journey} departureLabel={formatDate(journey.requested_departure_at, { day: 'numeric', month: 'short' })} onOpen={() => setRoutePath(pathForProductionEntity('journey', journey.id))}/>)}</div></section>}
     {showsSavedRoutes(tripsSection) && !journeys.length && (
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
