@@ -17,11 +17,12 @@ function leg(overrides: Partial<Record<string, unknown>> = {}): Leg {
   } as unknown as Leg;
 }
 
-const walk = () => leg({ id: 'walk', mode: 'WALK', transportType: 'walk', priceMinor: 0 });
+const walk = (overrides: Partial<Record<string, unknown>> = {}) =>
+  leg({ id: 'walk', mode: 'WALK', transportType: 'walk', priceMinor: 0, ...overrides });
 
 test('cash fare uses the verified city tariff instead of the card product', () => {
   const lvivBus = cashFareForLeg(leg());
-  assert.deepEqual(lvivBus, { city: 'Львів', amountMinor: 3_000, verifiedAt: '2026-10-25' });
+  assert.deepEqual(lvivBus, { city: 'Львів', amountMinor: 3_000, currency: 'UAH', origin: 'client-registry', verifiedAt: '2026-10-25' });
   assert.deepEqual(legPriceDisplay(leg()), { value: '30\u00a0₴', caption: 'готівкою', source: 'cash' });
 
   const kyivMetro = cashFareForLeg(leg({
@@ -29,7 +30,7 @@ test('cash fare uses the verified city tariff instead of the card product', () =
     origin: { name: 'Вокзальна', coordinates: [30.4419, 50.4419] },
     destination: { name: 'Золоті ворота', coordinates: [30.5147, 50.4489] },
   }));
-  assert.deepEqual(kyivMetro, { city: 'Київ', amountMinor: 3_000, verifiedAt: '2026-10-13' });
+  assert.deepEqual(kyivMetro, { city: 'Київ', amountMinor: 3_000, currency: 'UAH', origin: 'client-registry', verifiedAt: '2026-10-13' });
 
   const dniproMetro = cashFareForLeg(leg({
     mode: 'METRO', transportType: 'metro',
@@ -85,6 +86,17 @@ test('summary adds cash amounts for every municipality ride', () => {
     { totalMinor: 15_000, cashLegCount: 0 });
 });
 
+test('no cash label without a server price or a verified city tariff', () => {
+  const odessa = leg({ mode: 'BUS', transportType: 'bus', cashPriceMinor: null,
+    origin: { name: 'Дерібасівська', coordinates: [30.7326, 46.4825] },
+    destination: { name: 'Привокзальна', coordinates: [30.75, 46.49] } });
+  assert.equal(cashFareForLeg(odessa), null);
+  // Without a cash price the rider gets the planner quote, marked as an estimate.
+  assert.deepEqual(legPriceDisplay(odessa), { value: '≈ 23\u00a0₴', caption: '', source: 'api' });
+  // A walking leg never carries a fare, even if a stale field arrives with one.
+  assert.equal(cashFareForLeg(walk({ cashPriceMinor: 3_000 })), null);
+});
+
 test('list and details share one total: cash for transit, planner quote elsewhere', () => {
   const journey = (legs: Leg[], totalPriceMinor: number | null) => ({
     legs, totalPriceMinor, confirmedPriceMinor: null, currency: 'UAH', priceStatus: 'ESTIMATED',
@@ -95,4 +107,45 @@ test('list and details share one total: cash for transit, planner quote elsewher
     { label: '≈ 150\u00a0₴', cashOnly: false });
   assert.deepEqual(journeyPriceDisplay(journey([walk(), leg({ id: 'leg-3', priceMinor: null, origin: { name: 'Одеса', coordinates: [30.7326, 46.4825] }, destination: { name: 'Одеса', coordinates: [30.75, 46.49] } })], null)),
     { label: '—', cashOnly: false });
+});
+
+test('the server cash price wins over the client table and covers cities the table lacks', () => {
+  const lvivFromApi = leg({ cashPriceMinor: 3_500, cashCurrency: 'UAH', cashFareProductId: 'lviv-cash-adult', cashFareSource: 'city-tariff-registry' });
+  assert.deepEqual(cashFareForLeg(lvivFromApi), { amountMinor: 3_500, currency: 'UAH', origin: 'api', productId: 'lviv-cash-adult' });
+  assert.deepEqual(legPriceDisplay(lvivFromApi), { value: '35\u00a0₴', caption: 'готівкою', source: 'cash' });
+
+  const uzhorod = leg({
+    cashPriceMinor: 800, cashCurrency: 'UAH', cashFareProductId: 'uzhorod-cash-adult',
+    origin: { name: 'Корятовича', coordinates: [22.287, 48.62] },
+    destination: { name: 'Театральна', coordinates: [22.295, 48.615] },
+  });
+  assert.equal(cashFareForLeg(uzhorod)?.origin, 'api');
+  assert.deepEqual(legPriceDisplay(uzhorod), { value: '8\u00a0₴', caption: 'готівкою', source: 'cash' });
+
+  const total = (legs: Leg[]) => journeyPriceDisplay({ legs, totalPriceMinor: 2_300, confirmedPriceMinor: null, currency: 'UAH', priceStatus: 'ESTIMATED' } as unknown as Parameters<typeof journeyPriceDisplay>[0]);
+  assert.deepEqual(summarizeLegPrices([walk(), lvivFromApi, walk(), uzhorod, walk()]), { totalMinor: 4_300, cashLegCount: 2 });
+  assert.deepEqual(total([walk(), lvivFromApi, walk(), uzhorod, walk()]), { label: '43\u00a0₴', cashOnly: true });
+});
+
+test('a published free fare and a second boarding both come from the server price', () => {
+  const free = leg({
+    mode: 'METRO', transportType: 'metro', cashPriceMinor: 0,
+    origin: { name: 'Сад Міжнародний', coordinates: [35.095, 48.467] },
+    destination: { name: 'Театральна', coordinates: [35.0457, 48.4686] },
+  });
+  assert.deepEqual(legPriceDisplay(free), { value: '0\u00a0₴', caption: 'готівкою', source: 'cash' });
+  // Cash has no transfer product, so a leg the planner marks as included still costs a boarding.
+  const secondBoarding = leg({ id: 'leg-2', fareIncludedByPreviousSegment: true, priceMinor: 0, cashPriceMinor: 3_000 });
+  assert.deepEqual(legPriceDisplay(secondBoarding), { value: '30\u00a0₴', caption: 'готівкою', source: 'cash' });
+});
+
+test('malformed server cash values never reach the rider', () => {
+  for (const bad of [-5, 12.5, '3000', Number.NaN]) {
+    // Lviv falls back to its verified client tariff; nothing is invented elsewhere.
+    assert.deepEqual(cashFareForLeg(leg({ cashPriceMinor: bad })), { city: 'Львів', amountMinor: 3_000, currency: 'UAH', origin: 'client-registry', verifiedAt: '2026-10-25' }, `string ${String(bad)}`);
+    const odessa = leg({ cashPriceMinor: bad,
+      origin: { name: 'Дерібасівська', coordinates: [30.7326, 46.4825] },
+      destination: { name: 'Привокзальна', coordinates: [30.75, 46.49] } });
+    assert.equal(cashFareForLeg(odessa), null, `string ${String(bad)} must not price Odesa`);
+  }
 });

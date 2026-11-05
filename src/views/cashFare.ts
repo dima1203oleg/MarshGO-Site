@@ -13,11 +13,10 @@ type CityCashTariff = {
 };
 
 /**
- * Cash single-ride fares from the audited city tariff registry
- * (MarshGO-Server server/mobility/transportTariffs.ts). The planner prices the
- * cheapest applicable product (LeoCard/app), so a rider paying cash in the
- * vehicle sees a different, higher amount. Private marshrutkas are excluded
- * because they do not inherit the municipal tariff.
+ * Fallback cash single-ride fares for servers that do not send `cashPriceMinor`
+ * yet. The server's audited registry (server/mobility/transportTariffs.ts) is
+ * the source of truth; this table only covers the cities verified by hand.
+ * Private marshrutkas are excluded because they do not inherit the municipal tariff.
  */
 const CITY_CASH_TARIFFS: CityCashTariff[] = [
   { city: 'Львів', bbox: [23.9, 49.75, 24.15, 49.92], modes: ['BUS', 'TROLLEYBUS', 'TRAM'], priceMinor: 3_000, verifiedAt: '2026-10-25' },
@@ -31,18 +30,38 @@ const inside = (point: [number, number] | undefined, bbox: [number, number, numb
   Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1])
   && point[0] >= bbox[0] && point[0] <= bbox[2] && point[1] >= bbox[1] && point[1] <= bbox[3];
 
-export type CashFare = { city: string; amountMinor: number; verifiedAt: string };
+export type CashFare = {
+  amountMinor: number;
+  currency: string;
+  /** api = the server priced this boarding; client-registry = fallback for a server that has no cash field yet. */
+  origin: 'api' | 'client-registry';
+  city?: string;
+  verifiedAt?: string;
+  productId?: string;
+};
 
-/** The cash amount a rider pays in the vehicle, or null when no verified tariff covers the leg. */
+/** A walk has no fare, and a negative or fractional amount is not a price. */
+function apiCashFare(leg: Leg): CashFare | null {
+  if (leg.mode === 'WALK') return null;
+  const amount = leg.cashPriceMinor;
+  if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 0) return null;
+  return { amountMinor: amount, currency: leg.cashCurrency ?? 'UAH', origin: 'api', productId: leg.cashFareProductId ?? undefined };
+}
+
+/** The cash amount a rider pays in the vehicle, or null when neither the server nor a verified tariff covers the leg. */
 export function cashFareForLeg(leg: Leg): CashFare | null {
   // A cash rider pays each boarding: the planner's fare allocation can mark a
   // later leg as covered by a transfer product, which cash does not include.
+  const priced = apiCashFare(leg);
+  if (priced) return priced;
   if (leg.mode === 'WALK') return null;
   if (leg.transportType && PRIVATE_FEED_TYPES.has(leg.transportType)) return null;
   const tariff = CITY_CASH_TARIFFS.find(candidate => candidate.modes.includes(leg.mode)
     && inside(leg.origin?.coordinates, candidate.bbox)
     && inside(leg.destination?.coordinates, candidate.bbox));
-  return tariff ? { city: tariff.city, amountMinor: tariff.priceMinor, verifiedAt: tariff.verifiedAt } : null;
+  return tariff
+    ? { city: tariff.city, amountMinor: tariff.priceMinor, currency: 'UAH', origin: 'client-registry', verifiedAt: tariff.verifiedAt }
+    : null;
 }
 
 export type LegPriceDisplay = {
@@ -56,7 +75,7 @@ export function legPriceDisplay(leg: Leg): LegPriceDisplay {
   if (leg.mode === 'WALK') return { value: '0\u00a0₴', caption: '', source: 'walk' };
   const cash = cashFareForLeg(leg);
   if (cash) {
-    const value = `${formatMoneyMinor(cash.amountMinor, 'UAH')}${leg.mode === 'COMMUNITY' ? ' / місце' : ''}`;
+    const value = `${formatMoneyMinor(cash.amountMinor, cash.currency)}${leg.mode === 'COMMUNITY' ? ' / місце' : ''}`;
     return { value, caption: 'готівкою', source: 'cash' };
   }
   if (leg.fareIncludedByPreviousSegment) return { value: 'у квитку', caption: 'пересадка', source: 'included' };
