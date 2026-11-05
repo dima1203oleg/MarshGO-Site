@@ -285,27 +285,20 @@ export function JourneyRouteMapScreen({
 
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
   const chipHeight = sheetSnap === 'peek' ? 0 : 54;
+  const settledHeight = snapHeight(sheetSnap);
   const mapPadding = useMemo<RouteFitPadding>(() => {
     if (isDesktop) return { top: 100, left: 500, right: 40, bottom: 40 };
     return {
-      // The header stack (back row + address + the amber status chip when it is
-      // shown) is 142 px tall; a terminus callout is vertically centred on its
-      // point and reaches ~22 px above it. 150 px keeps the address summary
-      // clear, the extra 34 px keeps the callout below the status chip instead
-      // of printing underneath it. The ~96 px sides keep a centred callout at
-      // the route terminus (up to ~216 px wide) from spilling past the viewport
-      // edge; the edge-anchor fallback in routeLabelPlacement covers the
-      // remainder on very narrow screens.
-      top: 150 + (mapStatusIsWarning && dataNote ? 34 : 0),
-      left: 96,
-      right: 96,
-      // Follow the sheet's resting height: pulling the sheet down uncovers more
-      // map, so the route refits wider instead of staying pinned to the half
-      // detent. The expanded detent is skipped when fitting (thin strip), so its
-      // height never reaches this padding.
-      bottom: sheetHeight + chipHeight + 12,
+      // 116 px keeps the address summary and controls clear; the extra 28 px
+      // accounts for warning notes. 36 px side padding maximizes the visible
+      // geometry while preserving safe margin. bottom follows the settled snap height
+      // so dragging the sheet does not trigger jittery camera refits.
+      top: 116 + (mapStatusIsWarning && dataNote ? 28 : 0),
+      left: 36,
+      right: 36,
+      bottom: settledHeight + chipHeight + 14,
     };
-  }, [chipHeight, dataNote, isDesktop, mapStatusIsWarning, sheetHeight]);
+  }, [chipHeight, dataNote, isDesktop, mapStatusIsWarning, settledHeight]);
 
   const routeLinePoints = useMemo(() => {
     const itinerary = model.routeSegments.flatMap(segment => segment.coordinates);

@@ -12,7 +12,7 @@ import { VEHICLE_PRIORITY_TOKENS, ZONE_LINE_TOKENS, priorityLevelOf, zoneArrowsF
 import { isBasemapConfigured, PERSPECTIVE_PITCH, satelliteAttribution, satelliteTiles, styleForLayer, type MapLayer, type MapPerspective } from './mapMode';
 import { TransportLayerController, type TransportLayerId } from './transportLayers';
 import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
-import { configuredMapStyleUrl } from './mapConfig';
+import { configuredMapDarkStyleUrl, configuredMapStyleUrl } from './mapConfig';
 import { journeySegmentsForFocus, visibleJourneyWaypoints } from './focusMode';
 import { nearestRouteHitIds } from './routeHitTesting';
 import { placeJourneyLabels } from './routeLabelPlacement';
@@ -23,34 +23,172 @@ let pmtilesProtocolRegistered = false;
 function transitGlyph(kind: 'bus' | 'tram' | 'trolleybus' | 'train' | 'minibus'): ImageData {
   const canvas = document.createElement('canvas');
   canvas.width = 64; canvas.height = 64;
-  const context = canvas.getContext('2d');
-  if (!context) return new ImageData(64, 64);
-  context.fillStyle = '#FFFFFF';
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return new ImageData(64, 64);
+
+  ctx.clearRect(0, 0, 64, 64);
+  ctx.save();
+
+  // Helper for rounded rectangles with fallback
+  const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+  };
+
   if (kind === 'tram') {
-    context.fillRect(30, 5, 4, 11);
-    context.fillRect(22, 12, 20, 3);
+    // Pantograph
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(32, 14); ctx.lineTo(32, 9);
+    ctx.moveTo(22, 9); ctx.lineTo(42, 9);
+    ctx.moveTo(27, 9); ctx.lineTo(32, 4); ctx.lineTo(37, 9);
+    ctx.stroke();
+
+    // Body
+    ctx.fillStyle = '#FFFFFF';
+    roundRect(16, 15, 32, 38, 7);
+    ctx.fill();
+
+    // Front Windshield
+    ctx.fillStyle = '#0B2034';
+    roundRect(20, 20, 24, 12, 3);
+    ctx.fill();
+
+    // Side windows / headlights
+    ctx.fillStyle = '#0B2034';
+    roundRect(20, 36, 10, 6, 2);
+    roundRect(34, 36, 10, 6, 2);
+
+    // Front headlights
+    ctx.fillStyle = '#FFD54F';
+    ctx.beginPath();
+    ctx.arc(22, 47, 2.5, 0, Math.PI * 2);
+    ctx.arc(42, 47, 2.5, 0, Math.PI * 2);
+    ctx.fill();
   } else if (kind === 'trolleybus') {
-    context.fillRect(22, 3, 3, 15); context.fillRect(39, 3, 3, 15);
-    context.beginPath(); context.moveTo(21, 5); context.lineTo(15, 1); context.lineTo(17, 0); context.lineTo(25, 4); context.fill();
-    context.beginPath(); context.moveTo(41, 5); context.lineTo(49, 1); context.lineTo(47, 0); context.lineTo(39, 4); context.fill();
+    // Trolley poles
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(28, 14); ctx.lineTo(16, 3);
+    ctx.moveTo(36, 14); ctx.lineTo(48, 3);
+    ctx.stroke();
+
+    // Body
+    ctx.fillStyle = '#FFFFFF';
+    roundRect(16, 15, 32, 38, 7);
+    ctx.fill();
+
+    // Front Windshield
+    ctx.fillStyle = '#0B2034';
+    roundRect(20, 20, 24, 13, 3);
+    ctx.fill();
+
+    // Route number indicator
+    ctx.fillStyle = '#1687FF';
+    roundRect(26, 16, 12, 3, 1.5);
+    ctx.fill();
+
+    // Headlights
+    ctx.fillStyle = '#FFD54F';
+    ctx.beginPath();
+    ctx.arc(22, 47, 2.5, 0, Math.PI * 2);
+    ctx.arc(42, 47, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Bumper
+    ctx.fillStyle = '#0B2034';
+    roundRect(24, 46, 16, 3, 1.5);
+    ctx.fill();
   } else if (kind === 'train') {
-    context.fillRect(17, 6, 30, 38);
-    context.fillRect(13, 13, 4, 25); context.fillRect(47, 13, 4, 25);
+    // Train body with aerodynamic roof
+    ctx.fillStyle = '#FFFFFF';
+    roundRect(17, 12, 30, 42, 8);
+    ctx.fill();
+
+    // Aerodynamic windshield
+    ctx.fillStyle = '#0B2034';
+    roundRect(21, 18, 22, 12, 4);
+    ctx.fill();
+
+    // Train stripes / grill
+    ctx.fillStyle = '#E11D48';
+    roundRect(21, 34, 22, 4, 1);
+    ctx.fill();
+
+    // High beam & lower headlights
+    ctx.fillStyle = '#FFD54F';
+    ctx.beginPath();
+    ctx.arc(32, 15, 2, 0, Math.PI * 2);
+    ctx.arc(23, 46, 2.5, 0, Math.PI * 2);
+    ctx.arc(41, 46, 2.5, 0, Math.PI * 2);
+    ctx.fill();
   } else if (kind === 'minibus') {
-    context.fillRect(18, 11, 28, 31);
+    // Minibus / Marshrutka: slightly more compact and rounded
+    ctx.fillStyle = '#FFFFFF';
+    roundRect(18, 16, 28, 36, 6);
+    ctx.fill();
+
+    // Windshield
+    ctx.fillStyle = '#0B2034';
+    roundRect(21, 21, 22, 11, 2.5);
+    ctx.fill();
+
+    // Yellow route display
+    ctx.fillStyle = '#F59E0B';
+    roundRect(25, 17, 14, 3, 1);
+    ctx.fill();
+
+    // Headlights & bumper
+    ctx.fillStyle = '#FFD54F';
+    ctx.beginPath();
+    ctx.arc(23, 46, 2.2, 0, Math.PI * 2);
+    ctx.arc(41, 46, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0B2034';
+    roundRect(26, 45, 12, 3, 1);
+    ctx.fill();
   } else {
-    context.fillRect(15, 7, 34, 37);
+    // Standard City Bus
+    ctx.fillStyle = '#FFFFFF';
+    roundRect(16, 14, 32, 40, 7);
+    ctx.fill();
+
+    // Windshield
+    ctx.fillStyle = '#0B2034';
+    roundRect(20, 20, 24, 14, 3);
+    ctx.fill();
+
+    // Route display board
+    ctx.fillStyle = '#10B981';
+    roundRect(24, 15, 16, 3.5, 1.5);
+    ctx.fill();
+
+    // Headlights & bumper
+    ctx.fillStyle = '#FFD54F';
+    ctx.beginPath();
+    ctx.arc(21, 47, 2.5, 0, Math.PI * 2);
+    ctx.arc(43, 47, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0B2034';
+    roundRect(25, 46, 14, 3, 1.5);
+    ctx.fill();
   }
-  context.fillStyle = '#0B2034';
-  if (kind === 'train') {
-    context.fillRect(22, 12, 20, 10); context.fillRect(22, 26, 20, 5);
-  } else {
-    context.fillRect(21, 13, 22, 10); context.fillRect(21, 27, 8, 7); context.fillRect(35, 27, 8, 7);
-  }
-  context.fillStyle = '#FFFFFF';
-  context.beginPath(); context.arc(23, 46, 4, 0, Math.PI * 2); context.fill();
-  context.beginPath(); context.arc(41, 46, 4, 0, Math.PI * 2); context.fill();
-  return context.getImageData(0, 0, 64, 64);
+
+  ctx.restore();
+  return ctx.getImageData(0, 0, 64, 64);
 }
 
 function transitIconName(transportType: string): string {
@@ -275,9 +413,43 @@ export class MapLibreAdapter implements MapAdapter {
         'line-offset': ['get', 'directionOffsetPx'],
       },
     });
-    if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({ id: 'marshgo-route-halo', type: 'line', source: 'marshgo-route', filter: confirmedRouteFilter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 18, 10], 15, ['case', ['==', ['get', 'selected'], true], 34, 22]], 'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.78, ['==', ['get', 'dimmed'], true], 0.035, 0.2], 'line-blur': 7 } });
-    if (!this.map.getLayer('marshgo-route-casing')) this.map.addLayer({ id: 'marshgo-route-casing', type: 'line', source: 'marshgo-route', filter: confirmedRouteFilter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': colors.routeCasing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 8, 5], 15, ['case', ['==', ['get', 'selected'], true], 17, 13]], 'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.34, 0.96] } });
-    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({ id: 'marshgo-route', type: 'line', source: 'marshgo-route', filter: confirmedRouteFilter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'modeColor'], colors.route], 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 5.5, 3], 15, ['case', ['==', ['get', 'selected'], true], 12, 8]], 'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.38, 1] } });
+    if (!this.map.getLayer('marshgo-route-halo')) this.map.addLayer({
+      id: 'marshgo-route-halo',
+      type: 'line',
+      source: 'marshgo-route',
+      filter: confirmedRouteFilter,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['coalesce', ['get', 'modeColor'], colors.route],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 20, 11], 15, ['case', ['==', ['get', 'selected'], true], 36, 24]],
+        'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.85, ['==', ['get', 'dimmed'], true], 0.04, 0.25],
+        'line-blur': 8,
+      },
+    });
+    if (!this.map.getLayer('marshgo-route-casing')) this.map.addLayer({
+      id: 'marshgo-route-casing',
+      type: 'line',
+      source: 'marshgo-route',
+      filter: confirmedRouteFilter,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': colors.routeCasing,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 9, 6], 15, ['case', ['==', ['get', 'selected'], true], 18, 14]],
+        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.35, 0.98],
+      },
+    });
+    if (!this.map.getLayer('marshgo-route')) this.map.addLayer({
+      id: 'marshgo-route',
+      type: 'line',
+      source: 'marshgo-route',
+      filter: confirmedRouteFilter,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['coalesce', ['get', 'modeColor'], colors.route],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 6, 3.5], 15, ['case', ['==', ['get', 'selected'], true], 13, 9]],
+        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.4, 1.0],
+      },
+    });
     if (!this.map.getLayer('marshgo-route-walking-estimate')) this.map.addLayer({
       id: 'marshgo-route-walking-estimate', type: 'line', source: 'marshgo-route',
       filter: ['==', ['get', 'approximate'], true],
@@ -294,10 +466,10 @@ export class MapLibreAdapter implements MapAdapter {
       filter: ['all', ['==', ['get', 'isWalk'], true], ['!=', ['get', 'approximate'], true]],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': '#0284C7',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 6, 15, 12],
-        'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.7, 0.35],
-        'line-blur': 3,
+        'line-color': ['case', ['==', ['get', 'selected'], true], '#0284C7', '#0369A1'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 6, 15, 14],
+        'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.75, 0.4],
+        'line-blur': 4,
       },
     });
     if (!this.map.getLayer('marshgo-route-walking-trail')) this.map.addLayer({
@@ -305,10 +477,10 @@ export class MapLibreAdapter implements MapAdapter {
       filter: ['all', ['==', ['get', 'isWalk'], true], ['!=', ['get', 'approximate'], true]],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['case', ['==', ['get', 'selected'], true], '#38BDF8', '#38BDF8'],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 4, 15, 8],
-        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.45, 1.0],
-        'line-dasharray': [0.25, 1.6],
+        'line-color': ['case', ['==', ['get', 'selected'], true], '#38BDF8', '#0EA5E9'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 4.5, 15, 8.5],
+        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.4, 1.0],
+        'line-dasharray': [0.15, 1.7],
       },
     });
     // A separate transparent hit layer gives route segments a 44 px touch
@@ -481,8 +653,9 @@ export class MapLibreAdapter implements MapAdapter {
     const dark = this.theme.endsWith('_DARK');
     this.map.setPaintProperty('marshgo-satellite', 'raster-opacity', dark ? 0.94 : 1);
     this.map.setPaintProperty('marshgo-satellite', 'raster-brightness-min', dark ? 0.02 : 0);
-    this.map.setPaintProperty('marshgo-satellite', 'raster-brightness-max', dark ? 0.74 : 1);
-    this.map.setPaintProperty('marshgo-satellite', 'raster-saturation', dark ? -0.55 : 0);
+    this.map.setPaintProperty('marshgo-satellite', 'raster-brightness-max', dark ? 0.62 : 1);
+    this.map.setPaintProperty('marshgo-satellite', 'raster-contrast', dark ? 0.15 : 0);
+    this.map.setPaintProperty('marshgo-satellite', 'raster-saturation', dark ? -0.3 : 0);
   }
 
   /** Extrude only the existing vector building source; no separate 3D model assets are loaded. */
@@ -842,7 +1015,7 @@ export class MapLibreAdapter implements MapAdapter {
       const element = document.createElement('div');
       element.className = 'marshgo-puck';
       element.setAttribute('aria-hidden', 'true');
-      element.innerHTML = '<span class="marshgo-puck__halo"></span><svg viewBox="0 0 40 40" class="marshgo-puck__arrow"><circle cx="20" cy="20" r="17" fill="#fff"/><circle cx="20" cy="20" r="13.5" fill="#1789F4"/><path d="M20 9 L28 28 L20 23.5 L12 28 Z" fill="#fff"/></svg>';
+      element.innerHTML = '<span class="marshgo-puck__halo"></span><svg viewBox="0 0 44 44" class="marshgo-puck__arrow"><defs><linearGradient id="mgPuckGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#258AFF"/><stop offset="100%" stop-color="#0058D6"/></linearGradient><filter id="mgPuckGlow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#002D7A" flood-opacity="0.38"/></filter></defs><circle cx="22" cy="22" r="19" fill="#FFFFFF" filter="url(#mgPuckGlow)"/><circle cx="22" cy="22" r="15" fill="url(#mgPuckGrad)"/><path d="M22 10 L30 30 L22 25 L14 30 Z" fill="#FFFFFF"/></svg>';
       this.marker = new maplibregl.Marker({ element, rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat(point).addTo(this.map);
     } else this.marker.setLngLat(point);
     this.marker.setRotation(this.heading ?? 0);
@@ -936,10 +1109,9 @@ export class MapLibreAdapter implements MapAdapter {
     if (layer === this.layer) return;
     this.layer = layer;
     this.theme = this.themeForLayer(layer);
-    // The transformed dark vector style only replaces the simple basemap; the
-    // satellite layer keeps its own imagery style for this theme.
-    const themed = layer === 'simple' ? this.styleUrls?.[this.theme] : undefined;
-    const style = themed ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) ?? this.baseStyle;
+    // Use the themed style corresponding to the active theme for both simple and satellite overlays.
+    const themed = this.styleUrls?.[this.theme];
+    const style = themed ?? styleForLayer(layer, configuredMapStyleUrl, this.theme.endsWith('_DARK'), configuredMapDarkStyleUrl) ?? this.baseStyle;
     this.baseStyle = style;
     // A full style swap also removes custom sources/layers such as satellite imagery;
     // installLayers() restores route, transport, vehicle and rental overlays afterwards.
@@ -986,8 +1158,8 @@ export class MapLibreAdapter implements MapAdapter {
     const nextTheme = this.themeForLayer(this.layer, theme);
     const changed = this.theme !== nextTheme;
     this.theme = nextTheme;
-    const themed = this.layer === 'simple' ? this.styleUrls?.[this.theme] : undefined;
-    const style = themed ?? (configuredMapStyleUrl ? styleForLayer(this.layer, configuredMapStyleUrl, this.theme.endsWith('_DARK')) : null);
+    const themed = this.styleUrls?.[this.theme];
+    const style = themed ?? (configuredMapStyleUrl ? styleForLayer(this.layer, configuredMapStyleUrl, this.theme.endsWith('_DARK'), configuredMapDarkStyleUrl) : null);
     if (changed && style) { this.baseStyle = style; this.map.setStyle(style); return; }
     this.applySatellitePalette();
     const colors = mapStyleTokens[this.theme];

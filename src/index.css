@@ -684,6 +684,22 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
 .route-summary-segments::-webkit-scrollbar { display: none; }
 .route-sheet-grabber { cursor: grab; }
 .route-sheet-grabber:active { cursor: grabbing; }
+.route-map-screen section[data-testid="route-bottom-sheet"] {
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-top-left-radius: 2rem;
+  border-top-right-radius: 2rem;
+}
+.route-sheet-grabber__handle {
+  width: 3.25rem;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--route-grabber);
+  transition: transform 0.2s var(--mg-ease-entrance), background-color 0.2s ease;
+}
+.route-sheet-grabber:hover .route-sheet-grabber__handle {
+  background-color: var(--mg-action, #1687FF);
+}
 .route-sheet-summary--compact .route-summary-eyebrow { display: none; }
 .route-sheet-summary--compact .route-summary-heading {
   grid-template-areas: "title actions";
@@ -1519,10 +1535,10 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
 }
 
 /* Driver puck on the navigation map (Apple-Maps-like arrow with a soft accuracy halo). */
-.marshgo-puck { position: relative; width: 40px; height: 40px; }
-.marshgo-puck__arrow { position: relative; width: 40px; height: 40px; filter: drop-shadow(0 3px 6px rgba(9, 35, 69, .35)); }
-.marshgo-puck__halo { position: absolute; inset: -14px; border-radius: 9999px; background: rgba(23, 137, 244, .18); animation: marshgo-puck-pulse 2.4s ease-out infinite; }
-@keyframes marshgo-puck-pulse { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.25); opacity: 0; } }
+.marshgo-puck { position: relative; width: 44px; height: 44px; }
+.marshgo-puck__arrow { position: relative; width: 44px; height: 44px; filter: drop-shadow(0 4px 10px rgba(9, 35, 69, .4)); }
+.marshgo-puck__halo { position: absolute; inset: -16px; border-radius: 9999px; background: radial-gradient(circle, rgba(23, 137, 244, .25) 0%, rgba(23, 137, 244, 0) 70%); animation: marshgo-puck-pulse 2.2s cubic-bezier(0.2, 0, 0, 1) infinite; }
+@keyframes marshgo-puck-pulse { 0% { transform: scale(.5); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .marshgo-puck__halo { animation: none; } }
 
 /* Canonical MARSHGO matte-graphite theme and square Home composition. */
@@ -1715,12 +1731,13 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   height: 26px;
   border-radius: 999px;
   color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .32), 0 2px 6px rgba(0, 0, 0, .14);
   transition: transform .18s var(--mg-ease-entrance), box-shadow .18s ease, filter .18s ease;
   touch-action: manipulation;
 }
 .mg-route-ribbon__pill.is-active {
-  box-shadow: 0 0 0 2px var(--route-ribbon-ring), 0 0 18px color-mix(in srgb, #8B3CE6 55%, transparent);
+  box-shadow: 0 0 0 2.5px var(--route-ribbon-ring), 0 0 20px color-mix(in srgb, #1687FF 55%, transparent);
+  transform: scale(1.02);
 }
 .mg-route-ribbon__pill:active { transform: scale(.97); }
 /*
