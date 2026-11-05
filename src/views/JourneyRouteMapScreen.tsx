@@ -755,51 +755,51 @@ export function JourneyRouteMapScreen({
         data-testid="journey-route-segment"
         data-segment-id={leg.id}
         data-active={selected}
-        className={`mg-rise mg-stagger mg-route-segment overflow-hidden rounded-[var(--mg-radius-lg)] border bg-[var(--route-card)] transition-[border-color,box-shadow,opacity] duration-[var(--mg-dur-fast)] ${selected ? 'border-[var(--mg-blue)] shadow-[0_0_0_1px_rgba(22,135,255,.45),0_0_24px_rgba(22,135,255,.16)]' : 'border-[var(--route-border)]'}`}
+        className={`mg-rise mg-stagger mg-route-segment overflow-hidden rounded-xl border bg-[var(--route-card)] transition-[border-color,box-shadow,opacity] duration-[var(--mg-dur-fast)] ${selected ? 'border-[var(--mg-blue)] shadow-[0_0_0_1px_rgba(22,135,255,.45),0_0_24px_rgba(22,135,255,.16)]' : 'border-[var(--route-border)]'}`}
         style={{
-          borderLeftWidth: 4,
+          borderLeftWidth: 3.5,
           borderLeftColor: color,
-          opacity: activeSegmentId && !selected ? 0.68 : 1,
+          opacity: activeSegmentId && !selected ? 0.72 : 1,
           ['--mg-stagger-i' as string]: index,
           ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}),
         }}
       >
-        <div className="flex items-start gap-2 p-2">
+        <div className="flex items-start gap-2.5 p-2">
           <button
             type="button"
             onClick={() => chooseSegment(leg.id)}
             aria-pressed={selected}
             aria-label={`Вибрати сегмент: ${legLabel(leg)}`}
-            className="mg-press-subtle flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
+            className="mg-press-subtle flex min-w-0 flex-1 items-start gap-2.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
           >
             <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_color-mix(in_srgb,var(--segment-color)_48%,transparent)]"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white shadow-[0_2px_8px_color-mix(in_srgb,var(--segment-color)_42%,transparent)]"
               style={{ backgroundColor: color, ['--segment-color' as string]: color }}
             >
-              <TransportIcon mode={leg.mode} transportType={leg.transportType} size={19} strokeWidth={2.2}/>
+              <TransportIcon mode={leg.mode} transportType={leg.transportType} size={16} strokeWidth={2.3}/>
             </span>
             <span className="min-w-0 flex-1">
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <b className="text-sm font-extrabold">{leg.mode === 'COMMUNITY' ? 'Попутка · приватний автомобіль' : legLabel(leg)}</b>
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <b className="text-xs font-black tracking-tight">{leg.mode === 'COMMUNITY' ? 'Попутка · приватний автомобіль' : legLabel(leg)}</b>
                 {liveStatus && leg.mode !== 'WALK' && (
-                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-extrabold ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
-                    {liveStatus === 'LIVE' && <span aria-hidden="true" className="mg-live-pulse inline-block h-2 w-2 rounded-full bg-emerald-400"/>}
-                    {liveStatus === 'LIVE' ? 'ЗА РУХОМ' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ · ОЦІНКА' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}
+                  <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-black ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
+                    {liveStatus === 'LIVE' && <span aria-hidden="true" className="mg-live-pulse inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"/>}
+                    {liveStatus === 'LIVE' ? 'ЗА РУХОМ' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}
                   </span>
                 )}
               </span>
-              <span className="mt-1 block text-xs tabular-nums text-[var(--route-muted)]">
+              <span className="mt-0.5 block text-xs font-semibold tabular-nums text-[var(--route-muted)]">
                 {legTimeLabel(leg, item.durationSeconds)}
                 {typeof leg.distanceMeters === 'number' && Number.isFinite(leg.distanceMeters) ? ` · ${formatJourneyDistance(leg.distanceMeters)}` : ''}
                 {scheduled && stops.length ? ` · ${formatStopCount(stops.length)}` : ''}
               </span>
-              <span className="mt-1 block text-xs leading-4 text-[var(--route-subtle)]">
+              <span className="mt-0.5 block truncate text-xs font-medium leading-4 text-[var(--route-subtle)]">
                 {leg.mode === 'COMMUNITY' ? `Посадка: ${cleanStopName(leg.origin.name)} · висадка: ${cleanStopName(leg.destination.name)}` : `${cleanStopName(leg.origin.name)} → ${cleanStopName(leg.destination.name)}`}
               </span>
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1">
-            {leg.mode !== 'WALK' && <b className="text-xs tabular-nums" style={{ color: isDark ? color : 'var(--route-ink)' }}>{price.value}</b>}
+            {leg.mode !== 'WALK' && <b className="text-xs font-black tabular-nums" style={{ color: isDark ? color : 'var(--route-ink)' }}>{price.value}</b>}
             {leg.mode !== 'WALK' && price.caption && <span className="text-xs font-semibold text-[var(--route-muted)]">{price.caption}</span>}
             {scheduled && (
               <button
@@ -807,9 +807,9 @@ export function JourneyRouteMapScreen({
                 aria-label={`${expanded ? 'Згорнути' : 'Розгорнути'} зупинки: ${journeyLegLabel(leg.mode, leg.transportType)}`}
                 aria-expanded={expanded}
                 onClick={() => toggleExpanded(leg.id)}
-                className="mg-press-subtle grid h-11 w-11 place-items-center rounded-lg text-[var(--route-muted)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"
+                className="mg-press-subtle grid h-11 w-11 place-items-center rounded-lg text-[var(--route-muted)] hover:bg-[var(--route-hover)] hover:text-[var(--route-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"
               >
-                <ChevronDown size={17} className={`route-stops-chevron${expanded ? ' is-open' : ''}`}/>
+                <ChevronDown size={16} className={`route-stops-chevron transition-transform duration-[var(--mg-dur-fast)]${expanded ? ' is-open' : ''}`}/>
               </button>
             )}
           </div>
@@ -1098,22 +1098,22 @@ export function JourneyRouteMapScreen({
           }}
           aria-controls="route-sheet-content"
           aria-keyshortcuts="ArrowUp ArrowDown Home End"
-          className={`route-sheet-grabber flex w-full shrink-0 touch-none items-center justify-center ${sheetSnap === 'peek' ? 'h-7' : 'h-9'}`}
+          className={`route-sheet-grabber flex w-full shrink-0 touch-none items-center justify-center ${sheetSnap === 'peek' ? 'h-5' : 'h-6'}`}
         >
-          <span className="route-sheet-grabber__handle h-1.5 w-10 rounded-full bg-[var(--route-grabber)]"/>
+          <span className="route-sheet-grabber__handle"/>
         </button>
 
         <div id="route-sheet-content" className="flex min-h-0 flex-1 flex-col">
           {sheetSnap === 'peek' ? (
-            <div className="flex shrink-0 flex-col gap-1 px-4 pb-1" data-testid="route-peek-summary">
+            <div className="flex shrink-0 flex-col gap-1 px-4 pb-0.5" data-testid="route-peek-summary">
               <div className="flex items-baseline justify-between gap-3">
-                <strong data-testid="canonical-route-duration" className="text-[20px] font-black leading-6 tracking-tight tabular-nums">{formatDuration(allDuration)}</strong>
-                <strong data-testid="route-total-fare" aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`} className={`text-[16px] font-extrabold tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
+                <strong data-testid="canonical-route-duration" className="text-[19px] font-black leading-tight tracking-tight tabular-nums">{formatDuration(allDuration)}</strong>
+                <strong data-testid="route-total-fare" aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`} className={`text-[16px] font-black tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
               </div>
               <p data-testid="route-peek-chain" className="truncate text-xs font-bold tabular-nums text-[var(--route-muted)]">
                 {ribbonItems.map(item => `${item.label}${item.badge ? ` ${item.badge}` : ''} ${formatJourneyDurationTile(item.durationSeconds)}`).join(' → ')}
               </p>
-              <div data-testid="route-peek-scale" className="flex h-2 w-full overflow-hidden rounded-full bg-[var(--route-card-alt)] gap-1">
+              <div data-testid="route-peek-scale" className="flex h-1.5 w-full overflow-hidden rounded-full bg-[var(--route-card-alt)] gap-1">
                 {ribbonItems.map(item => (
                   <span
                     key={item.id}
@@ -1129,11 +1129,11 @@ export function JourneyRouteMapScreen({
           ) : (
             <>
               {sheetSnap === 'expanded' && (
-                <div className="route-details-head flex shrink-0 items-center gap-2 px-4 pb-1">
+                <div className="route-details-head flex shrink-0 items-center gap-2 px-4 pb-0.5">
                   <button type="button" aria-label="Назад до результатів" onClick={onBack} className="route-header-back mg-press-subtle grid h-11 w-11 shrink-0 place-items-center rounded-full">
                     <ArrowLeft size={20}/>
                   </button>
-                  <h2 className="min-w-0 flex-1 truncate text-center text-[17px] font-black tracking-[-.02em]">Деталі маршруту</h2>
+                  <h2 className="min-w-0 flex-1 truncate text-center text-base font-black tracking-tight">Деталі маршруту</h2>
                   <button type="button" aria-label="Поділитися маршрутом" onClick={shareRoute} className="route-header-icon mg-press-subtle grid h-11 w-11 shrink-0 place-items-center rounded-full">
                     <Share2 size={19}/>
                   </button>
@@ -1143,29 +1143,29 @@ export function JourneyRouteMapScreen({
                 </div>
               )}
               {sheetSnap === 'expanded' && (
-                <p className="shrink-0 truncate px-4 pb-1 text-xs font-extrabold text-[var(--route-ink)]">
-                  {firstLeg?.origin.name ?? 'Початок'} <span aria-hidden="true" className="mx-0.5 text-[var(--route-muted)]">→</span> {lastLeg?.destination.name ?? 'Кінець'}
+                <p className="shrink-0 truncate px-4 pb-1 text-xs font-bold text-[var(--route-ink)]">
+                  {cleanStopName(firstLeg?.origin.name) || 'Початок'} <span aria-hidden="true" className="mx-0.5 text-[var(--route-muted)]">→</span> {cleanStopName(lastLeg?.destination.name) || 'Кінець'}
                 </p>
               )}
-              <div className="route-sheet-summary flex shrink-0 items-center gap-3 px-4 py-1">
+              <div className="route-sheet-summary flex shrink-0 items-center justify-between gap-3 px-4 py-0.5">
                 <span className="flex min-w-0 flex-1 flex-col justify-center leading-tight">
-                  <strong className="text-[22px] font-black leading-7 tracking-tight tabular-nums">{firstLeg ? formatTime(firstLeg.departureAt) : '—'} <span aria-hidden="true" className="text-[var(--route-muted)]">→</span> {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}</strong>
-                  <span data-testid="canonical-route-duration" className="truncate text-xs font-bold tabular-nums text-[var(--route-muted)]">{formatDuration(allDuration)} · {formatSegmentCount(journey.legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</span>
+                  <strong className="text-[20px] font-black leading-tight tracking-tight tabular-nums">{firstLeg ? formatTime(firstLeg.departureAt) : '—'} <span aria-hidden="true" className="text-[var(--route-muted)]">→</span> {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}</strong>
+                  <span data-testid="canonical-route-duration" className="mt-0.5 truncate text-xs font-bold tabular-nums text-[var(--route-muted)]">{formatDuration(allDuration)} · {formatSegmentCount(journey.legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</span>
                 </span>
                 <span data-testid="route-total-fare" className="flex shrink-0 flex-col items-end leading-tight">
-                  <strong aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`} className={`text-[17px] font-extrabold tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
-                  {priceDisplay.cashOnly && totalPriceLabel !== '—' && <span className="text-xs font-bold text-[var(--route-muted)]">готівкою</span>}
+                  <strong aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`} className={`text-[17px] font-black tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
+                  {priceDisplay.cashOnly && totalPriceLabel !== '—' && <span className="mt-0.5 rounded-md bg-[var(--route-card-alt)] px-1.5 py-0.5 text-xs font-semibold text-[var(--route-muted)]">готівкою</span>}
                 </span>
               </div>
 
-              <div className="mg-route-ribbon shrink-0 px-4 pb-1" role="list" aria-label="Етапи маршруту">
+              <div className="mg-route-ribbon shrink-0 px-4 pb-1 pt-0.5" role="list" aria-label="Етапи маршруту">
                 {ribbonItems.map(item => {
                   const selected = activeSegmentId === item.id;
                   const walk = item.leg.mode === 'WALK';
                   return (
                     <div key={item.id} role="listitem" className={`mg-route-ribbon__item${activeSegmentId && !selected ? ' is-muted' : ''}`} style={{ flexGrow: Math.max(1, Math.round(item.durationSeconds / 60)) }}>
                       <button type="button" onClick={() => chooseSegment(item.id)} aria-pressed={selected} aria-label={`Вибрати етап: ${item.label}, ${item.detail}`} className={`mg-route-ribbon__pill mg-press-subtle${selected ? ' is-active' : ''}`} style={{ backgroundColor: walk ? 'var(--route-ribbon-walk)' : item.color }}>
-                        <TransportIcon mode={item.leg.mode} transportType={item.leg.transportType} size={17} strokeWidth={2.4}/>
+                        <TransportIcon mode={item.leg.mode} transportType={item.leg.transportType} size={16} strokeWidth={2.4}/>
                       </button>
                       <span className="mg-route-ribbon__label">{item.label}</span>
                       <span className="mg-route-ribbon__detail">{item.detail}</span>
@@ -1175,7 +1175,7 @@ export function JourneyRouteMapScreen({
               </div>
 
               {sheetSnap === 'half' && (
-                <p data-testid="route-medium-stages" className="shrink-0 truncate px-4 pb-1 text-xs font-semibold tabular-nums text-[var(--route-muted)]">
+                <p data-testid="route-medium-stages" className="shrink-0 truncate px-4 pb-0.5 text-xs font-medium tabular-nums text-[var(--route-muted)] opacity-85">
                   {ribbonItems.map(item => `${item.label}${item.badge ? ` ${item.badge}` : ''} (${formatJourneyDurationTile(item.durationSeconds)})`).join(' → ')}
                 </p>
               )}
@@ -1185,14 +1185,14 @@ export function JourneyRouteMapScreen({
           {/* Independent scrolling for details in medium and expanded modes */}
           {(sheetSnap === 'half' || sheetSnap === 'expanded') && (
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-2" data-testid="route-segment-list">
-              <ol className="space-y-2 pt-1">
+              <ol className="space-y-1.5 pt-0.5">
                 {renderSegmentCards()}
               </ol>
             </div>
           )}
 
           {/* Pinned CTA in all four snap states */}
-          <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-2 pt-1' : 'pb-3 pt-1.5'}`}>
+          <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-2 pt-0.5' : 'pb-2.5 pt-1'}`}>
             {sheetSnap !== 'peek' && (() => {
               const activeLeg = selectedLeg ?? firstLeg;
               if (!activeLeg) return null;
@@ -1203,20 +1203,20 @@ export function JourneyRouteMapScreen({
                 <aside
                   data-testid="smart-step-guidance"
                   aria-label="Пояснення наступного етапу"
-                  className="mb-2 rounded-2xl border border-[var(--route-border)] bg-[var(--route-card-alt)] p-2.5 text-xs shadow-sm backdrop-blur-md"
+                  className="mb-1.5 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2 text-xs shadow-xs backdrop-blur-md"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 font-extrabold text-[var(--mg-blue)]">
+                    <span className="flex items-center gap-1.5 font-black text-[var(--mg-blue)]">
                       <Navigation size={13} className="shrink-0" />
-                      <span>{selectedLeg ? summary.headline : `Ваш 1-й етап: ${summary.headline}`}</span>
+                      <span className="truncate">{selectedLeg ? summary.headline : `Ваш 1-й етап: ${summary.headline}`}</span>
                     </span>
                     {summary.transitBadge && (
-                      <span className="rounded-full bg-[var(--route-card)] px-2 py-0.5 text-xs font-extrabold text-[var(--route-muted)]">
+                      <span className="shrink-0 rounded-full bg-[var(--route-card)] px-2 py-0.5 text-xs font-black text-[var(--route-muted)]">
                         {summary.transitBadge}
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 font-semibold leading-relaxed text-[var(--route-ink)]">
+                  <p className="mt-0.5 text-xs font-medium leading-snug text-[var(--route-ink)] line-clamp-2">
                     {summary.narrative}
                   </p>
                 </aside>
@@ -1238,10 +1238,10 @@ export function JourneyRouteMapScreen({
               type="button"
               disabled={!canStartNavigation}
               onClick={() => onStartJourney?.()}
-              className="mg-route-cta mg-press-subtle flex w-full items-center justify-center gap-3"
+              className="mg-route-cta mg-press-subtle flex w-full items-center justify-center gap-2.5"
             >
-              <Play size={20} fill="currentColor" aria-hidden="true"/>
-              <span>{journey.legs.some(leg => leg.mode === 'COMMUNITY') ? 'Розпочати поїздку' : 'Розпочати'}</span>
+              <Play size={18} fill="currentColor" aria-hidden="true"/>
+              <span className="font-black tracking-tight">{journey.legs.some(leg => leg.mode === 'COMMUNITY') ? 'Розпочати поїздку' : 'Розпочати'}</span>
             </button>
           </div>
         </div>

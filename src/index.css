@@ -695,14 +695,16 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   border-top-right-radius: 2rem;
 }
 .route-sheet-grabber__handle {
-  width: 3.25rem;
-  height: 5px;
+  width: 2.5rem;
+  height: 4px;
   border-radius: 9999px;
   background: var(--route-grabber);
-  transition: transform 0.2s var(--mg-ease-entrance), background-color 0.2s ease;
+  opacity: 0.7;
+  transition: transform 0.2s var(--mg-ease-entrance), background-color 0.2s ease, opacity 0.2s ease;
 }
 .route-sheet-grabber:hover .route-sheet-grabber__handle {
   background-color: var(--mg-action, #1687FF);
+  opacity: 1;
 }
 .route-sheet-summary--compact .route-summary-eyebrow { display: none; }
 .route-sheet-summary--compact .route-summary-heading {
@@ -1715,24 +1717,24 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
 .mg-route-ribbon {
   display: flex;
   align-items: flex-start;
-  gap: .5rem;
+  gap: .375rem;
 }
 .mg-route-ribbon__item {
   display: flex;
   flex: 1 1 0%;
   flex-direction: column;
   align-items: stretch;
-  gap: .2rem;
+  gap: .15rem;
   /* Proportional widths must still leave room for the segment name under the
      bar; without a floor a 40-second walk collapses to "П…". */
-  min-width: 62px;
+  min-width: 58px;
 }
 .mg-route-ribbon__pill {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 26px;
+  height: 24px;
   border-radius: 999px;
   color: #fff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .32), 0 2px 6px rgba(0, 0, 0, .14);
@@ -1745,21 +1747,21 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
 }
 .mg-route-ribbon__pill:active { transform: scale(.97); }
 /*
- * The bar stays 26 px tall — that is the canonical ribbon — but a stage is a tap
+ * The bar stays 24 px tall — that is the canonical ribbon — but a stage is a tap
  * action and the ergonomic floor is 44 px. Extend the button's hit area over its
  * own label and detail lines instead of inflating the bar and pushing the sheet
- * content down; the extra 9 px above and below clear the floor exactly.
+ * content down; the extra 10 px above and below clear the floor exactly.
  */
 .mg-route-ribbon__pill::before {
   content: '';
   position: absolute;
-  inset: -9px 0;
+  inset: -10px 0;
   border-radius: 999px;
 }
 .mg-route-ribbon__label {
   overflow: hidden;
   color: var(--route-ink);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1.2;
   text-align: center;
@@ -1779,14 +1781,14 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
 }
 
 .mg-route-cta {
-  min-height: 56px;
-  border-radius: 20px;
+  min-height: 48px;
+  border-radius: 16px;
   background: linear-gradient(135deg, #A21CFF 0%, #7C1BE3 100%);
   color: #fff;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 900;
   letter-spacing: -.01em;
-  box-shadow: 0 12px 28px rgba(139, 60, 230, .42), inset 0 1px 0 rgba(255, 255, 255, .28);
+  box-shadow: 0 8px 24px rgba(139, 60, 230, .36), inset 0 1px 0 rgba(255, 255, 255, .28);
   transition: transform .16s var(--mg-ease-entrance), filter .16s ease, box-shadow .16s ease;
   touch-action: manipulation;
 }
