@@ -68,6 +68,16 @@ export function productionTabForPath(pathname: string): ProductionTab | null {
   return productionRouteForPath(pathname)?.tab ?? null;
 }
 
+/**
+ * Reopening the app is not the same as asking for a screen. A stored active-journey
+ * pointer may only take over the default entry point; every other URL — another tab
+ * like /map or /navigate, or a deep link to an offer, booking, chat or journey — is a
+ * destination the passenger chose and must stay put.
+ */
+export function resumesActiveJourneyFrom(route: ProductionRoute | null): boolean {
+  return route?.kind === 'tab' && route.tab === 'home';
+}
+
 export function pathForProductionTab(tab: ProductionTab): string {
   return pathByTab[tab];
 }

@@ -32,7 +32,7 @@ import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
 import { ActiveJourneyNavigationStore, isOpenJourneyState } from '../navigation/ActiveJourneyNavigationStore';
 import { defaultKyivDateTime, formatKyivDateTimeInput, kyivDateTimeInputToDate, kyivDateTimeInputToIso } from '../domain/kyivTime';
 import { useProductionTabRouter } from '../routing/useProductionTabRouter';
-import { pathForProductionEntity, type ProductionTab } from '../routing/productionRoutes';
+import { pathForProductionEntity, resumesActiveJourneyFrom, type ProductionTab } from '../routing/productionRoutes';
 import { buildSearchRoute, parseSearchRoute } from '../routing/searchRouteState';
 import { activePlaceOptionId, moveActivePlaceIndex, placeSuggestionKeyAction } from '../routing/placeSuggestionKeyboard';
 import { currentPlaceBias } from '../platform/placeBias';
@@ -493,15 +493,16 @@ export function ProductionMarketplace() {
     }
     if (pendingNavigationRestore.current?.journeyId === record.journeyId) return;
     pendingNavigationRestore.current = { journeyId: record.journeyId, legIndex: record.legIndex };
-    if (route?.kind === 'journey' && route.entityId === record.journeyId) return;
-    // The passenger opened something else on purpose — a deep link to an offer,
-    // a booking or a chat wins over the stale navigation pointer.
-    if (route && route.kind !== 'tab') return;
+    // Only a reopen at the default entry point may take over the screen. A /map,
+    // /navigate or /trips deep link, and any offer/booking/chat/journey link, is a
+    // destination the passenger asked for; the pending restore above still lets a
+    // /journeys/<id> link recover the stage once the server answers.
+    if (!resumesActiveJourneyFrom(route)) return;
     if (!setRoutePath(pathForProductionEntity('journey', record.journeyId))) {
       pendingNavigationRestore.current = null;
       activeJourneyStore.clear();
     }
-  }, [activeJourneyStore, loading, route?.entityId, route?.kind, setRoutePath, user]);
+  }, [activeJourneyStore, loading, route?.entityId, route?.kind, route?.tab, setRoutePath, user]);
 
   useEffect(() => {
     const entityId = route?.entityId;
