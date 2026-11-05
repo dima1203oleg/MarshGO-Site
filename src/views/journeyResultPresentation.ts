@@ -223,6 +223,22 @@ export function searchPendingCopy(elapsedSeconds: number): { title: string; note
   return { title: seconds > 0 ? `Шукаємо маршрути · ${seconds} с` : 'Шукаємо маршрути…', note: null };
 }
 
+/**
+ * The edge proxy answers a still-running search with 504 at ~60 s, and before that happened the
+ * screen only counted up. Stopping our own request short of that cut keeps slow successes intact
+ * while giving the passenger a message instead of an endless spinner.
+ */
+export const JOURNEY_SEARCH_DEADLINE_MS = 45_000;
+
+export type JourneySearchAbortReason = 'cancelled' | 'timeout';
+
+/** A cancel and a give-up are different facts; reporting one as the other is a lie about the product. */
+export function journeySearchAbortMessage(reason: unknown): string {
+  return reason === 'timeout'
+    ? `Перевізники не відповідатимуть довше ${JOURNEY_SEARCH_DEADLINE_MS / 1000} с — пошук зупинено. Спробуйте ще раз або звузьте умови.`
+    : 'Пошук маршруту скасовано.';
+}
+
 const transportModeNames: Record<string, string> = {
   bus: 'Автобуси', tram: 'Трамваї', trolleybus: 'Тролейбуси', marshrutka: 'Маршрутки',
   metro: 'Метро', train: 'Потяги', taxi: 'Таксі', bike: 'Велопрокати', scooter: 'Самокати',
