@@ -256,6 +256,7 @@ export class MapLibreAdapter implements MapAdapter {
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
   onRouteSegmentSelect: (id: string) => void = () => undefined;
   onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void;
+  onCameraMove?: () => void;
   private transportLayers: ReadonlySet<TransportLayerId> = new Set();
   /** Shown when a layer needs a closer zoom or fails to load. */
   onTransportHint: (message: string | null) => void = () => undefined;
@@ -294,6 +295,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.on('resize', () => { container.dataset.marshgoMapIdle = 'false'; });
     this.map.on('idle', () => { container.dataset.marshgoMapIdle = 'true'; });
     this.map.on('movestart', () => { container.dataset.marshgoCameraMoving = 'true'; });
+    this.map.on('move', () => { this.onCameraMove?.(); });
     this.map.on('moveend', () => {
       const center = this.map.getCenter();
       container.dataset.marshgoCameraZoom = this.map.getZoom().toFixed(2);
@@ -360,6 +362,8 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.perspective === '3d') this.install3DBuildings();
     else this.remove3DBuildings();
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!this.map.getSource('marshgo-route-reveal')) this.map.addSource('marshgo-route-reveal', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!this.map.getSource('marshgo-route-reveal-head')) this.map.addSource('marshgo-route-reveal-head', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-transit-context')) this.map.addSource('marshgo-transit-context', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -448,6 +452,51 @@ export class MapLibreAdapter implements MapAdapter {
         'line-color': ['coalesce', ['get', 'modeColor'], colors.route],
         'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'selected'], true], 6, 3.5], 15, ['case', ['==', ['get', 'selected'], true], 13, 9]],
         'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.4, 1.0],
+      },
+    });
+    if (!this.map.getLayer('marshgo-route-reveal-glow')) this.map.addLayer({
+      id: 'marshgo-route-reveal-glow',
+      type: 'line',
+      source: 'marshgo-route-reveal',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['coalesce', ['get', 'modeColor'], '#1687FF'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 14, 15, 26],
+        'line-opacity': 0.75,
+        'line-blur': 6,
+      },
+    });
+    if (!this.map.getLayer('marshgo-route-reveal-core')) this.map.addLayer({
+      id: 'marshgo-route-reveal-core',
+      type: 'line',
+      source: 'marshgo-route-reveal',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': '#FFFFFF',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3.5, 15, 7.5],
+        'line-opacity': 0.95,
+      },
+    });
+    if (!this.map.getLayer('marshgo-route-reveal-head-glow')) this.map.addLayer({
+      id: 'marshgo-route-reveal-head-glow',
+      type: 'circle',
+      source: 'marshgo-route-reveal-head',
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 8, 15, 18],
+        'circle-color': ['coalesce', ['get', 'modeColor'], '#1687FF'],
+        'circle-blur': 0.6,
+        'circle-opacity': 0.85,
+      },
+    });
+    if (!this.map.getLayer('marshgo-route-reveal-head-core')) this.map.addLayer({
+      id: 'marshgo-route-reveal-head-core',
+      type: 'circle',
+      source: 'marshgo-route-reveal-head',
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 15, 7.5],
+        'circle-color': '#FFFFFF',
+        'circle-stroke-color': ['coalesce', ['get', 'modeColor'], '#1687FF'],
+        'circle-stroke-width': 2.5,
       },
     });
     if (!this.map.getLayer('marshgo-route-walking-estimate')) this.map.addLayer({
@@ -750,6 +799,44 @@ export class MapLibreAdapter implements MapAdapter {
     if (points.length === 1) { this.focus(points[0], maxZoom); return; }
     this.cameraMode = 'FREE';
     this.fitCoordinates(points, padding, maxZoom);
+  }
+  project(coordinate: Coordinate): ScreenPoint | null {
+    if (!this.map) return null;
+    try {
+      const p = this.map.project([coordinate[0], coordinate[1]]);
+      return { x: p.x, y: p.y };
+    } catch {
+      return null;
+    }
+  }
+  revealSegmentProgress(coordinates: Coordinate[], color: string) {
+    const lineSource = this.map.getSource('marshgo-route-reveal') as maplibregl.GeoJSONSource | undefined;
+    const headSource = this.map.getSource('marshgo-route-reveal-head') as maplibregl.GeoJSONSource | undefined;
+    if (!lineSource) return;
+    if (coordinates.length < 2) {
+      lineSource.setData({ type: 'FeatureCollection', features: [] });
+      headSource?.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
+    lineSource.setData({
+      type: 'Feature',
+      properties: { modeColor: color },
+      geometry: { type: 'LineString', coordinates },
+    });
+    if (headSource && coordinates.length > 0) {
+      const tip = coordinates[coordinates.length - 1]!;
+      headSource.setData({
+        type: 'Feature',
+        properties: { modeColor: color },
+        geometry: { type: 'Point', coordinates: tip },
+      });
+    }
+  }
+  clearSegmentReveal() {
+    const lineSource = this.map.getSource('marshgo-route-reveal') as maplibregl.GeoJSONSource | undefined;
+    const headSource = this.map.getSource('marshgo-route-reveal-head') as maplibregl.GeoJSONSource | undefined;
+    if (lineSource) lineSource.setData({ type: 'FeatureCollection', features: [] });
+    if (headSource) headSource.setData({ type: 'FeatureCollection', features: [] });
   }
   private updateRouteSource() {
     const source = this.map.getSource('marshgo-route') as maplibregl.GeoJSONSource | undefined;

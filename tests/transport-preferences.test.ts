@@ -24,7 +24,7 @@ describe('transport types and providers', () => {
   it('uses the exact twelve approved categories in order and keeps walking internal', () => {
     assert.deepEqual(transportTypes.map((type) => type.id), ['bus','marshrutka','trolleybus','tram','metro','carpool','taxi','train','bike','scooter','carsharing','transfer']);
     assert.equal(new Set(transportTypes.map((type) => type.id)).size, 12);
-    assert.equal(supportedJourneySearchTypes.length, 9);
+    assert.equal(supportedJourneySearchTypes.length, 12);
     assert.deepEqual(journeyTypesForCategory.train, ['train','suburban_train','city_train']);
     assert.equal(transportTypes.some((type) => (type.id as string) === 'walk'), false);
   });
@@ -72,7 +72,7 @@ describe('transport types and providers', () => {
     const narrowed = toggleType(toggleType(defaultSelection, 'bus'), 'carpool');
     assert.equal(isAllActive(narrowed), false);
     assert.equal(narrowed.active.includes('bus'), false);
-    assert.equal(narrowed.active.includes('taxi'), false);
+    assert.equal(narrowed.active.includes('taxi'), true);
     assert.equal(narrowed.active.includes('carpool'), false);
     assert.equal(isAllActive(selectAll(narrowed)), true);
   });

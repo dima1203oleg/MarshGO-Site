@@ -57,6 +57,7 @@ html.dark {
   --mg-green: #2CD67D;
   /* --mg-action fills a control with white text; --mg-blue is the accent for text and strokes. */
   --mg-action: #0B63D6;
+  --mg-action-subtle: color-mix(in srgb, var(--mg-blue) 50%, var(--mg-surface-card));
   --mg-action-hover: #0A57BC;
   --mg-surface-glass: rgba(11, 15, 20, .94);
   --mg-ink-primary: #F5F9FF;
@@ -188,6 +189,7 @@ body {
   --mg-surface-card: #FFFFFF;
   --mg-surface-tint: #f6f8fc;
   --mg-action: #0B63D6;
+  --mg-action-subtle: color-mix(in srgb, var(--mg-action) 45%, var(--mg-surface-card));
   --mg-action-hover: #0950A8;
   --mg-amber: #AE6C00;
   --mg-green: #16845C;

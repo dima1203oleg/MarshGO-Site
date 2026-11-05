@@ -145,13 +145,13 @@ export function HomeHero({
       </button>
     </section>}
 
-    <div className="home-action-grid mg-stagger-list grid grid-cols-2 gap-2.5" aria-label="Швидкі дії">
-      {actions.map(({ title, subtitle, tone, icon: Icon }, index) => <button key={tone} type="button" style={{ '--mg-stagger-i': index } as CSSProperties} onClick={() => runAction(tone)} className={`home-action-card home-action-card--${tone} mg-press relative flex min-h-[112px] flex-col items-center justify-center gap-3 overflow-hidden rounded-[var(--mg-radius-xl)] border p-3 text-center transition active:scale-[.98]`}>
-        <span className="home-action-icon relative z-10 grid h-11 w-11 place-items-center rounded-2xl"><Icon size={22} strokeWidth={2.3}/></span>
+    <div className="home-action-grid mg-stagger-list grid grid-cols-2 gap-2" aria-label="Швидкі дії">
+      {actions.map(({ title, subtitle, tone, icon: Icon }, index) => <button key={tone} type="button" style={{ '--mg-stagger-i': index } as CSSProperties} onClick={() => runAction(tone)} className={`home-action-card home-action-card--${tone} mg-press relative flex min-h-[92px] flex-col items-center justify-center gap-2 overflow-hidden rounded-[var(--mg-radius-xl)] border p-2.5 text-center transition active:scale-[.98]`}>
+        <span className="home-action-icon relative z-10 grid h-10 w-10 place-items-center rounded-2xl"><Icon size={20} strokeWidth={2.3}/></span>
         <span className="relative z-10 w-full">
-          <span className="min-w-0"><span className="home-action-card__title block text-[15px] font-black leading-tight tracking-tight">{title}</span><span className="home-action-card__subtitle mt-1 block text-[12px] font-semibold leading-snug">{subtitle}</span></span>
+          <span className="min-w-0"><span className="home-action-card__title block text-[14px] font-black leading-tight tracking-tight">{title}</span><span className="home-action-card__subtitle mt-0.5 block text-xs font-semibold leading-snug">{subtitle}</span></span>
         </span>
-        <ArrowRight size={16} className="home-action-card__hint z-10" aria-hidden="true"/>
+        <ArrowRight size={15} className="home-action-card__hint z-10" aria-hidden="true"/>
       </button>)}
     </div>
 
