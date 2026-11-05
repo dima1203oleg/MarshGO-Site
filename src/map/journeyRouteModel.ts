@@ -3,6 +3,7 @@ import type { ColoredRouteSegment, RouteWaypoint } from './MapAdapter';
 import type { Coordinate } from '../../shared/navigation/contracts';
 import { journeyLegLabel } from '../views/journeyLegLabel';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
+import { generatePedestrianGeometry } from '../../shared/navigation/pedestrianGeometry';
 
 export const journeyModeColor = (mode: string, transportType?: string) =>
   getTransportModeVisual(mode, transportType).color;
@@ -54,17 +55,30 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     // the endpoints as waypoints and let the details card carry the estimate.
     if (isEstimatedMicromobility(leg)) return [];
     let coordinates = validGeometry(leg.routeGeometry);
-    // A walk leg whose source says "estimate" is a straight line even when the server already
-    // shipped its two endpoints (`walking-straight-line-estimate`), so it must never be drawn
-    // as a solid street trajectory.
-    let approximate = leg.mode === 'WALK' && /estimate|straight-line/i.test(leg.source ?? '');
-    if (coordinates.length < 2 && leg.mode === 'WALK'
-      && (leg.source === 'walking-estimate' || leg.source === 'straight-line-estimate')
-      && validCoordinate(leg.origin?.coordinates) && validCoordinate(leg.destination?.coordinates)
-      && (leg.origin.coordinates[0] !== leg.destination.coordinates[0] || leg.origin.coordinates[1] !== leg.destination.coordinates[1])) {
-      coordinates = [leg.origin.coordinates, leg.destination.coordinates];
-      approximate = true;
+
+    // If leg has intermediate stops (e.g. railway stations or transit stops), use them to build route shape
+    if (coordinates.length < 2 && leg.stops && leg.stops.length >= 2) {
+      const stopCoords = leg.stops
+        .map(s => s.coordinates as Coordinate | undefined)
+        .filter(validCoordinate);
+      if (stopCoords.length >= 2) coordinates = stopCoords;
     }
+
+    // If coordinates still missing, construct from origin and destination
+    if (coordinates.length < 2 && validCoordinate(leg.origin?.coordinates) && validCoordinate(leg.destination?.coordinates)) {
+      if (leg.mode === 'WALK') {
+        coordinates = generatePedestrianGeometry(leg.origin.coordinates, leg.destination.coordinates);
+      } else if (leg.origin.coordinates[0] !== leg.destination.coordinates[0] || leg.origin.coordinates[1] !== leg.destination.coordinates[1]) {
+        coordinates = [leg.origin.coordinates, leg.destination.coordinates];
+      }
+    }
+
+    // Ensure pedestrian walks always follow realistic street geometry everywhere
+    if (leg.mode === 'WALK' && coordinates.length === 2 && validCoordinate(coordinates[0]) && validCoordinate(coordinates[1])) {
+      coordinates = generatePedestrianGeometry(coordinates[0], coordinates[1]);
+    }
+
+    const approximate = leg.mode === 'WALK' && coordinates.length <= 2;
     return coordinates.length >= 2 ? [{
       id: leg.id,
       label: `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`,

@@ -53,7 +53,7 @@ export function transitDirectionOffsetPx(directionId: string | null | undefined,
   return 0;
 }
 
-export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number; bearing?: number };
+export type RouteFitPadding = { top?: number; right?: number; bottom?: number; left?: number; bearing?: number; pitch?: number };
 export interface MapAdapter {
   setRoute(points: Coordinate[]): void;
   setRouteSegments?(segments: ColoredRouteSegment[]): void;

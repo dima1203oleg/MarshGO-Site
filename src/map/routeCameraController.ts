@@ -43,10 +43,11 @@ export function calculateSegmentFocusTarget(
     : corridorFitPoints(segmentCoordinates, contextLines, 0.2);
   const bounds = boundsOf(points);
   const boundsKey = bounds ? bounds.map((val) => val.toFixed(5)).join(',') : '';
+  const bearing = principalBearing(points);
   return {
     points,
-    bearing: null,
-    key: `${segmentId}:${points.length}:flat:${boundsKey}`,
+    bearing,
+    key: `${segmentId}:${points.length}:${bearing !== null ? Math.round(bearing) : 'flat'}:${boundsKey}`,
   };
 }
 
@@ -98,7 +99,7 @@ export class RouteCameraController {
       activeStopCoordinate: null,
     });
     this.adapter?.setActiveRouteSegment?.(null);
-    const padding = { ...this.padding, bearing: 0 };
+    const padding: RouteFitPadding = { ...this.padding, bearing: 0, pitch: 0 };
     if (routePoints.length >= 2) {
       this.adapter?.focusCoordinates?.(routePoints, padding, maxZoom);
     } else {
@@ -118,11 +119,12 @@ export class RouteCameraController {
       activeStopCoordinate: null,
     });
     this.adapter?.setActiveRouteSegment?.(segmentId);
-    const padding = {
+    const padding: RouteFitPadding = {
       ...this.padding,
       bearing: target.bearing ?? 0,
+      pitch: target.bearing !== null ? 28 : 0,
     };
-    this.adapter?.focusCoordinates?.(target.points, padding, 17);
+    this.adapter?.focusCoordinates?.(target.points, padding, 17.5);
   }
 
   focusStop(stopId: string, coordinate: Coordinate) {
@@ -132,7 +134,7 @@ export class RouteCameraController {
       activeStopCoordinate: coordinate,
     });
     // Smoothly focus on stop position with clear zoom and adaptive viewport padding
-    this.adapter?.focus(coordinate, 16.5, this.padding);
+    this.adapter?.focus(coordinate, 16.8, { ...this.padding, pitch: 20 });
   }
 
   /**

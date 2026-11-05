@@ -1175,10 +1175,11 @@ export class MapLibreAdapter implements MapAdapter {
     this.markCameraRequest();
     this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
       padding,
-      duration: overrides.bearing !== undefined ? 850 : 600,
+      duration: overrides.bearing !== undefined ? 950 : 600,
       maxZoom,
       essential: true,
       ...(typeof overrides.bearing === 'number' && Number.isFinite(overrides.bearing) ? { bearing: overrides.bearing } : {}),
+      ...(typeof overrides.pitch === 'number' && Number.isFinite(overrides.pitch) ? { pitch: overrides.pitch } : {}),
     });
   }
   recenter(point?: Coordinate) {
@@ -1251,6 +1252,8 @@ export class MapLibreAdapter implements MapAdapter {
       duration: 650,
       essential: true,
       ...(pad ? { padding: pad } : {}),
+      ...(typeof padding?.bearing === 'number' && Number.isFinite(padding.bearing) ? { bearing: padding.bearing } : {}),
+      ...(typeof padding?.pitch === 'number' && Number.isFinite(padding.pitch) ? { pitch: padding.pitch } : {}),
     });
   }
   setCameraMode(mode: CameraMode) { this.setCameraModeInternal(mode); }
