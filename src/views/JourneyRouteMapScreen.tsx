@@ -980,8 +980,14 @@ export function JourneyRouteMapScreen({
         </header>
       )}
 
-      {/* Floating map controls */}
-      <div className="absolute right-3 z-10 flex flex-col gap-2" style={{ top: 'calc(max(.5rem, env(safe-area-inset-top)) + 5.75rem)' }}>
+      {/* Floating map controls. The expanded sheet's grabber spans the full width right
+          over this band, so taps there dragged the sheet instead of reaching a control:
+          the column is inert (and visibly inactive) while the sheet is expanded. */}
+      <div
+        className={`absolute right-3 z-10 flex flex-col gap-2${sheetSnap === 'expanded' ? ' opacity-45' : ''}`}
+        inert={sheetSnap === 'expanded'}
+        style={{ top: 'calc(max(.5rem, env(safe-area-inset-top)) + 5.75rem)' }}
+      >
         {showRecenter && (
           <button
             type="button"

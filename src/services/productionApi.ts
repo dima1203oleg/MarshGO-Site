@@ -518,14 +518,25 @@ async function requestEnvelope<T>(path: string, init: RequestInit = {}, retryAut
   const body = await response.json().catch(() => null) as { data?: T; meta?: TransportLayerMeta | null; error?: { code?: string; message?: string } } | null;
   if (response.status === 401 && retryAuth && accessToken && !path.startsWith('/auth/')) {
     if (tokenUsed !== accessToken) return requestEnvelope<T>(path, init, false);
+    // Whoever still holds this request's token owns the session write: login() can finish
+    // while the refresh is in flight, and its newer token must not be overwritten by the
+    // refresh result. The session hint stays untouched on network failures so a flaky
+    // link does not sign anyone out.
+    const ownsSession = () => tokenUsed === accessToken;
     try {
       refreshInFlight ??= requestEnvelope<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false)
-        .then((session) => { accessToken = session.data.accessToken; writeSessionHint(true); return session.data; })
+        .then((refreshed) => {
+          if (ownsSession()) {
+            accessToken = refreshed.data.accessToken;
+            writeSessionHint(true);
+          }
+          return refreshed.data;
+        })
         .finally(() => { refreshInFlight = null; });
-      const session = await refreshInFlight;
-      accessToken = session.accessToken;
+      await refreshInFlight;
       return requestEnvelope<T>(path, init, false);
     } catch (error) {
+      if (!ownsSession()) return requestEnvelope<T>(path, init, false);
       accessToken = null;
       if (error instanceof ProductionApiError && error.status === 401) writeSessionHint(false);
     }
