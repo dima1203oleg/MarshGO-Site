@@ -7,10 +7,11 @@
  * paints an empty background instead of the light/dark basemap — the passenger sees a route over
  * a blank field and the honest chip «Базові тайли карти не налаштовані».
  *
- * This wrapper re-exports only the VITE_MAP_* keys from the workspace root `.env` into the child
- * process, so a worktree build matches the canonical one. Values are never printed: the script
- * reports key names and byte lengths only, because deployment env files may carry licensed
- * endpoints alongside public style URLs.
+ * This wrapper re-exports only the VITE_MAP_* keys resolved from the candidate `.env` files below
+ * into the child process, so a worktree build matches the canonical one. Keys are merged first-file-
+ * wins: a partial `.env` may add a setting nobody else defines, never override a real one. Values are
+ * never printed — the script reports key names and byte lengths only, because deployment env files may
+ * carry licensed endpoints alongside public style URLs.
  *
  * Usage: node scripts/with-map-env.mjs <command> [args...]
  * Override the env file with MG_WORKSPACE_ENV=/path/to/.env when the workspace lives elsewhere.
@@ -23,12 +24,6 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
- * Candidate `.env` locations, best first: an explicit override, the directory vite's `envDir`
- * actually reads (the parent of this checkout — correct for the canonical repo), and the parent of
- * the main repository discovered through git, which is how a linked worktree in /tmp finds the
- * workspace it was cloned from.
- */
-/**
  * A linked worktree points at `<main repo>/.git/worktrees/<name>`, so the main repository root is
  * everything before the `.git` path component. Getting this wrong one level up is exactly how the
  * wrapper ends up reading `<main repo>/.env` (nothing there) instead of the workspace `.env` that
@@ -40,8 +35,16 @@ function mainRepoRootFrom(gitDir) {
   return gitDir.endsWith('.git') ? path.dirname(gitDir) : '';
 }
 
+/**
+ * Candidate `.env` locations, best first: an explicit override, the parent of the main repository
+ * discovered through git (the workspace the owner maintains — this is how a linked worktree in /tmp
+ * finds it), and the parent of this checkout. The git-discovered workspace is checked BEFORE the
+ * literal parent because a scratch tree can hold a stray partial `.env`; taking that one first
+ * dropped VITE_MAP_SATELLITE_TILE_URL from every worktree build while still looking like a success.
+ * For a normal checkout both paths resolve to the same directory.
+ */
 function candidateEnvFiles() {
-  const out = [process.env.MG_WORKSPACE_ENV, path.resolve(repoRoot, '..', '.env')].filter(Boolean);
+  const out = [process.env.MG_WORKSPACE_ENV];
   try {
     const commonDir = readFileSync(path.join(repoRoot, '.git'), 'utf8').trim();
     const pointer = /^gitdir:\s*(.+)$/m.exec(commonDir);
@@ -51,8 +54,9 @@ function candidateEnvFiles() {
       // .../<workspace>/MarshGO-Site/.git/worktrees/<name>  →  <workspace>/.env
       if (mainRepoRoot) out.push(path.resolve(mainRepoRoot, '..', '.env'));
     }
-  } catch { /* plain checkout, or no git metadata: the earlier candidates already cover it */ }
-  return [...new Set(out)];
+  } catch { /* plain checkout, or no git metadata: the candidates below still cover it */ }
+  out.push(path.resolve(repoRoot, '..', '.env'));
+  return [...new Set(out.filter(Boolean))];
 }
 
 function mapSettingsFromEnvFile(file) {
@@ -66,14 +70,30 @@ function mapSettingsFromEnvFile(file) {
   return found;
 }
 
-let settings = {};
-let usedFile = '';
-for (const file of candidateEnvFiles()) {
-  const found = mapSettingsFromEnvFile(file);
-  if (Object.keys(found).length > 0) { settings = found; usedFile = file; break; }
+/** Keys already resolved from a better-ranked file win; a stray `.env` may add, never override. */
+function mergeMapSettings(candidates) {
+  const merged = {};
+  const sources = {};
+  for (const file of candidates) {
+    for (const [key, value] of Object.entries(mapSettingsFromEnvFile(file))) {
+      if (key in merged) continue;
+      merged[key] = value;
+      sources[key] = file;
+    }
+  }
+  return { merged, sources };
 }
-settings = { ...settings, ...pickProcessMapSettings(process.env) };
-if (usedFile) process.env.MG_WORKSPACE_ENV = usedFile;
+
+const candidates = candidateEnvFiles();
+const { merged, sources } = mergeMapSettings(candidates);
+// An explicit VITE_MAP_* in the caller's environment is the narrowest possible statement of intent,
+// so it outranks any file.
+const settings = { ...merged, ...pickProcessMapSettings(process.env) };
+const usedFiles = [...new Set(Object.values(sources))];
+// The first candidate that defines anything is the primary file; point vite's own envDir at the same
+// directory so a wrapped build and an unwrapped `npm run dev` cannot disagree about which `.env` wins.
+const primaryEnvFile = candidates.find((file) => Object.keys(mapSettingsFromEnvFile(file)).length > 0);
+if (primaryEnvFile) process.env.MG_WORKSPACE_ENV = primaryEnvFile;
 
 function pickProcessMapSettings(env) {
   const out = {};
@@ -83,10 +103,11 @@ function pickProcessMapSettings(env) {
 
 const names = Object.keys(settings).sort();
 if (names.length === 0) {
-  console.warn(`[with-map-env] no VITE_MAP_* found in ${candidateEnvFiles().join(' or ')}; the basemap will fall back to the built-in scheme style.`);
+  console.warn(`[with-map-env] no VITE_MAP_* found in ${candidates.join(' or ')}; the basemap will fall back to the built-in scheme style.`);
 } else {
-  console.log(`[with-map-env] ${usedFile || 'process environment'} → ${names.map((n) => `${n}(${settings[n].length})`).join(' ')}`);
+  console.log(`[with-map-env] ${usedFiles.join(' + ') || 'process environment'} → ${names.map((n) => `${n}(${settings[n].length})`).join(' ')}`);
 }
+
 
 const [command, ...args] = process.argv.slice(2);
 if (!command) {
