@@ -5,7 +5,7 @@ import { getTransportLayers, setTransportLayers, subscribeTransportLayers, type 
 import { getLayerAvailabilityState, loadLayerAvailability, retryLayerAvailability, subscribeLayerAvailability } from '../map/layerAvailability';
 import { layerUnavailableNote } from '../map/transportLayerConfig';
 import { getMapDisplayPreferences, setMapDisplayPreference, subscribeMapDisplayPreferences, type MapDisplayPreferenceId } from '../map/mapLayerPreferences';
-import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
+import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, satelliteConfigured, SATELLITE_UNAVAILABLE_NOTE, type MapLayer, type MapPerspective } from '../map/mapMode';
 
 const canonicalLayerOrder: TransportLayerId[] = ['BUS', 'MINIBUS', 'TROLLEYBUS', 'TRAIN', 'TRAM', 'BICYCLE', 'METRO', 'SCOOTER', 'CARPOOL', 'CARSHARING', 'TAXI', 'TRANSFER'];
 
@@ -110,15 +110,24 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
             <button
               type="button"
               role="radio"
-              aria-checked={mapLayer === 'satellite'}
-              onClick={() => { setMapLayer('satellite'); setLocalMapLayer('satellite'); }}
+              aria-checked={satelliteConfigured && mapLayer === 'satellite'}
+              aria-disabled={satelliteConfigured ? undefined : true}
+              title={satelliteConfigured ? 'Супутник' : SATELLITE_UNAVAILABLE_NOTE}
+              onClick={() => {
+                if (!satelliteConfigured) return;
+                setMapLayer('satellite');
+                setLocalMapLayer('satellite');
+              }}
               className={`flex-1 rounded-lg py-1.5 text-center text-xs font-bold transition-all ${
-                mapLayer === 'satellite'
-                  ? 'bg-[var(--mg-action)] shadow text-white'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
+                !satelliteConfigured
+                  ? 'cursor-not-allowed text-slate-400 dark:text-slate-500'
+                  : mapLayer === 'satellite'
+                    ? 'bg-[var(--mg-action)] shadow text-white'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
               }`}
             >
               Супутник
+              {!satelliteConfigured && <small className="mt-0.5 block text-xs font-normal leading-tight">не налаштовано</small>}
             </button>
           </div>
           <div className="flex rounded-xl bg-slate-200/70 p-1 dark:bg-white/5" role="radiogroup" aria-label="Перспектива">

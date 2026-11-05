@@ -8,7 +8,7 @@ import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from
 import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
-import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
+import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, satelliteConfigured, SATELLITE_UNAVAILABLE_NOTE, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { productionApi, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
@@ -606,25 +606,25 @@ export function JourneyRouteMapScreen({
           setMapPerspective(next);
           setLocalPerspective(next);
         }}
-        className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full text-xs font-black shadow-lg transition-all ${
-          mapPerspective === '3d' ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30' : ''
-        }`}
+        className="route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full text-xs font-black shadow-lg transition-all"
       >
         3D
       </button>
       <button
         type="button"
-        aria-label={`Супутникова карта: ${mapLayer === 'satellite' ? 'увімкнено' : 'вимкнено'}`}
-        title="Супутникова карта"
-        aria-pressed={mapLayer === 'satellite'}
+        aria-label={satelliteConfigured
+          ? `Супутникова карта: ${mapLayer === 'satellite' ? 'увімкнено' : 'вимкнено'}`
+          : 'Супутникова карта: недоступно — не налаштовано ліцензоване джерело карти'}
+        title={satelliteConfigured ? 'Супутникова карта' : SATELLITE_UNAVAILABLE_NOTE}
+        aria-pressed={satelliteConfigured && mapLayer === 'satellite'}
+        aria-disabled={satelliteConfigured ? undefined : true}
         onClick={() => {
+          if (!satelliteConfigured) return;
           const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
           setCurrentMapLayer(next);
           setMapLayer(next);
         }}
-        className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg transition-all ${
-          mapLayer === 'satellite' ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30' : ''
-        }`}
+        className="route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg transition-all"
       >
         <Globe size={19} />
       </button>

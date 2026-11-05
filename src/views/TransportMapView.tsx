@@ -9,7 +9,7 @@ import { getLayerAvailabilityState, loadLayerAvailability, subscribeLayerAvailab
 import { isLayerSelectable, layerUnavailableNote } from '../map/transportLayerConfig';
 import { getVehicleQuality, subscribeVehicleQuality, type VehicleQuality } from '../map/transportQuality';
 import { StatusBadge } from '../design-system/ui/StatusBadge';
-import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
+import { getMapLayer, getMapPerspective, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, satelliteConfigured, SATELLITE_UNAVAILABLE_NOTE, type MapLayer, type MapPerspective } from '../map/mapMode';
 
 const chips: Array<{ label: string; id: TransportLayerId; Icon: LucideIcon }> = [
   { label: 'Увесь транспорт', id: 'PUBLIC_TRANSPORT', Icon: BusFront },
@@ -134,18 +134,24 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
       </button>
       <button
         type="button"
-        aria-label={`Супутникова карта: ${mapLayer === 'satellite' ? 'увімкнено' : 'вимкнено'}`}
-        title="Супутникова карта"
-        aria-pressed={mapLayer === 'satellite'}
+        aria-label={satelliteConfigured
+          ? `Супутникова карта: ${mapLayer === 'satellite' ? 'увімкнено' : 'вимкнено'}`
+          : 'Супутникова карта: недоступно — не налаштовано ліцензоване джерело карти'}
+        title={satelliteConfigured ? 'Супутникова карта' : SATELLITE_UNAVAILABLE_NOTE}
+        aria-pressed={satelliteConfigured && mapLayer === 'satellite'}
+        aria-disabled={satelliteConfigured ? undefined : true}
         onClick={() => {
+          if (!satelliteConfigured) return;
           const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
           setMapLayer(next);
           setLocalMapLayer(next);
         }}
         className={`grid h-12 w-12 place-items-center rounded-full shadow-lg transition-all ${
-          mapLayer === 'satellite'
-            ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30 ring-2 ring-blue-400/50'
-            : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[#111C28]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
+          !satelliteConfigured
+            ? 'border border-slate-200/80 bg-white/70 text-slate-400 shadow-md backdrop-blur dark:border-white/10 dark:bg-[#111C28]/70 dark:text-slate-500'
+            : mapLayer === 'satellite'
+              ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30 ring-2 ring-blue-400/50'
+              : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[#111C28]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
         }`}
       >
         <Globe size={20} />
