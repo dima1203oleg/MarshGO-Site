@@ -713,16 +713,18 @@ export const productionApi = {
   reverseGeocode(latitude: number, longitude: number) {
     return request<ApiPlace>(`/places/reverse?lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`);
   },
-  async searchJourneys(input: {
+  async searchJourneys({ signal, ...input }: {
     origin: { name: string; coordinates: [number, number] };
     destination: { name: string; coordinates: [number, number] };
     departureAt: string;
     passengers: number;
     strategy: ApiJourneyStrategy;
     preferences?: Record<string, boolean | number | string[] | Record<string, string[]>>;
+    signal?: AbortSignal;
   }) {
-    const send = (body: typeof input) => request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(body) });
+    const send = (body: typeof input) => request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(body), signal });
     try { return await send(input); } catch (error) {
+      if (signal?.aborted) throw error;
       // An older API release does not know the schedule-provider preferences or the budget/deadline bounds and rejects the whole request:
       // retry once with the fields it accepts, so a stale deployment degrades the filters instead of the search.
       const unsupportedByLegacyRelease = ['allowedTransportTypes', 'allowedTransitProviders', 'allowedTransitProvidersByType', 'maxPriceMinor', 'maxTotalDurationSeconds'] as const;

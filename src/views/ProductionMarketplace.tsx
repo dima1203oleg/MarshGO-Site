@@ -39,6 +39,7 @@ import { currentPlaceBias } from '../platform/placeBias';
 import { parseSharedNavigationDestination } from '../routing/navigationShare';
 import { navigationDestinationName } from '../navigation/destinationName';
 import { JourneyResultsPanel, JourneySearchPending } from './JourneyResultsPanel';
+import { JOURNEY_SEARCH_DEADLINE_MS, journeySearchAbortMessage } from './journeyResultPresentation';
 import { JourneyRouteMapScreen } from './JourneyRouteMapScreen';
 import { JourneyActiveNavigation } from './JourneyActiveNavigation';
 const MobilityAdminPanel = lazy(() => import('./MobilityAdminPanel').then((module) => ({ default: module.MobilityAdminPanel })));
@@ -305,6 +306,7 @@ export function ProductionMarketplace() {
   const routedEntityKey = useRef('');
   const bookingsPollCooldownUntil = useRef(0);
   const hydratedSearchLocation = useRef<string | null>(null);
+  const journeySearchAbort = useRef<AbortController | null>(null);
 
   const refreshUnreadConversations = useCallback(async () => {
     const unread = await productionApi.conversationUnreadCounts();
@@ -760,6 +762,12 @@ export function ProductionMarketplace() {
       setArrivalPickerOpen(true);
       return;
     }
+    // Only one search may own the results screen: a replaced run must stay silent, or its late
+    // rejection would hide the new pending card and clear the new busy flag.
+    journeySearchAbort.current?.abort('superseded');
+    const controller = new AbortController();
+    journeySearchAbort.current = controller;
+    const deadlineId = window.setTimeout(() => controller.abort('timeout'), JOURNEY_SEARCH_DEADLINE_MS);
     setBusy(true); setStatusMessage(''); setJourneySearchStartedAt(Date.now()); setShowResults(true); setChosenJourneyId(null);
     try {
       setJourneyResult(null);
@@ -768,6 +776,7 @@ export function ProductionMarketplace() {
         destination: { name: searchDestinationPlace.label, coordinates: [searchDestinationPlace.longitude, searchDestinationPlace.latitude] },
         departureAt: departure.toISOString(), passengers: seats, strategy: journeyStrategy,
         preferences: { ...toJourneyPreferences(transportSelection, providerGroups), ...journeySearchBounds(journeyDeparture, journeyArrivalBy, journeyBudgetUah) },
+        signal: controller.signal,
       });
       setJourneyResult(result); setShowResults(true);
       const searchPath = buildSearchRoute({
@@ -787,18 +796,30 @@ export function ProductionMarketplace() {
         setStatusMessage(error instanceof Error ? `Попутки не вдалося отримати: ${error.message}` : 'Попутки тимчасово недоступні.');
       }
     } catch (error) {
-      // The results screen has no status line, so a failed search must return to the form
-      // where the message is actually rendered.
-      setShowResults(false);
-      const message = error instanceof Error ? error.message : '';
-      const needsSignIn = (error instanceof ProductionApiError && (error.status === 401 || error.status === 403))
-        || /authentication required|unauthorized/i.test(message);
-      setStatusMessage(needsSignIn
-        ? 'Щоб отримати реальні пропозиції, увійдіть в акаунт і повторіть пошук.'
-        : message || 'Не вдалося побудувати маршрут.');
+      if (journeySearchAbort.current === controller) {
+        // The results screen has no status line, so a failed search must return to the form
+        // where the message is actually rendered.
+        setShowResults(false);
+        const message = error instanceof Error ? error.message : '';
+        const needsSignIn = (error instanceof ProductionApiError && (error.status === 401 || error.status === 403))
+          || /authentication required|unauthorized/i.test(message);
+        setStatusMessage(controller.signal.aborted
+          ? journeySearchAbortMessage(controller.signal.reason)
+          : needsSignIn
+            ? 'Щоб отримати реальні пропозиції, увійдіть в акаунт і повторіть пошук.'
+            : message || 'Не вдалося побудувати маршрут.');
+      }
     }
-    finally { setBusy(false); setJourneySearchStartedAt(null); }
+    finally {
+      window.clearTimeout(deadlineId);
+      if (journeySearchAbort.current === controller) {
+        journeySearchAbort.current = null;
+        setBusy(false); setJourneySearchStartedAt(null);
+      }
+    }
   };
+
+  const cancelJourneySearch = () => { journeySearchAbort.current?.abort('cancelled'); };
 
   useEffect(() => {
     if (!pendingPlannerSearch) return;
@@ -1789,7 +1810,7 @@ export function ProductionMarketplace() {
       <p title={fullRoute} className="line-clamp-2 min-w-0 flex-1 break-words text-xs font-bold leading-[14px]"><span className="text-[var(--mg-ink-secondary)] dark:text-[var(--mg-ink-secondary)]">Маршрут: </span>{displayRoute}</p>
       <button type="button" onClick={returnToSearch} aria-label="Змінити маршрут пошуку" title="Змінити маршрут" className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 text-xs font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:text-slate-100 dark:hover:border-blue-500 dark:hover:text-blue-300"><Pencil size={12}/>Змінити</button>
     </header>
-    {journeyResult ? <><JourneyResultsPanel result={journeyResult} chosenJourneyId={chosenJourneyId} onOpenMap={(journey) => { setChosenJourneyId(journey.id); setSelectedRouteMap(journey); }}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt}/> : carpoolSection}
+    {journeyResult ? <><JourneyResultsPanel result={journeyResult} chosenJourneyId={chosenJourneyId} onOpenMap={(journey) => { setChosenJourneyId(journey.id); setSelectedRouteMap(journey); }}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt} onCancel={cancelJourneySearch}/> : carpoolSection}
   </main>;
 
   const visibleBookings = route?.kind === 'booking' && route.entityId ? bookings.filter((booking) => booking.id === route.entityId) : bookings;
