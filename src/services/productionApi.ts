@@ -304,6 +304,11 @@ export type ApiJourney = {
     scheduleSemantics?: 'published_departures' | 'frequency_estimate' | null;
     fareSource?: 'gtfs-v1' | 'city-tariff-registry' | null;
     fareIncludedByPreviousSegment?: boolean;
+    /** What a rider pays in the vehicle for this boarding, from the server's audited tariff registry; absent means the server does not price cash yet. */
+    cashPriceMinor?: number | null;
+    cashCurrency?: string | null;
+    cashFareProductId?: string | null;
+    cashFareSource?: string | null;
     liveStatus?: 'LIVE' | 'SCHEDULED' | 'PREDICTED' | 'UNAVAILABLE' | 'UNVERIFIED' | 'UNKNOWN';
     driver: { id: string; name: string; averageRating: number | null; reviewCount: number } | null;
     vehicle: { id: string; make: string; model: string } | null;
