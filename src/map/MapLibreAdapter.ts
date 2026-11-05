@@ -363,6 +363,7 @@ export class MapLibreAdapter implements MapAdapter {
     else this.remove3DBuildings();
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-route-reveal')) this.map.addSource('marshgo-route-reveal', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!this.map.getSource('marshgo-route-reveal-head')) this.map.addSource('marshgo-route-reveal-head', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-transit-context')) this.map.addSource('marshgo-transit-context', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -474,6 +475,28 @@ export class MapLibreAdapter implements MapAdapter {
         'line-color': '#FFFFFF',
         'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3.5, 15, 7.5],
         'line-opacity': 0.95,
+      },
+    });
+    if (!this.map.getLayer('marshgo-route-reveal-head-glow')) this.map.addLayer({
+      id: 'marshgo-route-reveal-head-glow',
+      type: 'circle',
+      source: 'marshgo-route-reveal-head',
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 8, 15, 18],
+        'circle-color': ['coalesce', ['get', 'modeColor'], '#1687FF'],
+        'circle-blur': 0.6,
+        'circle-opacity': 0.85,
+      },
+    });
+    if (!this.map.getLayer('marshgo-route-reveal-head-core')) this.map.addLayer({
+      id: 'marshgo-route-reveal-head-core',
+      type: 'circle',
+      source: 'marshgo-route-reveal-head',
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 15, 7.5],
+        'circle-color': '#FFFFFF',
+        'circle-stroke-color': ['coalesce', ['get', 'modeColor'], '#1687FF'],
+        'circle-stroke-width': 2.5,
       },
     });
     if (!this.map.getLayer('marshgo-route-walking-estimate')) this.map.addLayer({
@@ -787,23 +810,33 @@ export class MapLibreAdapter implements MapAdapter {
     }
   }
   revealSegmentProgress(coordinates: Coordinate[], color: string) {
-    const source = this.map.getSource('marshgo-route-reveal') as maplibregl.GeoJSONSource | undefined;
-    if (!source) return;
+    const lineSource = this.map.getSource('marshgo-route-reveal') as maplibregl.GeoJSONSource | undefined;
+    const headSource = this.map.getSource('marshgo-route-reveal-head') as maplibregl.GeoJSONSource | undefined;
+    if (!lineSource) return;
     if (coordinates.length < 2) {
-      source.setData({ type: 'FeatureCollection', features: [] });
+      lineSource.setData({ type: 'FeatureCollection', features: [] });
+      headSource?.setData({ type: 'FeatureCollection', features: [] });
       return;
     }
-    source.setData({
+    lineSource.setData({
       type: 'Feature',
       properties: { modeColor: color },
       geometry: { type: 'LineString', coordinates },
     });
+    if (headSource && coordinates.length > 0) {
+      const tip = coordinates[coordinates.length - 1]!;
+      headSource.setData({
+        type: 'Feature',
+        properties: { modeColor: color },
+        geometry: { type: 'Point', coordinates: tip },
+      });
+    }
   }
   clearSegmentReveal() {
-    const source = this.map.getSource('marshgo-route-reveal') as maplibregl.GeoJSONSource | undefined;
-    if (source) {
-      source.setData({ type: 'FeatureCollection', features: [] });
-    }
+    const lineSource = this.map.getSource('marshgo-route-reveal') as maplibregl.GeoJSONSource | undefined;
+    const headSource = this.map.getSource('marshgo-route-reveal-head') as maplibregl.GeoJSONSource | undefined;
+    if (lineSource) lineSource.setData({ type: 'FeatureCollection', features: [] });
+    if (headSource) headSource.setData({ type: 'FeatureCollection', features: [] });
   }
   private updateRouteSource() {
     const source = this.map.getSource('marshgo-route') as maplibregl.GeoJSONSource | undefined;
@@ -1116,8 +1149,8 @@ export class MapLibreAdapter implements MapAdapter {
     const lngs = points.map((point) => point[0]); const lats = points.map((point) => point[1]);
     // Full-screen navigation reserves room for its overlays; small previews must scale the padding down or MapLibre rejects the fit.
     const { clientWidth, clientHeight } = this.map.getContainer();
-    const requestedTop = Math.min(clientHeight * 0.25, overrides.top ?? Math.min(110, clientHeight * 0.2));
-    const requestedBottom = overrides.bottom ?? Math.min(270, clientHeight * 0.2);
+    const requestedTop = overrides.top ?? Math.min(92, clientHeight * 0.15);
+    const requestedBottom = overrides.bottom ?? Math.min(270, clientHeight * 0.35);
     // Keep a usable map band between the top controls and an expanded sheet.
     // If top + bottom padding consumes almost the entire canvas, fitBounds can
     // zoom until a route endpoint falls behind the sheet even though the sheet
@@ -1127,27 +1160,19 @@ export class MapLibreAdapter implements MapAdapter {
     // requested edge accurate and give up some top padding. Capping only the
     // bottom padding shifts the route downward, underneath the sheet.
     const top = Math.min(requestedTop, Math.max(0, clientHeight - requestedBottom - minFitHeight));
-    // A centred terminus callout is up to ~236 px wide, so a caller that reserves
-    // a fixed 96 px on each side needs that to survive on 320-430 px viewports;
-    // 0.15 of the width used to clamp it back to ~48 px and re-clip the chip.
-    // 0.4 keeps the desktop panel inset (500 px on a wide screen) intact while MapLibre's
-    // own rule — combined horizontal padding must stay below the viewport — still holds,
-    // because left and right each cap at 0.4 and never both reach the cap on one screen.
     const maxSidePadding = clientWidth * 0.4;
     const padding = {
       top,
-      right: Math.min(maxSidePadding, overrides.right ?? Math.min(32, clientWidth * 0.1)),
-      // Overlay sheets can cover more than half of a route screen. Honor the
-      // requested safe-area while keeping MapLibre's combined vertical padding
-      // strictly smaller than the viewport.
+      right: Math.min(maxSidePadding, overrides.right ?? Math.min(24, clientWidth * 0.08)),
       bottom: Math.min(Math.max(0, clientHeight - top - minFitHeight), requestedBottom),
-      left: Math.min(maxSidePadding, overrides.left ?? Math.min(32, clientWidth * 0.1)),
+      left: Math.min(maxSidePadding, overrides.left ?? Math.min(24, clientWidth * 0.08)),
     };
     this.markCameraRequest();
     this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
       padding,
-      duration: 520,
+      duration: overrides.bearing !== undefined ? 850 : 600,
       maxZoom,
+      essential: true,
       ...(typeof overrides.bearing === 'number' && Number.isFinite(overrides.bearing) ? { bearing: overrides.bearing } : {}),
     });
   }

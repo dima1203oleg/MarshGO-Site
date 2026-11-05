@@ -89,6 +89,16 @@ export function calloutIconType(leg: JourneyLeg): 'bus' | 'tram' | 'trolleybus' 
   return 'bus';
 }
 
+/** Strips database stop codes like (64), (117) or technical suffixes to produce clean human-grade stop names. */
+export function cleanStopName(name?: string): string {
+  if (!name) return '';
+  return name
+    .replace(/\s*\(\d+\)$/, '')
+    .replace(/\s*\(зупинка\)$/i, '')
+    .split(',')[0]
+    .trim();
+}
+
 /** Generates smart narrative explanation for selected route stage. */
 export function generateSmartStepSummary(currentLeg: JourneyLeg, nextLeg?: JourneyLeg): SmartStepSummary {
   const isWalk = currentLeg.mode === 'WALK';
@@ -98,7 +108,7 @@ export function generateSmartStepSummary(currentLeg: JourneyLeg, nextLeg?: Journ
   if (isWalk) {
     const distM = currentLeg.distanceMeters ?? (currentLeg.coordinates?.length ? Math.round(distanceMeters(currentLeg.coordinates[0]!, currentLeg.coordinates.at(-1)!)) : 100);
     const durationMin = Math.max(1, Math.round(currentLeg.durationSeconds / 60));
-    const destName = currentLeg.destination?.name?.split(',')[0] ?? 'зупинки';
+    const destName = cleanStopName(currentLeg.destination?.name) || 'зупинки';
 
     if (nextLeg && nextLeg.mode !== 'WALK') {
       const nextName = nextLeg.routeName || nextLeg.headsign || 'транспорт';
@@ -116,8 +126,8 @@ export function generateSmartStepSummary(currentLeg: JourneyLeg, nextLeg?: Journ
     };
   }
 
-  const originStop = currentLeg.origin?.name?.split(',')[0] ?? 'зупинки';
-  const destStop = currentLeg.destination?.name?.split(',')[0] ?? 'пункту висадки';
+  const originStop = cleanStopName(currentLeg.origin?.name) || 'зупинки';
+  const destStop = cleanStopName(currentLeg.destination?.name) || 'пункту висадки';
   const stopsText = stopCount > 1 ? `${stopCount} зупинок` : stopCount === 1 ? '1 зупинка' : 'без проміжних зупинок';
   const durationMin = Math.max(1, Math.round(currentLeg.durationSeconds / 60));
 

@@ -10,7 +10,7 @@ import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
-import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
+import { journeyLegLabel } from './journeyLegLabel';
 import {
   formatJourneyDuration as formatDuration,
   formatJourneyDurationTile,
@@ -29,9 +29,8 @@ import {
   type RouteSheetSnap,
 } from './routeSheet';
 import { themeService } from '../services/theme';
-import { buildRouteMapAnnotations, formatSegmentCount, formatStopCount, primaryTransitLeg } from './routeMapAnnotations';
+import { formatSegmentCount, formatStopCount, primaryTransitLeg } from './routeMapAnnotations';
 import { priorityLevelOf } from '../map/transportVisualZones';
-import { shortPlace } from './journeyStageNavigation';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
 import { calculateAdaptiveMapPadding } from '../map/mapViewportCoordinator';
 import {
@@ -42,6 +41,7 @@ import {
 } from '../map/routeCameraController';
 import {
   calloutIconType,
+  cleanStopName,
   generateSmartStepSummary,
   interpolateLineProgress,
   type CinematicCallout,
@@ -278,8 +278,6 @@ export function JourneyRouteMapScreen({
     });
   }, [liveSegment, liveLeg, mapAdapterReady]);
 
-  const routeLabels = useMemo(() => buildRouteMapAnnotations({ journey, live: liveJourney, preferredLegId: liveLegId }), [journey, liveJourney, liveLegId]);
-
   const snapHeight = useCallback((snap: RouteSheetSnap, viewport = viewportHeight) => routeSheetHeights(viewport)[snap], [viewportHeight]);
 
   useEffect(() => {
@@ -421,13 +419,16 @@ export function JourneyRouteMapScreen({
       ? [leg.destination.coordinates[0], leg.destination.coordinates[1]]
       : coords.length > 0 ? [coords.at(-1)![0], coords.at(-1)![1]] : null;
 
+    const originClean = cleanStopName(leg.origin?.name) || 'Початкова точка';
+    const destClean = cleanStopName(leg.destination?.name) || 'Кінцева точка';
+
     if (startCoord) {
       result.push({
         id: `callout-boarding-${leg.id}`,
         type: 'BOARDING',
         coordinates: startCoord,
         title: leg.mode === 'WALK' ? 'ПОЧАТОК ПІШКИ' : 'ПОСАДКА',
-        subtitle: leg.origin?.name ? shortPlace(leg.origin.name) : 'Початкова точка',
+        subtitle: originClean,
         time: formatTime(leg.departureAt),
         accentColor: color,
         iconType: icon,
@@ -459,7 +460,7 @@ export function JourneyRouteMapScreen({
         type: 'ALIGHTING',
         coordinates: endCoord,
         title: isLast ? 'ПРИБУТТЯ' : 'ВИСАДКА',
-        subtitle: leg.destination?.name ? shortPlace(leg.destination.name) : 'Кінцева точка',
+        subtitle: destClean,
         time: formatTime(leg.arrivalAt),
         accentColor: isLast ? '#10B981' : color,
         iconType: 'pin',
@@ -467,6 +468,7 @@ export function JourneyRouteMapScreen({
       });
 
       if (nextLeg) {
+        const nextClean = nextLeg.routeName || journeyLegLabel(nextLeg.mode, nextLeg.transportType);
         result.push({
           id: `callout-transfer-${leg.id}`,
           type: 'TRANSFER',
@@ -474,7 +476,7 @@ export function JourneyRouteMapScreen({
           title: 'ПЕРЕСАДКА',
           subtitle: nextLeg.mode === 'WALK'
             ? `Пішки ${nextLeg.distanceMeters ?? 100} м (${Math.max(1, Math.round(nextLeg.durationSeconds / 60))} хв)`
-            : `Пересадка на ${nextLeg.routeName || journeyLegLabel(nextLeg.mode, nextLeg.transportType)}`,
+            : `Пересадка на ${nextClean}`,
           accentColor: 'var(--mg-blue)',
           iconType: 'transfer',
           stage: 'enter',
@@ -506,8 +508,7 @@ export function JourneyRouteMapScreen({
       const leg = journey.legs[legIndex];
       const nextLeg = journey.legs[legIndex + 1];
       const seg = model.routeSegments.find(s => s.id === id);
-      const contextLines = (liveJourney?.segments.find(s => s.legId === id)?.lineRoutes ?? []).flatMap(r => [r.coordinates]);
-      const target = seg ? calculateSegmentFocusTarget(seg.coordinates, contextLines, id) : null;
+      const target = seg ? calculateSegmentFocusTarget(seg.coordinates, [], id) : null;
       cameraController.current?.focusSegment(id, target, routeLinePoints);
 
       if (leg) {
@@ -527,7 +528,7 @@ export function JourneyRouteMapScreen({
           const fullCoords = leg.coordinates;
           const color = journeyModeColor(leg.mode, leg.transportType);
           const startTime = performance.now();
-          const duration = 750;
+          const duration = 850;
           activeRevealLegId.current = id;
 
           const animateReveal = (now: number) => {
@@ -743,7 +744,6 @@ export function JourneyRouteMapScreen({
     const scheduled = isScheduledRouteLeg(leg);
     const liveStatus = liveJourney?.segments.find(segment => segment.legId === leg.id)?.status === 'LIVE' ? 'LIVE' : leg.liveStatus;
     const expanded = expandedSegments.has(leg.id);
-    const caveat = journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource);
     const canBook = Boolean(leg.offerId) && leg.availabilityStatus !== 'UNAVAILABLE';
     const stops = leg.stops ?? [];
     const price = legPriceDisplay(leg);
@@ -794,10 +794,8 @@ export function JourneyRouteMapScreen({
                 {scheduled && stops.length ? ` · ${formatStopCount(stops.length)}` : ''}
               </span>
               <span className="mt-1 block text-xs leading-4 text-[var(--route-subtle)]">
-                {leg.mode === 'COMMUNITY' ? `Посадка: ${shortPlace(leg.origin.name)} · висадка: ${shortPlace(leg.destination.name)}` : `${shortPlace(leg.origin.name)} → ${shortPlace(leg.destination.name)}`}
+                {leg.mode === 'COMMUNITY' ? `Посадка: ${cleanStopName(leg.origin.name)} · висадка: ${cleanStopName(leg.destination.name)}` : `${cleanStopName(leg.origin.name)} → ${cleanStopName(leg.destination.name)}`}
               </span>
-              {caveat && <span className={`mt-1 block text-xs leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>{caveat}</span>}
-              {scheduled && stops.length === 0 && <span className={`mt-1 block text-xs leading-4 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>Перелік зупинок не надійшов від транспортного джерела.</span>}
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1">
@@ -855,7 +853,7 @@ export function JourneyRouteMapScreen({
           overlays
           routeSegments={model.routeSegments}
           routeWaypoints={model.routeWaypoints}
-          routeLabels={routeLabels}
+          routeLabels={[]}
           theme={isDark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT'}
           onStatus={setMapStatus}
           onAdapter={adapter => {
@@ -956,17 +954,17 @@ export function JourneyRouteMapScreen({
           >
             <span className="min-w-0 flex-1 truncate">
               <span aria-hidden="true" className="route-address-dot route-address-dot--origin"/>
-              {firstLeg?.origin.name ?? 'Початок'}
+              {cleanStopName(firstLeg?.origin.name) || 'Початок'}
             </span>
             <ArrowRight size={15} aria-hidden="true" className="shrink-0 text-[var(--route-muted)]"/>
             <span className="min-w-0 flex-1 truncate text-right">
               <span aria-hidden="true" className="route-address-dot route-address-dot--destination"/>
-              {lastLeg?.destination.name ?? 'Кінець'}
+              {cleanStopName(lastLeg?.destination.name) || 'Кінець'}
             </span>
           </div>
-          {mapStatusIsWarning && dataNote && (
+          {mapStatus === 'failed' && (
             <p role="status" className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-bold">
-              {dataNote}
+              Карта недоступна
             </p>
           )}
         </header>

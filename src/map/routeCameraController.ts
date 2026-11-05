@@ -39,7 +39,7 @@ export function calculateSegmentFocusTarget(
   if (segmentCoordinates.length < 2) return null;
   const points = corridorFitPoints(segmentCoordinates, contextLines, 0.5);
   const bounds = boundsOf(points);
-  const bearing = extentMeters(segmentCoordinates) > 120 ? principalBearing(segmentCoordinates) : null;
+  const bearing = extentMeters(segmentCoordinates) > 60 ? principalBearing(segmentCoordinates) : null;
   const boundsKey = bounds ? bounds.map((val) => val.toFixed(5)).join(',') : '';
   const bearingKey = bearing === null ? 'flat' : bearing.toFixed(1);
   return {

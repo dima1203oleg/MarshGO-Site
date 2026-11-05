@@ -6,6 +6,7 @@ import {
   generateSmartStepSummary,
   calculateCalloutAnchor,
   calloutIconType,
+  cleanStopName,
   type JourneyLeg,
 } from '../src/map/cinematicRouteEngine';
 
@@ -115,4 +116,12 @@ test('cinematic route engine — calculateCalloutAnchor keeps callout in visible
   assert.ok(anchor.left + 180 <= 390 - 12);
   assert.ok(anchor.top >= 84 + 12);
   assert.ok(anchor.top + 60 <= 844 - 320 - 12);
+});
+
+test('cinematic route engine — cleanStopName strips database IDs and suffixes', () => {
+  assert.equal(cleanStopName('Львівська політехніка (64)'), 'Львівська політехніка');
+  assert.equal(cleanStopName('Залізничний вокзал (117)'), 'Залізничний вокзал');
+  assert.equal(cleanStopName('вул. Степана Бандери, 12'), 'вул. Степана Бандери');
+  assert.equal(cleanStopName('Центр (зупинка)'), 'Центр');
+  assert.equal(cleanStopName(''), '');
 });
