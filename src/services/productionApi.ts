@@ -454,6 +454,26 @@ let accessToken: string | null = null;
 let refreshInFlight: Promise<{ user: ApiUser; accessToken: string }> | null = null;
 
 /**
+ * The refresh cookie is httpOnly, so the page cannot read whether a session
+ * exists. Without a local marker every cold start POSTed /auth/refresh and a
+ * first-time visitor always got a 401 in the console. The marker is written
+ * only after the server issued a session, cleared on logout and on a 401 from
+ * refresh, and kept on network errors so a flaky link does not sign anyone out.
+ */
+const SESSION_HINT_KEY = 'mg_session_hint';
+function readSessionHint(): boolean {
+  try { return window.localStorage.getItem(SESSION_HINT_KEY) === '1'; } catch { return false; }
+}
+function writeSessionHint(active: boolean): void {
+  try {
+    if (active) window.localStorage.setItem(SESSION_HINT_KEY, '1');
+    else window.localStorage.removeItem(SESSION_HINT_KEY);
+  } catch {
+    // Private mode or blocked storage: the hint is an optimisation, not a contract.
+  }
+}
+
+/**
  * Whether a bearer token is currently held. Anonymous browsing is a supported state, and endpoints
  * that require a session (live vehicle position) must not be polled until one exists.
  */
@@ -500,13 +520,14 @@ async function requestEnvelope<T>(path: string, init: RequestInit = {}, retryAut
     if (tokenUsed !== accessToken) return requestEnvelope<T>(path, init, false);
     try {
       refreshInFlight ??= requestEnvelope<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false)
-        .then((session) => { accessToken = session.data.accessToken; return session.data; })
+        .then((session) => { accessToken = session.data.accessToken; writeSessionHint(true); return session.data; })
         .finally(() => { refreshInFlight = null; });
       const session = await refreshInFlight;
       accessToken = session.accessToken;
       return requestEnvelope<T>(path, init, false);
-    } catch {
+    } catch (error) {
       accessToken = null;
+      if (error instanceof ProductionApiError && error.status === 401) writeSessionHint(false);
     }
   }
   if (!response.ok) {
@@ -585,7 +606,11 @@ function getRealtimeChannel(): RealtimeChannel<ApiRealtimeEvent> {
 }
 
 export const productionApi = {
-  async restoreSession() {
+  async restoreSession(): Promise<ApiUser | null> {
+    // No marker means this browser never received a session here, so asking the
+    // server would only produce an expected 401. A marker without a cookie still
+    // costs one request; the 401 path below clears it.
+    if (!readSessionHint()) return null;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
     try {
@@ -594,7 +619,11 @@ export const productionApi = {
         signal: controller.signal,
       });
       accessToken = session.accessToken;
+      writeSessionHint(true);
       return session.user;
+    } catch (error) {
+      if (error instanceof ProductionApiError && error.status === 401) writeSessionHint(false);
+      throw error;
     } finally {
       window.clearTimeout(timeoutId);
     }
@@ -605,6 +634,7 @@ export const productionApi = {
       body: JSON.stringify({ email, password }),
     });
     accessToken = session.accessToken;
+    writeSessionHint(true);
     return session.user;
   },
   async register(input: { email: string; password: string; displayName: string; phone?: string }) {
@@ -613,6 +643,7 @@ export const productionApi = {
       body: JSON.stringify(input),
     });
     accessToken = session.accessToken;
+    writeSessionHint(true);
     return session.user;
   },
   async requestOtp(phone: string, displayName: string) {
@@ -625,13 +656,14 @@ export const productionApi = {
       method: 'POST', body: JSON.stringify({ phone, code }),
     });
     accessToken = session.accessToken;
+    writeSessionHint(true);
     return session.user;
   },
   async logout() {
-    try { await request('/auth/logout', { method: 'POST' }); } finally { accessToken = null; }
+    try { await request('/auth/logout', { method: 'POST' }); } finally { accessToken = null; writeSessionHint(false); }
   },
   async logoutAll() {
-    try { await request('/auth/logout-all', { method: 'POST' }); } finally { accessToken = null; }
+    try { await request('/auth/logout-all', { method: 'POST' }); } finally { accessToken = null; writeSessionHint(false); }
   },
   offers(params: { origin: string; destination: string; date: string; seats: number; originCoordinates?: [number, number]; destinationCoordinates?: [number, number] }) {
     const query = new URLSearchParams({ origin: params.origin, destination: params.destination, date: params.date, seats: String(params.seats) });

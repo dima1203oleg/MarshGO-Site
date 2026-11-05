@@ -391,7 +391,10 @@ export function ProductionMarketplace() {
   }, [user]);
 
   useEffect(() => {
-    productionApi.restoreSession().then(async () => {
+    productionApi.restoreSession().then(async (restored) => {
+      // A browser that never held a session has nothing to restore: skip the
+      // whole authenticated fan-out instead of asking for a profile we do not own.
+      if (!restored) return;
       const currentUser = await productionApi.me();
       setUser(currentUser);
       const [currentDeletionRequest] = await Promise.all([productionApi.accountDeletionRequest(), refreshBookings(), refreshJourneys(), refreshNotifications(), refreshVehicles(), refreshBlockedUsers(), ...(currentUser.roles.includes('driver') ? [refreshMyOffers(), refreshOpenDemands()] : []), ...(currentUser.roles.includes('passenger') ? [refreshMyDemands(), refreshPassengerNavigationMatches()] : [])]);
