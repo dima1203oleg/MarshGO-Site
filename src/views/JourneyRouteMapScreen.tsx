@@ -34,6 +34,7 @@ import { buildRouteMapAnnotations, formatSegmentCount, formatStopCount, primaryT
 import { priorityLevelOf } from '../map/transportVisualZones';
 import { shortPlace } from './journeyStageNavigation';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
+import { nextStopsLegId, sheetNeedsRaiseForStops, stopsDetent } from './journeyStopsPanel';
 
 type JourneyLeg = ApiJourney['legs'][number];
 type TimelineItem = {
@@ -128,11 +129,11 @@ export function JourneyRouteMapScreen({
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
   const [liveJourneyRequestState, setLiveJourneyRequestState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
-  // The details detent opens with the published stop sequence already visible,
-  // like the approved mockup; legs without stops stay collapsed.
-  const [expandedSegments, setExpandedSegments] = useState<Set<string>>(() => new Set(
-    journey.legs.filter(leg => isScheduledRouteLeg(leg) && (leg.stops?.length ?? 0) > 0).map(leg => leg.id),
-  ));
+  // One segment's stops block open at a time, inside its own card. Opening all
+  // of them by default buried the itinerary under ~970 px of separate stop
+  // lists, so the sheet now starts as the route itself and the passenger asks
+  // for the stops of the segment they care about.
+  const [stopsLegId, setStopsLegId] = useState<string | null>(null);
   const [scale, setScale] = useState<{ label: string; widthPx: number } | null>(null);
   const [saved, setSaved] = useState(() => {
     try { return (JSON.parse(window.localStorage.getItem('marshgo.saved-route-results.v1') ?? '[]') as unknown[]).includes(journey.id); }
@@ -494,11 +495,19 @@ export function JourneyRouteMapScreen({
   const setCardRef = (id: string, node: HTMLElement | null) => {
     if (node) segmentCards.current.set(id, node); else segmentCards.current.delete(id);
   };
-  const toggleExpanded = (id: string) => setExpandedSegments(current => {
-    const next = new Set(current);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
+  const toggleStops = (legId: string) => {
+    const next = nextStopsLegId(stopsLegId, legId);
+    setStopsLegId(next);
+    if (!next) return;
+    // The block has to end up where the passenger can read it: below the FULL
+    // detent the segment list is a sliver, so raise the sheet, then bring the
+    // card into that window.
+    if (sheetNeedsRaiseForStops(sheetSnap)) moveToSnap(stopsDetent());
+    requestAnimationFrame(() => segmentCards.current.get(next)?.scrollIntoView({
+      behavior: reducedMotion ? 'auto' : 'smooth',
+      block: 'nearest',
+    }));
+  };
 
   const toggleSaved = () => {
     try {
@@ -779,7 +788,7 @@ export function JourneyRouteMapScreen({
               const selected = activeSegmentId === leg.id;
               const scheduled = isScheduledRouteLeg(leg);
               const liveStatus = liveJourney?.segments.find(segment => segment.legId === leg.id)?.status === 'LIVE' ? 'LIVE' : leg.liveStatus;
-              const expanded = expandedSegments.has(leg.id);
+              const stopsOpen = stopsLegId === leg.id;
               const caveat = journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource);
               const canBook = Boolean(leg.offerId) && leg.availabilityStatus !== 'UNAVAILABLE';
               const stops = leg.stops ?? [];
@@ -810,13 +819,14 @@ export function JourneyRouteMapScreen({
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     {leg.mode !== 'WALK' && <b className="text-xs tabular-nums" style={{ color: isDark ? color : 'var(--route-ink)' }}>{price.value}</b>}
                     {leg.mode !== 'WALK' && price.caption && <span className="text-xs font-semibold text-[var(--route-muted)]">{price.caption}</span>}
-                    {scheduled && <button type="button" aria-label={`${expanded ? 'Згорнути' : 'Розгорнути'} зупинки: ${journeyLegLabel(leg.mode, leg.transportType)}`} aria-expanded={expanded} onClick={() => toggleExpanded(leg.id)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-lg text-[var(--route-muted)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
-                      <ChevronDown size={17} className={`route-stops-chevron${expanded ? ' is-open' : ''}`}/>
+                    {scheduled && stops.length > 0 && <button type="button" aria-expanded={stopsOpen} aria-controls={`route-stops-${leg.id}`} onClick={() => toggleStops(leg.id)} className="mg-press-subtle inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-xs font-extrabold text-[var(--route-muted)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
+                      <ChevronDown size={16} aria-hidden="true" className={`route-stops-chevron${stopsOpen ? ' is-open' : ''}`}/>
+                      <span>Зупинки</span>
                     </button>}
                   </div>
                 </div>
 
-                {scheduled && expanded && <div className="border-t border-[var(--route-border)] px-3 pb-3 pt-2">
+                {scheduled && stopsOpen && <div id={`route-stops-${leg.id}`} className="mg-route-stops border-t border-[var(--route-border)] px-3 pb-3 pt-2">
                   <JourneyLegStops leg={leg} color={color}/>
                 </div>}
 

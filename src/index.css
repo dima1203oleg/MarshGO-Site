@@ -2037,6 +2037,19 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
 .route-stops-chevron { transition: transform var(--mg-dur-base) var(--mg-ease-entrance); }
 .route-stops-chevron.is-open { transform: rotate(180deg); }
 
+/* A stop list belongs to the segment card it was opened from, so it renders as
+   an inset panel fused to that card instead of a free-standing block in the
+   sheet. The tint comes from --route-hover, which is already theme-scoped, so
+   light, dark, and a selected card all keep the same "part of this card" read. */
+.mg-route-stops {
+  background: var(--route-hover);
+  animation: mg-stops-reveal var(--mg-dur-base) var(--mg-ease-entrance) both;
+}
+@keyframes mg-stops-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* Reset control appears with a focused leg, so it announces itself once. */
 .route-map-control.is-reset { animation: mg-pop var(--mg-dur-slow) var(--mg-ease-entrance) both; }
 
@@ -2087,6 +2100,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   .mg-route-cta:not(:disabled)::after,
   .route-address-summary > svg,
   .mg-route-segment,
+  .mg-route-stops,
   .mg-stagger {
     animation: none !important;
     animation-delay: 0ms !important;
