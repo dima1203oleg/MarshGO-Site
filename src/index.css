@@ -1408,16 +1408,12 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 .home-action-card--transport { --home-accent: #0E8A6A; --home-surface: #E8F6F1; }
 .home-action-card--publish { --home-accent: #C2600F; --home-surface: #FCF1E6; }
 .home-action-card--search {
-  --home-accent: #FFFFFF;
-  --home-ink: #FFFFFF;
-  --home-sub: rgba(255, 255, 255, .9);
-  --home-surface: linear-gradient(150deg, #1264ED, #0B54C5);
-  border-color: #1B6FE8;
-  box-shadow: 0 8px 22px rgba(11, 84, 197, .26);
-  color: #FFFFFF;
+  --home-accent: #0B6EF3;
+  --home-surface: #EFF6FF;
+  border-color: #BFDBFE;
 }
 .home-action-icon { border: 0; color: #fff; background: var(--home-accent); box-shadow: 0 4px 12px rgba(17, 47, 88, .16); }
-.home-action-card--search .home-action-icon { background: rgba(255, 255, 255, .2); }
+.home-action-card--search .home-action-icon { background: #0B6EF3; }
 .home-action-card__title { color: var(--home-ink); }
 .home-action-card__subtitle { color: var(--home-sub); }
 .home-action-card:focus-visible { outline: 3px solid #0b6ef3; outline-offset: 3px; }
@@ -1454,12 +1450,12 @@ html.dark .home-action-card { --home-ink: #F5F9FF; --home-sub: #B6C2D0; --home-s
 html.dark .home-action-card--navigation { --home-surface: #12233B; border-color: #24486F; }
 html.dark .home-action-card--transport { --home-surface: #0E2620; border-color: #1E4A3C; }
 html.dark .home-action-card--publish { --home-surface: #2A1D10; border-color: #5A3A18; }
-html.dark .home-action-card--search { --home-surface: linear-gradient(150deg, #1264ED, #0B54C5); --home-ink: #FFFFFF; --home-sub: rgba(255,255,255,.92); border-color: #2E7BF0; box-shadow: 0 10px 26px rgba(0,0,0,.34); }
+html.dark .home-action-card--search { --home-surface: #0F233D; border-color: #214C7F; }
 html.dark .home-action-icon { color: #fff; background: var(--home-accent); box-shadow: 0 4px 14px rgba(0,0,0,.34); }
 html.dark .home-action-card--navigation .home-action-icon { background: #1687FF; }
 html.dark .home-action-card--transport .home-action-icon { background: #17B58A; }
 html.dark .home-action-card--publish .home-action-icon { background: #E0842B; }
-html.dark .home-action-card--search .home-action-icon { background: rgba(255,255,255,.2); }
+html.dark .home-action-card--search .home-action-icon { background: #2563EB; }
 html.dark .home-popular-routes h2 { color: #F5F9FF; }
 html.dark .home-popular-route { border-color: #263648; }
 

@@ -599,9 +599,10 @@ export function JourneyRouteMapScreen({
     const stopCount = leg.stops?.length ?? 0;
     const price = legPriceDisplay(leg);
     const placedStop = stopCount > 0 ? formatStopCount(stopCount) : '';
+    const isNonMotorized = leg.mode === 'WALK' || leg.mode === 'BICYCLE' || leg.mode === 'SCOOTER';
     const detail = isWalk
       ? formatJourneyDurationTile(item.durationSeconds)
-      : `${formatJourneyDurationTile(item.durationSeconds)} · ${price.value !== '—' ? price.value : placedStop || 'ціна невідома'}`;
+      : `${formatJourneyDurationTile(item.durationSeconds)} · ${price.value !== '—' ? price.value : placedStop || (isNonMotorized ? '0 ₴' : 'За тарифом')}`;
     return [{
       id: leg.id,
       label: leg.mode === 'COMMUNITY' ? 'Попутка' : journeyLegLabel(leg.mode, leg.transportType),
@@ -1192,7 +1193,7 @@ export function JourneyRouteMapScreen({
           )}
 
           {/* Pinned CTA in all four snap states */}
-          <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-2 pt-0.5' : 'pb-2.5 pt-1'}`}>
+          <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-2 pt-0.5' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1 mb-1'}`}>
             {sheetSnap !== 'peek' && (() => {
               const activeLeg = selectedLeg ?? firstLeg;
               if (!activeLeg) return null;
