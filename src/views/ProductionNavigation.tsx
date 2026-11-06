@@ -111,8 +111,6 @@ function maneuverIcon(maneuver: Maneuver): LucideIcon {
 }
 
 type Props = { onBack: () => void; onOpenDemand?: (demandId: string, candidateId: string) => void; onSessionActiveChange?: (active: boolean) => void; isPresented?: boolean; autoStart?: boolean; initialDestination?: ApiPlace | null; onAddVehicle?: () => void };
-const AUTO_MATCHING_KEY = 'marshgo.navigation.autoMatching';
-const autoMatchingPreferred = () => { try { return localStorage.getItem(AUTO_MATCHING_KEY) !== 'off'; } catch { return true; } };
 export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChange, isPresented = true, autoStart: _autoStart = false, initialDestination = null, onAddVehicle }: Props) {
   const [destination, setDestination] = useState<ApiPlace | null>(initialDestination);
   const [session, setSession] = useState<ApiNavigationSession | null>(null);
@@ -463,10 +461,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       if (hasRoute(created)) navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: created.id, route: canonicalRoute(created), paused: false });
       setSession(created); setMatchingEnabled(false); setMatches([]); setOnRoute(null); lastSentRef.current = null; setGpsMessage('');
       setLiveFix([effectiveFix.longitude, effectiveFix.latitude]);
-      // Passenger search along the route is on by default for drivers with a verified vehicle (one switch in the panel turns it off for good).
-      if (created.matching_vehicle_available && autoMatchingPreferred()) {
-        void productionApi.setNavigationMatching(created.id, true).then(() => { setMatchingEnabled(true); setSession((current) => current ? { ...current, opt_in: true } : current); }).catch(() => undefined);
-      }
+      // Starting navigation never opts a driver into passenger matching. The
+      // separate panel switch records explicit consent for this session.
     } catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося розпочати навігацію. Перевірте зв’язок і спробуйте ще раз.')); }
     finally { setBusy(false); }
   };
@@ -565,7 +561,6 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     setMatchingBusy(true);
     try {
       await productionApi.setNavigationMatching(session.id, next);
-      try { localStorage.setItem(AUTO_MATCHING_KEY, next ? 'on' : 'off'); } catch { /* preference is optional */ }
       setMatchingEnabled(next); setSession({ ...session, opt_in: next });
       if (!next) setMatches([]);
       setGpsMessage(next ? 'Пошук уздовж маршруту увімкнено за вашою згодою.' : 'Автоматичний пошук вимкнено.');
