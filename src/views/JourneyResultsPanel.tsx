@@ -14,7 +14,8 @@ import {
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay, type JourneyPriceDisplay } from './cashFare';
 import { strategyJourneys } from './journeyStrategySelection';
-import { diagnosticsRequested, funnelLines, partialReasonNotices, splitResultNotices } from './resultsDiagnostics';
+import { diagnosticsRequested, funnelLines, partialReasonNotices, splitResultNotices, truncationNotices } from './resultsDiagnostics';
+import { JOURNEY_EMPTY_PROVIDER_FAILURE_COPY, JOURNEY_EMPTY_PROVIDER_FAILURE_TITLE, journeyEmptyStateKind } from './journeySearchRecovery';
 
 const FAVORITES_KEY = 'marshgo.saved-route-results.v1';
 
@@ -215,10 +216,11 @@ export function JourneySearchPending({ startedAt, onCancel }: { startedAt: numbe
   </section>;
 }
 
-export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap }: {
+export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetry }: {
   result: ApiJourneySearchResult;
   chosenJourneyId?: string | null;
   onOpenMap: (journey: ApiJourney) => void;
+  onRetry?: () => void;
 }) {
   const requestedStrategy = strategyConfig.some(strategy => strategy.id === result.requestedStrategy)
     ? result.requestedStrategy as ApiJourneyStrategy : undefined;
@@ -259,8 +261,7 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap }: {
 
   if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${sentenceList(preferenceTokens.map(value => preferenceMessages[value] ?? value))}.` });
   if (userProviderErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${sentenceList(userProviderErrors)}.` });
-  if (result.resultsTruncated) notices.push({ tone: 'blue', text: `Показано найкращі варіанти для обраного режиму поїздки.` });
-  if (result.candidateGenerationTruncated) notices.push({ tone: 'amber', text: 'Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.' });
+  truncationNotices(result).forEach(notice => notices.push(notice));
   unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
   sharedCaveats.forEach(text => notices.push({ tone: 'amber', text }));
   technicalProviderErrors.forEach(text => notices.push({ tone: 'slate', text }));
@@ -309,10 +310,16 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap }: {
 
     {shownJourneys.length ? <div className="mg-stagger-list space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} index={index} caveats={shownCaveats[index].filter(text => !sharedCaveats.includes(text))} chosen={journey.id === chosenJourneyId} onOpen={onOpenMap}/>)}</div>
       : <div className="rounded-2xl border border-[var(--mg-line)] bg-[var(--mg-surface-card)] p-6 text-center">
-        <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
-        <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{result.journeys.length
-          ? 'Спробуйте інший режим або змініть умови пошуку.'
-          : 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>
+        {result.journeys.length === 0 && journeyEmptyStateKind(result) === 'provider-failure' ? <>
+          <p role="alert" className="font-bold text-rose-800 dark:text-rose-100">{JOURNEY_EMPTY_PROVIDER_FAILURE_TITLE}</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{JOURNEY_EMPTY_PROVIDER_FAILURE_COPY}</p>
+          {onRetry && <button type="button" onClick={onRetry} className="mg-press-subtle mx-auto mt-3 inline-flex min-h-11 items-center rounded-xl border border-[var(--mg-line)] bg-[var(--mg-surface-tint)] px-4 text-xs font-bold text-[var(--mg-blue-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]">Повторити пошук</button>}
+        </> : <>
+          <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{result.journeys.length
+            ? 'Спробуйте інший режим або змініть умови пошуку.'
+            : 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>
+        </>}
         {unavailable.length > 0 && <ul className="mx-auto mt-3 max-w-sm space-y-1.5 text-left">
           {unavailable.map(notice => <li key={notice.mode} className="flex gap-2 text-xs leading-4 text-slate-500 dark:text-slate-400">
             <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400"/>
