@@ -41,10 +41,34 @@ export const showsCarpoolSection = (offerCount: number, transitResultPresent: bo
 const partialReasonMessages: Record<string, string> = {
   walking_routing_unavailable: 'Пішохідні підходи до зупинок показано приблизно.',
   no_stop_within_walking_distance: 'Поблизу ваших точок немає зупинки в межах пішої доступності, тому маршрутів не знайдено. Спробуйте точки ближче до зупинок або інший вид транспорту.',
+  walk_reach_extended: 'Для частини знайдених маршрутів найближча зупинка далі за задану пішу відстань.',
 };
 
-export function partialReasonNotices(reasons: string[] | undefined): ResultNotice[] {
+type WalkingReachDisclosure = Pick<NonNullable<ApiJourneySearchResult['completeness']>,
+  'walkReachExtended' | 'journeysWithExtendedReach' | 'nearestOriginStopMeters' | 'nearestDestinationStopMeters'>;
+
+const distanceMeters = (value: number | null | undefined): string | null =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? `${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 0 }).format(value)} м`
+    : null;
+
+export function partialReasonNotices(reasons: string[] | undefined, completeness?: WalkingReachDisclosure): ResultNotice[] {
   return (reasons ?? []).filter(reason => partialReasonMessages[reason])
-    .map(reason => ({ tone: 'amber' as const, text: partialReasonMessages[reason] }));
+    .map(reason => {
+      if (reason !== 'walk_reach_extended') return { tone: 'amber' as const, text: partialReasonMessages[reason] };
+      const details: string[] = [];
+      const count = completeness?.journeysWithExtendedReach;
+      if (typeof count === 'number' && Number.isFinite(count) && count >= 0) {
+        details.push(`Маршрутів із довшим пішим підходом: ${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 0 }).format(count)}`);
+      }
+      const originDistance = distanceMeters(completeness?.nearestOriginStopMeters);
+      const destinationDistance = distanceMeters(completeness?.nearestDestinationStopMeters);
+      if (originDistance) details.push(`найближча зупинка від початку пошуку — ${originDistance}`);
+      if (destinationDistance) details.push(`найближча зупинка біля пункту призначення — ${destinationDistance}`);
+      return {
+        tone: 'amber' as const,
+        text: details.length ? `${partialReasonMessages[reason]} ${details.join('; ')}` : partialReasonMessages[reason],
+      };
+    });
 }
 

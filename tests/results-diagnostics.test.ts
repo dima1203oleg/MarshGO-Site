@@ -61,3 +61,21 @@ test('known planner reasons become honest passenger lines, unknown ones stay sil
   assert.deepEqual(partialReasonNotices(undefined), []);
 });
 
+test('extended walking reach discloses only server-provided returned count and nearest-stop distances', () => {
+  const [full] = partialReasonNotices(['walk_reach_extended'], {
+    walkReachExtended: true,
+    journeysWithExtendedReach: 2,
+    nearestOriginStopMeters: 1_250,
+    nearestDestinationStopMeters: null,
+  });
+  assert.equal(full.tone, 'amber');
+  assert.match(full.text, /найближча зупинка далі за задану пішу відстань/);
+  assert.match(full.text, /Маршрутів із довшим пішим підходом: 2/);
+  assert.match(full.text, /від початку пошуку — 1\s?250 м/);
+  assert.doesNotMatch(full.text, /пункту призначення/);
+
+  const [withoutMeasurements] = partialReasonNotices(['walk_reach_extended']);
+  assert.match(withoutMeasurements.text, /найближча зупинка далі за задану пішу відстань/);
+  assert.doesNotMatch(withoutMeasurements.text, /Маршрутів із довшим пішим підходом:|\d+ м/);
+});
+
