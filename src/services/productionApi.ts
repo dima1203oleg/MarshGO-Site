@@ -355,6 +355,13 @@ export type ApiJourneySearchResult = {
     searchTruncated: boolean;
     searchComplete: boolean;
     transitSearchFailed: boolean;
+    /** The Server sets this when a returned transit journey uses a stop beyond the requested walking reach. */
+    walkReachExtended?: true;
+    /** Count is bounded to returned journeys that use the extended walking reach. */
+    journeysWithExtendedReach?: number;
+    /** Distances to nearest stops measured by the Server; null means no distance was available. */
+    nearestOriginStopMeters?: number | null;
+    nearestDestinationStopMeters?: number | null;
   };
 };
 export type ApiStoredJourney = {

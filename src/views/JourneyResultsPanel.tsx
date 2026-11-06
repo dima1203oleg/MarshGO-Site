@@ -245,7 +245,7 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap }: {
   // Transport-type tokens are availability facts, not preferences: they get their own honest lines.
   const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences, result.completeness);
   const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
-  const reasonNotices = partialReasonNotices(result.partialReasons);
+  const reasonNotices = partialReasonNotices(result.partialReasons, result.completeness);
   reasonNotices.forEach(notice => notices.push(notice));
   if (result.partial && !reasonNotices.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
   const preferenceTokens = result.unsupportedPreferences.filter(token => !token.startsWith('transportType:'));
