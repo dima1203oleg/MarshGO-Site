@@ -10,6 +10,16 @@ export function splitResultNotices(notices: ResultNotice[]): { headline: ResultN
   return { headline, technical: headline ? notices.filter(notice => notice !== headline) : [...notices] };
 }
 
+/** Passenger-facing truncation facts; the Server flags each independently (truncationState). */
+export function truncationNotices(result: Pick<ApiJourneySearchResult, 'resultsTruncated' | 'candidateGenerationTruncated' | 'resultSamplingTruncated'>): ResultNotice[] {
+  const notices: ResultNotice[] = [];
+  if (result.resultsTruncated) notices.push({ tone: 'blue', text: 'Показано найкращі варіанти для обраного режиму поїздки.' });
+  if (result.candidateGenerationTruncated) notices.push({ tone: 'amber', text: 'Пошук не охопив усі можливі варіанти в частині джерел. Деякі маршрути можуть бути відсутні; спробуйте змінити час або види транспорту.' });
+  // resultLimitReached upstream: the source ranked more variants than it returned.
+  if (result.resultSamplingTruncated) notices.push({ tone: 'amber', text: 'Частина джерел обмежила кількість варіантів, тому деякі маршрути могли не потрапити до результатів.' });
+  return notices;
+}
+
 /** Candidate counts for each search stage, so a missing route can be attributed instead of guessed. */
 export function funnelLines(result: ApiJourneySearchResult): string[] {
   const lines: string[] = [];
