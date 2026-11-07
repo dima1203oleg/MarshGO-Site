@@ -10,6 +10,20 @@ export function coordinateMapPlace(latitude: number, longitude: number): ApiPlac
   };
 }
 
+/** Keep a real GPS coordinate usable when reverse geocoding is unavailable. */
+export async function resolvePlaceAtCoordinates(
+  latitude: number,
+  longitude: number,
+  reverseGeocode: (latitude: number, longitude: number) => Promise<ApiPlace>,
+): Promise<{ place: ApiPlace; addressResolved: boolean }> {
+  try {
+    const resolved = await reverseGeocode(latitude, longitude);
+    return { place: { ...resolved, latitude, longitude }, addressResolved: true };
+  } catch {
+    return { place: coordinateMapPlace(latitude, longitude), addressResolved: false };
+  }
+}
+
 /** Do not misreport device/signal failures as a denied browser permission. */
 export function geolocationFailureMessage(code?: number): string {
   if (code === 1) return 'Браузер або налаштування пристрою відхилили доступ до геолокації.';

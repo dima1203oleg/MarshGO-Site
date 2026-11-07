@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { coordinateMapPlace, geolocationFailureMessage, getBrowserPosition, placeSearchFailureMessage } from '../src/domain/mapPointSelection';
+import { coordinateMapPlace, geolocationFailureMessage, getBrowserPosition, placeSearchFailureMessage, resolvePlaceAtCoordinates } from '../src/domain/mapPointSelection';
 
 test('map selection remains a valid coordinate when reverse geocoding is unavailable', () => {
   assert.deepEqual(coordinateMapPlace(49.8419, 24.0315), {
@@ -9,6 +9,20 @@ test('map selection remains a valid coordinate when reverse geocoding is unavail
     longitude: 24.0315,
     providerId: 'map-pin',
   });
+});
+
+test('GPS search keeps the real coordinate when reverse geocoding is unavailable', async () => {
+  const result = await resolvePlaceAtCoordinates(49.8419, 24.0315, async () => { throw new Error('geocoder unavailable'); });
+  assert.equal(result.addressResolved, false);
+  assert.deepEqual(result.place, coordinateMapPlace(49.8419, 24.0315));
+});
+
+test('GPS reverse geocoding keeps the device coordinate rather than snapping the search point', async () => {
+  const result = await resolvePlaceAtCoordinates(49.8419, 24.0315, async () => ({
+    label: 'Площа Ринок', latitude: 49.8420, longitude: 24.0316, providerId: 'photon:place-1',
+  }));
+  assert.equal(result.addressResolved, true);
+  assert.deepEqual(result.place, { label: 'Площа Ринок', latitude: 49.8419, longitude: 24.0315, providerId: 'photon:place-1' });
 });
 
 test('GPS errors distinguish denied access, unavailable position, timeout, and unknown failure', () => {
