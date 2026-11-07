@@ -61,6 +61,27 @@ test('known planner reasons become honest passenger lines, unknown ones stay sil
   assert.deepEqual(partialReasonNotices(undefined), []);
 });
 
+test('the current nested Server walkingReach contract adds nearest-stop distances to an empty result', () => {
+  const [notice] = partialReasonNotices(['no_stop_within_walking_distance'], {
+    walkingReach: { nearestOriginStopMeters: 1_250, nearestDestinationStopMeters: 2_000 },
+  });
+  assert.match(notice.text, /Найближча зупинка: від початку — 1\s?250 м; від призначення — 2\s?000 м/);
+});
+
+test('the current nested Server walkingReach contract discloses extended-walk results', () => {
+  const [notice] = partialReasonNotices(['walk_reach_extended'], {
+    walkingReach: {
+      extended: true,
+      journeysWithExtendedReach: 3,
+      nearestOriginStopMeters: null,
+      nearestDestinationStopMeters: 1_750,
+    },
+  });
+  assert.match(notice.text, /Маршрутів із довшим пішим підходом: 3/);
+  assert.match(notice.text, /найближча зупинка біля пункту призначення — 1\s?750 м/);
+  assert.doesNotMatch(notice.text, /від початку пошуку/);
+});
+
 test('extended walking reach discloses only server-provided returned count and nearest-stop distances', () => {
   const [full] = partialReasonNotices(['walk_reach_extended'], {
     walkReachExtended: true,
