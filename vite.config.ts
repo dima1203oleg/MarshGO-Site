@@ -82,6 +82,9 @@ export default defineConfig(() => {
     build: { chunkSizeWarningLimit: 1100 },
     plugins: [react(), tailwindcss()],
     resolve: {
+      // Keep hooks and the renderer on one runtime instance in isolated
+      // worktrees, where the optimizer can otherwise prebundle React twice.
+      dedupe: ['react', 'react-dom'],
       alias: {
         '@': path.resolve(rootDir, '.'),
       },
