@@ -16,6 +16,7 @@ import { configuredMapDarkStyleUrl, configuredMapStyleUrl } from './mapConfig';
 import { journeySegmentsForFocus, visibleJourneyWaypoints } from './focusMode';
 import { nearestRouteHitIds } from './routeHitTesting';
 import { placeJourneyLabels } from './routeLabelPlacement';
+import { cameraMotionDuration, interruptCameraForUserGesture } from './cameraMotion';
 
 const pmtilesProtocol = new Protocol();
 let pmtilesProtocolRegistered = false;
@@ -334,7 +335,15 @@ export class MapLibreAdapter implements MapAdapter {
       this.publish(this.seenTileError ? 'degraded' : 'available');
     });
     // Only the user's own gestures leave follow mode; our camera animations (zoom, bearing) must not.
-    const userGesture = (event: { originalEvent?: unknown }) => { if (event.originalEvent && this.cameraMode !== 'FREE') this.setCameraModeInternal('FREE'); };
+    const userGesture = (event: { originalEvent?: unknown }) => {
+      // Explicit user input must win over an in-flight focus/follow animation.
+      interruptCameraForUserGesture(
+        event.originalEvent,
+        this.cameraMode,
+        () => this.map.stop(),
+        () => this.setCameraModeInternal('FREE'),
+      );
+    };
     this.map.on('dragstart', userGesture);
     this.map.on('zoomstart', userGesture);
     this.map.on('rotatestart', userGesture);
@@ -344,6 +353,13 @@ export class MapLibreAdapter implements MapAdapter {
   private markCameraRequest() {
     this.cameraRequestSequence += 1;
     this.map.getContainer().dataset.marshgoCameraRequestId = String(this.cameraRequestSequence);
+  }
+
+  private motionDuration(durationMs: number): number {
+    const reducedMotion = typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return cameraMotionDuration(durationMs, reducedMotion);
   }
 
   private publish(status: MapStatus) { this.status = this.seenTileError && status === 'available' ? 'degraded' : status; this.onStatus(this.status); }
@@ -656,7 +672,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.transport?.reinstall();
     // The camera perspective is independent of the selected basemap.
     const desiredPitch = this.perspective === '3d' ? PERSPECTIVE_PITCH : 0;
-    if (Math.abs(this.map.getPitch() - desiredPitch) > 1) this.map.easeTo({ pitch: desiredPitch, duration: 500, essential: true });
+    if (Math.abs(this.map.getPitch() - desiredPitch) > 1) this.map.easeTo({ pitch: desiredPitch, duration: this.motionDuration(500), essential: true });
     this.updateRouteSource();
     this.updateFocusedTransitOverlay();
     if (this.vehicle) this.setVehicle(this.vehicle);
@@ -1125,7 +1141,7 @@ export class MapLibreAdapter implements MapAdapter {
       center: this.vehicle, zoom: Math.max(this.map.getZoom(), 17), pitch: tilt,
       bearing: this.heading ?? this.map.getBearing(),
       padding: { top: Math.round(clientHeight * 0.32), bottom: Math.round(clientHeight * 0.08), left: 0, right: 0 },
-      duration, essential: true,
+      duration: this.motionDuration(duration), essential: true,
     });
   }
   setWaypoints(points: RouteWaypoint[]) {
@@ -1179,7 +1195,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.markCameraRequest();
     this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
       padding,
-      duration: 520,
+      duration: this.motionDuration(520),
       maxZoom,
       ...(typeof overrides.bearing === 'number' && Number.isFinite(overrides.bearing) ? { bearing: overrides.bearing } : {}),
     });
@@ -1226,7 +1242,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.perspective = perspective;
     if (perspective === '2d') this.remove3DBuildings();
     else this.install3DBuildings();
-    this.map.easeTo({ pitch: perspective === '3d' ? PERSPECTIVE_PITCH : 0, duration: 500, essential: true });
+    this.map.easeTo({ pitch: perspective === '3d' ? PERSPECTIVE_PITCH : 0, duration: this.motionDuration(500), essential: true });
   }
   /** 2D information layers (metro, buses, bikes, ...). Passing an empty set removes them and stops their polling. */
   setTransportLayers(layers: ReadonlySet<TransportLayerId>) {
@@ -1239,7 +1255,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.transportDisplayPreferences = preferences;
     this.transport?.setDisplayPreferences(preferences);
   }
-  focus(point: Coordinate, zoom = 13) { this.cameraMode = 'FREE'; this.markCameraRequest(); this.map.easeTo({ center: point, zoom, duration: 600, essential: true }); }
+  focus(point: Coordinate, zoom = 13) { this.cameraMode = 'FREE'; this.markCameraRequest(); this.map.easeTo({ center: point, zoom, duration: this.motionDuration(600), essential: true }); }
   setCameraMode(mode: CameraMode) { this.setCameraModeInternal(mode); }
   setTheme(theme: MapTheme) {
     const nextTheme = this.themeForLayer(this.layer, theme);
