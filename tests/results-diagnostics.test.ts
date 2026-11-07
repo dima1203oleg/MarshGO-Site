@@ -39,7 +39,7 @@ test('diagnostics opt in only through the developer flag', () => {
 
 test('funnel lines report the real counts of every search stage', () => {
   const lines = funnelLines(searchResult).join('\n');
-  for (const expected of ['2 запитано', '100 згенеровано', '100 валідовано', '0 відхилено', '4 після дедуплікації',
+  for (const expected of ['2 запитано', '100 згенеровано', '100 валідовано', '0 відхилено', '4 після Pareto-фільтра',
     'Pareto 4', 'повернуто 4', 'ліміт 12', 'marshrutka — no_source_declares_this_category', 'Зрізано: results']) {
     assert.ok(lines.includes(expected), `missing "${expected}" in ${lines}`);
   }
