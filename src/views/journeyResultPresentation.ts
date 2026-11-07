@@ -239,6 +239,28 @@ export function journeySearchAbortMessage(reason: unknown): string {
     : 'Пошук маршруту скасовано.';
 }
 
+/** Provider explanations can describe a degraded success as well as an actual outage. */
+function isProviderOutage(text: string): boolean {
+  const line = text.toLocaleLowerCase('uk-UA');
+  if (line.includes('використовується розклад')) return false;
+  return line.includes('недоступн');
+}
+
+/** Keep each provider fact and its severity; a fallback to printed schedules is not a total outage. */
+export function providerErrorNotices(providerErrors: readonly string[] = []): Array<{ tone: 'rose' | 'amber'; text: string }> {
+  const notices: Array<{ tone: 'rose' | 'amber'; text: string }> = [];
+  const seen = new Set<string>();
+  for (const error of providerErrors) {
+    const trimmed = error.trim().replace(/[.;]+$/, '');
+    if (!trimmed) continue;
+    const text = `${trimmed}.`;
+    if (seen.has(text)) continue;
+    seen.add(text);
+    notices.push({ tone: isProviderOutage(trimmed) ? 'rose' : 'amber', text });
+  }
+  return notices;
+}
+
 const transportModeNames: Record<string, string> = {
   bus: 'Автобуси', tram: 'Трамваї', trolleybus: 'Тролейбуси', marshrutka: 'Маршрутки',
   metro: 'Метро', train: 'Потяги', taxi: 'Таксі', bike: 'Велопрокати', scooter: 'Самокати',

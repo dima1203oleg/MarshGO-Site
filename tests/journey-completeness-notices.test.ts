@@ -2,7 +2,7 @@
 // call a failed transit search "no routes here". Fixtures below are synthetic, not live feeds.
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { unavailableTransportNotices } from '../src/views/journeyResultPresentation';
+import { providerErrorNotices, unavailableTransportNotices } from '../src/views/journeyResultPresentation';
 
 const unavailable = (mode: string, reason: string, requested = true) => ({ mode, available: false, requested, reason });
 
@@ -45,5 +45,32 @@ describe('completeness notices', () => {
     );
     assert.equal(notices.length, 1);
     assert.match(notices[0]!.text, /Тролейбуси: немає жодного підключеного джерела/);
+  });
+});
+
+// Synthetic provider messages from the API contract; these tests do not claim live-feed verification.
+const scheduleFallback = 'Львівавтодор — розклад (GTFS): GTFS-Realtime відхилено (оновлення тимчасово недоступні); використовується розклад';
+const pedestrianRejection = 'Частину варіантів відхилено: фактичний час або відстань пішохідного шляху не дозволяє здійснити маршрут.';
+const feedUnavailable = 'Львівавтодор — розклад (GTFS): розклад тимчасово недоступний';
+const transitSearchFailed = 'GTFS-пошук тимчасово недоступний: черга заповнена; інші типи маршрутів перевіряються окремо';
+
+describe('provider error notices', () => {
+  it('keeps schedule fallback and rejected-candidate explanations as caution, not outage', () => {
+    const notices = providerErrorNotices([scheduleFallback, pedestrianRejection]);
+    assert.deepEqual(notices.map(notice => notice.tone), ['amber', 'amber']);
+    assert.match(notices[0]!.text, /використовується розклад/);
+  });
+
+  it('deduplicates sentences and emits only one terminal period', () => {
+    const notices = providerErrorNotices([pedestrianRejection, `${pedestrianRejection} `, '', '  ']);
+    assert.equal(notices.length, 1);
+    assert.match(notices[0]!.text, /маршрут\.$/);
+    assert.doesNotMatch(notices[0]!.text, /\.\./);
+  });
+
+  it('keeps the outage severity only for provider data that did not arrive', () => {
+    const notices = providerErrorNotices([pedestrianRejection, feedUnavailable, transitSearchFailed]);
+    assert.deepEqual(notices.map(notice => notice.tone), ['amber', 'rose', 'rose']);
+    assert.equal(providerErrorNotices([scheduleFallback])[0]!.tone, 'amber');
   });
 });
