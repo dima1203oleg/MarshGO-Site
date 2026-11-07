@@ -27,9 +27,10 @@ import { compactPlaceLabel, fullPlaceLabel } from '../domain/placeLabel';
 import { ApiAccountDeletionRequest, ApiBlockedUser, ApiBooking, ApiDemand, ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiNotification, ApiNotificationPage, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiRendezvous, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, ProductionApiError, productionApi } from '../services/productionApi';
 import { realtimeStatusLabel, realtimeStatusTone, type RealtimeStatus } from '../services/realtimeChannel';
 import { storedJourneyToApiJourney } from '../routing/storedJourneyView';
+import { activatePassengerJourney, completePassengerJourney, isRestorableJourneyState } from '../services/journeyLifecycle';
 import { bookingFailureMessage, boardingFailureMessage, deepLinkFailureMessage, isOfferNoLongerBookable, OFFER_NO_LONGER_BOOKABLE_TEXT, ticketFailureMessage } from './bookingFailureState';
 import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
-import { ActiveJourneyNavigationStore, isOpenJourneyState } from '../navigation/ActiveJourneyNavigationStore';
+import { ActiveJourneyNavigationStore } from '../navigation/ActiveJourneyNavigationStore';
 import { defaultKyivDateTime, formatKyivDateTimeInput, kyivDateTimeInputToDate, kyivDateTimeInputToIso } from '../domain/kyivTime';
 import { useProductionTabRouter } from '../routing/useProductionTabRouter';
 import { pathForProductionEntity, resumesActiveJourneyFrom, type ProductionTab } from '../routing/productionRoutes';
@@ -261,6 +262,7 @@ export function ProductionMarketplace() {
   const [selectedOffer, setSelectedOffer] = useState<ApiOffer | null>(null);
   const [selectedJourney, setSelectedJourney] = useState<ApiStoredJourney | null>(null);
   const [activeJourneyNavigation, setActiveJourneyNavigation] = useState<ApiJourney | null>(null);
+  const [journeyNotice, setJourneyNotice] = useState('');
   const activeJourneyStore = useMemo(() => new ActiveJourneyNavigationStore(), []);
   const pendingNavigationRestore = useRef<{ journeyId: string; legIndex: number } | null>(null);
   const restoredNavigationStage = useRef<number | null>(null);
@@ -321,6 +323,15 @@ export function ProductionMarketplace() {
   }, [refreshUnreadConversations]);
   useEffect(() => { rendezvousSessionsRef.current = rendezvousSessions; }, [rendezvousSessions]);
   const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
+  const finishJourneyNavigation = useCallback((journeyId: string) => {
+    setActiveJourneyNavigation(null);
+    setJourneyNotice('');
+    void (async () => {
+      const outcome = await completePassengerJourney(productionApi, journeyId);
+      if (!outcome.confirmed) setStatusMessage(outcome.message);
+      await refreshJourneys().catch(() => undefined);
+    })();
+  }, [refreshJourneys]);
   const refreshNotifications = useCallback(async () => setNotificationPage(await productionApi.notifications()), []);
   const refreshBlockedUsers = useCallback(async () => setBlockedUsers(await productionApi.blockedUsers()), []);
   const refreshMyOffers = useCallback(async () => setMyOffers(await productionApi.myOffers()), []);
@@ -452,6 +463,15 @@ export function ProductionMarketplace() {
     // an empty search box.
     setRoutePath(pathForProductionEntity('journey', journey.id));
     setActiveJourneyNavigation(journey);
+    setJourneyNotice('');
+    void activatePassengerJourney(productionApi, journey.id, journey.legs[0]?.id).then(async (outcome) => {
+      if (!outcome.confirmed) {
+        activeJourneyStore.clear();
+        setJourneyNotice(outcome.message);
+        return;
+      }
+      await refreshJourneys().catch(() => undefined);
+    });
   };
 
   // Leaving navigation on purpose means the passenger is no longer riding it,
@@ -477,7 +497,7 @@ export function ProductionMarketplace() {
     const pending = pendingNavigationRestore.current;
     if (!pending || pending.journeyId !== journey.id) return;
     pendingNavigationRestore.current = null;
-    if (!isOpenJourneyState(journey.state)) {
+    if (!isRestorableJourneyState(journey.state)) {
       activeJourneyStore.clear();
       return;
     }
@@ -2087,6 +2107,8 @@ export function ProductionMarketplace() {
 
   const screen = activeJourneyNavigation ? <JourneyActiveNavigation
     journey={activeJourneyNavigation}
+    notice={journeyNotice}
+    onFinish={() => finishJourneyNavigation(activeJourneyNavigation.id)}
     initialLegIndex={restoredNavigationStage.current}
     onStageChange={(legIndex) => keepActiveJourneyStage(activeJourneyNavigation.id, legIndex)}
     onExit={exitJourneyNavigation}

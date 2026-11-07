@@ -325,6 +325,7 @@ export type ApiJourneyLive = {
     vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean; etaSeconds?: number | null; priority?: VehiclePriority | null; etaConfidence?: 'OBSERVED' | 'PREDICTED' | 'NONE' }>;
   }>;
 };
+export type ApiJourneyLifecycle = { id: string; state: string; currentLegId?: string | null; startedAt?: string | null; completedAt?: string | null };
 export type ApiJourneySearchResult = {
   journeys: ApiJourney[];
   requestedStrategy?: ApiJourneyStrategy;
@@ -744,6 +745,16 @@ export const productionApi = {
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
+  activateJourney(id: string, legId?: string) {
+    return request<ApiJourneyLifecycle>(`/journeys/${encodeURIComponent(id)}/activate`, {
+      method: 'POST', body: JSON.stringify(legId ? { legId } : {}),
+    });
+  },
+  endJourney(id: string, outcome: 'COMPLETED' | 'CANCELLED') {
+    return request<ApiJourneyLifecycle>(`/journeys/${encodeURIComponent(id)}/end`, {
+      method: 'POST', body: JSON.stringify({ outcome }),
+    });
+  },
   journeyLive(id: string, arg2?: AbortSignal | string, arg3?: string | AbortSignal) {
     const signal = arg2 instanceof AbortSignal ? arg2 : arg3 instanceof AbortSignal ? arg3 : undefined;
     const legId = typeof arg2 === 'string' ? arg2 : typeof arg3 === 'string' ? arg3 : undefined;

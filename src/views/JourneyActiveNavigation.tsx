@@ -51,12 +51,16 @@ import {
  */
 export function JourneyActiveNavigation({
   journey,
+  notice,
   onExit,
+  onFinish,
   initialLegIndex = null,
   onStageChange,
 }: {
   journey: ApiJourney;
+  notice?: string | null;
   onExit: () => void;
+  onFinish?: () => void;
   initialLegIndex?: number | null;
   onStageChange?: (legIndex: number) => void;
 }) {
@@ -346,7 +350,7 @@ export function JourneyActiveNavigation({
 
   const advance = () => {
     haptic([8, 24, 8]);
-    if (isLast) { onExit(); return; }
+    if (isLast) { onFinish?.(); onExit(); return; }
     setLegIndex(index => Math.min(legs.length - 1, index + 1));
   };
 
@@ -466,6 +470,7 @@ export function JourneyActiveNavigation({
             </div>
           </div>
           <p className="mt-1 text-xs font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</p>
+          {notice && <p role="status" data-testid="active-nav-notice" className={`mt-2 rounded-xl border px-3 py-2.5 text-[12px] font-bold leading-[16px] ${isDark ? 'border-amber-300/30 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>{notice}</p>}
         </div>
 
         {showRibbon && <div className="mg-route-ribbon mt-3 shrink-0 px-5" role="list" aria-label="Етапи навігації">
