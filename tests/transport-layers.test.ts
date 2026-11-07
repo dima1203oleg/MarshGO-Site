@@ -74,6 +74,10 @@ describe('map transport layers', () => {
     assert.match(view, /setTransportLayers\(ids, true\)/);
     assert.doesNotMatch(view, /clearTransportLayers/, 'leaving /map must not store an empty selection and blank the next visit');
     assert.match(view, /const arrivalZoom = minZoom\.vehicles \+ 0\.2;/, 'arrival zoom must stay above the vehicle gate, or live movement is invisible');
-    assert.equal([...view.matchAll(/, arrivalZoom\)/g)].length, 2, 'both the geolocation fallback and the city dropdown arrive at that zoom');
+    assert.equal([...view.matchAll(/, arrivalZoom\)/g)].length, 1, 'only the selected registry city focuses the map');
+    assert.doesNotMatch(view, /navigator\.geolocation|getCurrentPosition|setCityId\('kyiv'\)/, 'the map must not prompt for GPS or silently fall back to Kyiv');
+    assert.match(view, /normalizedCity\(city\.name\) === normalizedCity\(cityName\)/, 'the map follows the global header city when it has a verified registry entry');
+    assert.match(view, /setCityRegistryHint\(cityName && !match \?/);
+    assert.match(view, /setCityRegistryHint\([^\n]*: null\)/, 'a verified city clears the old missing-catalog notice');
   });
 });

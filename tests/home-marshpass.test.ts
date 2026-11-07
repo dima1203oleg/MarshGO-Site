@@ -13,10 +13,10 @@ test('Home only selects confirmed private-ride passenger bookings for MarshPass'
   assert.deepEqual(selected.map((item) => item.id), ['passenger-booking']);
 });
 
-test('boarding and in-progress passenger bookings remain active MarshPasses', () => {
+test('only server ticket-eligible passenger booking states appear as MarshPasses', () => {
   const selected = selectHomeMarshPasses([
     { id: 'boarding', kind: 'booking' as const, status: 'boarding' },
     { id: 'in-progress', kind: 'booking' as const, status: 'in_progress' },
   ]);
-  assert.deepEqual(selected.map((item) => item.id), ['boarding', 'in-progress']);
+  assert.deepEqual(selected.map((item) => item.id), ['boarding']);
 });
