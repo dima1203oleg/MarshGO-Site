@@ -65,6 +65,14 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
     return () => { cancelled = true; if (timer.current) clearTimeout(timer.current); map?.remove(); mapRef.current = null; };
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const locate = () => {
     if (!navigator.geolocation) { setMessage('Геолокація недоступна в цьому браузері.'); return; }
     void getBrowserPosition(navigator.geolocation)
@@ -72,19 +80,19 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
       .catch((error: unknown) => setMessage(geolocationFailureMessage(typeof error === 'object' && error !== null && 'code' in error ? Number((error as { code: unknown }).code) : undefined)));
   };
 
-  return <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[80] flex flex-col bg-white">
+  return <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[80] flex flex-col bg-white dark:bg-[var(--mg-canvas)]">
     <div ref={container} className="relative min-h-0 flex-1" data-testid="point-picker-map">
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full"><svg width="38" height="48" viewBox="0 0 38 48"><path d="M19 0C8.5 0 0 8.3 0 18.6 0 32 19 48 19 48s19-16 19-29.4C38 8.3 29.5 0 19 0z" fill="#1789F4" stroke="#fff" strokeWidth="2.5"/><circle cx="19" cy="18" r="6.5" fill="#fff"/></svg></div>
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-[9] h-2 w-5 -translate-x-1/2 rounded-full bg-black/20 blur-[2px]"/>
-      <header className="absolute inset-x-0 top-0 z-20 flex items-center gap-3 bg-gradient-to-b from-white/95 to-white/0 px-4 pb-6 pt-[max(.8rem,env(safe-area-inset-top))]">
-        <button type="button" onClick={onClose} aria-label="Закрити мапу" className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-md"><X size={18}/></button>
-        <h2 className="text-base font-extrabold text-[#0E1F35]">{title}</h2>
+      <header className="absolute inset-x-0 top-0 z-20 flex items-center gap-3 bg-gradient-to-b from-white/95 to-white/0 px-4 pb-6 pt-[max(.8rem,env(safe-area-inset-top))] dark:from-[var(--mg-canvas)]/95 dark:to-[var(--mg-canvas)]/0">
+        <button type="button" onClick={onClose} aria-label="Закрити мапу" className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-md dark:bg-[var(--mg-surface-secondary)] dark:text-[var(--mg-ink-primary)]"><X size={18}/></button>
+        <h2 className="text-base font-extrabold text-[var(--mg-ink-primary)]">{title}</h2>
       </header>
-      <button type="button" onClick={locate} aria-label="Моє місцезнаходження" className="absolute bottom-4 right-14 z-20 grid h-11 w-11 place-items-center rounded-full bg-white text-[var(--mg-blue)] shadow-md"><LocateFixed size={18}/></button>
+      <button type="button" onClick={locate} aria-label="Моє місцезнаходження" className="absolute bottom-4 right-14 z-20 grid h-11 w-11 place-items-center rounded-full bg-white text-[var(--mg-blue)] shadow-md dark:bg-[var(--mg-surface-secondary)]"> <LocateFixed size={18}/></button>
     </div>
-    <div className="border-t border-slate-100 bg-white px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Обрана точка</p>
-      <p role="status" className="mt-1 min-h-[2.5rem] text-sm font-bold text-[#0E1F35]">{state === 'resolving' ? place ? `${place.label} · шукаємо адресу…` : 'Торкніться точки на мапі або посуньте мапу під позначку' : place ? place.label : state === 'error' ? message : 'Торкніться точки на мапі або посуньте мапу під позначку'}</p>
+    <div className="border-t border-slate-100 bg-white px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 dark:border-[var(--mg-line)] dark:bg-[var(--mg-surface-primary)]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-[var(--mg-ink-secondary)]">Обрана точка</p>
+      <p role="status" className="mt-1 min-h-[2.5rem] text-sm font-bold text-[var(--mg-ink-primary)]">{state === 'resolving' ? place ? `${place.label} · шукаємо адресу…` : 'Торкніться точки на мапі або посуньте мапу під позначку' : place ? place.label : state === 'error' ? message : 'Торкніться точки на мапі або посуньте мапу під позначку'}</p>
       {message && <p className="text-xs text-amber-700">{message}</p>}
       <button type="button" disabled={!place} onClick={() => place && onConfirm(place)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--mg-action)] py-3.5 text-sm font-bold text-white disabled:opacity-50"><Check size={17}/>Підтвердити точку</button>
     </div>

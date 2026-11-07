@@ -112,7 +112,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
 
     const targetEl = document.getElementById(step.targetId);
     if (targetEl) {
-      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetEl.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
       targetEl.classList.add('ring-4', 'ring-[#1769F4]', 'ring-offset-4', 'transition-all');
 
       return () => {

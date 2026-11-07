@@ -189,6 +189,13 @@ export function JourneyRouteMapScreen({
   useEffect(() => themeService.subscribe((_theme, dark) => setIsDark(dark)), []);
   useEffect(() => subscribeReducedMotion(setReducedMotion), []);
   useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onBack();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBack]);
+  useEffect(() => {
     const writer = dragWriter.current;
     return () => writer?.discard();
   }, []);
