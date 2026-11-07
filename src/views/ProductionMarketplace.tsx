@@ -19,7 +19,7 @@ import { isBookingSection, showsBookingList, showsSavedRoutes, tripsTabSubtitle,
 import { OnboardingSlides } from '../components/OnboardingSlides';
 import { DriverPhotoCard } from '../components/DriverPhotoCard';
 import { OfferEditSheet, PendingChangeCard, offerStatusLabel } from '../components/TripManagement';
-import { loadSelection, saveSelection, toJourneyPreferences, type TransportSelection } from '../domain/transportPreferences';
+import { loadSelection, mergeSettledProviderGroups, providerCoveragePoints, saveSelection, toJourneyPreferences, type TransportSelection } from '../domain/transportPreferences';
 import { MarshPassTicket } from './MarshPassTicket';
 import { QrScanner } from '../components/QrScanner';
 import type { ProfileSection } from './ProfileSections';
@@ -372,17 +372,22 @@ export function ProductionMarketplace() {
   }, [activeTripCount, upcomingTripCount, pastTripCount]);
 
   const changeTransportSelection = (selection: TransportSelection) => { setTransportSelection(selection); saveSelection(selection); };
-  // Providers depend on where the search starts: reload when the origin point changes.
+  // A long-distance journey can start outside a feed city and finish inside one.
+  // Discover coverage at both endpoints so the origin alone does not hide a usable destination provider.
   useEffect(() => {
     if (!user) { setProviderGroups(null); return; }
     let current = true;
     setProviderGroups(null);
-    const point = searchOriginPlace ? { latitude: searchOriginPlace.latitude, longitude: searchOriginPlace.longitude } : undefined;
-    productionApi.providersByTransport(point)
-      .then((groups) => { if (current) setProviderGroups(groups); })
-      .catch(() => { if (current) setProviderGroups(null); });
+    const points = providerCoveragePoints(searchOriginPlace, searchDestinationPlace);
+    void Promise.allSettled(points.map((point) => productionApi.providersByTransport(point))).then((results) => {
+      if (!current) return;
+      const discovery = mergeSettledProviderGroups(results);
+      // Partial endpoint discovery is not complete coverage. Keep the existing
+      // unverified state so users see the warning and the API can decide routes.
+      setProviderGroups(discovery && discovery.failedCount === 0 ? discovery.groups : null);
+    });
     return () => { current = false; };
-  }, [user, searchOriginPlace]);
+  }, [user, searchOriginPlace, searchDestinationPlace]);
 
   useEffect(() => {
     if (route?.kind === 'tab' && route.tab === 'home' && tab === 'home') {
