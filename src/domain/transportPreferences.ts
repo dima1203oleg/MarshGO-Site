@@ -74,6 +74,12 @@ export function saveSelection(selection: TransportSelection) { try { localStorag
 export const isAllActive = (selection: TransportSelection) => supportedJourneySearchTypes.every((id) => selection.active.includes(id))
   && selection.active.every(isJourneySearchSupported);
 export function selectAll(selection: TransportSelection): TransportSelection { return { ...selection, active: [...supportedJourneySearchTypes] }; }
+export function allAvailableTypesSelected(selection: TransportSelection, availableTypes: readonly TransportTypeId[]): boolean {
+  return availableTypes.length > 0 && availableTypes.every((type) => selection.active.includes(type));
+}
+export function toggleAvailableTypes(selection: TransportSelection, availableTypes: readonly TransportTypeId[]): TransportSelection {
+  return { ...selection, active: allAvailableTypesSelected(selection, availableTypes) ? [] : [...availableTypes] };
+}
 export function toggleType(selection: TransportSelection, type: TransportTypeId): TransportSelection {
   if (!isJourneySearchSupported(type)) return selection;
   const active = selection.active.includes(type) ? selection.active.filter((id) => id !== type) : [...selection.active, type];

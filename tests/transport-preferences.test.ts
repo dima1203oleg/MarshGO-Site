@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { transportTypes, supportedJourneySearchTypes, activeTypesForSearch, choiceFor, defaultSelection, effectiveProviders, isAllActive, journeyTypesForCategory, mergeProviderGroups, mergeSettledProviderGroups, providersForJourneySearch, selectAll, toggleProvider, toggleType, toJourneyPreferences, type TransportSelection } from '../src/domain/transportPreferences';
+import { transportTypes, supportedJourneySearchTypes, activeTypesForSearch, allAvailableTypesSelected, choiceFor, defaultSelection, effectiveProviders, isAllActive, journeyTypesForCategory, mergeProviderGroups, mergeSettledProviderGroups, providersForJourneySearch, selectAll, toggleAvailableTypes, toggleProvider, toggleType, toJourneyPreferences, type TransportSelection } from '../src/domain/transportPreferences';
 
 const groups = [
   { transportType: 'carpool', providers: [{ id: 'carpool:MARSHGO', name: 'MARSHGO Community', available: true, cities: [], sources: ['marshgo'], services: [] }] },
@@ -75,6 +75,16 @@ describe('transport types and providers', () => {
     assert.equal(narrowed.active.includes('taxi'), true);
     assert.equal(narrowed.active.includes('carpool'), false);
     assert.equal(isAllActive(selectAll(narrowed)), true);
+  });
+
+  it('selects only the categories with a connected provider for the current search', () => {
+    const available = ['carpool', 'bus', 'tram'] as const;
+    const partial = { ...defaultSelection, active: ['carpool'] as TransportSelection['active'] };
+    assert.equal(allAvailableTypesSelected(partial, available), false);
+    const selected = toggleAvailableTypes(partial, available);
+    assert.deepEqual(selected.active, available);
+    assert.equal(allAvailableTypesSelected(selected, available), true);
+    assert.deepEqual(toggleAvailableTypes(selected, available).active, []);
   });
 
   it('allows an empty selection and searches no modes when nothing is selected', () => {

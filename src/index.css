@@ -280,6 +280,7 @@ html.dark .app-header > div:first-child strong { color: #F5F9FF; }
   gap: .4rem;
 }
 .transport-types-inline .transport-mode-grid button { min-height: 4.25rem; }
+.transport-types-inline .transport-mode-grid button.transport-mode-tile--carpool { box-shadow: 0 0 0 1px var(--mg-action), var(--mg-card-shadow); }
 .home-screen .home-intro {
   position: relative;
   overflow: hidden;
