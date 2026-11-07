@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { ArrowRight, BusFront, CheckCircle2, ChevronLeft, ChevronRight, CirclePlus, MapPin, Navigation, QrCode, Search, ShieldCheck, Ticket } from 'lucide-react';
 import { selectHomeMarshPasses } from '../domain/marshPass';
+import { calculateHomeAvailableHeight } from './homeViewport';
 
 type HomeTrip = {
   id: string;
@@ -67,9 +68,13 @@ export function HomeHero({
       if (!element || window.innerWidth >= 1024) { setAvailableHeight(null); return; }
       const top = element.getBoundingClientRect().top + window.scrollY;
       const shell = element.closest('.production-app');
-      const reserved = shell ? parseFloat(getComputedStyle(shell).paddingBottom) || 0 : 0;
       const viewport = window.visualViewport?.height ?? window.innerHeight;
-      setAvailableHeight(Math.max(300, Math.floor(viewport - top - reserved - 4)));
+      const tabbar = shell?.querySelector<HTMLElement>('.app-tabbar');
+      const tabbarTop = tabbar && getComputedStyle(tabbar).position === 'fixed'
+        ? tabbar.getBoundingClientRect().top
+        : null;
+      const shellPaddingBottom = shell ? parseFloat(getComputedStyle(shell).paddingBottom) || 0 : 0;
+      setAvailableHeight(calculateHomeAvailableHeight(viewport, top, tabbarTop, shellPaddingBottom));
     };
     measure();
     window.addEventListener('resize', measure);
