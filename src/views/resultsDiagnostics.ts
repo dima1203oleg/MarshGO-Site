@@ -26,7 +26,9 @@ export function funnelLines(result: ApiJourneySearchResult): string[] {
   const completeness = result.completeness;
   if (completeness) {
     lines.push(`Провайдери: ${completeness.providersQueried} запитано · ${completeness.providersSucceeded} успішно · ${completeness.providersFailed} із збоєм`);
-    lines.push(`Кандидати: ${completeness.candidatesGenerated} згенеровано · ${completeness.candidatesValidated} валідовано · ${completeness.candidatesRejected} відхилено · ${completeness.candidatesDeduplicated} після дедуплікації`);
+    // The Server currently reports the Pareto-frontier size in `candidatesDeduplicated`.
+    // Keep the passenger-visible diagnostic aligned with that meaning until the API field is renamed.
+    lines.push(`Кандидати: ${completeness.candidatesGenerated} згенеровано · ${completeness.candidatesValidated} валідовано · ${completeness.candidatesRejected} відхилено · ${completeness.candidatesDeduplicated} після Pareto-фільтра`);
     lines.push(`Видано: ${completeness.resultsReturned} · пошук ${completeness.searchComplete ? 'завершений' : 'обмежений'}${completeness.transitSearchFailed ? ' · публічний транспорт не відповідав' : ''}`);
     if (completeness.modesAvailable.length) lines.push(`Категорії з джерелом: ${completeness.modesAvailable.join(', ')}`);
     const unexplained = completeness.modesUnavailable.filter(mode => !mode.available);
