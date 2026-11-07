@@ -55,7 +55,7 @@ const partialReasonMessages: Record<string, string> = {
 };
 
 type WalkingReachDisclosure = Pick<NonNullable<ApiJourneySearchResult['completeness']>,
-  'walkReachExtended' | 'journeysWithExtendedReach' | 'nearestOriginStopMeters' | 'nearestDestinationStopMeters'>;
+  'walkReachExtended' | 'journeysWithExtendedReach' | 'nearestOriginStopMeters' | 'nearestDestinationStopMeters' | 'walkingReach'>;
 
 const distanceMeters = (value: number | null | undefined): string | null =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0
@@ -65,14 +65,29 @@ const distanceMeters = (value: number | null | undefined): string | null =>
 export function partialReasonNotices(reasons: string[] | undefined, completeness?: WalkingReachDisclosure): ResultNotice[] {
   return (reasons ?? []).filter(reason => partialReasonMessages[reason])
     .map(reason => {
+      const reach = completeness?.walkingReach;
+      const originMeters = reach ? reach.nearestOriginStopMeters : completeness?.nearestOriginStopMeters;
+      const destinationMeters = reach ? reach.nearestDestinationStopMeters : completeness?.nearestDestinationStopMeters;
+      const originDistance = distanceMeters(originMeters);
+      const destinationDistance = distanceMeters(destinationMeters);
+
+      if (reason === 'no_stop_within_walking_distance') {
+        const distanceDetails: string[] = [];
+        if (originDistance) distanceDetails.push(`від початку — ${originDistance}`);
+        if (destinationDistance) distanceDetails.push(`від призначення — ${destinationDistance}`);
+        return {
+          tone: 'amber' as const,
+          text: distanceDetails.length
+            ? `${partialReasonMessages[reason]} Найближча зупинка: ${distanceDetails.join('; ')}.`
+            : partialReasonMessages[reason],
+        };
+      }
       if (reason !== 'walk_reach_extended') return { tone: 'amber' as const, text: partialReasonMessages[reason] };
       const details: string[] = [];
-      const count = completeness?.journeysWithExtendedReach;
+      const count = reach?.journeysWithExtendedReach ?? completeness?.journeysWithExtendedReach;
       if (typeof count === 'number' && Number.isFinite(count) && count >= 0) {
         details.push(`Маршрутів із довшим пішим підходом: ${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 0 }).format(count)}`);
       }
-      const originDistance = distanceMeters(completeness?.nearestOriginStopMeters);
-      const destinationDistance = distanceMeters(completeness?.nearestDestinationStopMeters);
       if (originDistance) details.push(`найближча зупинка від початку пошуку — ${originDistance}`);
       if (destinationDistance) details.push(`найближча зупинка біля пункту призначення — ${destinationDistance}`);
       return {

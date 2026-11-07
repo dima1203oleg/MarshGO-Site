@@ -356,11 +356,16 @@ export type ApiJourneySearchResult = {
     searchTruncated: boolean;
     searchComplete: boolean;
     transitSearchFailed: boolean;
-    /** The Server sets this when a returned transit journey uses a stop beyond the requested walking reach. */
+    /** Current Server contract: walking reach diagnostics are grouped under this object. */
+    walkingReach?: {
+      nearestOriginStopMeters?: number | null;
+      nearestDestinationStopMeters?: number | null;
+      extended?: true;
+      journeysWithExtendedReach?: number;
+    };
+    /** Legacy fields retained for compatibility with older Server deployments. */
     walkReachExtended?: true;
-    /** Count is bounded to returned journeys that use the extended walking reach. */
     journeysWithExtendedReach?: number;
-    /** Distances to nearest stops measured by the Server; null means no distance was available. */
     nearestOriginStopMeters?: number | null;
     nearestDestinationStopMeters?: number | null;
   };
