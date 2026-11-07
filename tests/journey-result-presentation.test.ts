@@ -76,6 +76,15 @@ describe('journey result presentation data', () => {
     ]), '3 км');
   });
 
+  it('marks legacy synthetic walking distances as approximate', () => {
+    for (const source of ['walking', 'transfer-walk']) {
+      assert.equal(formatJourneyDistanceSummary([
+        leg({ id: source, mode: 'WALK', source, distanceMeters: 900 }),
+        leg({ id: 'bus', mode: 'BUS', distanceMeters: 3000 }),
+      ]), '≈ 3,9 км');
+    }
+  });
+
   it('marks estimated leg fares and route totals as approximate in hryvnias', () => {
     const estimate = leg({ id: 'carpool', mode: 'COMMUNITY', routeName: 'MARSHGO', priceMinor: 12_000, priceStatus: 'DYNAMIC' });
     const result = journey({ legs: [estimate], totalPriceMinor: 12_000, priceStatus: 'DYNAMIC' });

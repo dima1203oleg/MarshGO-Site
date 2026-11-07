@@ -118,6 +118,30 @@ test('keeps a routed walking leg solid', () => {
   assert.equal(model.routeSegments[0]?.approximate, undefined);
 });
 
+test('marks legacy synthetic city-grid walking paths as approximate', () => {
+  for (const source of ['walking', 'transfer-walk']) {
+    const model = buildJourneyRouteMapModel(legs([{
+      id: source, mode: 'WALK', source,
+      origin: { coordinates: [24, 49.8] }, destination: { coordinates: [24.01, 49.81] },
+      routeGeometry: [[24, 49.8], [24.005, 49.805], [24.01, 49.81]],
+    }]));
+
+    assert.equal(model.approximateWalkCount, 1);
+    assert.equal(model.routeSegments[0]?.approximate, true);
+  }
+});
+
+test('uses a dashed estimate for legacy synthetic walk legs when the API omitted the shape', () => {
+  const model = buildJourneyRouteMapModel(legs([{
+    id: 'walk-no-shape', mode: 'WALK', source: 'walking',
+    origin: { coordinates: [24, 49.8] }, destination: { coordinates: [24.01, 49.81] },
+  }]));
+
+  assert.equal(model.approximateWalkCount, 1);
+  assert.deepEqual(model.routeSegments[0]?.coordinates, [[24, 49.8], [24.01, 49.81]]);
+  assert.equal(model.routeSegments[0]?.approximate, true);
+});
+
 test('does not draw estimated bike rental endpoint pairs as road geometry', () => {
   const model = buildJourneyRouteMapModel(legs([
     { id: 'bike-estimate', mode: 'BICYCLE', transportType: 'bike', source: 'static-bike-network-estimate',

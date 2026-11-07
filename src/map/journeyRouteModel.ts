@@ -54,12 +54,13 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     // the endpoints as waypoints and let the details card carry the estimate.
     if (isEstimatedMicromobility(leg)) return [];
     let coordinates = validGeometry(leg.routeGeometry);
-    // A walk leg whose source says "estimate" is a straight line even when the server already
-    // shipped its two endpoints (`walking-straight-line-estimate`), so it must never be drawn
-    // as a solid street trajectory.
-    let approximate = leg.mode === 'WALK' && /estimate|straight-line/i.test(leg.source ?? '');
+    // Only an explicit routing provider/feed proves street geometry. Legacy `walking` and
+    // `transfer-walk` legs come from a synthetic city grid, not a pedestrian graph.
+    // Keep them visible as dashed estimates, never as exact street trajectories.
+    const approximateSource = /estimate|straight-line|^(walking|transfer-walk)$/i.test(leg.source ?? '');
+    let approximate = leg.mode === 'WALK' && approximateSource;
     if (coordinates.length < 2 && leg.mode === 'WALK'
-      && (leg.source === 'walking-estimate' || leg.source === 'straight-line-estimate')
+      && approximateSource
       && validCoordinate(leg.origin?.coordinates) && validCoordinate(leg.destination?.coordinates)
       && (leg.origin.coordinates[0] !== leg.destination.coordinates[0] || leg.origin.coordinates[1] !== leg.destination.coordinates[1])) {
       coordinates = [leg.origin.coordinates, leg.destination.coordinates];

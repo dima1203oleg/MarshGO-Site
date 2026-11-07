@@ -168,7 +168,7 @@ export function formatJourneyDistanceSummary(legs: ApiJourney['legs']): string {
 
   const meters = measured.reduce((sum, leg) => sum + leg.distanceMeters!, 0);
   const complete = legs.length > 0 && measured.length === legs.length;
-  const approximate = measured.some(leg => /estimate|straight-line/i.test(leg.source));
+  const approximate = measured.some(leg => /estimate|straight-line|^(walking|transfer-walk)$/i.test(leg.source));
   const label = formatJourneyDistance(meters);
   if (complete) return approximate ? `≈ ${label}` : label;
   return approximate ? `Частково ≈ ${label}` : `Відомо ${label}`;
