@@ -295,6 +295,21 @@ test('the default card surface is a component-layer rule driven by theme tokens'
   assert.doesNotMatch(marketplace, /bg-\[#f6f8fc\]/, 'a hardcoded light tint cannot flip with the theme');
 });
 
+test('home quick-action cards inherit text, surface, and border colors from the active theme', async () => {
+  const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
+  const base = css.match(/\.home-action-card\s*\{([^}]+)\}/)?.[1] ?? '';
+  const dark = css.match(/html\.dark \.home-action-card\s*\{([^}]+)\}/)?.[1] ?? '';
+
+  for (const block of [base, dark]) {
+    assert.match(block, /--home-ink:\s*var\(--color-marshgo-text\)/);
+    assert.match(block, /--home-sub:\s*var\(--color-marshgo-muted\)/);
+    assert.match(block, /border-color:\s*var\(--color-marshgo-border\)/);
+  }
+  assert.match(base, /background:\s*var\(--home-surface,\s*var\(--color-marshgo-card\)\)/);
+  assert.match(dark, /--home-surface:\s*var\(--color-marshgo-card\)/);
+  assert.doesNotMatch(dark, /!important/);
+});
+
 // Three blues used to ship at once: #1687FF, #0877f9 and #0B63D6, hand-written per component.
 test('a single action blue comes from the token, never a per-component hex', async () => {
   const files = [
