@@ -204,6 +204,12 @@ body {
   --mg-mode-monochrome: #155E95;
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
 
+  /* Credential entry stays navy in either app theme: its fields and labels have a dark-surface
+     contrast contract, while the rest of the product follows the user's selected theme. */
+  --mg-auth-canvas: #071521;
+  --mg-auth-surface: #0B1B2C;
+  --mg-auth-accent: #71C7F2;
+
   /* Radii: measured from the sheet (8/10/16/20/24/28/32 px + pills). */
   --mg-radius-sm: 8px;
   --mg-radius-md: 10px;
@@ -1155,6 +1161,11 @@ body:has(.auth-screen) {
 }
 .auth-intro-screen > .absolute.inset-0 {
   background: linear-gradient(180deg, rgba(7, 21, 33, .66) 0%, rgba(7, 21, 33, .78) 42%, rgba(7, 21, 33, .97) 100%);
+}
+.auth-screen__shade--login {
+  background:
+    radial-gradient(ellipse at 55% 35%, color-mix(in srgb, var(--mg-auth-accent) 8%, transparent), transparent 48%),
+    linear-gradient(180deg, var(--mg-auth-surface), var(--mg-auth-canvas));
 }
 
 html.dark body {
