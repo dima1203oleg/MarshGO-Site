@@ -7,6 +7,21 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 const canonicalDir = resolve(dirname(fileURLToPath(import.meta.url)), '../docs/design/canonical');
+
+test('search provider dialog does not repeat transport type controls', async () => {
+  const [panel, marketplace] = await Promise.all([
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/components/TransportTypesPanel.tsx'), 'utf8'),
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/ProductionMarketplace.tsx'), 'utf8'),
+  ]);
+
+  assert.match(marketplace, /<TransportTypesPanel providersOnly selection=\{transportSelection\}/, 'the search Providers action must open a provider-only dialog');
+  assert.match(marketplace, /<h2 id="transport-picker-title" className="font-extrabold">Провайдери<\/h2>/, 'the dialog title must match its action');
+  assert.match(panel, /!providersOnly && <div className="mb-1 flex items-center justify-between gap-2"/, 'transport controls must stay out of the provider dialog');
+  assert.match(panel, /!compact && !providersOnly && <button type="button" onClick=\{\(\) => setProvidersOpen/, 'the provider dialog must not show a second Configure Providers toggle');
+  assert.match(panel, /providersOnly && selection\.active\.length === 0/, 'an empty provider selection must have a clear status message');
+  assert.doesNotMatch(marketplace, /Обрати на мапі: \\{\(routePlaceField/, 'the duplicated wide map picker must be absent');
+});
+
 const references = [
   ['task-2026-10-13/1-Фото-1.jpg', 'f9d4b61d267cb7ada6041d43f5ebab1c6b434ae8fb7f35e758f4c332bda0505f'],
   ['task-2026-10-13/8-Фото-8.jpg', 'ddf757b52ad00fc36e93b1fe1c45ea519b6612b94f30a0fafb98e163f9f6aa08'],
@@ -271,7 +286,7 @@ test('the default card surface is a component-layer rule driven by theme tokens'
     readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8'),
     readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/ProductionMarketplace.tsx'), 'utf8'),
   ]);
-  const cardBlock = css.match(/@layer components \{\s*\.production-app :is\(article, \[data-surface="card"\]\) \{([\s\S]{0,400}?)\n  \}/);
+  const cardBlock = css.match(/@layer\s+components\s+\{\s*\.production-app\s+:is\(article,\s+\[data-surface="card"\]\)\s+\{([\s\S]{0,400}?)\n\s+\}/);
   assert.ok(cardBlock, 'the card surface must live inside @layer components so screen utilities win');
   assert.match(cardBlock[1], /background-color: var\(--color-marshgo-card\)/, 'the card background must come from the theme token');
   assert.doesNotMatch(css, /html\.dark \.production-app :is\(article[^}]*!important/, 'a !important card override re-freezes the surface against the token');
@@ -339,7 +354,7 @@ test('the results card shows the departure window, the feed route number and a r
   assert.match(panel, /badge: journeyRouteBadge\(segment\.leg\?\.routeName\)/, 'the results strip lost the route number');
   assert.match(mapScreen, /badge: journeyRouteBadge\(leg\.routeName\)/, 'the route sheet strip lost the route number');
   assert.match(strip, /item\.badge/, 'the strip must branch on the route number');
-  assert.match(strip, /className="journey-segment-tile-badge" style=\{\{ \[\'--segment-color\' as string\]: item\.color \}\} title=\{item\.label\}>\{item\.badge\}/,
+  assert.match(strip, /className="journey-segment-tile-badge" style=\{\{ \['--segment-color' as string\]: item\.color \}\} title=\{item\.label\}>\{item\.badge\}/,
     'the pill takes the segment colour through a variable and keeps the mode word as its tooltip');
   assert.match(strip, /className="journey-segment-tile-label" title=\{item\.label\}>\{item\.label\}/,
     'a leg without a route number must still say what the vehicle is');
@@ -390,8 +405,8 @@ test('the compact route lip wraps instead of painting action chips over the pric
 
 // Measured on 2026-11-04 at 390 px: each place row carried two 44 px buttons (map pin + clear), the
 // value column got 179 px and «Аеропорт, Торгмаш, вул. Мічурина» lost 103 px; the seat stepper squeezed
-// its own text to 24 px so «1 пасажир» wrapped under the minus button. The board gives a place row one
-// trailing control, so the map picker became a named control and the wide tiles take the whole row.
+// its own text to 24 px so «1 пасажир» wrapped under the minus button. The destination keeps one compact
+// map pin inside its row; the redundant full-width picker below the fields is removed.
 test('the search screen gives each field the width its value needs', async () => {
   const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
   const [css, marketplace] = await Promise.all([read('../src/index.css'), read('../src/views/ProductionMarketplace.tsx')]);
@@ -405,10 +420,8 @@ test('the search screen gives each field the width its value needs', async () =>
   assert.equal(placeRows.length, 2, 'the place rows left the shared group markup');
   for (const row of placeRows)
     assert.equal((row[0].match(/aria-label="Обрати на мапі"/g) || []).length, 0, 'a second 44 px button in a place row costs the value 52 px of text');
-  assert.equal((searchForm.match(/aria-label="Обрати на мапі"/g) || []).length, 0, 'the search card may only carry the named strip');
-  assert.match(searchForm, /Обрати на мапі: \{\(routePlaceField \?\? 'destination'\) === 'origin' \? 'Звідки' : 'Куди'\}/,
-    'the map picker has to name the field it fills inside the search card now that it left the rows');
-  assert.match(searchForm, /setPicker\(\{ form: 'search', field \}\)/, 'the strip must fill the search route, not another form');
+  assert.equal((searchForm.match(/Обрати на мапі: \{\(routePlaceField/g) || []).length, 0, 'the redundant full-width map picker must stay out of the search card');
+  assert.match(searchForm, /setPicker\(\{ form: 'search', field: 'destination' \}\)/, 'the compact destination map pin must fill the destination field');
   assert.match(searchForm, /<input required title=\{(?:origin|destination) \|\| undefined\}/, 'a clipped address must still be readable in full');
   assert.equal((searchForm.match(/aria-label="Вибрати дату й час (?:відправлення|прибуття)"[\s\S]{0,700}?<ChevronDown/g) || []).length, 0,
     'the chevron inside a date tile is decoration on a control that is already a button, and it costs the value its last characters');
