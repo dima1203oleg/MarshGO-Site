@@ -178,6 +178,19 @@ export function mergeSettledProviderGroups(
     failedCount: results.length - fulfilled.length,
   };
 }
+
+/** Discover provider coverage at both selected journey endpoints, with one unscoped request before either is set. */
+export function providerCoveragePoints(
+  origin: { latitude: number; longitude: number } | null,
+  destination: { latitude: number; longitude: number } | null,
+): Array<{ latitude: number; longitude: number } | undefined> {
+  const points = [origin, destination]
+    .filter((place): place is { latitude: number; longitude: number } => place !== null)
+    .filter((place, index, all) => all.findIndex((candidate) => candidate.latitude === place.latitude
+      && candidate.longitude === place.longitude) === index);
+  return points.length ? points : [undefined];
+}
+
 export function effectiveProviders(selection: TransportSelection, type: TransportTypeId, groups: ApiTransportProviders[] | null): string[] {
   const available = providersForJourneySearch(type, groups);
   const choice = choiceFor(selection, type);

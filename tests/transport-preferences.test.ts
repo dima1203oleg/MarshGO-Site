@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { transportTypes, supportedJourneySearchTypes, activeTypesForSearch, allAvailableTypesSelected, choiceFor, defaultSelection, effectiveProviders, isAllActive, journeyTypesForCategory, mergeProviderGroups, mergeSettledProviderGroups, providersForJourneySearch, selectAll, toggleAvailableTypes, toggleProvider, toggleType, toJourneyPreferences, type TransportSelection } from '../src/domain/transportPreferences';
+import { transportTypes, supportedJourneySearchTypes, activeTypesForSearch, allAvailableTypesSelected, choiceFor, defaultSelection, effectiveProviders, isAllActive, journeyTypesForCategory, mergeProviderGroups, mergeSettledProviderGroups, providerCoveragePoints, providersForJourneySearch, selectAll, toggleAvailableTypes, toggleProvider, toggleType, toJourneyPreferences, type TransportSelection } from '../src/domain/transportPreferences';
 
 const groups = [
   { transportType: 'carpool', providers: [{ id: 'carpool:MARSHGO', name: 'MARSHGO Community', available: true, cities: [], sources: ['marshgo'], services: [] }] },
@@ -65,6 +65,21 @@ describe('transport types and providers', () => {
       { status: 'rejected', reason: new Error('origin unavailable') },
       { status: 'rejected', reason: new Error('destination unavailable') },
     ]), null);
+  });
+
+  it('queries both distinct journey endpoints and deduplicates identical points', () => {
+    assert.deepEqual(providerCoveragePoints(
+      { latitude: 49.84, longitude: 24.03 },
+      { latitude: 50.00, longitude: 24.00 },
+    ), [
+      { latitude: 49.84, longitude: 24.03 },
+      { latitude: 50.00, longitude: 24.00 },
+    ]);
+    assert.deepEqual(providerCoveragePoints(
+      { latitude: 49.84, longitude: 24.03 },
+      { latitude: 49.84, longitude: 24.03 },
+    ), [{ latitude: 49.84, longitude: 24.03 }]);
+    assert.deepEqual(providerCoveragePoints(null, null), [undefined]);
   });
 
   it('starts with implemented route types selected and ignores attempts to select unsupported tiles', () => {
