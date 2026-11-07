@@ -31,6 +31,6 @@ describe('home banner geometry and profile trust ink', () => {
     const line = marketplace().split('\n').find((row) => row.includes('Профіль не верифіковано'));
     assert.ok(line, 'the profile screen must state the verification status');
     assert.doesNotMatch(line, /className="[^"]*text-emerald/, 'the success colour must not be inherited by both branches');
-    assert.match(line, /is_verified \? 'text-emerald-700' : 'text-\[#526477\] dark:text-\[#B4C0CF\]'/);
+    assert.match(line, /is_verified \? 'text-emerald-700' : 'text-\[#526477\] dark:text-\[var\(--mg-ink-secondary\)\]'/);
   });
 });

@@ -83,7 +83,7 @@ class ThemeService {
     // Update meta theme-color for mobile status bar
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', isDarkMode ? '#040D1B' : '#081B35');
+      metaThemeColor.setAttribute('content', isDarkMode ? '#071521' : '#F2F7FB');
     }
   }
 

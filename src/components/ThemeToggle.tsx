@@ -34,7 +34,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       <div
         role="group"
         aria-label="Тема оформлення"
-        className={`flex items-center gap-1 rounded-xl border border-slate-200 bg-[#F5F8FD] p-1 text-xs dark:border-slate-700 dark:bg-[#122542] ${className}`}
+        className={`flex items-center gap-1 rounded-xl border border-slate-200 bg-[#F5F8FD] p-1 text-xs dark:border-slate-700 dark:bg-[var(--mg-surface-elevated)] ${className}`}
       >
         {themeOptions.map(({ mode, label, Icon, iconClass }) => {
           const active = theme === mode;
@@ -46,7 +46,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
               onClick={() => themeService.setTheme(mode)}
               className={`mg-press flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 font-bold transition-colors duration-[var(--mg-dur-fast)] ${
                 active
-                  ? 'bg-white text-[#14243B] shadow-xs dark:bg-[#0D1E36] dark:text-white'
+                  ? 'bg-white text-[#14243B] shadow-xs dark:bg-[var(--mg-surface-secondary)] dark:text-white'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >

@@ -134,7 +134,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
 
   return (
     <div
-      className={`bg-white dark:bg-[#0D1E36] rounded-2xl border border-[#DFE7F1] dark:border-[#1D3455] p-4 sm:p-5 shadow-sm space-y-3.5 transition-all ${className}`}
+      className={`bg-white dark:bg-[var(--mg-surface-secondary)] rounded-2xl border border-[#DFE7F1] dark:border-[var(--mg-border-medium)] p-4 sm:p-5 shadow-sm space-y-3.5 transition-all ${className}`}
     >
       {/* Header with Title and Savings Badge */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -182,7 +182,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
           </div>
 
           {/* Interactive Weekly Bar Chart */}
-          <div className="bg-[#F5F8FD] dark:bg-[#122542] p-3 sm:p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
+          <div className="bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] p-3 sm:p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
             {/* Bars Canvas */}
             <div className="h-44 sm:h-48 pt-6 pb-2 flex items-end justify-between gap-1.5 sm:gap-3">
               {weekData.map((day) => {
@@ -296,7 +296,7 @@ export const WeeklyPriceComparisonChart: React.FC<WeeklyPriceComparisonChartProp
           </div>
 
           {/* Active Selected Day Micro-Breakdown */}
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0A1A30] border border-slate-200/80 dark:border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-[var(--mg-surface-primary)] border border-slate-200/80 dark:border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-[#1769F4] dark:text-sky-300 flex items-center justify-center font-extrabold text-xs">
                 {selectedDayInfo.dayShort}

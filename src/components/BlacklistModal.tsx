@@ -128,7 +128,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
       <div
-        className="bg-white dark:bg-[#0D1E36] w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden"
+        className="bg-white dark:bg-[var(--mg-surface-secondary)] w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Toast Alert */}
@@ -167,7 +167,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 px-4 pt-2 bg-slate-50 dark:bg-[#0A1A30]">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 px-4 pt-2 bg-slate-50 dark:bg-[var(--mg-surface-primary)]">
           <button
             type="button"
             onClick={() => setActiveTab('list')}
@@ -207,7 +207,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                     onClick={() => setRoleFilter('all')}
                     className={`px-3 py-1 rounded-lg font-bold transition flex-1 sm:flex-none ${
                       roleFilter === 'all'
-                        ? 'bg-white dark:bg-[#0D1E36] text-[#14243B] dark:text-white shadow-xs'
+                        ? 'bg-white dark:bg-[var(--mg-surface-secondary)] text-[#14243B] dark:text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400'
                     }`}
                   >
@@ -218,7 +218,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                     onClick={() => setRoleFilter('driver')}
                     className={`px-3 py-1 rounded-lg font-bold transition flex-1 sm:flex-none ${
                       roleFilter === 'driver'
-                        ? 'bg-white dark:bg-[#0D1E36] text-[#14243B] dark:text-white shadow-xs'
+                        ? 'bg-white dark:bg-[var(--mg-surface-secondary)] text-[#14243B] dark:text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400'
                     }`}
                   >
@@ -229,7 +229,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                     onClick={() => setRoleFilter('passenger')}
                     className={`px-3 py-1 rounded-lg font-bold transition flex-1 sm:flex-none ${
                       roleFilter === 'passenger'
-                        ? 'bg-white dark:bg-[#0D1E36] text-[#14243B] dark:text-white shadow-xs'
+                        ? 'bg-white dark:bg-[var(--mg-surface-secondary)] text-[#14243B] dark:text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-400'
                     }`}
                   >
@@ -244,7 +244,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Пошук у чорному списку..."
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white"
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-[var(--mg-surface-primary)] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white"
                   />
                 </div>
               </div>
@@ -314,7 +314,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleUnblock(item)}
-                        className="self-end sm:self-center px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0D1E36] hover:bg-red-50 dark:hover:bg-red-950 text-slate-700 dark:text-slate-200 hover:text-red-600 text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 shadow-xs"
+                        className="self-end sm:self-center px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-[var(--mg-surface-secondary)] hover:bg-red-50 dark:hover:bg-red-950 text-slate-700 dark:text-slate-200 hover:text-red-600 text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 shadow-xs"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Розблокувати</span>
@@ -323,7 +323,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-10 px-4 bg-[#F5F8FD] dark:bg-[#0A1A30] rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="text-center py-10 px-4 bg-[#F5F8FD] dark:bg-[var(--mg-surface-primary)] rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
@@ -396,7 +396,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                     if (formError) setFormError('');
                   }}
                   placeholder="Наприклад: Віктор Кравченко"
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white"
+                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-[var(--mg-surface-primary)] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white"
                 />
 
                 {/* Quick suggestions */}
@@ -429,7 +429,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                   value={newUserPhone}
                   onChange={(e) => setNewUserPhone(e.target.value)}
                   placeholder="+380 67 000 0000"
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white font-mono"
+                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-[var(--mg-surface-primary)] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white font-mono"
                 />
               </div>
 
@@ -441,7 +441,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                 <select
                   value={newReason}
                   onChange={(e) => setNewReason(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white"
+                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-[var(--mg-surface-primary)] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white"
                 >
                   {COMMON_REASONS.map((r) => (
                     <option key={r} value={r}>
@@ -461,7 +461,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
                   value={newNotes}
                   onChange={(e) => setNewNotes(e.target.value)}
                   placeholder="Вкажіть деталі інциденту для себе..."
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-[#0A1A30] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white resize-none"
+                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-[var(--mg-surface-primary)] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:border-red-500 text-[#14243B] dark:text-white resize-none"
                 />
               </div>
 
@@ -487,7 +487,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
         </div>
 
         {/* Modal Footer Policy Note */}
-        <div className="p-3.5 bg-slate-50 dark:bg-[#0A1A30] border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="p-3.5 bg-slate-50 dark:bg-[var(--mg-surface-primary)] border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <Info className="w-4 h-4 text-[#1769F4] shrink-0" />
           <span>
             Користувачі не сповіщаються про потрапляння у ваш чорний список. Пропозиції заблокованих водіїв виключаються з видачі пошуку.

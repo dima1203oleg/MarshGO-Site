@@ -168,9 +168,9 @@ test('prefers-reduced-motion still neutralizes every animation and transition', 
 test('search trip details share one control family with thumb-sized steppers', async () => {
   const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
   const marketplace = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/ProductionMarketplace.tsx'), 'utf8');
-  assert.match(css, /\.search-screen \.journey-search-card \.trip-tile \{[\s\S]*?min-height: 3\.5rem;[\s\S]*?background: #f6f8fc;/,
+  assert.match(css, /\.search-screen \.journey-search-card \.trip-tile \{[\s\S]*?min-height: 3\.5rem;[\s\S]*?background: var\(--mg-surface-secondary\);/,
     'date, time and seats stopped sharing one surface, height and radius');
-  assert.match(css, /html\.dark \.search-screen \.journey-search-card \.trip-tile \{ background: #16202B; color: #F5F9FF; \}/,
+  assert.match(css, /html\.dark \.search-screen \.journey-search-card \.trip-tile \{ background: var\(--mg-surface-secondary\); color: var\(--mg-ink-primary\); \}/,
     'the dark theme must remap the same family, not each tile again');
   assert.match(marketplace, /className="trip-tile trip-tile--stepper/, 'the seat stepper left the shared tile class');
   assert.match(marketplace, /className="size-11[^"]*" aria-label="Менше пасажирів"/, 'seat steppers must be 44x44 pt, not 24 px wide');

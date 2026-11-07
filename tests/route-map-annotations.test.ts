@@ -142,10 +142,10 @@ test('dark basemap recolours the vector style but leaves overlay paint untouched
 
   const dark = darkenMapStyle(style) as unknown as { layers: Array<{ id: string; paint: Record<string, unknown> }> };
   const byId = new Map(dark.layers.map(layer => [layer.id, layer.paint]));
-  assert.equal(byId.get('background')?.['background-color'], '#0B1119');
-  assert.equal(byId.get('water')?.['fill-color'], '#0A1B2B');
-  assert.equal(byId.get('highway-primary')?.['line-color'], '#26384E');
-  assert.equal(byId.get('place-labels')?.['text-color'], '#C9D6E6');
+  assert.equal(byId.get('background')?.['background-color'], '#071521');
+  assert.equal(byId.get('water')?.['fill-color'], '#0B1B2C');
+  assert.equal(byId.get('highway-primary')?.['line-color'], '#3A5674');
+  assert.equal(byId.get('place-labels')?.['text-color'], '#AABFD1');
   assert.equal(byId.get('marshgo-route')?.['line-color'], '#8B3CE6');
   // The source style is not mutated in place.
   assert.equal((style as unknown as { layers: Array<{ paint: Record<string, unknown> }> }).layers[0]!.paint['background-color'], '#FFFFFF');

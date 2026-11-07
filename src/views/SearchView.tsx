@@ -353,7 +353,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
               </button>
 
               {/* Quick Sorting chips in header (desktop) */}
-              <div className="hidden xl:flex items-center gap-1 bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200 dark:border-slate-700 rounded-xl p-1 text-xs">
+              <div className="hidden xl:flex items-center gap-1 bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] border border-slate-200 dark:border-slate-700 rounded-xl p-1 text-xs">
                 <button
                   type="button"
                   onClick={() => setSortBy('cheapest')}
@@ -637,7 +637,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
             </div>
 
             {/* Quick Sorting Chips Bar directly above results */}
-            <div className="flex items-center justify-between gap-2 flex-wrap bg-white dark:bg-[#0D1E36] p-2.5 sm:p-3 rounded-2xl border border-[#DFE7F1] dark:border-[#1D3455] shadow-xs">
+            <div className="flex items-center justify-between gap-2 flex-wrap bg-white dark:bg-[var(--mg-surface-secondary)] p-2.5 sm:p-3 rounded-2xl border border-[#DFE7F1] dark:border-[var(--mg-border-medium)] shadow-xs">
               <div className="flex items-center gap-1.5 text-xs text-[#14243B] dark:text-white font-extrabold shrink-0">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-[#1769F4]" />
                 <span>Сортування:</span>
@@ -650,7 +650,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 ${
                     sortBy === 'cheapest'
                       ? 'bg-[#1769F4] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
-                      : 'bg-[#F5F8FD] dark:bg-[#122542] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
+                      : 'bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
                   }`}
                 >
                   <DollarSign className="w-3.5 h-3.5" />
@@ -663,7 +663,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 ${
                     sortBy === 'fastest'
                       ? 'bg-[#1769F4] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
-                      : 'bg-[#F5F8FD] dark:bg-[#122542] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
+                      : 'bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
                   }`}
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -676,7 +676,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 ${
                     sortBy === 'reliable'
                       ? 'bg-[#1769F4] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
-                      : 'bg-[#F5F8FD] dark:bg-[#122542] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
+                      : 'bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
                   }`}
                 >
                   <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -689,7 +689,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 ${
                     sortBy === 'optimal'
                       ? 'bg-[#1769F4] text-white shadow-xs ring-2 ring-blue-200 dark:ring-blue-900'
-                      : 'bg-[#F5F8FD] dark:bg-[#122542] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
+                      : 'bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70'
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" />

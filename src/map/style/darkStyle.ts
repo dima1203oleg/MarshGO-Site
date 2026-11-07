@@ -8,21 +8,21 @@ type MutableLayer = {
 };
 
 const DARK = {
-  background: '#0B1119',
-  water: '#0A1B2B',
-  waterway: '#102A40',
-  park: '#0E2119',
-  land: '#0C1520',
-  building: '#151F2D',
-  roadMajor: '#26384E',
-  roadMid: '#1D2B3C',
-  roadMinor: '#16222F',
-  casing: '#080E16',
-  rail: '#2B3B50',
-  boundary: '#223248',
-  label: '#C9D6E6',
-  halo: '#070D15',
-  icon: '#A9BCD0',
+  background: '#071521',
+  water: '#0B1B2C',
+  waterway: '#1D3B58',
+  park: '#10263D',
+  land: '#0B1B2C',
+  building: '#10263D',
+  roadMajor: '#3A5674',
+  roadMid: '#1D3B58',
+  roadMinor: '#172B44',
+  casing: '#071521',
+  rail: '#327FC3',
+  boundary: '#1D3B58',
+  label: '#AABFD1',
+  halo: '#071521',
+  icon: '#71C7F2',
 };
 
 const isCasing = (id: string) => /casing|outline|halo/i.test(id);
@@ -34,7 +34,7 @@ const isWater = (id: string, sourceLayer: string) => /water|ocean|sea|lake|river
 const isPark = (id: string, sourceLayer: string) => /park|wood|forest|grass|garden|playground|pitch|cemetery|nature|landcover|landuse/i.test(`${id} ${sourceLayer}`);
 
 /**
- * Recolour the configured light vector style into the MARSHGO graphite-blue
+ * Recolour the configured light vector style into the MARSHGO navy-blue
  * night basemap. The deployment only ships a light style URL, and a canvas CSS
  * filter would also invert route and label colours, so the dark palette is
  * applied layer by layer while the provider's geometry, sprites and labels stay

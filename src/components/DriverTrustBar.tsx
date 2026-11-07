@@ -105,7 +105,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
   }
 
   return (
-    <div className={`bg-white dark:bg-[#0D1E36] rounded-2xl border border-[#DFE7F1] dark:border-[#1D3455] p-4 sm:p-5 shadow-sm space-y-4 transition-all ${className}`}>
+    <div className={`bg-white dark:bg-[var(--mg-surface-secondary)] rounded-2xl border border-[#DFE7F1] dark:border-[var(--mg-border-medium)] p-4 sm:p-5 shadow-sm space-y-4 transition-all ${className}`}>
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -128,7 +128,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
         </div>
 
         {/* Rating Score Badge */}
-        <div className="flex items-center gap-3 bg-[#F5F8FD] dark:bg-[#122542] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700/60 self-start sm:self-auto">
+        <div className="flex items-center gap-3 bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700/60 self-start sm:self-auto">
           <div className="flex items-center gap-1.5 text-amber-500 font-extrabold text-base">
             <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
             <span>{clampedRating.toFixed(1)}</span>
@@ -179,7 +179,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
 
       {/* Trust Factors Micro-Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
-        <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200/60 dark:border-slate-700/50">
+        <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] border border-slate-200/60 dark:border-slate-700/50">
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
             <Star className="w-3 h-3 text-amber-500" />
             <span>Середня оцінка</span>
@@ -189,7 +189,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
           </div>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200/60 dark:border-slate-700/50">
+        <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] border border-slate-200/60 dark:border-slate-700/50">
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
             <Award className="w-3 h-3 text-blue-500" />
             <span>Успішні рейси</span>
@@ -199,7 +199,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
           </div>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200/60 dark:border-slate-700/50">
+        <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] border border-slate-200/60 dark:border-slate-700/50">
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
             <TrendingUp className="w-3 h-3 text-emerald-500" />
             <span>Пунктуальність</span>
@@ -209,7 +209,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
           </div>
         </div>
 
-        <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[#122542] border border-slate-200/60 dark:border-slate-700/50">
+        <div className="p-2.5 rounded-xl bg-[#F5F8FD] dark:bg-[var(--mg-surface-elevated)] border border-slate-200/60 dark:border-slate-700/50">
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 font-semibold">
             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
             <span>Документи</span>
@@ -236,7 +236,7 @@ export const DriverTrustBar: React.FC<DriverTrustBarProps> = ({
 
         {/* Detailed Breakdown Panel */}
         {showBreakdown && (
-          <div className="mt-3 p-3.5 rounded-xl bg-blue-50/60 dark:bg-[#0A1A30] border border-blue-200/60 dark:border-[#1E3A8A]/50 text-xs space-y-2.5 animate-fadeIn">
+          <div className="mt-3 p-3.5 rounded-xl bg-blue-50/60 dark:bg-[var(--mg-surface-primary)] border border-blue-200/60 dark:border-[#1E3A8A]/50 text-xs space-y-2.5 animate-fadeIn">
             <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
               Індекс довіри MARSHGO розраховується автоматичним алгоритмом на основі підтверджених відгуків після кожної поїздки:
             </p>
