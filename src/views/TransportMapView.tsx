@@ -29,19 +29,21 @@ const chips: Array<{ label: string; id: TransportLayerId; Icon: LucideIcon }> = 
 
 /** Arrival zoom: above the vehicle gate, so a city chosen from the dropdown shows live movement at once. */
 const arrivalZoom = minZoom.vehicles + 0.2;
+const normalizedCity = (name: string) => name.trim().toLocaleLowerCase('uk-UA').replace(/[’'`]/g, '');
 
 /** 2D map for planning: city transport is on until the user chooses otherwise, and that choice survives leaving the screen. */
-export function TransportMapView({ onBack }: { onBack: () => void }) {
+export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack: () => void; cityName: string; onCitySelected: (name: string) => void }) {
   const [status, setStatus] = useState<MapStatus>('loading');
   const [hint, setHint] = useState<string | null>(null);
+  const [cityRegistryHint, setCityRegistryHint] = useState<string | null>(null);
   const [cities, setCities] = useState<ApiTransportCity[]>([]);
-  const [cityId, setCityId] = useState('kyiv');
+  const [cityId, setCityId] = useState('');
   const [selected, setSelected] = useState(getTransportLayers());
   const [layerState, setLayerState] = useState(getLayerAvailabilityState);
   const [quality, setQuality] = useState<VehicleQuality | null>(getVehicleQuality());
   const [mapLayer, setLocalMapLayer] = useState<MapLayer>(getMapLayer);
   const [mapPerspective, setLocalPerspective] = useState<MapPerspective>(getMapPerspective);
-  const adapter = useRef<MapAdapter | null>(null);
+  const [mapAdapter, setMapAdapter] = useState<MapAdapter | null>(null);
   const selectedCity = useMemo(() => cities.find((city) => city.id === cityId) ?? null, [cities, cityId]);
   useEffect(() => subscribeTransportLayers(setSelected), []);
   useEffect(() => subscribeLayerAvailability(setLayerState), []);
@@ -68,23 +70,28 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
     void productionApi.transportCities(controller.signal).then((response) => {
       if (controller.signal.aborted) return;
       setCities(response);
-      if (!response.some((city) => city.id === cityId) && response[0]) setCityId(response[0].id);
     }).catch(() => { if (!controller.signal.aborted) setHint('Не вдалося завантажити список міст.'); });
     return () => controller.abort();
   }, []);
+  useEffect(() => {
+    if (!cities.length) return;
+    const match = cities.find((city) => normalizedCity(city.name) === normalizedCity(cityName));
+    setCityId(match?.id ?? '');
+    setCityRegistryHint(cityName && !match ? `Для міста «${cityName}» у реєстрі немає перевіреного каталогу міського транспорту.` : null);
+  }, [cityName, cities]);
+  useEffect(() => {
+    if (!selectedCity?.bbox || !mapAdapter) return;
+    mapAdapter.focus([(selectedCity.bbox[0] + selectedCity.bbox[2]) / 2, (selectedCity.bbox[1] + selectedCity.bbox[3]) / 2], arrivalZoom);
+  }, [selectedCity, mapAdapter]);
   // Leaving the screen already destroys the map adapter (polling, sources, layers) in MarshGoMap;
   // clearing the selection here would silently store "no layers" and blank the map on the next visit.
-  const located = useRef(false);
   const onAdapter = (next: MapAdapter | null) => {
-    adapter.current = next;
-    if (!next || located.current || !('geolocation' in navigator)) return;
-    located.current = true;
-    navigator.geolocation.getCurrentPosition((position) => next.focus([position.coords.longitude, position.coords.latitude], 13), () => next.focus([30.5234, 50.4501], arrivalZoom), { timeout: 8000, maximumAge: 300_000 });
+    setMapAdapter(next);
   };
   const chooseCity = (nextId: string) => {
     setCityId(nextId);
     const city = cities.find((entry) => entry.id === nextId);
-    if (city?.bbox) adapter.current?.focus([(city.bbox[0] + city.bbox[2]) / 2, (city.bbox[1] + city.bbox[3]) / 2], arrivalZoom);
+    if (city) onCitySelected(city.name);
   };
   return <main className="relative h-[100svh] overflow-hidden bg-[#dbeafe] text-[#17243a] dark:bg-[#0B141C] dark:text-[#E7F0FA]">
     <MarshGoMap route={[]} overlays onStatus={setStatus} onTransportHint={setHint} onAdapter={onAdapter}/>
@@ -94,6 +101,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
         <h1 className="flex-1 truncate px-1 text-base font-extrabold">Карта транспорту</h1>
         {cities.length > 0 && <label className="sr-only" htmlFor="transport-city">Місто</label>}
         {cities.length > 0 && <select id="transport-city" aria-label="Місто на транспортній карті" value={cityId} onChange={(event) => chooseCity(event.target.value)} className="max-w-28 rounded-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-[#16202B] dark:text-slate-200">
+          <option value="">Оберіть місто</option>
           {cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}
         </select>}
       </div>
@@ -107,6 +115,7 @@ export function TransportMapView({ onBack }: { onBack: () => void }) {
         })}
       </div>
       {hint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold leading-snug text-slate-600 shadow dark:bg-[#111820]/95 dark:text-slate-300">{hint}</p>}
+      {cityRegistryHint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold leading-snug text-slate-600 shadow dark:bg-[#111820]/95 dark:text-slate-300">{cityRegistryHint}</p>}
       {quality && <p role="status" aria-label="Якість даних живого транспорту" className="pointer-events-auto self-start shadow"><StatusBadge status={quality.status} label={quality.label} size="sm"/></p>}
       {selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow">
         {selectedCity.routeCount} маршрутів · {selectedCity.stopCount} зупинок · статичний розклад{selectedCity.realtimeAvailable ? ' · realtime джерело підключене' : ''}

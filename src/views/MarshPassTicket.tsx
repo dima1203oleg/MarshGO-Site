@@ -19,6 +19,9 @@ export type MarshPassTicketProps = {
   durationSeconds?: number | null;
   priceLabel: string;
   seatCount: number;
+  status: string;
+  bookingReference: string;
+  driverName: string;
   token: string;
   onClose: () => void;
   onRefresh?: () => void;
@@ -26,7 +29,7 @@ export type MarshPassTicketProps = {
 };
 
 /** A boarding pass keeps its own navy contract in both themes, so its palette is scoped here rather than inherited from the page. */
-export function MarshPassTicket({ originName, destinationName, departureAt, arrivalAt, durationSeconds, priceLabel, seatCount, token, onClose, onRefresh, onCancelBooking }: MarshPassTicketProps) {
+export function MarshPassTicket({ originName, destinationName, departureAt, arrivalAt, durationSeconds, priceLabel, seatCount, status, bookingReference, driverName, token, onClose, onRefresh, onCancelBooking }: MarshPassTicketProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [tokenRevealed, setTokenRevealed] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -34,7 +37,20 @@ export function MarshPassTicket({ originName, destinationName, departureAt, arri
   const arrival = arrivalAt ? new Date(arrivalAt) : null;
   const hasDeparture = !Number.isNaN(departure.getTime());
   const hasArrival = Boolean(arrival && !Number.isNaN(arrival.getTime()));
-  const durationLabel = durationSeconds && durationSeconds > 0 ? formatJourneyDuration(durationSeconds) : '—';
+  const durationLabel = durationSeconds && durationSeconds > 0 ? formatJourneyDuration(durationSeconds) : '';
+  const canBoard = ['confirmed', 'boarding'].includes(status) && Boolean(token.trim());
+  const statusLabel: Record<string, string> = {
+    confirmed: 'Бронювання підтверджено',
+    boarding: 'Посадка дозволена',
+    in_progress: 'Поїздка триває',
+    completed: 'Поїздку завершено',
+    cancelled: 'Скасовано',
+    expired: 'Термін дії минув',
+  };
+  const ticketStatus = statusLabel[status] ?? 'Статус бронювання оновлено';
+  const statusTone = status === 'confirmed' || status === 'boarding'
+    ? 'text-[var(--pass-confirm)] bg-[var(--pass-confirm-surface)] border-[var(--pass-confirm)]/45'
+    : 'text-[var(--pass-ink-muted)] bg-[var(--pass-stroke)]/10 border-[var(--pass-stroke)]/35';
   const actions = [onRefresh ? { key: 'refresh', label: 'Оновити квиток', run: onRefresh } : null,
     onCancelBooking ? { key: 'cancel', label: 'Скасувати поїздку', run: onCancelBooking } : null].filter(Boolean) as Array<{ key: string; label: string; run: () => void }>;
 
@@ -84,9 +100,9 @@ export function MarshPassTicket({ originName, destinationName, departureAt, arri
             <span aria-hidden className="flex h-9 w-9 items-center justify-center rounded-[var(--mg-radius-md)] bg-[linear-gradient(145deg,var(--pass-badge-top),var(--pass-badge-bottom))] text-base font-extrabold text-white">M</span>
             <span className="text-[15px] font-bold tracking-[.04em] text-[var(--pass-ink)]">MARSHGO</span>
           </div>
-          <span className="flex items-center gap-1.5 rounded-[var(--mg-radius-pill)] border border-[var(--pass-confirm)]/45 bg-[var(--pass-confirm-surface)] px-2.5 py-1 text-xs font-bold text-[var(--pass-confirm)]">
-            <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5"><path d="M3 8.5 6.2 11.7 13 4.9" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            Місце підтверджено
+          <span className={`flex items-center gap-1.5 rounded-[var(--mg-radius-pill)] border px-2.5 py-1 text-xs font-bold ${statusTone}`}>
+            {canBoard && <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5"><path d="M3 8.5 6.2 11.7 13 4.9" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+            {ticketStatus}
           </span>
         </div>
 
@@ -117,34 +133,30 @@ export function MarshPassTicket({ originName, destinationName, departureAt, arri
         </div>
 
         <div className="relative mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[15px] font-semibold text-[var(--pass-ink)]">
-          <span className="flex items-center gap-2">
+          {hasDeparture && <span className="flex min-w-0 items-center gap-2">
             <CalendarDays aria-hidden className="h-[18px] w-[18px] text-[var(--pass-stroke)]" strokeWidth={2} />
-            {hasDeparture ? dayFormat.format(departure) : '—'}
-          </span>
-          <span aria-hidden className="h-4 w-px bg-[var(--pass-stroke)]/40" />
-          <span className="flex items-center gap-2">
-            <Clock3 aria-hidden className="h-[18px] w-[18px] text-[var(--pass-stroke)]" strokeWidth={2} />
-            {hasDeparture ? timeFormat.format(departure) : '—'} <span aria-hidden>→</span> {hasArrival ? timeFormat.format(arrival!) : '—'}
-          </span>
+            {dayFormat.format(departure)} · {timeFormat.format(departure)}
+          </span>}
+          {hasArrival && <><span aria-hidden className="h-4 w-px bg-[var(--pass-stroke)]/40" /><span className="flex items-center gap-2"><Clock3 aria-hidden className="h-[18px] w-[18px] text-[var(--pass-stroke)]" strokeWidth={2} />Прибуття {timeFormat.format(arrival!)}</span></>}
         </div>
-        <p className="relative mt-3 flex items-center justify-center gap-2 text-[15px] font-bold text-[var(--pass-ink)]">
+        {durationLabel && <p className="relative mt-3 flex items-center justify-center gap-2 text-[15px] font-bold text-[var(--pass-ink)]">
           <Timer aria-hidden className="h-[18px] w-[18px] text-[var(--pass-stroke)]" strokeWidth={2} />
           {durationLabel}
-        </p>
+        </p>}
 
         <div className="relative my-5 border-t border-dashed border-[var(--pass-stroke)]/55">
           <span aria-hidden className="absolute -left-5 -top-3 h-6 w-6 rounded-full border-[1.5px] border-[var(--pass-stroke)] bg-[var(--pass-screen)]" />
           <span aria-hidden className="absolute -right-5 -top-3 h-6 w-6 rounded-full border-[1.5px] border-[var(--pass-stroke)] bg-[var(--pass-screen)]" />
         </div>
 
-        <div className="relative flex items-center gap-4">
-          <div className="shrink-0 rounded-[var(--mg-radius-lg)] bg-white p-2">
-            <TicketQr token={token} size={124} />
-          </div>
+        <div className="relative flex flex-wrap items-center gap-4">
+          {canBoard ? <div className="shrink-0 rounded-[var(--mg-radius-lg)] bg-white p-2"><TicketQr token={token} size={124} /></div> : <div role="status" className="grid min-h-[124px] min-w-[124px] place-items-center rounded-[var(--mg-radius-lg)] border border-dashed border-[var(--pass-stroke)]/50 px-3 text-center text-xs font-semibold text-[var(--pass-ink-muted)]">QR недоступний для поточного статусу</div>}
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-[var(--pass-ink-secondary)]">Попутка · {seatsLabel(seatCount)}</p>
             <p className="mt-1 whitespace-nowrap text-[26px] font-extrabold leading-none text-[var(--pass-ink)]">{priceLabel}</p>
-            <p className="mt-3 text-[13px] font-semibold text-[var(--pass-ink-muted)]">QR для посадки</p>
+            {driverName && <p className="mt-2 truncate text-xs font-semibold text-[var(--pass-ink-secondary)]">Водій: {driverName}</p>}
+            <p className="mt-2 break-all text-xs font-semibold text-[var(--pass-ink-muted)]">Бронювання № {bookingReference}</p>
+            <p className="mt-2 text-[13px] font-semibold text-[var(--pass-ink-muted)]">{canBoard ? 'QR для посадки' : 'Зверніться до розділу поїздок, щоб оновити статус'}</p>
           </div>
         </div>
 
@@ -153,12 +165,13 @@ export function MarshPassTicket({ originName, destinationName, departureAt, arri
             type="button"
             data-testid="booking-ticket-token-reveal"
             aria-expanded={tokenRevealed}
+            disabled={!canBoard}
             onClick={() => setTokenRevealed((revealed) => !revealed)}
             className="min-h-11 w-full rounded-[var(--mg-radius-md)] border border-[var(--pass-stroke)]/45 bg-[var(--pass-stroke)]/10 px-3 text-[13px] font-bold text-[var(--pass-ink)] transition active:scale-[.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--pass-stroke)]"
           >
-            {tokenRevealed ? 'Сховати текстовий токен' : 'Немає камери? Показати текстовий токен'}
+            {canBoard ? (tokenRevealed ? 'Сховати текстовий токен' : 'Немає камери? Показати текстовий токен') : 'Текстовий токен недоступний'}
           </button>
-          {tokenRevealed && <code data-testid="booking-ticket-token" className="mt-2 block max-h-24 overflow-auto break-all rounded-[var(--mg-radius-md)] bg-[var(--pass-stroke)]/10 p-3 text-[12px] leading-4 text-[var(--pass-ink)]">
+          {tokenRevealed && canBoard && <code data-testid="booking-ticket-token" className="mt-2 block max-h-24 overflow-auto break-all rounded-[var(--mg-radius-md)] bg-[var(--pass-stroke)]/10 p-3 text-[12px] leading-4 text-[var(--pass-ink)]">
             {token}
           </code>}
         </div>

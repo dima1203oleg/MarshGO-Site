@@ -15,11 +15,16 @@ describe('home banner geometry and profile trust ink', () => {
     }
   });
 
-  it('keeps the banner media and scrim filling the content-sized card', () => {
-    const banner = hero().split('\n').find((line) => line.includes('home-canonical-banner home-banner'));
-    assert.ok(banner, 'the canonical banner must keep overflow-hidden for its media layer');
+  it('keeps the MarshPass promotion compact, tokenized, and free of fabricated content', () => {
+    const source = hero();
+    const banner = source.split('\n').find((line) => line.includes('home-marshpass-promo'));
+    assert.ok(banner, 'the canonical MarshPass promotion must be content-sized');
     assert.match(banner, /overflow-hidden/);
-    assert.match(hero(), /home-banner-media absolute inset-0/);
+    assert.match(banner, /onClick=\{onOpenTrips\}/);
+    assert.match(source, /Твій шлях\. Один квиток\./);
+    assert.doesNotMatch(banner, /Куди завгодно|0% комісії|Отримати квиток/);
+    assert.match(css(), /\.home-marshpass-promo::before/);
+    assert.match(css(), /\.home-marshpass-promo__route/);
   });
 
   it('renders an unverified profile in neutral ink instead of the success colour', () => {

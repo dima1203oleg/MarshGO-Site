@@ -8,5 +8,5 @@ export interface MarshPassHomeCandidate {
 export function selectHomeMarshPasses<T extends MarshPassHomeCandidate>(items: T[]): T[] {
   return items.filter((item) => item.kind === 'booking'
     && !item.currentUserIsDriver
-    && ['confirmed', 'boarding', 'in_progress'].includes(item.status));
+    && ['confirmed', 'boarding'].includes(item.status));
 }

@@ -274,6 +274,50 @@ html.dark .app-header {
   border-bottom: 1px solid rgba(83, 107, 134, .18);
 }
 html.dark .app-header > div:first-child strong { color: #F5F9FF; }
+.app-header-brand-copy { flex: 0 1 auto; }
+.current-city-selector-trigger { max-width: 9rem; }
+.current-city-selector-label { max-width: 6rem; }
+.home-marshpass-promo { isolation: isolate; min-height: clamp(10rem, 20svh, 11.75rem); }
+.home-marshpass-promo::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: radial-gradient(ellipse at 88% 20%, var(--mg-blue-tint), transparent 48%);
+  content: "";
+  opacity: .72;
+  pointer-events: none;
+}
+.home-marshpass-promo__route {
+  position: absolute;
+  top: 47%;
+  right: 1.25rem;
+  width: min(42%, 10rem);
+  border-top: 1px solid var(--mg-blue-ink);
+  opacity: .58;
+}
+.home-marshpass-promo__route i {
+  position: absolute;
+  top: -5px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--mg-blue-ink);
+  border-radius: 999px;
+  background: var(--mg-surface-primary);
+}
+.home-marshpass-promo__route i:first-child { left: 18%; }
+.home-marshpass-promo__route i:last-child { right: 12%; }
+.home-marshpass-promo__dash { width: 1.5rem; height: 1px; background: var(--mg-blue-ink); opacity: .65; }
+@media (max-width: 380px) {
+  .app-header { gap: .375rem; padding-inline: .625rem; }
+  .app-header-brand { gap: .375rem; }
+  .app-header-brand-copy p { display: none; }
+  .app-header-brand-copy strong { font-size: 1rem; }
+  .current-city-selector-trigger { max-width: 4.5rem; gap: .2rem; padding-inline: .25rem; }
+  .current-city-selector-trigger > svg:first-child { width: 13px; }
+  .current-city-selector-trigger > svg:last-child { width: 11px; }
+  .current-city-selector-label { max-width: 2rem; font-size: .6875rem; }
+  .app-header-actions { gap: .125rem; }
+}
 .home-screen { padding-top: .35rem; }
 .transport-types-inline { margin-top: .7rem; }
 .transport-types-inline .transport-mode-grid {
@@ -1402,7 +1446,7 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 .home-hero--canonical { min-height: 0; overflow: hidden; }
 /* The banner is a content box, not a poster: a fixed height with overflow:hidden
    silently cut the publish CTA in half on 390×844. Keep the rhythm as a floor. */
-.home-canonical-banner { min-height: clamp(8.25rem, 18svh, 9rem); }
+.home-canonical-banner { min-height: clamp(10rem, 20svh, 11.75rem); }
 .home-action-grid { flex: 0 0 auto; grid-template-rows: repeat(2, clamp(6.2rem, 12.5svh, 6.8rem)); gap: .5rem; }
 /* Four saturated blocks compete for attention and force white-on-color microcopy.
    One filled primary action plus three tinted siblings keeps the colour coding
@@ -1460,7 +1504,6 @@ html.dark .home-trip-card { background: #0a261e; color: #eff6ff; }
 html.dark .home-canonical-banner h1 { color: #eff6ff; }
 html.dark .home-canonical-banner p { color: #bfdbfe; }
 html.dark .home-trip-card > span:nth-child(2) > span:nth-child(2) { color: #eff6ff; }
-html.dark .home-hero--canonical .home-city-pill { background: #111820; color: #eff6ff; border-color: #263648; }
 html.dark .home-screen .home-intro { border-radius: 1.4rem; }
 html.dark .home-action-card { --home-ink: var(--color-marshgo-text); --home-sub: var(--color-marshgo-muted); --home-surface: var(--color-marshgo-card); border-color: var(--color-marshgo-border); box-shadow: 0 4px 16px rgba(0,0,0,.24); }
 html.dark .home-action-card--navigation { --home-surface: #12233B; border-color: #24486F; }
@@ -1519,12 +1562,11 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
   .home-action-card > span:last-child > span:first-child > span:last-child { display: none; }
   .home-trip-card { min-height: 3.1rem; padding: .35rem .6rem; }
   .home-trip-card > span:first-child { width: 2rem; height: 2rem; }
-  .home-city-pill { min-height: 2.75rem; margin-bottom: .3rem; }
 }
 /* Desktop keeps the canonical composition in a wider reading column. */
 @media (min-width: 1024px) {
   .home-hero--canonical { max-width: 800px; padding-inline: 24px; }
-  .home-canonical-banner { min-height: 12rem; }
+  .home-canonical-banner { min-height: 11.75rem; }
   .home-action-grid { grid-template-rows: repeat(2, 9rem); }
   .home-popular-route { height: 5rem; }
 
@@ -1573,7 +1615,6 @@ html.dark .app-tabbar {
   background-color: rgba(11, 15, 20, .94);
   border-color: #263648;
 }
-html.dark .home-hero--canonical .home-city-pill { background: #111820; color: #F5F9FF; border-color: #263648; }
 html.dark .home-banner-scrim {
   background: linear-gradient(90deg, rgba(7, 28, 51, .97), rgba(7, 28, 51, .84) 58%, rgba(7, 28, 51, .16));
 }
@@ -1587,7 +1628,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
 @media (max-width: 639px) {
   .app-header { padding-top: max(.5rem, env(safe-area-inset-top, 0px)); }
   .home-marshpass-slot { height: clamp(8.75rem, 18svh, 9.5rem); min-height: 8.75rem; }
-  .home-canonical-banner { min-height: clamp(8.75rem, 18svh, 9.5rem); }
+  .home-canonical-banner { min-height: clamp(10rem, 20svh, 11.75rem); }
   .home-banner { padding: .7rem .8rem; }
   .home-hero--canonical > .home-action-grid {
     grid-template-rows: auto auto;
