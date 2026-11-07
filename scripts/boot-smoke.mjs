@@ -44,7 +44,10 @@ async function main() {
   // Give preview server a moment to bind
   await new Promise((r) => globalThis.setTimeout(r, 1500));
 
-  const browser = await chromium.launch({ headless: true });
+  const systemChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+    || (process.platform === 'darwin' && existsSync(systemChrome) ? systemChrome : undefined);
+  const browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
 
   const testMatrix = [
     { name: 'mobile-320-dark', viewport: { width: 320, height: 720 }, theme: 'dark' },
@@ -128,6 +131,28 @@ async function main() {
         anyFailure = true;
       } else {
         console.log(`  PASS: #root has ${rootHtml.length} chars HTML, ${rootText.length} chars text. "MARSHGO" is visible.`);
+      }
+
+      if (config.name === 'mobile-light' || config.name === 'mobile-dark') {
+        await page.getByRole('button', { name: 'У мене вже є акаунт' }).click();
+        const loginVisible = await page.getByRole('heading', { name: 'Вхід до MARSHGO' }).isVisible();
+        const loginShadeCount = await page.locator('.auth-screen__shade--login').count();
+        const loginPalette = await page.locator('.auth-screen__shade--login').evaluate((element) => {
+          const styles = element.ownerDocument.defaultView.getComputedStyle(element.ownerDocument.documentElement);
+          return {
+            canvas: styles.getPropertyValue('--mg-auth-canvas').trim().toLowerCase(),
+            surface: styles.getPropertyValue('--mg-auth-surface').trim().toLowerCase(),
+          };
+        }).catch(() => ({ canvas: '', surface: '' }));
+        const navyLoginPalette = loginPalette.canvas === '#071521' && loginPalette.surface === '#0b1b2c';
+        if (!loginVisible || loginShadeCount !== 1 || !navyLoginPalette) {
+          console.error(`  FAIL: Sign-in state did not render with its theme-independent navy palette (heading=${loginVisible}, shade=${loginShadeCount}, canvas=${loginPalette.canvas || 'missing'}, surface=${loginPalette.surface || 'missing'}).`);
+          anyFailure = true;
+        } else {
+          const loginScreenshotPath = resolve(artifactsDir, `boot-smoke-login-${config.theme}.png`);
+          await page.screenshot({ path: loginScreenshotPath, fullPage: false });
+          console.log(`  PASS: Sign-in state visible. Screenshot saved: ${loginScreenshotPath}`);
+        }
       }
 
       await context.close();

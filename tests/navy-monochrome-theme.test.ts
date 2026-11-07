@@ -59,3 +59,15 @@ test('keeps the public entry screen visually navy while retaining its existing c
   assert.match(css, /\.auth-intro-screen > section\s*\{\s*min-height: calc\(100svh - max\(1\.5rem, env\(safe-area-inset-bottom\)\) - env\(safe-area-inset-top\)\)/,
     'the entry content accounts for the outer safe-area padding so both actions stay visible');
 });
+
+test('keeps the sign-in backdrop inside the same navy semantic palette', () => {
+  const css = read('../src/index.css');
+  const marketplace = read('../src/views/ProductionMarketplace.tsx');
+  assert.match(css, /--mg-auth-canvas: #071521;[\s\S]*--mg-auth-surface: #0B1B2C;[\s\S]*--mg-auth-accent: #71C7F2;/,
+    'credential screens keep a stable dark-surface palette in either app theme');
+  assert.match(marketplace, /'auth-screen__shade--login'/, 'sign-in uses a named palette-owned backdrop');
+  assert.match(css, /\.auth-screen__shade--login\s*\{[\s\S]*var\(--mg-auth-accent\)[\s\S]*var\(--mg-auth-surface\)[\s\S]*var\(--mg-auth-canvas\)/,
+    'sign-in uses its explicit dark-surface contrast tokens instead of the theme-dependent canvas');
+  assert.doesNotMatch(marketplace, /rgba\(41,131,255,\.65\)/,
+    'the old bright blue glow must not return to the authentication screen');
+});
