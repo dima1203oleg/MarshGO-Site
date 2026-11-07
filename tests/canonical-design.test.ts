@@ -418,11 +418,11 @@ test('the search screen gives each field the width its value needs', async () =>
   const searchForm = marketplace.slice(searchFormStart, marketplace.indexOf('</form>', searchFormStart));
   const placeRows = [...searchForm.matchAll(/<div role="group" aria-label="(?:Початкова|Кінцева) точка"[\s\S]*?<\/div>/g)];
   assert.equal(placeRows.length, 2, 'the place rows left the shared group markup');
-  for (const row of placeRows)
-    assert.equal((row[0].match(/aria-label="Обрати на мапі"/g) || []).length, 0, 'a second 44 px button in a place row costs the value 52 px of text');
+  assert.equal((placeRows[0][0].match(/aria-label="Обрати на мапі"/g) || []).length, 0, 'the origin row keeps only its location action');
+  assert.equal((placeRows[1][0].match(/aria-label="Обрати на мапі"/g) || []).length, 1, 'the destination keeps the compact in-field map pin from the approved layout');
   assert.equal((searchForm.match(/Обрати на мапі: \{\(routePlaceField/g) || []).length, 0, 'the redundant full-width map picker must stay out of the search card');
-  assert.doesNotMatch(searchForm, /setPicker\(\{ form: 'search', field: 'destination' \}\)/, 'the destination input must not duplicate the map picker');
-  assert.match(searchForm, /\{destination && <button type="button" aria-label="Очистити кінцеву точку"/, 'the entered destination keeps its clear action');
+  assert.match(searchForm, /setPicker\(\{ form: 'search', field: 'destination' \}\)/, 'the compact destination map pin must fill the destination field');
+  assert.match(searchForm, /\{destination \? <button type="button" aria-label="Очистити кінцеву точку"/, 'the entered destination keeps its clear action');
   assert.match(searchForm, /<input required title=\{(?:origin|destination) \|\| undefined\}/, 'a clipped address must still be readable in full');
   assert.equal((searchForm.match(/aria-label="Вибрати дату й час (?:відправлення|прибуття)"[\s\S]{0,700}?<ChevronDown/g) || []).length, 0,
     'the chevron inside a date tile is decoration on a control that is already a button, and it costs the value its last characters');
@@ -459,13 +459,15 @@ test('a place row only offers to clear a value that is actually there', async ()
     'the origin slot must name the job it is doing, so the icon is never the only signal');
   const destinationRow = rowFor('Кінцева точка');
   assert.notEqual(destinationRow, '', 'the destination row left the shared group markup');
-  assert.doesNotMatch(destinationRow, /setPicker\(\{ form: 'search', field: 'destination' \}\)/,
-    '«Куди» must not duplicate the map picker already available from the map');
-  assert.doesNotMatch(destinationRow, /Обрати на мапі/,
-    'the destination field must not advertise the redundant map action');
-  assert.match(destinationRow, /\{destination && <button type="button" aria-label="Очистити кінцеву точку"/,
+  assert.match(destinationRow, /setPicker\(\{ form: 'search', field: 'destination' \}\)/,
+    'the destination field retains its compact map pin action');
+  assert.match(destinationRow, /aria-label="Обрати на мапі" title="Обрати на мапі"/,
+    'the map pin remains accessible and clearly named');
+  assert.match(destinationRow, /\{destination \? <button[\s\S]*?: <button/,
+    'the same action slot switches from map selection to clearing once text exists');
+  assert.match(destinationRow, /\{destination \? <button type="button" aria-label="Очистити кінцеву точку"/,
     'the clear action only appears after a destination exists');
   assert.match(originRow, /className="grid h-11 w-11/, 'the origin location action keeps its 44 px target');
-  assert.match(destinationRow, /destination && <button[\s\S]{0,260}className="grid h-11 w-11/,
+  assert.match(destinationRow, /\{destination \? <button[\s\S]{0,420}className="grid h-11 w-11/,
     'the conditional destination clear action keeps its 44 px target');
 });
