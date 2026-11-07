@@ -7,7 +7,7 @@ import { resolve, join } from 'node:path';
  * - var(--mg-*)
  * - var(--route-*)
  * - var(--mg-label-*)
- * have valid definitions in src/index.css or src/styles/motion.css (either in :root, html.dark, or component scope).
+ * have valid definitions in the global theme sheets (either in :root, html.dark, or component scope).
  * Also supports runtime inline style variables (--mg-stagger-i, --segment-color, --route-map-inset, --mg-label-tone).
  */
 
@@ -32,6 +32,7 @@ function findSourceFiles(dir) {
 const cssFiles = [
   join(srcDir, 'index.css'),
   join(srcDir, 'styles/motion.css'),
+  join(srcDir, 'styles/feedback.css'),
 ];
 
 const definedTokens = new Set();

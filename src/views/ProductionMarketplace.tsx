@@ -292,7 +292,12 @@ export function ProductionMarketplace() {
   const [exportingData, setExportingData] = useState(false);
   const [deletionRequest, setDeletionRequest] = useState<ApiAccountDeletionRequest | null>(null);
   const [deletionBusy, setDeletionBusy] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
+  const [statusMessage, setStatusMessageText] = useState('');
+  const [statusIsError, setStatusIsError] = useState(false);
+  const setStatusMessage = useCallback((message: string, isError = false) => {
+    setStatusIsError(isError);
+    setStatusMessageText(message);
+  }, []);
   const [authError, setAuthError] = useState('');
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [verificationTarget, setVerificationTarget] = useState<ApiVehicle | null>(null);
@@ -829,9 +834,9 @@ export function ProductionMarketplace() {
         const failureKind = journeySearchFailureKind(error);
         const needsSignIn = failureKind === 'auth' || /authentication required|unauthorized/i.test(message);
         if (controller.signal.aborted) setStatusMessage(journeySearchAbortMessage(controller.signal.reason));
-        else if (needsSignIn) setStatusMessage('Щоб отримати реальні пропозиції, увійдіть в акаунт і повторіть пошук.');
+        else if (needsSignIn) setStatusMessage('Щоб отримати реальні пропозиції, увійдіть в акаунт і повторіть пошук.', true);
         else if (failureKind === 'unavailable') setJourneySearchUnavailable(JOURNEY_SEARCH_UNAVAILABLE_COPY);
-        else setStatusMessage(message || 'Не вдалося побудувати маршрут.');
+        else setStatusMessage(message || 'Не вдалося побудувати маршрут.', true);
       }
     }
     finally {
@@ -1718,7 +1723,7 @@ export function ProductionMarketplace() {
 
   if (notFound) return <main className="grid min-h-[70svh] place-items-center px-5 text-center"><div role="alert" className="max-w-md rounded-3xl bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--mg-blue-ink)]">404</p><h1 className="mt-2 text-2xl font-extrabold">Сторінку не знайдено</h1><p className="mt-2 text-sm text-slate-500">Перевірте адресу або поверніться до головної сторінки MARSHGO.</p><button onClick={goHome} className="mg-press mt-5 min-h-11 rounded-xl bg-[var(--mg-action)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--mg-action-hover)]">На головну</button></div></main>;
 
-  const status = statusMessage ? <div role="status" className="mx-auto mt-3 flex w-full max-w-xl items-start gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800"><span className="min-w-0 flex-1">{statusMessage}</span><button type="button" aria-label="Закрити повідомлення" onClick={() => setStatusMessage('')} className="-mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-blue-100"><X size={16}/></button></div> : null;
+  const status = statusMessage ? <div role={statusIsError ? 'alert' : 'status'} className={`mx-auto mt-3 flex w-full max-w-xl items-start gap-2 rounded-2xl border px-4 py-3 text-sm ${statusIsError ? 'mg-feedback-error' : 'border-blue-100 bg-blue-50 text-blue-800 dark:border-[var(--mg-line)] dark:bg-[var(--mg-blue-tint)] dark:text-[var(--mg-blue-ink)]'}`}>{statusIsError && <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>}{statusIsError && <span className="sr-only">Помилка: </span>}<span className="min-w-0 flex-1">{statusMessage}</span><button type="button" aria-label="Закрити повідомлення" onClick={() => setStatusMessage('')} className="-mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-blue-100"><X size={16}/></button></div> : null;
   const placeUnavailableNotice = (retry: () => void) => (
     <div role="alert" className="mt-2 flex items-center gap-2 rounded-xl border border-[var(--mg-border-medium)] bg-white px-3 py-2 text-xs leading-5 text-[var(--mg-ink-secondary)] dark:bg-[#0B1A28]">
       <span className="min-w-0 flex-1">{PLACE_SEARCH_UNAVAILABLE_COPY}</span>

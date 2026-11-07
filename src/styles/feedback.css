@@ -1,0 +1,22 @@
+/* Accessible error state: contrast is checked in both themes and errors are never indicated by color alone. */
+:root {
+  --mg-feedback-error-ink: #8F1D2A;
+  --mg-feedback-error-surface: #FAEAEB;
+  --mg-feedback-error-line: #ECC7CC;
+}
+
+html.dark {
+  --mg-feedback-error-ink: #FFB4BC;
+  --mg-feedback-error-surface: #2A1014;
+  --mg-feedback-error-line: rgba(255, 156, 167, .45);
+}
+
+.mg-feedback-error {
+  background-color: var(--mg-feedback-error-surface);
+  border: 1px solid var(--mg-feedback-error-line);
+  color: var(--mg-feedback-error-ink);
+}
+
+.mg-feedback-error button:hover {
+  background-color: var(--mg-feedback-error-line);
+}
