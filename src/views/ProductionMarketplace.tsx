@@ -24,6 +24,7 @@ import { MarshPassTicket } from './MarshPassTicket';
 import { QrScanner } from '../components/QrScanner';
 import type { ProfileSection } from './ProfileSections';
 import { compactPlaceLabel, fullPlaceLabel } from '../domain/placeLabel';
+import { resolvePlaceAtCoordinates } from '../domain/mapPointSelection';
 import { ApiAccountDeletionRequest, ApiBlockedUser, ApiBooking, ApiDemand, ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiNotification, ApiNotificationPage, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiRendezvous, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, ProductionApiError, productionApi } from '../services/productionApi';
 import { realtimeStatusLabel, realtimeStatusTone, type RealtimeStatus } from '../services/realtimeChannel';
 import { storedJourneyToApiJourney } from '../routing/storedJourneyView';
@@ -893,8 +894,13 @@ export function ProductionMarketplace() {
     setStatusMessage('');
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15_000 }));
-      const place = await productionApi.reverseGeocode(position.coords.latitude, position.coords.longitude);
+      const { place, addressResolved } = await resolvePlaceAtCoordinates(
+        position.coords.latitude,
+        position.coords.longitude,
+        (latitude, longitude) => productionApi.reverseGeocode(latitude, longitude),
+      );
       setSearchOriginPlace(place); setOrigin(place.label); setRoutePlaceSearch(placeSearchPending()); setRoutePlaceField(null);
+      if (!addressResolved) setStatusMessage('GPS-точку встановлено за координатами. Адресу зараз не вдалося визначити.');
     } catch (error) { setStatusMessage(error instanceof Error && error.message ? error.message : 'Не вдалося визначити місцезнаходження. Дозвольте геолокацію в браузері.'); }
   };
 
