@@ -10,7 +10,7 @@ import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
   formatJourneyDurationTile, journeyBoardingNote,
-  journeyRouteBadge, searchPendingCopy, unavailableTransportNotices,
+  journeyRouteBadge, providerErrorNotices, searchPendingCopy, unavailableTransportNotices,
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay, type JourneyPriceDisplay } from './cashFare';
 import { strategyJourneys } from './journeyStrategySelection';
@@ -260,7 +260,7 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
   const technicalProviderErrors = result.providerErrors.filter(isTechnicalRouterMsg);
 
   if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${sentenceList(preferenceTokens.map(value => preferenceMessages[value] ?? value))}.` });
-  if (userProviderErrors.length > 0) notices.push({ tone: 'rose', text: `Деякі розклади тимчасово недоступні: ${sentenceList(userProviderErrors)}.` });
+  providerErrorNotices(userProviderErrors).forEach(notice => notices.push(notice));
   truncationNotices(result).forEach(notice => notices.push(notice));
   unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
   sharedCaveats.forEach(text => notices.push({ tone: 'amber', text }));
