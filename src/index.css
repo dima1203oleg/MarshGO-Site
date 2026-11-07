@@ -8,87 +8,79 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --color-marshgo-navy: #081B35;
-  --color-marshgo-blue: #0B6EF3;
-  --color-marshgo-bg: #F5F8FD;
-  --color-marshgo-card: #FFFFFF;
-  --color-marshgo-text: #14243B;
-  --color-marshgo-muted: #62718A;
-  --color-marshgo-border: #DFE7F1;
-  --color-marshgo-green: #16845C;
-  --color-marshgo-amber: #AE6C00;
-  --color-marshgo-red: #BE3440;
-  --mode-bus: #1687FF;
-  --mode-marshrutka: #F02F79;
-  --mode-trolleybus: #00C2A0;
-  --mode-tram: #8B3CE6;
-  --mode-metro: #D6224A;
-  --mode-carpool: #FF7A2F;
-  --mode-taxi: #F5B51B;
-  --mode-train: #6366F1;
-  --mode-bike: #20B86A;
-  --mode-scooter: #84CC16;
-  --mode-carsharing: #00A8D6;
-  --mode-transfer: #6C7A93;
-  --mode-walk: #91A6BB;
-  --mode-wait: #91A6BB;
-  --mode-ferry: #0891B2;
-  --mode-funicular: #64748B;
-  --mode-unknown: #91A6BB;
+  /* Legacy brand names resolve through the semantic ramp below. */
+  --color-marshgo-navy: var(--mg-navy);
+  --color-marshgo-blue: var(--mg-action);
+  --color-marshgo-bg: var(--mg-canvas);
+  --color-marshgo-card: var(--mg-surface-card);
+  --color-marshgo-text: var(--mg-ink-primary);
+  --color-marshgo-muted: var(--mg-ink-secondary);
+  --color-marshgo-border: var(--mg-border-subtle);
+  --color-marshgo-green: var(--mg-green);
+  --color-marshgo-amber: var(--mg-amber);
+  --color-marshgo-red: var(--mg-red);
+  --mode-bus: var(--mg-mode-monochrome);
+  --mode-marshrutka: var(--mg-mode-monochrome);
+  --mode-trolleybus: var(--mg-mode-monochrome);
+  --mode-tram: var(--mg-mode-monochrome);
+  --mode-metro: var(--mg-mode-monochrome);
+  --mode-carpool: var(--mg-mode-monochrome);
+  --mode-taxi: var(--mg-mode-monochrome);
+  --mode-train: var(--mg-mode-monochrome);
+  --mode-bike: var(--mg-mode-monochrome);
+  --mode-scooter: var(--mg-mode-monochrome);
+  --mode-carsharing: var(--mg-mode-monochrome);
+  --mode-transfer: var(--mg-mode-monochrome);
+  --mode-walk: var(--mg-ink-muted);
+  --mode-wait: var(--mg-ink-muted);
+  --mode-ferry: var(--mg-mode-monochrome);
+  --mode-funicular: var(--mg-ink-muted);
+  --mode-unknown: var(--mg-ink-muted);
 }
 
 html.dark {
   /* The three blues have three jobs. --mg-blue paints strokes, icons and large text; --mg-blue-ink
      paints small text on a surface and must clear AA on --mg-blue-tint; --mg-action fills a control
      behind white labels. Colons are omitted after each name so the declaration-count tests stay honest. */
-  --mg-blue: #1687FF;
-  --mg-blue-pressed: #0B6EF3;
-  --mg-blue-tint: #0E2A44;
-  --mg-blue-ink: #7FC0FF;
-  --mg-navy: #071C33;
-  --mg-ink: #F5F9FF;
-  --mg-muted: #B6C2D0;
-  --mg-canvas: #0B0F14;
-  --mg-line: #263648;
-  --mg-surface-primary: #111820;
-  --mg-surface-secondary: #16202B;
-  --mg-surface-card: #111820;
-  --mg-surface-tint: #16202B;
-  /* Raised above the surface it sits on: dropdown lists, floating control chips. Derived from the
-     dark card ramp so it never needs a hand-picked hex, and stays one clear step above secondary. */
-  --mg-surface-elevated: color-mix(in srgb, var(--mg-surface-secondary) 90%, var(--mg-ink));
+  --mg-blue: #71C7F2;
+  --mg-blue-pressed: #53B2E9;
+  --mg-blue-tint: #0B1B2C;
+  --mg-blue-ink: #71C7F2;
+  --mg-navy: #071521;
+  --mg-ink: #F5F8FC;
+  --mg-muted: #AABFD1;
+  --mg-canvas: #071521;
+  --mg-bg-secondary: #0B1B2C;
+  --mg-line: rgba(142, 180, 211, .16);
+  --mg-surface-primary: #10263D;
+  --mg-surface-secondary: #172B44;
+  --mg-surface-card: #172B44;
+  --mg-surface-tint: #0B1B2C;
+  /* Raised above the surface it sits on: dropdown lists and floating control chips. */
+  --mg-surface-elevated: #1D3B58;
   --mg-amber: #FFB020;
   --mg-green: #2CD67D;
+  --mg-red: #FF7A89;
+  --mg-mode-monochrome: #71C7F2;
   /* --mg-action fills a control with white text; --mg-blue is the accent for text and strokes. */
-  --mg-action: #0B63D6;
+  --mg-action: #1766B4;
   --mg-action-subtle: color-mix(in srgb, var(--mg-blue) 50%, var(--mg-surface-card));
-  --mg-action-hover: #0A57BC;
+  --mg-action-hover: #1B72C9;
   /* The hover affordance below the action colour: the accent diluted into the card it borders, so a
      card hints at being selectable without looking selected. */
-  --mg-action-subtle: color-mix(in srgb, var(--mg-blue) 50%, var(--mg-surface-card));
-  --mg-surface-glass: rgba(11, 15, 20, .94);
-  --mg-ink-primary: #F5F9FF;
-  --mg-ink-secondary: #B6C2D0;
-  --mg-ink-muted: #8FA0B3;
-  --mg-border-subtle: #263648;
-  --mg-border-medium: #536B86;
-  --mg-card-shadow: 0 8px 24px rgba(0, 0, 0, .28);
-  --color-marshgo-navy: #071C33;
-  --color-marshgo-blue: #1687FF;
-  --color-marshgo-bg: #0B0F14;
-  --color-marshgo-card: #111820;
-  --color-marshgo-text: #F5F9FF;
-  --color-marshgo-muted: #B6C2D0;
-  --color-marshgo-border: #263648;
-  --color-marshgo-green: #2CD67D;
-  --color-marshgo-amber: #FFB020;
-  --color-marshgo-red: #FF5A6A;
+  --mg-surface-glass: rgba(7, 21, 33, .94);
+  --mg-ink-primary: #F5F8FC;
+  --mg-ink-secondary: #AABFD1;
+  --mg-ink-muted: #91A7BC;
+  --mg-border-subtle: rgba(142, 180, 211, .16);
+  --mg-border-medium: rgba(142, 180, 211, .30);
+  --mg-card-shadow: 0 8px 24px rgba(0, 0, 0, .16);
   color-scheme: dark;
 }
 
 /* The selected journey sheet follows the app theme while keeping the same canonical geometry. */
 .route-map-screen {
-  --route-canvas: #F4F8FD;
+  --route-canvas: #F2F7FB;
   --route-sheet: rgba(255, 255, 255, .97);
   --route-sheet-start: rgba(255, 255, 255, .98);
   --route-sheet-end: rgba(247, 250, 254, .99);
@@ -97,22 +89,22 @@ html.dark {
   --route-subtle: #64748B;
   --route-border: #D8E2ED;
   --route-card: #FFFFFF;
-  --route-card-alt: #F2F6FB;
+  --route-card-alt: #EAF1F7;
   --route-floating: rgba(255, 255, 255, .94);
   --route-track: #E2E9F1;
   --route-timeline-divider: rgba(255, 255, 255, .62);
-  --route-community-surface: #F4ECFF;
+  --route-community-surface: #EAF1F7;
   --route-footer: rgba(255, 255, 255, .96);
-  --route-hover: rgba(11, 110, 243, .07);
+  --route-hover: rgba(50, 127, 195, .08);
   --route-grabber: #AAB8C8;
   --route-sheet-shadow: 0 -18px 64px rgba(25, 53, 87, .18);
-  --route-brand-ink: #0E1A2B;
+  --route-brand-ink: #10263D;
   --route-ribbon-walk: #A9B6C7;
   --route-ribbon-ring: #14243B;
   --route-control-bg: rgba(255, 255, 255, .92);
   --route-control-active-bg: var(--mg-action);
   --route-control-active-ink: #FFFFFF;
-  --route-control-border: rgba(20, 36, 59, .1);
+  --route-control-border: rgba(16, 38, 61, .12);
   --route-scale-ink: #213650;
   --mg-label-bg: rgba(255, 255, 255, .97);
   --mg-label-ink: #101C2E;
@@ -121,47 +113,47 @@ html.dark {
   --mg-label-shadow: 0 8px 20px rgba(16, 34, 55, .2);
   --mg-label-caption-shadow: 0 1px 2px rgba(255, 255, 255, .9), 0 0 6px rgba(255, 255, 255, .7);
   --mg-callout-bg: rgba(255, 255, 255, .96);
-  --mg-callout-ink: #16233A;
+  --mg-callout-ink: #10263D;
   --mg-callout-border: rgba(20, 36, 59, .16);
   background-color: var(--route-canvas);
   color-scheme: light;
 }
 .route-map-screen[data-theme="dark"] {
-  --route-canvas: #070C14;
-  --route-sheet: #0E1522;
-  --route-sheet-start: #0E1522;
-  --route-sheet-end: #0B111B;
-  --route-ink: #F2F6FC;
-  --route-muted: #9AA9BE;
-  --route-subtle: #7788A0;
-  --route-border: #202C3E;
-  --route-card: #121B29;
-  --route-card-alt: #172233;
-  --route-floating: rgba(13, 21, 33, .92);
-  --route-track: #6C7C93;
-  --route-timeline-divider: rgba(7, 12, 20, .7);
-  --route-community-surface: rgba(113, 66, 190, .18);
-  --route-footer: rgba(11, 17, 27, .98);
+  --route-canvas: #071521;
+  --route-sheet: #10263D;
+  --route-sheet-start: #10263D;
+  --route-sheet-end: #0B1B2C;
+  --route-ink: #F5F8FC;
+  --route-muted: #AABFD1;
+  --route-subtle: #91A7BC;
+  --route-border: rgba(142, 180, 211, .20);
+  --route-card: #172B44;
+  --route-card-alt: #1D3B58;
+  --route-floating: rgba(16, 38, 61, .94);
+  --route-track: #3A76A4;
+  --route-timeline-divider: rgba(7, 21, 33, .7);
+  --route-community-surface: rgba(50, 127, 195, .16);
+  --route-footer: rgba(11, 27, 44, .98);
   --route-hover: rgba(255, 255, 255, .06);
-  --route-grabber: #47566B;
-  --route-sheet-shadow: 0 -24px 70px rgba(0, 0, 0, .55);
-  --route-brand-ink: #F5F9FF;
-  --route-ribbon-walk: #3B4658;
+  --route-grabber: #54708A;
+  --route-sheet-shadow: 0 -24px 70px rgba(0, 0, 0, .38);
+  --route-brand-ink: #F5F8FC;
+  --route-ribbon-walk: #91A7BC;
   --route-ribbon-ring: #EAF1FB;
-  --route-control-bg: rgba(17, 25, 38, .9);
+  --route-control-bg: rgba(16, 38, 61, .94);
   --route-control-active-bg: var(--mg-action);
   --route-control-active-ink: #FFFFFF;
   --route-control-border: rgba(255, 255, 255, .09);
   --route-scale-ink: #E8EEF8;
-  --mg-label-bg: rgba(10, 16, 25, .93);
-  --mg-label-ink: #EFF4FC;
-  --mg-label-muted: #93A3B9;
-  --mg-label-border: rgba(255, 255, 255, .12);
-  --mg-label-shadow: 0 10px 24px rgba(0, 0, 0, .55);
+  --mg-label-bg: rgba(16, 38, 61, .96);
+  --mg-label-ink: #F5F8FC;
+  --mg-label-muted: #AABFD1;
+  --mg-label-border: rgba(142, 180, 211, .22);
+  --mg-label-shadow: 0 10px 24px rgba(0, 0, 0, .36);
   --mg-label-caption-shadow: 0 1px 3px rgba(0, 0, 0, .8), 0 0 8px rgba(0, 0, 0, .6);
-  --mg-callout-bg: #18222F;
-  --mg-callout-ink: #F3F7FE;
-  --mg-callout-border: rgba(255, 255, 255, .14);
+  --mg-callout-bg: #172B44;
+  --mg-callout-ink: #F5F8FC;
+  --mg-callout-border: rgba(142, 180, 211, .24);
   color-scheme: dark;
 }
 
@@ -177,11 +169,11 @@ body {
 
 /* Shared mobile-first MARSHGO system: same CSS and React views in web and WKWebView. */
 :root {
-  --mg-blue: #0877f9;
-  --mg-blue-pressed: #075ed0;
-  --mg-blue-tint: #EAF3FF;
-  --mg-blue-ink: #0B57A8;
-  --mg-navy: #071b3a;
+  --mg-blue: #327FC3;
+  --mg-blue-pressed: #246FAF;
+  --mg-blue-tint: #E8F1F8;
+  --mg-blue-ink: #155E95;
+  --mg-navy: #071521;
   --mg-ink: #0b1d3a;
   --mg-muted: #526477;
   /* The ink and line ramp lives in both themes: a token defined only under html.dark silently
@@ -190,24 +182,26 @@ body {
   --mg-ink-primary: #14243B;
   --mg-ink-secondary: #46586E;
   --mg-ink-muted: #5C6B83;
-  --mg-border-subtle: #E5EDF7;
-  --mg-border-medium: #C6D6E8;
+  --mg-border-subtle: #DCE6EF;
+  --mg-border-medium: #B9CAD9;
   --mg-surface-glass: rgba(255, 255, 255, .9);
-  --mg-canvas: #f4f8fd;
-  --mg-line: #e5edf7;
+  --mg-canvas: #F2F7FB;
+  --mg-bg-secondary: #EAF1F7;
+  --mg-line: #DCE6EF;
   --mg-surface-primary: #FFFFFF;
-  --mg-surface-secondary: #f6f8fc;
+  --mg-surface-secondary: #EEF4F9;
   --mg-surface-card: #FFFFFF;
-  --mg-surface-tint: #f6f8fc;
+  --mg-surface-tint: #EAF1F7;
   /* A panel raised over the card behind it (suggestion lists, floating controls). In the light theme
      the raised step is the secondary surface; the dark theme mixes one out of the card ramp. */
   --mg-surface-elevated: var(--mg-surface-secondary);
-  --mg-action: #0B63D6;
+  --mg-action: #1766B4;
   --mg-action-subtle: color-mix(in srgb, var(--mg-action) 45%, var(--mg-surface-card));
-  --mg-action-hover: #0950A8;
-  --mg-action-subtle: color-mix(in srgb, var(--mg-action) 45%, var(--mg-surface-card));
+  --mg-action-hover: #135A9C;
   --mg-amber: #AE6C00;
   --mg-green: #16845C;
+  --mg-red: #BE3440;
+  --mg-mode-monochrome: #155E95;
   --mg-card-shadow: 0 8px 24px rgba(24, 58, 105, .07), 0 1px 3px rgba(24, 58, 105, .04);
 
   /* Radii: measured from the sheet (8/10/16/20/24/28/32 px + pills). */
@@ -247,33 +241,33 @@ html { background: var(--mg-canvas); }
 body { overscroll-behavior-y: none; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 :where(button, a, input, select, textarea):focus-visible {
-  outline: 3px solid rgba(8, 119, 249, .4);
+  outline: 3px solid color-mix(in srgb, var(--mg-blue) 72%, transparent);
   outline-offset: 2px;
 }
 
 .production-app {
   min-height: 100svh;
   background:
-    radial-gradient(ellipse at 50% -12%, rgba(172, 215, 255, .35), transparent 30rem),
+    radial-gradient(ellipse at 50% -12%, rgba(113, 199, 242, .12), transparent 30rem),
     var(--mg-canvas);
   padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
 }
-html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgba(27, 91, 165, .2), transparent 30rem), var(--mg-canvas); color: var(--mg-ink); }
+html.dark .production-app { background: radial-gradient(ellipse at 50% -12%, rgba(113, 199, 242, .08), transparent 30rem), var(--mg-canvas); color: var(--mg-ink); }
 .app-header {
   position: sticky;
   top: 0;
   z-index: var(--mg-z-sticky);
   padding-top: max(.65rem, env(safe-area-inset-top));
-  background: rgba(244, 248, 253, .88);
+  background: rgba(242, 247, 251, .9);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
 }
 html.dark .app-header {
-  background: rgba(11, 15, 20, .9);
-  border-bottom: 1px solid rgba(83, 107, 134, .18);
+  background: var(--mg-surface-glass);
+  border-bottom: 1px solid var(--mg-border-subtle);
 }
-html.dark .app-header > div:first-child strong { color: #F5F9FF; }
+html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
 .app-header-brand-copy { flex: 0 1 auto; }
 .current-city-selector-trigger { max-width: 9rem; }
 .current-city-selector-label { max-width: 6rem; }
@@ -333,7 +327,7 @@ html.dark .app-header > div:first-child strong { color: #F5F9FF; }
   padding: 1.05rem 1rem 1.1rem;
   border: 1px solid var(--mg-line);
   border-radius: 1.65rem;
-  background: #f2f7fd;
+  background: var(--mg-surface-secondary);
 }
 /* A place row has one trailing control, and it has to read as what it is: an action that fills the
    field, or a ghost that empties it. Both states use tokens so the theme owns the contrast. */
@@ -353,42 +347,42 @@ html.dark .app-header > div:first-child strong { color: #F5F9FF; }
   box-shadow: 0 14px 34px rgba(23, 68, 126, .09), 0 2px 6px rgba(23, 68, 126, .04);
 }
 html.dark .search-screen .home-intro {
-  border-color: rgba(83, 107, 134, .45);
-  background: #102033;
+  border-color: var(--mg-border-medium);
+  background: var(--mg-surface-primary);
 }
-html.dark .search-screen .home-greeting { color: #66B2FF; }
-html.dark .search-screen .home-title { color: #F5F9FF; }
-html.dark .search-screen .home-description { color: #B6C2D0; }
+html.dark .search-screen .home-greeting { color: var(--mg-blue); }
+html.dark .search-screen .home-title { color: var(--mg-ink-primary); }
+html.dark .search-screen .home-description { color: var(--mg-ink-secondary); }
 html.dark .search-screen .journey-search-card {
-  border-color: #263648;
-  background: #111820;
+  border-color: var(--mg-border-subtle);
+  background: var(--mg-surface-primary);
   box-shadow: 0 14px 34px rgba(0, 0, 0, .28);
 }
 html.dark .search-screen .journey-search-card label,
 html.dark .search-screen .journey-search-card .search-trip-details > button,
 html.dark .search-screen .journey-search-card .search-trip-details > div {
-  background: #16202B;
-  color: #F5F9FF;
+  background: var(--mg-surface-secondary);
+  color: var(--mg-ink-primary);
 }
 html.dark .search-screen .journey-search-card [role="group"] {
-  background: #16202B;
-  color: #F5F9FF;
+  background: var(--mg-surface-secondary);
+  color: var(--mg-ink-primary);
 }
 html.dark .search-screen .journey-search-card label small,
-html.dark .search-screen .journey-search-card .search-trip-details small { color: #8FA0B3; }
-html.dark .search-screen .journey-search-card input { color: #F5F9FF; }
-html.dark .search-screen .journey-search-card input::placeholder { color: #8FA0B3; }
+html.dark .search-screen .journey-search-card .search-trip-details small { color: var(--mg-ink-muted); }
+html.dark .search-screen .journey-search-card input { color: var(--mg-ink-primary); }
+html.dark .search-screen .journey-search-card input::placeholder { color: var(--mg-ink-muted); }
 html.dark .search-screen .journey-search-card label > button:not([data-field-action]) {
-  border: 1px solid #263648;
-  background: #111820;
-  color: #66B2FF;
+  border: 1px solid var(--mg-border-subtle);
+  background: var(--mg-bg-secondary);
+  color: var(--mg-blue);
 }
 html.dark .search-screen .journey-search-card [role="group"] > button:not([data-field-action]) {
-  border: 1px solid #263648;
-  background: #111820;
-  color: #66B2FF;
+  border: 1px solid var(--mg-border-subtle);
+  background: var(--mg-bg-secondary);
+  color: var(--mg-blue);
 }
-html.dark .search-screen .journey-search-card .search-trip-details > button { color: #66B2FF; }
+html.dark .search-screen .journey-search-card .search-trip-details > button { color: var(--mg-blue); }
 /* The arrival tile used to carry the same blue through its inner button, which made «По» the only
    value in the card tinted like a link; the tile's own ink already matches the departure tile. */
 /*
@@ -403,7 +397,7 @@ html.dark .search-screen .journey-search-card .search-trip-details > button { co
   min-height: 3.5rem;
   padding: .5rem .7rem;
   border-radius: 1.05rem;
-  background: #f6f8fc;
+  background: var(--mg-surface-secondary);
 }
 .search-screen .journey-search-card .trip-tile--stepper { padding: .25rem .25rem .25rem .7rem; }
 .search-screen .journey-search-card .trip-tile small { font-size: 12px; font-weight: 600; line-height: 1.15; color: #5b6a80; }
@@ -418,9 +412,9 @@ html.dark .search-screen .journey-search-card .search-trip-details > button { co
   border: 1px solid rgba(148, 170, 196, .38);
   background: #fff;
 }
-html.dark .search-screen .journey-search-card .trip-tile { background: #16202B; color: #F5F9FF; }
-html.dark .search-screen .journey-search-card .trip-tile small { color: #8FA0B3; }
-html.dark .search-screen .journey-search-card .trip-tile--stepper > button { border-color: #263648; background: #111820; color: #66B2FF; }
+html.dark .search-screen .journey-search-card .trip-tile { background: var(--mg-surface-secondary); color: var(--mg-ink-primary); }
+html.dark .search-screen .journey-search-card .trip-tile small { color: var(--mg-ink-muted); }
+html.dark .search-screen .journey-search-card .trip-tile--stepper > button { border-color: var(--mg-border-subtle); background: var(--mg-bg-secondary); color: var(--mg-blue); }
 /*
  * A seat stepper needs 88 px for two 44 px buttons and the budget needs its value on one line, but
  * half of a 390 px card leaves the text column 24 px — that is how «1 пасажир» wrapped under the
@@ -446,7 +440,7 @@ html.dark .search-screen .journey-search-card .trip-tile--stepper > button { bor
 }
 .journey-results { padding-top: .15rem; }
 .journey-results {
-  background: linear-gradient(180deg, #F7FAFE 0%, #F2F6FB 100%);
+  background: linear-gradient(180deg, var(--mg-canvas) 0%, var(--mg-bg-secondary) 100%);
 }
 .journey-results-header { min-height: 3.35rem; }
 .journey-results [aria-label="Режим пошуку маршрутів"] > button {
@@ -461,13 +455,13 @@ html.dark .search-screen .journey-search-card .trip-tile--stepper > button { bor
 .journey-result-card-content { padding: .25rem .5rem; }
 .journey-result-header { min-height: 2.75rem; }
 html.dark .journey-results {
-  background: linear-gradient(180deg, #0A1D2D 0%, #061522 100%);
+  background: linear-gradient(180deg, var(--mg-canvas) 0%, var(--mg-bg-secondary) 100%);
 }
 html.dark .journey-results .journey-result-card {
-  background-color: #091B2A;
-  background-image: linear-gradient(145deg, #0D2030 0%, #091B2A 56%, #081724 100%);
-  border-color: #20384D;
-  box-shadow: 0 7px 20px rgba(0, 0, 0, .24);
+  background-color: var(--mg-surface-secondary);
+  background-image: linear-gradient(145deg, var(--mg-surface-secondary) 0%, var(--mg-surface-primary) 100%);
+  border-color: var(--mg-border-subtle);
+  box-shadow: var(--mg-card-shadow);
 }
 /*
  * Position in the list is not selection. The rank-1 journey of the active mode is marked with a
@@ -475,21 +469,21 @@ html.dark .journey-results .journey-result-card {
  * other cards — a full ring here read as "already opened" while nothing was selected.
  */
 .journey-result-card[data-top-pick="true"] { border-color: #B9D8F7; }
-html.dark .journey-results .journey-result-card[data-top-pick="true"] { border-color: rgba(22,135,255,.5); }
+html.dark .journey-results .journey-result-card[data-top-pick="true"] { border-color: color-mix(in srgb, var(--mg-blue) 58%, transparent); }
 /*
  * The card the passenger actually opened is a fact, not a ranking, so it owns a real selection
  * marker: a ring around the border. It comes after the rank-1 rules and repeats the dark
  * `` so it wins over the stronger-looking top pick.
  */
 .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mg-blue) 30%, transparent), 0 5px 16px rgba(11, 45, 82, .075) !important; }
-html.dark .journey-results .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue) !important; box-shadow: 0 0 0 2px rgba(22,135,255,.45) !important; }
+html.dark .journey-results .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--mg-blue) 45%, transparent) !important; }
 .journey-result-window { overflow-wrap: anywhere; }
 html.dark .journey-results .journey-result-duration {
-  color: #F5F9FF;
+  color: var(--mg-ink-primary);
 }
 html.dark .journey-results [aria-label="Режим пошуку маршрутів"] > button:not([aria-pressed="true"]) {
-  border-color: #20384D;
-  background-color: #0A1D2D;
+  border-color: var(--mg-border-subtle);
+  background-color: var(--mg-surface-primary);
 }
 .route-immersive-shell {
   height: 100svh;
@@ -548,9 +542,9 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   color: inherit;
   transition: background-color .16s ease, opacity .16s ease;
 }
-.journey-segment-tile-button:hover { background: rgba(22,135,255,.07); }
-.journey-segment-tile-button:focus-visible { position: relative; z-index: var(--mg-z-base); outline: 2px solid #1687ff; outline-offset: -2px; }
-.journey-segment-tile.is-active .journey-segment-tile-button { background: rgba(22,135,255,.1); }
+.journey-segment-tile-button:hover { background: color-mix(in srgb, var(--mg-blue) 7%, transparent); }
+.journey-segment-tile-button:focus-visible { position: relative; z-index: var(--mg-z-base); outline: 2px solid var(--mg-blue); outline-offset: -2px; }
+.journey-segment-tile.is-active .journey-segment-tile-button { background: color-mix(in srgb, var(--mg-blue) 10%, transparent); }
 .journey-segment-tile-heading {
   display: flex;
   min-width: 0;
@@ -643,12 +637,12 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   background: rgba(255,255,255,.97);
   box-shadow: 0 2px 8px rgba(20,49,87,.12);
 }
-html.dark .journey-segment-tile { border-color: #20354a; }
-html.dark .journey-segment-tile-heading { color: #f4f8fd; }
-html.dark .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #f4f8fd !important; }
-html.dark .journey-segment-tile-meta { color: #9aabbd; }
-html.dark .journey-segment-scroll-cue { color: #d6e4f3; }
-html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background: #111820; }
+html.dark .journey-segment-tile { border-color: var(--mg-border-subtle); }
+html.dark .journey-segment-tile-heading { color: var(--mg-ink-primary); }
+html.dark .journey-segment-tile-icon[data-icon-mode="WALK"] { color: var(--mg-ink-primary) !important; }
+html.dark .journey-segment-tile-meta { color: var(--mg-ink-secondary); }
+html.dark .journey-segment-scroll-cue { color: var(--mg-ink-secondary); }
+html.dark .journey-segment-scroll-cue > span { border-color: var(--mg-border-medium); background: var(--mg-surface-primary); }
 /*
  * At 320 px five section labels cannot share one row, so the strip scrolls. A label cut
  * mid-word at either edge («ивні») reads as a clipped render; fade the scrolled edges
@@ -666,10 +660,10 @@ html.dark .journey-segment-scroll-cue > span { border-color: #40566a; background
 .route-map-screen[data-theme="light"] .journey-segment-tile-heading { color: #172638; }
 .route-map-screen[data-theme="light"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #172638 !important; }
 .route-map-screen[data-theme="light"] .journey-segment-tile-meta { color: #64748b; }
-.route-map-screen[data-theme="dark"] .journey-segment-tile { border-color: #20354a; }
-.route-map-screen[data-theme="dark"] .journey-segment-tile-heading { color: #f4f8fd; }
-.route-map-screen[data-theme="dark"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #f4f8fd !important; }
-.route-map-screen[data-theme="dark"] .journey-segment-tile-meta { color: #9aabbd; }
+.route-map-screen[data-theme="dark"] .journey-segment-tile { border-color: var(--mg-border-subtle); }
+.route-map-screen[data-theme="dark"] .journey-segment-tile-heading { color: var(--mg-ink-primary); }
+.route-map-screen[data-theme="dark"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: var(--mg-ink-primary) !important; }
+.route-map-screen[data-theme="dark"] .journey-segment-tile-meta { color: var(--mg-ink-secondary); }
 .journey-result-card-content > .journey-segment-strip { margin-top: .25rem; }
 .journey-result-action-badge,
 .journey-result-transfer-badge,
@@ -685,12 +679,7 @@ html.dark .journey-result-action-badge,
 html.dark .journey-result-transfer-badge,
 html.dark .journey-result-save-visual { border-color: #223C52; }
 html.dark .journey-result-save-button { background-color: transparent; }
-.journey-result-action-badge[data-strategy="BALANCED"] { background-color: #EAF3FF; color: #1687FF; }
-.journey-result-action-badge[data-strategy="FASTEST"] { background-color: #FFF3E5; color: #E87919; }
-.journey-result-action-badge[data-strategy="CHEAPEST"] { background-color: #E9FBF1; color: #10A765; }
-html.dark .journey-result-action-badge[data-strategy="BALANCED"] { background-color: rgba(22,135,255,.16); color: #42A5FF; }
-html.dark .journey-result-action-badge[data-strategy="FASTEST"] { background-color: rgba(232,121,25,.16); color: #FFAB5C; }
-html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-color: rgba(16,167,101,.16); color: #36D98B; }
+.journey-result-action-badge[data-strategy] { background-color: var(--mg-blue-tint); color: var(--mg-blue-ink); }
 .journey-result-card-content > .journey-segment-strip .journey-segment-scroll-cue { right: -.3rem; }
 .journey-result-card-content .journey-result-duration {
   max-width: 100%;
@@ -760,7 +749,7 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   transition: transform 0.2s var(--mg-ease-entrance), background-color 0.2s ease;
 }
 .route-sheet-grabber:hover .route-sheet-grabber__handle {
-  background-color: var(--mg-action, #1687FF);
+  background-color: var(--mg-action, #1766B4);
 }
 .route-sheet-summary--compact .route-summary-eyebrow { display: none; }
 .route-sheet-summary--compact .route-summary-heading {
@@ -774,10 +763,10 @@ html.dark .journey-result-action-badge[data-strategy="CHEAPEST"] { background-co
   -webkit-line-clamp: 2;
 }
 html.dark .route-immersive-shell {
-  background-color: #061522;
-  background-image: radial-gradient(ellipse at 50% -12%, rgba(15, 83, 139, .12), transparent 34rem);
+  background-color: var(--mg-canvas);
+  background-image: radial-gradient(ellipse at 50% -12%, rgba(113, 199, 242, .08), transparent 34rem);
 }
-html.dark .journey-result-card { background-color: #0B1A27; border-color: #1B3348; }
+html.dark .journey-result-card { background-color: var(--mg-surface-secondary); border-color: var(--mg-border-subtle); }
 html.dark .journey-result-card [data-segment-mode] { filter: saturate(1.08); }
 .app-tabbar {
   padding-bottom: max(.45rem, env(safe-area-inset-bottom)) !important;
@@ -787,10 +776,10 @@ html.dark .journey-result-card [data-segment-mode] { filter: saturate(1.08); }
 .app-tabbar button { min-height: 2.9rem; }
 .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
 html.dark .app-tabbar {
-  border-color: #263648;
-  background: rgba(17, 24, 32, .96);
+  border-color: var(--mg-border-subtle);
+  background: var(--mg-surface-glass);
   box-shadow: 0 -8px 28px rgba(0, 0, 0, .28);
-  color: #B6C2D0;
+  color: var(--mg-ink-secondary);
 }
 html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
 .auth-screen { isolation: isolate; min-height: 100svh; min-height: 100dvh; }
@@ -1153,9 +1142,24 @@ body:has(.auth-screen) {
   background-color: #081b35;
 }
 
+/* The entry screen keeps its city photograph, but the navy treatment—not the warm photo—sets
+   the first impression. The image remains editorial texture under the same monochrome palette. */
+.auth-intro-screen {
+  background-color: var(--mg-canvas);
+}
+.auth-intro-screen > section {
+  min-height: calc(100svh - max(1.5rem, env(safe-area-inset-bottom)) - env(safe-area-inset-top));
+}
+.auth-intro-screen > img {
+  filter: saturate(.28) brightness(.38);
+}
+.auth-intro-screen > .absolute.inset-0 {
+  background: linear-gradient(180deg, rgba(7, 21, 33, .66) 0%, rgba(7, 21, 33, .78) 42%, rgba(7, 21, 33, .97) 100%);
+}
+
 html.dark body {
-  background-color: #071324;
-  color: #F1F5F9;
+  background-color: var(--mg-canvas);
+  color: var(--mg-ink-primary);
 }
 
 .font-display {
@@ -1167,16 +1171,16 @@ html.dark body {
 .marsh-pass-ticket {
   --pass-screen: var(--mg-canvas);
   --pass-screen-ink: var(--mg-ink-primary);
-  --pass-surface: #071C33;
-  --pass-stroke: #1687FF;
-  --pass-ink: #F5F9FF;
-  --pass-ink-secondary: #B6C2D0;
-  --pass-ink-muted: #8FA0B3;
-  --pass-track: rgba(22, 135, 255, .32);
+  --pass-surface: var(--mg-surface-primary);
+  --pass-stroke: var(--mg-blue);
+  --pass-ink: var(--mg-ink-primary);
+  --pass-ink-secondary: var(--mg-ink-secondary);
+  --pass-ink-muted: var(--mg-ink-muted);
+  --pass-track: color-mix(in srgb, var(--mg-blue) 32%, transparent);
   --pass-confirm: #2CD67D;
   --pass-confirm-surface: rgba(44, 214, 125, .14);
-  --pass-badge-top: #1687FF;
-  --pass-badge-bottom: #0B6EF3;
+  --pass-badge-top: var(--mg-action-hover);
+  --pass-badge-bottom: var(--mg-action);
 }
 
 /* Safe area padding utilities */
@@ -1219,12 +1223,12 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 html.dark body { background-color: var(--mg-canvas); color: var(--mg-ink-primary); }
 html.dark .production-app, html.dark .journey-results, html.dark .home-screen { color: var(--mg-ink-primary); }
 html.dark :is(.bg-white, .bg-white\/95, .bg-white\/90, .bg-white\/80, .bg-\[\#101E38\], .bg-\[\#0B1730\]) { background-color: var(--mg-surface-primary); }
-html.dark .journey-results .journey-result-card { background-color: #091B2A; }
-html.dark .journey-results [aria-label="Режим пошуку маршрутів"] > button:not([aria-pressed="true"]) { background-color: #0A1D2D; }
+html.dark .journey-results .journey-result-card { background-color: var(--mg-surface-secondary); }
+html.dark .journey-results [aria-label="Режим пошуку маршрутів"] > button:not([aria-pressed="true"]) { background-color: var(--mg-surface-primary); }
 html.dark :is(.bg-slate-50, .bg-\[\#f6f8fc\], .bg-\[\#F1F5F9\], .bg-\[\#f5f8fd\], .bg-\[\#F5F8FD\]) { background-color: var(--mg-canvas); }
-html.dark :is(.bg-slate-100, .hover\:bg-slate-50:hover) { background-color: #132644; }
-html.dark :is(.bg-slate-200, .hover\:bg-slate-100:hover, .hover\:bg-slate-200:hover) { background-color: #1A3258; }
-html.dark :is(.bg-blue-50, .bg-\[\#EAF3FF\], .bg-\[\#E8F8F1\]) { background-color: rgba(22, 135, 255, .14); }
+html.dark :is(.bg-slate-100, .hover\:bg-slate-50:hover) { background-color: var(--mg-surface-secondary); }
+html.dark :is(.bg-slate-200, .hover\:bg-slate-100:hover, .hover\:bg-slate-200:hover) { background-color: var(--mg-surface-elevated); }
+html.dark :is(.bg-blue-50, .bg-\[\#EAF3FF\], .bg-\[\#E8F8F1\]) { background-color: color-mix(in srgb, var(--mg-blue) 14%, transparent); }
 html.dark :is(.bg-emerald-50, .bg-\[\#F0FDF4\]) { background-color: rgba(44, 214, 125, .12); }
 html.dark :is(.bg-amber-50, .bg-\[\#FFF4DB\]) { background-color: rgba(255, 176, 32, .12); }
 /* The amber surfaces above collapse to a faint dark tint, so their brown ink has to flip with them:
@@ -1235,19 +1239,14 @@ html.dark :is(.bg-rose-50, .bg-red-50) { background-color: rgba(255, 90, 106, .1
 html.dark :is(.text-\[\#0E1F35\], .text-\[\#081b35\], .text-slate-900, .text-slate-800, .text-slate-700, .text-\[\#14243B\]) { color: var(--mg-ink-primary); }
 html.dark :is(.text-slate-600, .text-slate-500, .text-\[\#62718A\]) { color: var(--mg-ink-secondary); }
 html.dark :is(.text-slate-400, .text-slate-300) { color: var(--mg-ink-muted); }
-html.dark :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900) { color: #8CC4FF; }
+html.dark :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900) { color: var(--mg-blue); }
 html.dark :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900, .text-green-600, .text-green-700) { color: #74E0A1; }
 html.dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-900\/80) { color: #FFD27A; }
 html.dark :is(.text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900, .text-red-600, .text-red-700, .text-red-800, .text-red-900) { color: #FF9CA7; }
-/* Every remaining palette family the canonical screens still reach (map layer chips, onboarding,
-   lifecycle simulator). -600…-900 brown/dark steps are invisible on a graphite canvas, so each hue
-   keeps its own light partner instead of being flattened to blue. */
-html.dark :is(.text-indigo-600, .text-indigo-700, .text-violet-600, .text-violet-700, .text-purple-600, .text-purple-700) { color: #A9B8FF; }
-html.dark :is(.text-cyan-600, .text-cyan-700, .text-sky-600, .text-sky-700) { color: #7DD3FC; }
-html.dark :is(.text-teal-600, .text-teal-700, .text-teal-800) { color: #6EE7D6; }
-html.dark :is(.text-orange-600, .text-orange-700, .text-orange-800) { color: #FFB877; }
+/* Non-semantic utility hues collapse to the blue accent; green, amber and red remain reserved for status. */
+html.dark :is(.text-indigo-600, .text-indigo-700, .text-violet-600, .text-violet-700, .text-purple-600, .text-purple-700, .text-cyan-600, .text-cyan-700, .text-sky-600, .text-sky-700, .text-teal-600, .text-teal-700, .text-teal-800, .text-orange-600, .text-orange-700, .text-orange-800) { color: var(--mg-blue); }
 html.dark :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-\[\#E5EDF7\], .border-\[\#EEF3F9\], .border-\[\#DFE7F1\], .border-t, .border-b) { border-color: var(--mg-border-subtle); }
-html.dark .border-blue-200 { border-color: #1D437A; }
+html.dark .border-blue-200 { border-color: var(--mg-border-medium); }
 html.dark .border-emerald-200 { border-color: #0D4E3F; }
 html.dark .border-rose-200 { border-color: #55192C; }
 html.dark .border-amber-200 { border-color: #573A12; }
@@ -1258,21 +1257,19 @@ html.dark .border-amber-200 { border-color: #573A12; }
    that is white-on-white. And the -100 chips of every accent hue were unmapped for the same reason.
    Each maps to the same hue family as its -50 partner, so one transport/semantic colour still reads
    as one colour in both themes. */
-html.dark :is(.bg-blue-50\/70, .bg-blue-50\/60, .bg-blue-50\/40) { background-color: rgba(22, 135, 255, .12); }
+html.dark :is(.bg-blue-50\/70, .bg-blue-50\/60, .bg-blue-50\/40) { background-color: color-mix(in srgb, var(--mg-blue) 12%, transparent); }
 html.dark :is(.bg-emerald-50\/80, .bg-emerald-50\/70) { background-color: rgba(44, 214, 125, .11); }
 html.dark :is(.bg-amber-50\/95, .bg-amber-50\/70) { background-color: rgba(255, 176, 32, .12); }
 html.dark :is(.bg-slate-50\/80, .bg-slate-50\/70) { background-color: var(--mg-canvas); }
-html.dark :is(.bg-slate-100\/70, .bg-slate-100\/80) { background-color: #132644; }
-html.dark :is(.bg-slate-200\/70, .bg-slate-200\/80) { background-color: #1A3258; }
-html.dark :is(.bg-blue-100) { background-color: rgba(22, 135, 255, .18); }
+html.dark :is(.bg-slate-100\/70, .bg-slate-100\/80) { background-color: color-mix(in srgb, var(--mg-surface-secondary) 80%, transparent); }
+html.dark :is(.bg-slate-200\/70, .bg-slate-200\/80) { background-color: var(--mg-surface-elevated); }
+html.dark :is(.bg-blue-100) { background-color: color-mix(in srgb, var(--mg-blue) 18%, transparent); }
 html.dark :is(.bg-emerald-100, .bg-green-100) { background-color: rgba(44, 214, 125, .16); }
 html.dark :is(.bg-amber-100) { background-color: rgba(255, 176, 32, .16); }
 html.dark :is(.bg-rose-100, .bg-red-100) { background-color: rgba(255, 90, 106, .16); }
-html.dark :is(.bg-indigo-50, .bg-indigo-100, .bg-violet-100, .bg-purple-50) { background-color: rgba(140, 160, 255, .16); }
-html.dark :is(.bg-cyan-50, .bg-cyan-100, .bg-sky-50, .bg-sky-100) { background-color: rgba(103, 232, 249, .14); }
-html.dark :is(.bg-teal-50, .bg-teal-50\/70) { background-color: rgba(45, 212, 191, .14); }
-html.dark :is(.bg-orange-50, .bg-orange-100) { background-color: rgba(255, 145, 60, .16); }
-html.dark :is(.border-blue-100, .border-blue-200\/60, .border-blue-200\/40) { border-color: #1D437A; }
+html.dark :is(.bg-indigo-50, .bg-indigo-100, .bg-violet-100, .bg-purple-50, .bg-cyan-50, .bg-cyan-100, .bg-sky-50, .bg-sky-100, .bg-teal-50, .bg-teal-50\/70) { background-color: color-mix(in srgb, var(--mg-blue) 14%, transparent); }
+html.dark :is(.bg-orange-50, .bg-orange-100) { background-color: color-mix(in srgb, var(--mg-surface-elevated) 72%, transparent); }
+html.dark :is(.border-blue-100, .border-blue-200\/60, .border-blue-200\/40) { border-color: var(--mg-border-medium); }
 html.dark :is(.border-emerald-100, .border-emerald-200\/60) { border-color: #0D4E3F; }
 html.dark :is(.border-rose-100, .border-red-200, .border-red-200\/60, .border-red-100) { border-color: #55192C; }
 html.dark :is(.border-amber-100) { border-color: #573A12; }
@@ -1306,14 +1303,14 @@ html.dark .home-screen .journey-search-card button:not([type="submit"]):not([dat
   background-color: var(--mg-surface-secondary);
   color: var(--mg-ink-primary);
 }
-html.dark .search-screen .home-intro { border-color: #263648; }
+html.dark .search-screen .home-intro { border-color: var(--mg-border-medium); }
 html.dark .transport-mode-grid > button:disabled {
   border-color: var(--mg-border-subtle);
   background-color: var(--mg-surface-secondary);
   color: var(--mg-ink-muted);
 }
-html.dark .journey-result-card { border-color: #263648; box-shadow: 0 8px 24px rgba(0,0,0,.22); }
-html.dark .coverage-details[open] { border-color: #263648; }
+html.dark .journey-result-card { border-color: var(--mg-border-subtle); box-shadow: var(--mg-card-shadow); }
+html.dark .coverage-details[open] { border-color: var(--mg-border-medium); }
 .coverage-details[open] .coverage-chevron { transform: rotate(180deg); }
 
 /* ---- Motion foundation -------------------------------------------------
@@ -1403,14 +1400,14 @@ html.dark .coverage-details[open] { border-color: #263648; }
   .journey-results [data-testid="journey-result-card"]:hover { box-shadow: 0 8px 24px rgba(30, 64, 110, .12); }
 }
 /* The search button is the busiest control on the screen: make its waiting state obvious. */
-.search-submit { background: #0B63D6; }
+.search-submit { background: var(--mg-action); }
 .search-submit:not(:disabled) { transition: transform var(--mg-dur-tap) var(--mg-ease-standard), box-shadow var(--mg-dur-fast) var(--mg-ease-standard), filter var(--mg-dur-fast) var(--mg-ease-standard); }
 .search-submit:active:not(:disabled) { transform: scale(.985); }
 .search-submit:disabled { animation: mg-wait 1.6s var(--mg-ease-standard) infinite; }
 
 /* Data-quality disclaimers stay verbatim; they only cost one line until the rider asks for the rest. */
 .search-notices summary::-webkit-details-marker { display: none; }
-.search-notices summary:focus-visible { outline: 2px solid #0B63D6; outline-offset: -2px; }
+.search-notices summary:focus-visible { outline: 2px solid var(--mg-blue); outline-offset: -2px; }
 .search-notices-chevron { transform: rotate(90deg); transition: transform var(--mg-dur-fast) var(--mg-ease-standard); }
 .search-notices[open] .search-notices-chevron { transform: rotate(-90deg); }
 .search-notices[open] .search-notices-list { animation: mg-fade var(--mg-dur-fast) var(--mg-ease-standard) both; }
@@ -1448,9 +1445,8 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
    silently cut the publish CTA in half on 390×844. Keep the rhythm as a floor. */
 .home-canonical-banner { min-height: clamp(10rem, 20svh, 11.75rem); }
 .home-action-grid { flex: 0 0 auto; grid-template-rows: repeat(2, clamp(6.2rem, 12.5svh, 6.8rem)); gap: .5rem; }
-/* Four saturated blocks compete for attention and force white-on-color microcopy.
-   One filled primary action plus three tinted siblings keeps the colour coding
-   people scan by, while every label stays high-contrast ink. */
+/* A single navy surface family keeps all four actions calm; hierarchy comes from blue glyphs
+   and the primary search action, while labels stay high-contrast ink. */
 .home-action-card {
   --home-ink: var(--color-marshgo-text);
   --home-sub: var(--color-marshgo-muted);
@@ -1460,30 +1456,25 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
   box-shadow: 0 2px 10px rgba(17, 47, 88, .06);
   color: var(--home-ink);
 }
-.home-action-card--navigation { --home-accent: #0B6EF3; --home-surface: #EDF4FE; }
-.home-action-card--transport { --home-accent: #0E8A6A; --home-surface: #E8F6F1; }
-.home-action-card--publish { --home-accent: #C2600F; --home-surface: #FCF1E6; }
+.home-action-card--navigation,
+.home-action-card--transport,
+.home-action-card--publish { --home-accent: var(--mg-blue-ink); --home-surface: var(--mg-surface-secondary); }
 .home-action-card--search {
-  --home-accent: #FFFFFF;
-  --home-ink: #FFFFFF;
-  --home-sub: rgba(255, 255, 255, .9);
-  --home-surface: linear-gradient(150deg, #1264ED, #0B54C5);
-  border-color: #1B6FE8;
-  box-shadow: 0 8px 22px rgba(11, 84, 197, .26);
-  color: #FFFFFF;
+  --home-accent: var(--mg-blue);
+  --home-surface: var(--mg-surface-secondary);
 }
-.home-action-icon { border: 0; color: #fff; background: var(--home-accent); box-shadow: 0 4px 12px rgba(17, 47, 88, .16); }
-.home-action-card--search .home-action-icon { background: rgba(255, 255, 255, .2); }
+.home-action-icon { border: 0; color: var(--mg-blue-ink); background: var(--mg-blue-tint); box-shadow: none; }
+.home-action-card--search .home-action-icon { color: var(--mg-blue); background: color-mix(in srgb, var(--mg-blue) 16%, transparent); }
 .home-action-card__title { color: var(--home-ink); }
 .home-action-card__subtitle { color: var(--home-sub); }
-.home-action-card:focus-visible { outline: 3px solid #0b6ef3; outline-offset: 3px; }
+.home-action-card:focus-visible { outline: 3px solid var(--mg-blue); outline-offset: 3px; }
 .home-action-card__hint {
   position: absolute; right: .8rem; top: 50%; opacity: 0;
   transform: translate(-6px, -50%);
   transition: opacity var(--mg-dur-fast) var(--mg-ease-standard), transform var(--mg-dur-base) var(--mg-ease-standard);
 }
 @media (hover: hover) and (pointer: fine) {
-  .home-action-card:hover { border-color: color-mix(in srgb, var(--home-accent) 45%, #E2EAF5); box-shadow: 0 8px 22px rgba(17, 47, 88, .12); }
+  .home-action-card:hover { border-color: color-mix(in srgb, var(--mg-blue) 45%, var(--mg-border-medium)); box-shadow: 0 8px 22px rgba(17, 47, 88, .12); }
   .home-action-card:hover .home-action-card__hint { opacity: 1; transform: translate(0, -50%); }
   .home-action-card:hover .home-action-icon { transform: translateY(-1px) scale(1.06); }
 }
@@ -1498,25 +1489,27 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 @media (hover: hover) and (pointer: fine) {
   .home-popular-route:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(17, 47, 88, .16); }
 }
-html.dark .home-canonical-banner > span[aria-hidden="true"] { background: linear-gradient(90deg,rgba(7,20,38,.94),rgba(7,20,38,.78) 60%,rgba(7,20,38,.16)); }
-html.dark .home-canonical-banner { border-color: rgba(83,107,134,.56); box-shadow: 0 10px 28px rgba(0,0,0,.24); }
-html.dark .home-trip-card { background: #0a261e; color: #eff6ff; }
-html.dark .home-canonical-banner h1 { color: #eff6ff; }
-html.dark .home-canonical-banner p { color: #bfdbfe; }
-html.dark .home-trip-card > span:nth-child(2) > span:nth-child(2) { color: #eff6ff; }
+html.dark .home-canonical-banner > span[aria-hidden="true"] { background: linear-gradient(90deg,rgba(7,21,33,.96),rgba(7,21,33,.82) 60%,rgba(7,21,33,.18)); }
+html.dark .home-canonical-banner { border-color: var(--mg-border-medium); box-shadow: var(--mg-card-shadow); }
+html.dark .home-trip-card { background: var(--mg-surface-primary); color: var(--mg-ink-primary); }
+html.dark .home-canonical-banner h1 { color: var(--mg-ink-primary); }
+html.dark .home-canonical-banner p { color: var(--mg-ink-secondary); }
+html.dark .home-trip-card > span:nth-child(2) > span:nth-child(2) { color: var(--mg-ink-primary); }
 html.dark .home-screen .home-intro { border-radius: 1.4rem; }
 html.dark .home-action-card { --home-ink: var(--color-marshgo-text); --home-sub: var(--color-marshgo-muted); --home-surface: var(--color-marshgo-card); border-color: var(--color-marshgo-border); box-shadow: 0 4px 16px rgba(0,0,0,.24); }
-html.dark .home-action-card--navigation { --home-surface: #12233B; border-color: #24486F; }
-html.dark .home-action-card--transport { --home-surface: #0E2620; border-color: #1E4A3C; }
-html.dark .home-action-card--publish { --home-surface: #2A1D10; border-color: #5A3A18; }
-html.dark .home-action-card--search { --home-surface: linear-gradient(150deg, #1264ED, #0B54C5); --home-ink: #FFFFFF; --home-sub: rgba(255,255,255,.92); border-color: #2E7BF0; box-shadow: 0 10px 26px rgba(0,0,0,.34); }
-html.dark .home-action-icon { color: #fff; background: var(--home-accent); box-shadow: 0 4px 14px rgba(0,0,0,.34); }
-html.dark .home-action-card--navigation .home-action-icon { background: #1687FF; }
-html.dark .home-action-card--transport .home-action-icon { background: #17B58A; }
-html.dark .home-action-card--publish .home-action-icon { background: #E0842B; }
-html.dark .home-action-card--search .home-action-icon { background: rgba(255,255,255,.2); }
-html.dark .home-popular-routes h2 { color: #F5F9FF; }
-html.dark .home-popular-route { border-color: #263648; }
+html.dark .home-action-icon { color: var(--mg-blue); background: var(--mg-blue-tint); box-shadow: none; }
+html.dark .home-action-card--search .home-action-icon { background: color-mix(in srgb, var(--mg-blue) 16%, transparent); }
+html.dark .home-popular-routes h2 { color: var(--mg-ink-primary); }
+html.dark .home-popular-route { border-color: var(--mg-border-subtle); }
+
+/* Active Home ticket uses the same semantic ramp as the full-screen ticket. QR remains white. */
+.home-marshpass-card { background: var(--mg-surface-primary); border-color: var(--mg-border-medium); color: var(--mg-ink-primary); }
+.home-marshpass-card [class*="text-blue-400"] { color: var(--mg-blue); }
+.home-marshpass-card [class~="bg-blue-600"] { background-color: var(--mg-action); }
+.home-marshpass-card [class~="bg-blue-600/20"] { background-color: color-mix(in srgb, var(--mg-blue) 20%, transparent); }
+.home-marshpass-card [class*="border-blue-500/"] { border-color: color-mix(in srgb, var(--mg-blue) 40%, transparent); }
+.home-marshpass-card[class*="bg-gradient-to-br"] { background-image: none; }
+.home-marshpass-card [class*="text-slate-300"] { color: var(--mg-ink-secondary); }
 
 /* Shared interaction and dark-surface polish from the production navigation. */
 html.dark .production-app .app-tabbar {
@@ -1524,7 +1517,7 @@ html.dark .production-app .app-tabbar {
   color: var(--color-marshgo-text);
 }
 html.dark .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
-  background: #142d4d;
+  background: var(--mg-blue-tint);
 }
 html.dark .app-tabbar { border-color: var(--mg-line); }
 .production-app button:disabled { cursor: not-allowed; }
@@ -1533,11 +1526,11 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
 }
 @media (hover: hover) and (pointer: fine) {
   .production-app .app-tabbar-inner button:not(.app-create-button):hover {
-    background: rgba(31, 99, 233, .08);
+    background: color-mix(in srgb, var(--mg-blue) 9%, transparent);
     color: var(--mg-blue);
   }
   .production-app article:hover { border-color: #cbd9ec; }
-  html.dark .production-app article:hover { border-color: #345577; }
+  html.dark .production-app article:hover { border-color: var(--mg-border-medium); }
 }
 @media (max-width: 639px) {
   .app-header { border-bottom: 1px solid rgba(229, 237, 247, .72); }
@@ -1601,22 +1594,22 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
 @keyframes marshgo-puck-pulse { 0% { transform: scale(.5); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .marshgo-puck__halo { animation: none; } }
 
-/* Canonical MARSHGO matte-graphite theme and square Home composition. */
+/* Canonical MARSHGO navy theme and square Home composition. */
 html.dark body,
 html.dark .production-app {
-  background-color: #0B0F14;
-  color: #F5F9FF;
+  background-color: var(--mg-canvas);
+  color: var(--mg-ink-primary);
 }
 html.dark .production-app {
-  background-image: radial-gradient(ellipse at 50% -12%, rgba(22, 135, 255, .12), transparent 32rem);
+  background-image: radial-gradient(ellipse at 50% -12%, rgba(113, 199, 242, .08), transparent 32rem);
 }
 html.dark .app-header,
 html.dark .app-tabbar {
-  background-color: rgba(11, 15, 20, .94);
-  border-color: #263648;
+  background-color: var(--mg-surface-glass);
+  border-color: var(--mg-border-subtle);
 }
 html.dark .home-banner-scrim {
-  background: linear-gradient(90deg, rgba(7, 28, 51, .97), rgba(7, 28, 51, .84) 58%, rgba(7, 28, 51, .16));
+  background: linear-gradient(90deg, rgba(7, 21, 33, .97), rgba(7, 21, 33, .84) 58%, rgba(7, 21, 33, .16));
 }
 .home-banner-scrim { background: linear-gradient(90deg, rgba(255,255,255,.96), rgba(255,255,255,.86) 58%, rgba(255,255,255,.08)); }
 .home-marshpass-slot--multiple .home-marshpass-card { height: calc(100% - 3.25rem); }
@@ -1810,7 +1803,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   touch-action: manipulation;
 }
 .mg-route-ribbon__pill.is-active {
-  box-shadow: 0 0 0 2.5px var(--route-ribbon-ring), 0 0 20px color-mix(in srgb, #1687FF 55%, transparent);
+  box-shadow: 0 0 0 2.5px var(--route-ribbon-ring), 0 0 20px color-mix(in srgb, var(--mg-blue) 55%, transparent);
   transform: scale(1.02);
 }
 .mg-route-ribbon__pill:active { transform: scale(.97); }
@@ -2102,7 +2095,7 @@ html.dark .app-header .bg-white { background-color: var(--mg-surface-primary); b
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(22, 135, 255, .5);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mg-blue) 50%, transparent);
   pointer-events: none;
   animation: mg-segment-halo 2.8s var(--mg-ease-standard) infinite;
 }

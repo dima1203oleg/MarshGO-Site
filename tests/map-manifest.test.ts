@@ -31,6 +31,6 @@ test('fallback basemap uses the requested light or dark canvas palette', () => {
     return layer.paint?.['background-color'];
   };
 
-  assert.equal(background('MARSHGO_LIGHT'), '#EEF3F8');
-  assert.equal(background('MARSHGO_DARK'), '#111827');
+  assert.equal(background('MARSHGO_LIGHT'), '#F2F7FB');
+  assert.equal(background('MARSHGO_DARK'), '#071521');
 });

@@ -12,6 +12,7 @@ test('visual registry covers exactly the twelve canonical user-facing transport 
     assert.ok(visual.englishLabel, `${mode.id} English label`);
     assert.equal(visual.colorToken, `--mode-${mode.id}`);
     assert.match(visual.color, /^#[\da-f]{6}$/i);
+    assert.equal(visual.color, '#327FC3', `${mode.id} shared map color`);
     assert.equal(visual.mapLineStyle.cap, 'round');
     assert.equal(visual.accessibilityLabel, visual.label);
   }

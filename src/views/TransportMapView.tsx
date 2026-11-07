@@ -93,14 +93,14 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
     const city = cities.find((entry) => entry.id === nextId);
     if (city) onCitySelected(city.name);
   };
-  return <main className="relative h-[100svh] overflow-hidden bg-[#dbeafe] text-[#17243a] dark:bg-[#0B141C] dark:text-[#E7F0FA]">
+  return <main className="relative h-[100svh] overflow-hidden bg-[#dbeafe] text-[#17243a] dark:bg-[var(--mg-canvas)] dark:text-[var(--mg-ink-primary)]">
     <MarshGoMap route={[]} overlays onStatus={setStatus} onTransportHint={setHint} onAdapter={onAdapter}/>
     <div className="pointer-events-none absolute inset-x-4 top-[max(.8rem,env(safe-area-inset-top))] z-[500] flex flex-col gap-2">
-      <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white p-2 shadow-xl dark:bg-[#111820]">
-        <button type="button" onClick={onBack} aria-label="Назад" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 dark:bg-[#16202B] dark:text-slate-200"><ArrowLeft size={18}/></button>
+      <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white p-2 shadow-xl dark:bg-[var(--mg-surface-primary)]">
+        <button type="button" onClick={onBack} aria-label="Назад" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 dark:bg-[var(--mg-surface-secondary)] dark:text-[var(--mg-ink-primary)]"><ArrowLeft size={18}/></button>
         <h1 className="flex-1 truncate px-1 text-base font-extrabold">Карта транспорту</h1>
         {cities.length > 0 && <label className="sr-only" htmlFor="transport-city">Місто</label>}
-        {cities.length > 0 && <select id="transport-city" aria-label="Місто на транспортній карті" value={cityId} onChange={(event) => chooseCity(event.target.value)} className="max-w-28 rounded-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-[#16202B] dark:text-slate-200">
+        {cities.length > 0 && <select id="transport-city" aria-label="Місто на транспортній карті" value={cityId} onChange={(event) => chooseCity(event.target.value)} className="max-w-28 rounded-full border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-secondary)] dark:text-[var(--mg-ink-primary)]">
           <option value="">Оберіть місто</option>
           {cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}
         </select>}
@@ -108,14 +108,14 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
       <div className="pointer-events-auto flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Швидкі шари">
         {chips.map(({ label, id, Icon }) => {
           const selectable = isLayerSelectable(layerState.availability, id);
-          return <button key={id} type="button" disabled={!selectable} aria-pressed={selected.has(id)} aria-label={selectable ? label : `${label}: ${layerUnavailableNote(layerState.probeFailed)}`} onClick={() => toggleTransportLayer(id)} className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold shadow ${selected.has(id) ? 'bg-[var(--mg-action)] text-white' : 'bg-white text-slate-700 dark:bg-[#16202B] dark:text-slate-200'} ${selectable ? '' : 'cursor-not-allowed bg-slate-50 text-slate-400 dark:bg-[#141C25] dark:text-slate-500'}`}>
+          return <button key={id} type="button" disabled={!selectable} aria-pressed={selected.has(id)} aria-label={selectable ? label : `${label}: ${layerUnavailableNote(layerState.probeFailed)}`} onClick={() => toggleTransportLayer(id)} className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold shadow ${selected.has(id) ? 'bg-[var(--mg-action)] text-white' : 'bg-white text-slate-700 dark:bg-[var(--mg-surface-secondary)] dark:text-[var(--mg-ink-primary)]'} ${selectable ? '' : 'cursor-not-allowed bg-slate-50 text-slate-400 dark:bg-[var(--mg-surface-elevated)] dark:text-[var(--mg-ink-muted)]'}`}>
             <Icon size={15}/>{label}
             {!selectable && <span className="text-xs font-semibold">· {layerUnavailableNote(layerState.probeFailed)}</span>}
           </button>;
         })}
       </div>
-      {hint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold leading-snug text-slate-600 shadow dark:bg-[#111820]/95 dark:text-slate-300">{hint}</p>}
-      {cityRegistryHint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold leading-snug text-slate-600 shadow dark:bg-[#111820]/95 dark:text-slate-300">{cityRegistryHint}</p>}
+      {hint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold leading-snug text-slate-600 shadow dark:bg-[var(--mg-surface-primary)]/95 dark:text-[var(--mg-ink-secondary)]">{hint}</p>}
+      {cityRegistryHint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold leading-snug text-slate-600 shadow dark:bg-[var(--mg-surface-primary)]/95 dark:text-[var(--mg-ink-secondary)]">{cityRegistryHint}</p>}
       {quality && <p role="status" aria-label="Якість даних живого транспорту" className="pointer-events-auto self-start shadow"><StatusBadge status={quality.status} label={quality.label} size="sm"/></p>}
       {selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow">
         {selectedCity.routeCount} маршрутів · {selectedCity.stopCount} зупинок · статичний розклад{selectedCity.realtimeAvailable ? ' · realtime джерело підключене' : ''}
@@ -138,7 +138,7 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
         className={`grid h-12 w-12 place-items-center rounded-full text-xs font-black shadow-lg transition-all ${
           mapPerspective === '3d'
             ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30 ring-2 ring-blue-400/50'
-            : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[#111C28]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
+            : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[var(--mg-surface-secondary)]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
         }`}
       >
         {mapPerspective === '3d' ? '2D' : '3D'}
@@ -159,7 +159,7 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
         className={`grid h-12 w-12 place-items-center rounded-full shadow-lg transition-all ${
           mapLayer === 'satellite' && satelliteBasemapAvailable
             ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30 ring-2 ring-blue-400/50'
-            : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[#111C28]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
+            : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[var(--mg-surface-secondary)]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
         }${satelliteBasemapAvailable ? '' : ' opacity-45'}`}
       >
         <Globe size={20} />

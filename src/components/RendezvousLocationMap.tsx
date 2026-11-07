@@ -131,8 +131,8 @@ export function RendezvousLocationMap({ session, currentUserIsDriver, onArrived 
   const passengerApproach = approaches?.passenger.approach;
 
   return <div data-testid="rendezvous-location-map" className={expanded
-    ? 'fixed inset-0 z-[100] flex h-[100dvh] flex-col overflow-y-auto bg-white dark:bg-[#0A1D2D]'
-    : 'mt-3 overflow-hidden rounded-2xl border border-blue-100 bg-white dark:bg-[#0A1D2D]'}>
+    ? 'fixed inset-0 z-[100] flex h-[100dvh] flex-col overflow-y-auto bg-white dark:bg-[var(--mg-surface-primary)]'
+    : 'mt-3 overflow-hidden rounded-2xl border border-blue-100 bg-white dark:bg-[var(--mg-surface-primary)]'}>
     {expanded && <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 pt-[max(.75rem,env(safe-area-inset-top))] dark:border-slate-800">
       <div><h2 className="text-sm font-extrabold text-slate-900 dark:text-white">Точка зустрічі</h2><p className="text-xs text-slate-500 dark:text-slate-400">Спільне наближення до посадки</p></div>
       <button type="button" aria-label="Згорнути карту зустрічі" onClick={() => setExpanded(false)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white"><Minimize2 size={18}/></button>
@@ -154,7 +154,7 @@ export function RendezvousLocationMap({ session, currentUserIsDriver, onArrived 
       <p data-testid="meeting-passenger-card"><b className="block text-slate-700">Пасажир до посадки</b><span className="text-slate-500">{formatApproach(passengerApproach, passengerDistance)}</span></p>
     </div>
     <p className="px-3 pb-2 text-xs leading-4 text-slate-500 dark:text-slate-400">Сині та фіолетові лінії й ETA надходять від налаштованої маршрутизації. Якщо її немає, показуємо GPS-стан без вигаданого шляху.</p>
-    {expanded && <div className="sticky bottom-0 mt-auto shrink-0 border-t border-slate-100 bg-white p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-[#0A1D2D]">
+    {expanded && <div className="sticky bottom-0 mt-auto shrink-0 border-t border-slate-100 bg-white p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-[var(--mg-surface-primary)]">
       <button type="button" onClick={onArrived} className="min-h-12 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white">Я на місці</button>
     </div>}
   </div>;

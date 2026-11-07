@@ -47,8 +47,15 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
 
   const testMatrix = [
+    { name: 'mobile-320-dark', viewport: { width: 320, height: 720 }, theme: 'dark' },
+    { name: 'mobile-360-dark', viewport: { width: 360, height: 720 }, theme: 'dark' },
+    { name: 'mobile-375-dark', viewport: { width: 375, height: 720 }, theme: 'dark' },
     { name: 'mobile-light', viewport: { width: 390, height: 720 }, theme: 'light' },
     { name: 'mobile-dark', viewport: { width: 390, height: 720 }, theme: 'dark' },
+    { name: 'mobile-414-dark', viewport: { width: 414, height: 720 }, theme: 'dark' },
+    { name: 'mobile-430-dark', viewport: { width: 430, height: 720 }, theme: 'dark' },
+    { name: 'tablet-light', viewport: { width: 768, height: 900 }, theme: 'light' },
+    { name: 'tablet-dark', viewport: { width: 768, height: 900 }, theme: 'dark' },
     { name: 'desktop-light', viewport: { width: 1280, height: 800 }, theme: 'light' },
     { name: 'desktop-dark', viewport: { width: 1280, height: 800 }, theme: 'dark' },
   ];
@@ -63,6 +70,7 @@ async function main() {
         colorScheme: config.theme,
       });
       const page = await context.newPage();
+      await page.addInitScript((theme) => globalThis.localStorage.setItem('mg_theme', theme), config.theme);
 
       const criticalErrors = [];
 
@@ -91,6 +99,19 @@ async function main() {
       // Check root element
       const rootHtml = await page.$eval('#root', (el) => el.innerHTML).catch(() => '');
       const rootText = await page.$eval('#root', (el) => el.innerText).catch(() => '');
+      const viewport = await page.locator('html').evaluate((element) => ({ width: element.clientWidth, scrollWidth: element.scrollWidth, height: element.clientHeight }));
+      const actions = await page.locator('.auth-intro-screen button').evaluateAll((buttons) => buttons.map((button) => {
+        const rect = button.getBoundingClientRect();
+        return { label: button.innerText.trim(), top: rect.top, bottom: rect.bottom };
+      }));
+      const layout = { ...viewport, actions };
+      if (layout.scrollWidth > layout.width + 1) {
+        criticalErrors.push(`Horizontal overflow: ${layout.scrollWidth}px content in ${layout.width}px viewport`);
+      }
+      const clippedAction = layout.actions.find((action) => action.top < 0 || action.bottom > layout.height);
+      if (clippedAction) {
+        criticalErrors.push(`Entry action outside viewport: ${clippedAction.label} (${Math.round(clippedAction.top)}–${Math.round(clippedAction.bottom)}px)`);
+      }
 
       const screenshotPath = resolve(artifactsDir, `boot-smoke-${config.name}.png`);
       await page.screenshot({ path: screenshotPath, fullPage: false });

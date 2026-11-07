@@ -20,7 +20,7 @@ test('keeps real route shapes separate and uses each transport mode color', () =
   ]));
 
   assert.equal(model.routeSegments.length, 2);
-  assert.deepEqual(model.routeSegments.map(segment => segment.modeColor), ['#1687FF', '#8B3CE6']);
+  assert.deepEqual(model.routeSegments.map(segment => segment.modeColor), ['#327FC3', '#327FC3']);
   assert.deepEqual(model.routeSegments.map(segment => segment.coordinates.length), [3, 2]);
   assert.deepEqual(model.routeWaypoints, [
     { coordinate: [24, 49.8], kind: 'PICKUP', segmentIds: ['bus'] },
@@ -190,12 +190,12 @@ test('formats transfer counts with Ukrainian plural forms', () => {
 
 test('uses one stable canonical color for each supported transport category', () => {
   const cases: Array<[string, string | undefined, string]> = [
-    ['BUS', 'bus', '#1687FF'], ['MINIBUS', 'marshrutka', '#F02F79'],
-    ['TROLLEYBUS', 'trolleybus', '#00C2A0'], ['TRAM', 'tram', '#8B3CE6'],
-    ['METRO', 'metro', '#D6224A'], ['COMMUNITY', 'carpool', '#FF7A2F'],
-    ['TAXI', 'taxi', '#F5B51B'], ['RAIL', 'train', '#6366F1'],
-    ['BIKE', 'bike', '#20B86A'], ['SCOOTER', 'scooter', '#84CC16'],
-    ['CARSHARING', 'carsharing', '#00A8D6'], ['TRANSFER', 'transfer', '#6C7A93'],
+    ['BUS', 'bus', '#327FC3'], ['MINIBUS', 'marshrutka', '#327FC3'],
+    ['TROLLEYBUS', 'trolleybus', '#327FC3'], ['TRAM', 'tram', '#327FC3'],
+    ['METRO', 'metro', '#327FC3'], ['COMMUNITY', 'carpool', '#327FC3'],
+    ['TAXI', 'taxi', '#327FC3'], ['RAIL', 'train', '#327FC3'],
+    ['BIKE', 'bike', '#327FC3'], ['SCOOTER', 'scooter', '#327FC3'],
+    ['CARSHARING', 'carsharing', '#327FC3'], ['TRANSFER', 'transfer', '#327FC3'],
     ['WALK', 'walk', '#91A6BB'],
   ];
 

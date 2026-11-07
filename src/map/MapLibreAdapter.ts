@@ -99,7 +99,7 @@ function transitGlyph(kind: 'bus' | 'tram' | 'trolleybus' | 'train' | 'minibus')
     ctx.fill();
 
     // Route number indicator
-    ctx.fillStyle = '#1687FF';
+    ctx.fillStyle = '#327FC3';
     roundRect(26, 16, 12, 3, 1.5);
     ctx.fill();
 
@@ -476,7 +476,7 @@ export class MapLibreAdapter implements MapAdapter {
       source: 'marshgo-route-reveal',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['coalesce', ['get', 'modeColor'], '#1687FF'],
+        'line-color': ['coalesce', ['get', 'modeColor'], '#327FC3'],
         'line-width': ['interpolate', ['linear'], ['zoom'], 5, 14, 15, 26],
         'line-opacity': 0.75,
         'line-blur': 6,
@@ -499,7 +499,7 @@ export class MapLibreAdapter implements MapAdapter {
       source: 'marshgo-route-reveal-head',
       paint: {
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 8, 15, 18],
-        'circle-color': ['coalesce', ['get', 'modeColor'], '#1687FF'],
+        'circle-color': ['coalesce', ['get', 'modeColor'], '#327FC3'],
         'circle-blur': 0.6,
         'circle-opacity': 0.85,
       },
@@ -511,7 +511,7 @@ export class MapLibreAdapter implements MapAdapter {
       paint: {
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 15, 7.5],
         'circle-color': '#FFFFFF',
-        'circle-stroke-color': ['coalesce', ['get', 'modeColor'], '#1687FF'],
+        'circle-stroke-color': ['coalesce', ['get', 'modeColor'], '#327FC3'],
         'circle-stroke-width': 2.5,
       },
     });
@@ -587,7 +587,7 @@ export class MapLibreAdapter implements MapAdapter {
         'circle-color': ['match', ['get', 'kind'],
           'PICKUP', colors.pickup,
           'DROPOFF', colors.dropoff,
-          'TRANSFER', '#1687FF',
+          'TRANSFER', '#327FC3',
           'SELF_LOCATION', '#0878F9',
           'OTHER_LOCATION', '#8B5CF6',
           colors.route,
@@ -624,7 +624,7 @@ export class MapLibreAdapter implements MapAdapter {
         ] as unknown as ExpressionSpecification,
         'circle-stroke-color': ['match', ['get', 'kind'],
           'STOP', '#475569',
-          'TRANSFER', '#1687FF',
+          'TRANSFER', '#327FC3',
           'SELF_LOCATION', '#FFFFFF',
           'OTHER_LOCATION', '#FFFFFF',
           '#FFFFFF',
@@ -1065,7 +1065,7 @@ export class MapLibreAdapter implements MapAdapter {
     const zonesSource = this.map.getSource('marshgo-transit-zones') as maplibregl.GeoJSONSource | undefined;
     const arrowsSource = this.map.getSource('marshgo-transit-zone-arrows') as maplibregl.GeoJSONSource | undefined;
     const overlay = this.focusedTransitOverlay;
-    const modeColor = overlay?.color ?? '#1687FF';
+    const modeColor = overlay?.color ?? '#327FC3';
     const routes = (overlay?.lineRoutes ?? []).filter(route => route.coordinates.length >= 2);
     const zonesForRoute = routes.map(route => zoneFeaturesFor(route.zones, route.geometryScope));
     lineSource?.setData({ type: 'FeatureCollection', features: routes.map((route, index) => ({
@@ -1272,9 +1272,9 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.setPaintProperty('marshgo-route-casing', 'line-color', colors.routeCasing);
     this.map.setPaintProperty('marshgo-route', 'line-color', ['coalesce', ['get', 'modeColor'], colors.route]);
     this.map.setPaintProperty('marshgo-waypoints', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'STOP', '#F8FAFC', 'TRANSFER', '#FFFFFF', 'SELF_LOCATION', '#0878F9', 'OTHER_LOCATION', '#8B5CF6', colors.route]);
-    this.map.setPaintProperty('marshgo-waypoints', 'circle-stroke-color', ['match', ['get', 'kind'], 'STOP', '#475569', 'TRANSFER', '#1687FF', 'SELF_LOCATION', '#FFFFFF', 'OTHER_LOCATION', '#FFFFFF', '#FFFFFF']);
+    this.map.setPaintProperty('marshgo-waypoints', 'circle-stroke-color', ['match', ['get', 'kind'], 'STOP', '#475569', 'TRANSFER', '#327FC3', 'SELF_LOCATION', '#FFFFFF', 'OTHER_LOCATION', '#FFFFFF', '#FFFFFF']);
     if (this.map.getLayer('marshgo-waypoints-halo')) {
-      this.map.setPaintProperty('marshgo-waypoints-halo', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'TRANSFER', '#1687FF', 'SELF_LOCATION', '#0878F9', 'OTHER_LOCATION', '#8B5CF6', colors.route]);
+      this.map.setPaintProperty('marshgo-waypoints-halo', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'TRANSFER', '#327FC3', 'SELF_LOCATION', '#327FC3', 'OTHER_LOCATION', '#327FC3', colors.route]);
     }
     this.map.setPaintProperty('marshgo-vehicle-halo', 'circle-color', colors.vehicle);
     this.map.setPaintProperty('marshgo-vehicle', 'circle-color', colors.vehicle);

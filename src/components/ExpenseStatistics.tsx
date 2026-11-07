@@ -317,7 +317,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
   const co2SavedKg = Math.round(totalSeats * 38.5); // ~38.5 kg CO2 per seat carpooled
 
   return (
-    <div className="bg-white dark:bg-[#0D1E36] rounded-2xl border border-[#DFE7F1] dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-6 transition-all">
+    <div className="bg-white dark:bg-[var(--mg-surface-secondary)] rounded-2xl border border-[#DFE7F1] dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-6 transition-all">
       {/* Header with period toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
         <div className="flex items-center gap-3">
@@ -346,7 +346,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
             onClick={() => setSelectedPeriod('all')}
             className={`px-3 py-1.5 rounded-lg font-bold transition ${
               selectedPeriod === 'all'
-                ? 'bg-white dark:bg-[#1769F4] text-[#1769F4] dark:text-white shadow-xs'
+                ? 'bg-white dark:bg-[var(--mg-action)] text-[#1769F4] dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -357,7 +357,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
             onClick={() => setSelectedPeriod('last_3_months')}
             className={`px-3 py-1.5 rounded-lg font-bold transition ${
               selectedPeriod === 'last_3_months'
-                ? 'bg-white dark:bg-[#1769F4] text-[#1769F4] dark:text-white shadow-xs'
+                ? 'bg-white dark:bg-[var(--mg-action)] text-[#1769F4] dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -368,7 +368,7 @@ export const ExpenseStatistics: React.FC<ExpenseStatisticsProps> = ({ bookings }
             onClick={() => setSelectedPeriod('current_month')}
             className={`px-3 py-1.5 rounded-lg font-bold transition ${
               selectedPeriod === 'current_month'
-                ? 'bg-white dark:bg-[#1769F4] text-[#1769F4] dark:text-white shadow-xs'
+                ? 'bg-white dark:bg-[var(--mg-action)] text-[#1769F4] dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >

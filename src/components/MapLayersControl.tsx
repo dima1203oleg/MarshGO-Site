@@ -75,12 +75,12 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
 
   return <>
     <div className="relative">
-      <button type="button" aria-label="Шари карти" aria-expanded={open} aria-controls="marshgo-map-layers" onClick={() => setOpen((value) => !value)} className={`relative grid h-12 w-12 place-items-center rounded-full shadow-lg ${navigationMode ? 'border border-slate-200 bg-white/95 text-[#0B1730] backdrop-blur dark:border-white/15 dark:bg-[#0A1D2D]/90 dark:text-white' : 'bg-white text-[var(--mg-blue)] dark:bg-[#0B1C2B] dark:text-[#66B2FF]'}`}>
+      <button type="button" aria-label="Шари карти" aria-expanded={open} aria-controls="marshgo-map-layers" onClick={() => setOpen((value) => !value)} className={`relative grid h-12 w-12 place-items-center rounded-full shadow-lg ${navigationMode ? 'border border-slate-200 bg-white/95 text-[#0B1730] backdrop-blur dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]/90 dark:text-[var(--mg-ink-primary)]' : 'bg-white text-[var(--mg-blue)] dark:bg-[var(--mg-surface-primary)] dark:text-[var(--mg-blue)]'}`}>
         {open ? <X size={22}/> : <Layers size={22}/>}
         {showLayers && selected.size > 0 && !open && <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--mg-action)] px-1 text-xs font-bold text-white">{selected.size}</span>}
       </button>
     </div>
-    {open && visible && typeof document !== 'undefined' && createPortal(<div id="marshgo-map-layers" role="dialog" aria-label="Шари карти" style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))', maxHeight: 'min(60dvh, calc(100dvh - max(.75rem, env(safe-area-inset-top)) - 5.3rem - env(safe-area-inset-bottom)))' }} className="fixed inset-x-0 z-[1000] max-h-[60svh] overflow-y-auto rounded-t-[1.75rem] border border-slate-200 bg-white px-4 pb-3 pt-1 text-slate-900 shadow-[0_-12px_40px_rgba(8,27,53,.2)] dark:border-[#263648] dark:bg-[#0A1D2D] dark:text-slate-100 dark:shadow-[0_-12px_40px_rgba(0,0,0,.45)] sm:fixed sm:inset-x-auto sm:bottom-auto sm:right-16 sm:top-1/2 sm:max-h-[70svh] sm:w-[20rem] sm:-translate-y-1/2 sm:rounded-2xl sm:p-3 sm:shadow-xl">
+    {open && visible && typeof document !== 'undefined' && createPortal(<div id="marshgo-map-layers" role="dialog" aria-label="Шари карти" style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))', maxHeight: 'min(60dvh, calc(100dvh - max(.75rem, env(safe-area-inset-top)) - 5.3rem - env(safe-area-inset-bottom)))' }} className="fixed inset-x-0 z-[1000] max-h-[60svh] overflow-y-auto rounded-t-[1.75rem] border border-slate-200 bg-white px-4 pb-3 pt-1 text-slate-900 shadow-[0_-12px_40px_rgba(8,27,53,.2)] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:text-[var(--mg-ink-primary)] dark:shadow-[0_-12px_40px_rgba(0,0,0,.45)] sm:fixed sm:inset-x-auto sm:bottom-auto sm:right-16 sm:top-1/2 sm:max-h-[70svh] sm:w-[20rem] sm:-translate-y-1/2 sm:rounded-2xl sm:p-3 sm:shadow-xl">
       <div className="mx-auto mb-0 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600 sm:hidden" aria-hidden="true"/>
       <header className="mb-2 flex items-center justify-between gap-3">
         <div><h2 className="font-extrabold text-sm">Налаштування карти</h2></div>
@@ -88,7 +88,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
       </header>
       {showLayers ? <>
         {layerState.probeFailed && <p role="status" className="mb-2 rounded-xl bg-amber-50 p-2 text-xs leading-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Не вдалося перевірити джерела шарів. Вони тимчасово вимкнені.<button type="button" className="ml-1 font-bold underline" onClick={() => { void retryLayerAvailability(); }}>Повторити</button></p>}
-        <section className="mb-0 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-[#0c2031]">
+        <section className="mb-0 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-[var(--mg-surface-secondary)]">
           <h3 className="mb-1 flex items-center gap-2 px-1 text-[12px] font-bold text-slate-600 dark:text-slate-300"><BusFront size={17} className="text-blue-500" aria-hidden="true"/>Транспорт<span className="ml-auto text-slate-400" aria-hidden="true">⌃</span></h3>
             <div className="grid grid-cols-2 gap-x-1">{canonicalLayerOrder.map((id) => transportLayerList.find(item => item.id === id)).filter((item): item is (typeof transportLayerList)[number] => Boolean(item)).map((item) => {
               const iconById: Record<TransportLayerId, LucideIcon> = { PUBLIC_TRANSPORT: BusFront, METRO: TrainFront, TRAM: TramFront, TROLLEYBUS: BusFront, BUS: BusFront, MINIBUS: BusFront, TRAIN: TrainFront, CARPOOL: CarFront, TAXI: CarFront, TRANSFER: CarFront, CITY_TRAIN: TrainFront, FUNICULAR: CableCar, STOPS: MapPin, BICYCLE: Bike, SCOOTER: Bike, CARSHARING: CarFront, RENTAL_POINTS: MapPinned };
@@ -96,7 +96,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
               return <LayerRow key={item.id} label={item.label} icon={iconById[item.id]} tone={toneById[item.id]} ids={[item.id]} selected={selected} available={available} unavailableNote={unavailableNote} onToggle={toggleGroup}/>;
             })}</div>
         </section>
-        <section className="mb-0 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-[#0c2031]">
+        <section className="mb-0 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-[var(--mg-surface-secondary)]">
           <h3 className="mb-1 flex items-center gap-2 px-1 text-[12px] font-bold text-slate-600 dark:text-slate-300"><Eye size={17} className="text-blue-500" aria-hidden="true"/>Відображення<span className="ml-auto text-slate-400" aria-hidden="true">⌃</span></h3>
           <div className="grid grid-cols-2 gap-x-1">
             <PreferenceRow label="Лінії маршрутів" id="routeLines" icon={Route} checked={displayPreferences.routeLines} onChange={togglePreference}/>
@@ -107,7 +107,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
             <UnavailableRow label="Пересадки" icon={ArrowLeftRight}/>
           </div>
         </section>
-        <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-[#0c2031]">
+        <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-[var(--mg-surface-secondary)]">
           <h3 className="mb-1 flex items-center gap-2 px-1 text-[12px] font-bold text-slate-600 dark:text-slate-300"><Route size={17} className="text-slate-500" aria-hidden="true"/>Інфраструктура<span className="ml-auto text-slate-400" aria-hidden="true">⌃</span></h3>
           <div className="grid grid-cols-2 gap-x-1">
             <UnavailableRow label="Дорожній рух" icon={CarFront}/><UnavailableRow label="Велодоріжки" icon={Bike}/>
@@ -116,7 +116,7 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
             <UnavailableRow label="Зарядні станції" icon={TrafficCone}/><UnavailableRow label="Місця повернення" icon={MapPin}/>
           </div>
         </section>
-      </> : <p className="rounded-xl bg-slate-50 p-3 text-xs leading-4 text-slate-500 dark:bg-[#10283B] dark:text-slate-400">Додаткові транспортні шари доступні на транспортній карті.</p>}
+      </> : <p className="rounded-xl bg-slate-50 p-3 text-xs leading-4 text-slate-500 dark:bg-[var(--mg-surface-secondary)] dark:text-slate-400">Додаткові транспортні шари доступні на транспортній карті.</p>}
     </div>, document.body)}
   </>;
 }

@@ -64,18 +64,18 @@ function visual(
  * exist only so journey segments render consistently.
  */
 export const transportModeRegistry: Record<TransportModeId, CanonicalVisual> = {
-  bus: visual('bus', 'Автобус', 'Автобуси', 'Bus', BusFront, '#1687FF', 'Громадський транспорт'),
-  marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', Caravan, '#F02F79', 'Громадський транспорт'),
-  trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', Trolleybus, '#00C2A0', 'Громадський транспорт'),
-  tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#8B3CE6', 'Громадський транспорт'),
-  metro: visual('metro', 'Метро', 'Метро', 'Metro', Metro, '#D6224A', 'Громадський транспорт'),
-  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#FF7A2F', 'Спільні поїздки'),
-  taxi: visual('taxi', 'Таксі', 'Таксі', 'Taxi', CarTaxiFront, '#F5B51B', 'Спільні поїздки'),
-  train: visual('train', 'Поїзд', 'Поїзди', 'Train', TrainFront, '#6366F1', 'Залізниця'),
-  bike: visual('bike', 'Велосипед', 'Велосипеди', 'Bicycle', Bike, '#20B86A', 'Мікромобільність'),
-  scooter: visual('scooter', 'Самокат', 'Самокати', 'Scooter', Scooter, '#84CC16', 'Мікромобільність'),
-  carsharing: visual('carsharing', 'Каршеринг', 'Каршеринг', 'Car sharing', Car, '#00A8D6', 'Спільні поїздки'),
-  transfer: visual('transfer', 'Трансфер', 'Трансфери', 'Transfer', ArrowLeftRight, '#6C7A93', 'Спільні поїздки'),
+  bus: visual('bus', 'Автобус', 'Автобуси', 'Bus', BusFront, '#327FC3', 'Громадський транспорт'),
+  marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', Caravan, '#327FC3', 'Громадський транспорт'),
+  trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', Trolleybus, '#327FC3', 'Громадський транспорт'),
+  tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#327FC3', 'Громадський транспорт'),
+  metro: visual('metro', 'Метро', 'Метро', 'Metro', Metro, '#327FC3', 'Громадський транспорт'),
+  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#327FC3', 'Спільні поїздки'),
+  taxi: visual('taxi', 'Таксі', 'Таксі', 'Taxi', CarTaxiFront, '#327FC3', 'Спільні поїздки'),
+  train: visual('train', 'Поїзд', 'Поїзди', 'Train', TrainFront, '#327FC3', 'Залізниця'),
+  bike: visual('bike', 'Велосипед', 'Велосипеди', 'Bicycle', Bike, '#327FC3', 'Мікромобільність'),
+  scooter: visual('scooter', 'Самокат', 'Самокати', 'Scooter', Scooter, '#327FC3', 'Мікромобільність'),
+  carsharing: visual('carsharing', 'Каршеринг', 'Каршеринг', 'Car sharing', Car, '#327FC3', 'Спільні поїздки'),
+  transfer: visual('transfer', 'Трансфер', 'Трансфери', 'Transfer', ArrowLeftRight, '#327FC3', 'Спільні поїздки'),
 };
 
 const specialVisuals: Record<string, CanonicalVisual> = {

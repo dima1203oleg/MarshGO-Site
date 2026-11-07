@@ -87,7 +87,7 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
 
   return <article
     data-testid="saved-journey-card"
-    className="relative isolate overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:border-[#20354A] dark:bg-[#0B1A27] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]"
+    className="relative isolate overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]"
   >
     <button type="button" onClick={onOpen} aria-label={`Відкрити збережений маршрут: ${routeFullAddress}, ${durationLabel}, ${totalPrice === '—' ? 'ціна уточнюється' : totalPrice}`} className="absolute inset-0 z-0 h-full w-full rounded-[16px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
       <span className="sr-only">Карта й деталі маршруту</span>
@@ -97,7 +97,7 @@ export function SavedJourneyCard({ journey, departureLabel, onOpen }: {
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${stateTone[journey.state] ?? 'bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]'}`}>{stateLabels[journey.state] ?? journey.state}</span>
         <span className="min-w-0 truncate text-right text-xs font-semibold text-slate-500 dark:text-slate-400">{departureLabel}{startAt ? ` · ${startAt}` : ''}</span>
       </div>
-      <h3 className="truncate text-[15px] font-extrabold leading-5 text-[#0E1F35] dark:text-[#F5F9FF]" title={routeFullAddress}>
+      <h3 className="truncate text-[15px] font-extrabold leading-5 text-[#0E1F35] dark:text-[var(--mg-ink-primary)]" title={routeFullAddress}>
         {routeTitle}
       </h3>
       <CanonicalRouteLip

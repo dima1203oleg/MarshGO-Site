@@ -349,7 +349,7 @@ export class TransportLayerController {
     button.type = 'button';
     button.textContent = label;
     button.setAttribute('data-testid', 'map-vehicle-action');
-    button.style.cssText = `min-height:44px;padding:0 13px;border-radius:13px;font:700 12px system-ui;cursor:pointer;border:1px solid ${primary ? 'transparent' : '#CBD5E1'};background:${primary ? '#0B63D6' : '#FFFFFF'};color:${primary ? '#FFFFFF' : '#0E1F35'}`;
+      button.style.cssText = `min-height:44px;padding:0 13px;border-radius:13px;font:700 12px system-ui;cursor:pointer;border:1px solid ${primary ? 'transparent' : 'var(--mg-border-medium)'};background:${primary ? 'var(--mg-action)' : 'var(--mg-surface-primary)'};color:${primary ? '#FFFFFF' : 'var(--mg-ink-primary)'}`;
     return button;
   }
 
