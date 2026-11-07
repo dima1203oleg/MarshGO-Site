@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./styles/motion.css";
+@import "./styles/feedback.css";
 
 /* themeService owns the theme: it resolves "system" itself and writes html.dark.
    Tailwind's default `dark:` follows the OS instead, so an in-app light theme on
