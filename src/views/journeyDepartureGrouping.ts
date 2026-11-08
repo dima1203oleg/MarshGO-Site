@@ -13,10 +13,24 @@ const coordinateKey = (point: { coordinates: [number, number] }) =>
   point.coordinates.map(value => value.toFixed(5)).join(',');
 
 /**
+ * Shape identity: the same stops and fare along a different path is a different offer
+ * (search 4.0 §7.2 — «Різні геометрії» must not collapse into one card). Coarse samples
+ * keep an identical shape across departures in one group; absent geometry groups as 'none'.
+ */
+function geometryKey(leg: ApiJourney['legs'][number]): string {
+  const source = leg.geometrySource ?? 'none';
+  const points = leg.routeGeometry;
+  if (!points?.length) return `${source}:none`;
+  const samples = [0, 0.25, 0.5, 0.75, 1].map(fraction => points[Math.round((points.length - 1) * fraction)]);
+  return `${source}:${points.length}:${samples.map(point => point.map(value => value.toFixed(5)).join(',')).join(';')}`;
+}
+
+/**
  * Two journeys share a template only when a passenger would catch the same vehicles at the
- * same stops for the same money from the same carrier. Fare, carrier, reliability and the
- * boarding/alighting coordinates stay in the key: a different tariff or a different stop is a
- * different offer, so it keeps its own card instead of hiding behind «Інші відправлення».
+ * same stops for the same money from the same carrier along the same path. Fare, carrier,
+ * reliability, geometry and the boarding/alighting coordinates stay in the key: a different
+ * tariff, stop or shape is a different offer, so it keeps its own card instead of hiding
+ * behind «Інші відправлення».
  */
 function legTemplateKey(leg: ApiJourney['legs'][number]): string {
   return [
@@ -30,6 +44,7 @@ function legTemplateKey(leg: ApiJourney['legs'][number]): string {
     coordinateKey(leg.origin),
     leg.destination.name,
     coordinateKey(leg.destination),
+    geometryKey(leg),
   ].join('|');
 }
 
