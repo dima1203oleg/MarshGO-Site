@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { budgetLabel, journeySearchBounds, MAX_JOURNEY_BUDGET_UAH, parseJourneyBudgetUah } from '../src/domain/journeySearchBounds';
+import { budgetLabel, isAppliedJourneyBudgetDraft, journeySearchBounds, MAX_JOURNEY_BUDGET_UAH, parseJourneyBudgetUah } from '../src/domain/journeySearchBounds';
 import { areAllProvidersSelected, countSelectedProviders, toggleProvider, useAllProviders, type TransportSelection } from '../src/domain/transportPreferences';
 
 const groups = [
@@ -59,6 +59,13 @@ describe('journey search bounds from the «З»/«По»/budget controls', () =>
     for (const value of ['', 'abc', '1.5', '0', '-1', String(MAX_JOURNEY_BUDGET_UAH + 1)]) {
       assert.equal(parseJourneyBudgetUah(value), null, `expected ${JSON.stringify(value)} to be rejected`);
     }
+  });
+
+  it('does not search with an unapplied, invalid or blank custom budget draft', () => {
+    assert.equal(isAppliedJourneyBudgetDraft('450', 450), true);
+    assert.equal(isAppliedJourneyBudgetDraft('451', 450), false);
+    assert.equal(isAppliedJourneyBudgetDraft('', null), false);
+    assert.equal(isAppliedJourneyBudgetDraft('450', null), false);
   });
 });
 

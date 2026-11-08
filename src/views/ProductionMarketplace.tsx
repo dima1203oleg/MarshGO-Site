@@ -11,7 +11,7 @@ import { BrandMark } from '../components/BrandMark';
 import { CurrentCitySelector } from '../components/CurrentCitySelector';
 import { VehiclePhoto } from '../components/VehiclePhoto';
 import { passengersLabel } from '../domain/plural';
-import { budgetLabel, journeySearchBounds, MAX_JOURNEY_BUDGET_UAH, parseJourneyBudgetUah } from '../domain/journeySearchBounds';
+import { budgetLabel, isAppliedJourneyBudgetDraft, journeySearchBounds, MAX_JOURNEY_BUDGET_UAH, parseJourneyBudgetUah } from '../domain/journeySearchBounds';
 import { TransportTypesPanel } from '../components/TransportTypesPanel';
 import { DepartureDateTimePicker } from '../components/DepartureDateTimePicker';
 import { HomeHero } from './HomeHero';
@@ -839,7 +839,13 @@ export function ProductionMarketplace() {
   };
 
   const searchJourney = async () => {
-    if (customJourneyBudgetOpen && journeyBudgetUah === null) { setStatusMessage('Вкажіть власний бюджет і натисніть «Застосувати».'); return; }
+    if (customJourneyBudgetOpen) {
+      const draftBudget = parseJourneyBudgetUah(customJourneyBudgetDraft);
+      if (!isAppliedJourneyBudgetDraft(customJourneyBudgetDraft, journeyBudgetUah)) {
+        setStatusMessage(draftBudget === null ? 'Вкажіть власний бюджет або скасуйте редагування.' : 'Застосуйте нову суму або скасуйте редагування бюджету.');
+        return;
+      }
+    }
     if (!origin.trim() || !destination.trim()) { setStatusMessage('Вкажіть початок і кінець маршруту.'); return; }
     if (!searchOriginPlace || !searchDestinationPlace) { setStatusMessage('Щоб побудувати маршрут, оберіть обидві точки зі списку підказок.'); return; }
     const departure = kyivDateTimeInputToDate(journeyDeparture);
@@ -1799,6 +1805,14 @@ export function ProductionMarketplace() {
     </div>
   );
   const unreadMessageCount = Object.values(unreadConversations).reduce((total, count) => total + count, 0);
+  const applyCustomJourneyBudget = () => {
+    const budget = parseJourneyBudgetUah(customJourneyBudgetDraft);
+    if (budget === null) return;
+    setJourneyBudgetUah(budget);
+    setCustomJourneyBudgetOpen(false);
+    setCustomJourneyBudgetDraft('');
+    setStatusMessage('');
+  };
   const header = <header className="app-header mx-auto flex w-full max-w-xl items-center gap-2 px-3 pb-3 pt-[max(.8rem,env(safe-area-inset-top))] sm:px-5">
     <div className="app-header-brand flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2.5"><BrandMark size="sm"/><div className="app-header-brand-copy min-w-0"><strong className="whitespace-nowrap text-base tracking-tight text-[var(--mg-ink-primary)] dark:text-[var(--mg-ink-primary)] sm:text-[18px]">MARSH<span className="text-[var(--mg-blue-ink)]">GO</span></strong><p className="-mt-1 truncate text-xs text-[var(--mg-ink-secondary)] dark:text-[var(--mg-ink-secondary)]">Усі поїздки в одному місці</p></div></div>
     <CurrentCitySelector city={currentCity} onSelect={(choice) => { setCityLocationMessage(''); commitCurrentCity({ ...choice, source: 'manual' }); }} onLocate={locateCurrentCity} locating={cityLocationBusy} locationMessage={cityLocationMessage}/>
@@ -1843,25 +1857,28 @@ export function ProductionMarketplace() {
           const value = event.target.value;
           if (value === 'custom') {
             setCustomJourneyBudgetOpen(true);
-            setJourneyBudgetUah(null);
-            setCustomJourneyBudgetDraft('');
+            setCustomJourneyBudgetDraft(journeyBudgetUah === null ? '' : String(journeyBudgetUah));
             return;
           }
           setCustomJourneyBudgetOpen(false);
           setCustomJourneyBudgetDraft('');
           setJourneyBudgetUah(value === '' ? null : Number(value));
         }} className="absolute inset-0 h-full w-full cursor-pointer opacity-0">
+          {journeyBudgetUah !== null && ![50, 100, 200, 300, 500, 1000].includes(journeyBudgetUah) && <option value={journeyBudgetUah}>{`До ${journeyBudgetUah} грн`}</option>}
           {[null, 50, 100, 200, 300, 500, 1000].map((value) => <option key={String(value)} value={value ?? ''}>{value === null ? 'Без обмеження' : `До ${value} грн`}</option>)}
           <option value="custom">Свій варіант…</option>
         </select>
       </label>
     </div>
-    {customJourneyBudgetOpen && <div className="mt-2 flex min-w-0 items-end gap-2 rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] p-3">
-      <label className="min-w-0 flex-1 text-xs font-semibold text-[var(--mg-ink-secondary)]" htmlFor="custom-journey-budget">Власний бюджет, грн
-        <input id="custom-journey-budget" type="number" inputMode="numeric" min={1} max={MAX_JOURNEY_BUDGET_UAH} step={1} value={customJourneyBudgetDraft} onChange={(event) => { setCustomJourneyBudgetDraft(event.target.value); setJourneyBudgetUah(null); }} aria-describedby="custom-journey-budget-hint" className="mt-1 min-h-11 w-full rounded-xl border border-[var(--mg-border-medium)] bg-[var(--mg-surface-primary)] px-3 text-base font-bold text-[var(--mg-ink-primary)] focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]" placeholder="Наприклад, 450" />
-        <small id="custom-journey-budget-hint" className="mt-1 block text-[var(--mg-ink-muted)]">Від 1 до {MAX_JOURNEY_BUDGET_UAH.toLocaleString('uk-UA')} грн</small>
+    {customJourneyBudgetOpen && <div className="mt-2 min-w-0 rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] p-3">
+      <label className="block min-w-0 text-xs font-semibold text-[var(--mg-ink-secondary)]" htmlFor="custom-journey-budget">Власний бюджет, грн
+        <input id="custom-journey-budget" type="number" inputMode="numeric" min={1} max={MAX_JOURNEY_BUDGET_UAH} step={1} value={customJourneyBudgetDraft} onChange={(event) => setCustomJourneyBudgetDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); applyCustomJourneyBudget(); } }} aria-describedby="custom-journey-budget-hint" className="mt-1 min-h-11 w-full rounded-xl border border-[var(--mg-border-medium)] bg-[var(--mg-surface-primary)] px-3 text-base font-bold text-[var(--mg-ink-primary)] focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]" placeholder="Наприклад, 450" />
+        <small id="custom-journey-budget-hint" className="mt-1 block text-[var(--mg-ink-muted)]">Ціла сума від 1 до {MAX_JOURNEY_BUDGET_UAH.toLocaleString('uk-UA')} грн. Попереднє значення збережеться, доки не застосуєте нове.</small>
       </label>
-      <button type="button" onClick={() => { const budget = parseJourneyBudgetUah(customJourneyBudgetDraft); if (budget !== null) { setJourneyBudgetUah(budget); setStatusMessage(''); } }} disabled={parseJourneyBudgetUah(customJourneyBudgetDraft) === null} className="min-h-11 shrink-0 rounded-xl bg-[var(--mg-action)] px-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Застосувати</button>
+      <div className="mt-2 flex justify-end gap-2">
+        <button type="button" onClick={() => { setCustomJourneyBudgetOpen(false); setCustomJourneyBudgetDraft(''); setStatusMessage(''); }} className="min-h-11 shrink-0 rounded-xl border border-[var(--mg-border-medium)] bg-[var(--mg-surface-primary)] px-3 text-sm font-semibold text-[var(--mg-ink-secondary)]">Скасувати</button>
+        <button type="button" onClick={applyCustomJourneyBudget} disabled={parseJourneyBudgetUah(customJourneyBudgetDraft) === null} className="min-h-11 shrink-0 rounded-xl bg-[var(--mg-action)] px-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Застосувати</button>
+      </div>
     </div>}
     <TransportTypesPanel compact selection={transportSelection} groups={providerGroups} onChange={changeTransportSelection}
       onManageProviders={() => setTransportPickerOpen(true)}/>

@@ -15,6 +15,11 @@ export function parseJourneyBudgetUah(value: string): number | null {
   return Number.isSafeInteger(budget) && budget > 0 && budget <= MAX_JOURNEY_BUDGET_UAH ? budget : null;
 }
 
+export function isAppliedJourneyBudgetDraft(value: string, appliedBudgetUah: number | null): boolean {
+  const draftBudget = parseJourneyBudgetUah(value);
+  return draftBudget !== null && draftBudget === appliedBudgetUah;
+}
+
 export function journeySearchBounds(departure: string, arrivalBy: string | null, budgetUah: number | null): JourneySearchBounds {
   const bounds: JourneySearchBounds = {};
   const from = kyivDateTimeInputToDate(departure);
