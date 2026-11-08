@@ -42,6 +42,89 @@ export function principalBearing(points: readonly Coordinate[]): number | null {
   return (Math.atan2(east, north) * 180 / Math.PI + 360) % 360;
 }
 
+/**
+ * Turns a leg into the orientation that fills the map band it actually has.
+ * An expanded bottom sheet leaves a wide, short strip, so the leg must run
+ * left-to-right across the full visible width instead of up a height it cannot use.
+ * Map bearing is subtracted from true azimuth, hence `travel - 90°` to lie east on screen.
+ */
+export function segmentBearingForViewport(
+  travelBearing: number | null,
+  visibleWidth: number,
+  visibleHeight: number,
+): number {
+  if (travelBearing === null || !Number.isFinite(travelBearing)) return 0;
+  if (!(visibleWidth > 0) || !(visibleHeight > 0)) return travelBearing;
+  return visibleWidth >= visibleHeight
+    ? (travelBearing - 90 + 360) % 360
+    : travelBearing;
+}
+
+export type RotatedFitCamera = { center: Coordinate; zoom: number };
+
+function toMercator(point: Coordinate): [number, number] {
+  const lat = Math.max(-85.0511287798, Math.min(85.0511287798, point[1]));
+  const sin = Math.sin(lat * Math.PI / 180);
+  return [(point[0] + 180) / 360, 0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)];
+}
+
+function fromMercator(x: number, y: number): Coordinate {
+  return [x * 360 - 180, Math.atan(Math.sinh(2 * Math.PI * (0.5 - y))) * 180 / Math.PI];
+}
+
+/**
+ * Camera that fits the *rotated point cloud* into the padded strip. MapLibre's
+ * `fitBounds` rotates the corners of the lat/lng bounding box instead, so a
+ * diagonal leg becomes a diamond: on a 350×118 strip it zooms out until the
+ * diamond fits and the leg itself covers barely half the width. Fitting the
+ * actual points first keeps the selected leg across the full strip.
+ */
+export function cameraForRotatedPoints(
+  points: readonly Coordinate[],
+  bearing: number,
+  availableWidth: number,
+  availableHeight: number,
+  currentZoom: number,
+  maxZoom: number,
+): RotatedFitCamera | null {
+  if (points.length < 2 || !(availableWidth > 0) || !(availableHeight > 0)) return null;
+  if (!Number.isFinite(bearing) || !Number.isFinite(currentZoom)) return null;
+  const angle = -bearing * Math.PI / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const point of points) {
+    const [x, y] = toMercator(point);
+    const rotatedX = x * cos - y * sin;
+    const rotatedY = x * sin + y * cos;
+    if (rotatedX < minX) minX = rotatedX;
+    if (rotatedX > maxX) maxX = rotatedX;
+    if (rotatedY < minY) minY = rotatedY;
+    if (rotatedY > maxY) maxY = rotatedY;
+  }
+  const worldSize = 512 * 2 ** currentZoom;
+  const scale = Math.min(
+    availableWidth / Math.max(1e-9, (maxX - minX) * worldSize),
+    availableHeight / Math.max(1e-9, (maxY - minY) * worldSize),
+  );
+  if (!Number.isFinite(scale) || scale <= 0) return null;
+  const inverse = bearing * Math.PI / 180;
+  const inverseCos = Math.cos(inverse);
+  const inverseSin = Math.sin(inverse);
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  return {
+    center: fromMercator(
+      centerX * inverseCos - centerY * inverseSin,
+      centerX * inverseSin + centerY * inverseCos,
+    ),
+    zoom: Math.min(currentZoom + Math.log2(scale), maxZoom),
+  };
+}
+
 /** Longest side of the points' bounding box, in metres. */
 export function extentMeters(points: readonly Coordinate[]): number {
   if (points.length === 0) return 0;

@@ -380,6 +380,12 @@ export function JourneyRouteMapScreen({
     extraBottomInset: floatingChipVisible ? 58 : 0,
   }), [dataNote, floatingChipVisible, isDesktop, mapStatusIsWarning, settledHeight, sheetSnap, viewportHeight, viewportWidth]);
 
+  // Segment orientation follows the real camera band after route and sheet insets.
+  const visibleMapArea = useMemo(() => ({
+    width: Math.max(1, viewportWidth - (mapPadding.left ?? 0) - (mapPadding.right ?? 0)),
+    height: Math.max(1, viewportHeight - (mapPadding.top ?? 0) - (mapPadding.bottom ?? 0)),
+  }), [mapPadding, viewportHeight, viewportWidth]);
+
   const routeLinePoints = useMemo(() => {
     const itinerary = model.routeSegments.flatMap(segment => segment.coordinates);
     const lineRoutes = liveSegment?.lineRoutes ?? [];
@@ -407,8 +413,8 @@ export function JourneyRouteMapScreen({
       ...(route.zones?.beforeBoarding ? [route.zones.beforeBoarding] : []),
       ...(route.zones?.afterAlighting ? [route.zones.afterAlighting] : []),
     ]);
-    return calculateSegmentFocusTarget(segment.coordinates, contextLines, segment.id);
-  }, [activeSegmentId, liveJourney, model.routeSegments]);
+    return calculateSegmentFocusTarget(segment.coordinates, contextLines, segment.id, visibleMapArea);
+  }, [activeSegmentId, liveJourney, model.routeSegments, visibleMapArea]);
 
   const segmentFocusKey = segmentFocus?.key ?? null;
 
@@ -463,7 +469,7 @@ export function JourneyRouteMapScreen({
     } else {
       const leg = journey.legs.find(item => item.id === id);
       const seg = model.routeSegments.find(s => s.id === id);
-      const target = seg ? calculateSegmentFocusTarget(seg.coordinates, [], id) : null;
+      const target = seg ? calculateSegmentFocusTarget(seg.coordinates, [], id, visibleMapArea) : null;
       cameraController.current?.focusSegment(id, target, routeLinePoints);
 
       if (leg) {
@@ -508,7 +514,7 @@ export function JourneyRouteMapScreen({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       block: 'nearest',
     }));
-  }, [activeSegmentId, journey.legs, liveJourney?.segments, model.routeSegments, reducedMotion, routeLinePoints, showWholeRoute]);
+  }, [activeSegmentId, journey.legs, liveJourney?.segments, model.routeSegments, reducedMotion, routeLinePoints, showWholeRoute, visibleMapArea]);
 
   const chooseTransfer = useCallback((hint: InlineTransferHint) => {
     haptic(8);
