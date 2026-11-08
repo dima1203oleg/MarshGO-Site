@@ -4,9 +4,16 @@ import { kyivDateTimeInputToDate } from './kyivTime';
 // duration cap. «По» therefore bounds the trip length, never a fabricated arrival query.
 const MIN_DURATION_SECONDS = 60;
 const MAX_DURATION_SECONDS = 7 * 24 * 60 * 60;
-const MAX_PRICE_MINOR = 100_000_000;
+export const MAX_JOURNEY_BUDGET_UAH = 1_000_000;
+const MAX_PRICE_MINOR = MAX_JOURNEY_BUDGET_UAH * 100;
 
 export type JourneySearchBounds = { maxTotalDurationSeconds?: number; maxPriceMinor?: number };
+
+export function parseJourneyBudgetUah(value: string): number | null {
+  if (!/^\d+$/.test(value)) return null;
+  const budget = Number(value);
+  return Number.isSafeInteger(budget) && budget > 0 && budget <= MAX_JOURNEY_BUDGET_UAH ? budget : null;
+}
 
 export function journeySearchBounds(departure: string, arrivalBy: string | null, budgetUah: number | null): JourneySearchBounds {
   const bounds: JourneySearchBounds = {};
