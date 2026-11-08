@@ -181,6 +181,47 @@ export function formatJourneyClock(value: string): string {
   }).format(new Date(value));
 }
 
+const kyivCalendarDay = (value: string): string | null => {
+  if (!Number.isFinite(Date.parse(value))) return null;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date(value));
+};
+
+/**
+ * An arrival past midnight is a different promise than the same clock time today; the card only
+ * shows HH:mm, so it has to name the calendar shift instead of leaving «00:48» ambiguous.
+ */
+export function journeyArrivalDayNote(arrivalAt: string, departureAt?: string): string {
+  const arrivalDay = kyivCalendarDay(arrivalAt);
+  const departureDay = departureAt ? kyivCalendarDay(departureAt) : null;
+  if (!arrivalDay || !departureDay) return '';
+  const days = Math.round((Date.parse(`${arrivalDay}T00:00:00Z`) - Date.parse(`${departureDay}T00:00:00Z`)) / 86_400_000);
+  if (days === 1) return 'наступного дня';
+  if (days <= 1) return '';
+  const plural = new Intl.PluralRules('uk-UA').select(days);
+  return `через ${days} ${plural === 'one' ? 'день' : plural === 'few' ? 'дні' : 'днів'}`;
+}
+
+/** Total ride, walking and wait stay separate facts; the card shows the total, the line the split. */
+export function journeyTimeBreakdown(journey: ApiJourney): { walkingSeconds: number; ridingSeconds: number; waitingSeconds: number } {
+  let walkingSeconds = 0;
+  let ridingSeconds = 0;
+  for (const leg of journey.legs) {
+    const departure = validTime(leg.departureAt);
+    const arrival = validTime(leg.arrivalAt);
+    const seconds = departure !== null && arrival !== null && arrival > departure
+      ? Math.round((arrival - departure) / 1000)
+      : Math.max(0, Math.round(leg.durationSeconds));
+    if (leg.mode === 'WALK') walkingSeconds += seconds;
+    else ridingSeconds += seconds;
+  }
+  const reportedWait = typeof journey.waitingSeconds === 'number' && Number.isFinite(journey.waitingSeconds) && journey.waitingSeconds >= 0
+    ? Math.round(journey.waitingSeconds)
+    : Math.max(0, Math.round(journey.totalDurationSeconds - walkingSeconds - ridingSeconds));
+  return { walkingSeconds, ridingSeconds, waitingSeconds: reportedWait };
+}
+
 /** The first vehicle actually boarded; walking links to it but is not what the passenger catches. */
 function boardedLeg(journey: ApiJourney) {
   const leg = journey.legs.find(item => item.mode !== 'WALK');

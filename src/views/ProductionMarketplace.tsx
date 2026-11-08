@@ -20,7 +20,7 @@ import { isBookingSection, showsBookingList, showsSavedRoutes, tripsTabSubtitle,
 import { OnboardingSlides } from '../components/OnboardingSlides';
 import { DriverPhotoCard } from '../components/DriverPhotoCard';
 import { OfferEditSheet, PendingChangeCard, offerStatusLabel } from '../components/TripManagement';
-import { loadSelection, mergeSettledProviderGroups, providerCoveragePoints, saveSelection, toJourneyPreferences, type TransportSelection } from '../domain/transportPreferences';
+import { isAllActive, loadSelection, mergeSettledProviderGroups, providerCoveragePoints, saveSelection, toJourneyPreferences, transportTypes, type TransportSelection } from '../domain/transportPreferences';
 import { MarshPassTicket } from './MarshPassTicket';
 import { QrScanner } from '../components/QrScanner';
 import type { ProfileSection } from './ProfileSections';
@@ -1983,6 +1983,16 @@ export function ProductionMarketplace() {
   const displayRoute = `${compactPlaceLabel(resultsOriginLabel)} → ${compactPlaceLabel(resultsDestinationLabel)}`;
   const fullRoute = `${fullPlaceLabel(resultsOriginLabel)} → ${fullPlaceLabel(resultsDestinationLabel)}`;
   const returnToSearch = () => { setShowResults(false); setTab('search'); };
+  // The compact query strip under the route keeps the searched moment and filters visible after
+  // the big form is gone; otherwise a stale filter silently explains a missing mode.
+  const activeFilterLabels = transportSelection.active
+    .map(id => transportTypes.find(type => type.id === id)?.label)
+    .filter((label): label is string => Boolean(label));
+  const filterSummary = activeFilterLabels.length === 0 ? 'види транспорту не вибрано'
+    : isAllActive(transportSelection) ? 'усі види транспорту'
+      : `${activeFilterLabels.slice(0, 3).join(', ')}${activeFilterLabels.length > 3 ? ` +${activeFilterLabels.length - 3}` : ''}`;
+  const resultCount = journeyResult?.journeys.length ?? 0;
+  const resultCountLabel = `${resultCount} ${new Intl.PluralRules('uk-UA').select(resultCount) === 'one' ? 'маршрут' : new Intl.PluralRules('uk-UA').select(resultCount) === 'few' ? 'маршрути' : 'маршрутів'}`;
 
   const carpoolSection = showsCarpoolSection(offers.length, journeyResult !== null) ? <>
     {showsCarpoolSorter(sortedOffers.length, journeyResult !== null) && <div className="no-scrollbar mb-4 flex items-center gap-2 overflow-x-auto pb-1"><span className="shrink-0 text-xs font-semibold text-[var(--mg-ink-secondary)] dark:text-[var(--mg-ink-secondary)]">Сортувати:</span>{([['earliest','Найраніше'],['cheapest','Найдешевше'],['fastest','Найшвидше']] as const).map(([key,label])=><button key={key} type="button" aria-pressed={offerSort===key} onClick={()=>setOfferSort(key)} className={`shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition-colors min-h-11 ${offerSort===key?'border-[var(--mg-action)] bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]':'border-[var(--mg-border-subtle)] bg-white text-[var(--mg-ink-secondary)] dark:text-[var(--mg-ink-secondary)]'}`}>{label}</button>)}</div>}
@@ -1991,10 +2001,18 @@ export function ProductionMarketplace() {
     {offers.length ? <div className="space-y-3">{sortedOffers.map(offerCard)}</div> : <div className="rounded-2xl bg-white p-6 text-center dark:bg-[var(--mg-surface-primary)]"><Search className="mx-auto text-slate-300"/><p className="mt-2 font-bold">Немає попуток за цими умовами</p><p className="mt-1 text-sm text-slate-500">Спробуйте змінити дату або кількість пасажирів.</p></div>}
   </> : null;
   const resultsScreen = <main className="journey-results mx-auto flex min-h-[100svh] w-full max-w-xl flex-col px-4 pb-3 pt-[max(.45rem,env(safe-area-inset-top))] text-[#0B1730] dark:text-[var(--mg-ink-primary)]">
-    <header className="journey-results-header mb-2 flex min-h-12 items-center gap-2 border-b border-slate-100 pb-1.5 dark:border-slate-800">
-      <button type="button" onClick={returnToSearch} aria-label="Назад до пошуку" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-slate-700 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800"><ArrowLeft size={19}/></button>
-      <p title={fullRoute} className="line-clamp-2 min-w-0 flex-1 break-words text-xs font-bold leading-[14px]"><span className="text-[var(--mg-ink-secondary)] dark:text-[var(--mg-ink-secondary)]">Маршрут: </span>{displayRoute}</p>
-      <button type="button" onClick={returnToSearch} aria-label="Змінити маршрут пошуку" title="Змінити маршрут" className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 text-xs font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:text-slate-100 dark:hover:border-blue-500 dark:hover:text-blue-300"><Pencil size={12}/>Змінити</button>
+    <header className="journey-results-header mb-2 border-b border-slate-100 pb-1.5 dark:border-slate-800">
+      <div className="flex min-h-12 items-center gap-2">
+        <button type="button" onClick={returnToSearch} aria-label="Назад до пошуку" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-slate-700 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800"><ArrowLeft size={19}/></button>
+        <p title={fullRoute} className="line-clamp-2 min-w-0 flex-1 break-words text-xs font-bold leading-[14px]"><span className="text-[var(--mg-ink-secondary)] dark:text-[var(--mg-ink-secondary)]">Маршрут: </span>{displayRoute}</p>
+        <button type="button" onClick={returnToSearch} aria-label="Змінити маршрут пошуку" title="Змінити маршрут" className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 text-xs font-bold text-slate-700 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:text-slate-100 dark:hover:border-blue-500 dark:hover:text-blue-300"><Pencil size={12}/>Змінити</button>
+      </div>
+      <p data-testid="journey-results-query" className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 px-1 text-xs font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="inline-flex items-center gap-1"><CalendarDays size={12} className="shrink-0" aria-hidden="true"/>{formatDate(journeyDeparture, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+        <span aria-hidden="true">·</span>
+        <span className="min-w-0 truncate" title={filterSummary}>{filterSummary}</span>
+        {journeyResult && <><span aria-hidden="true">·</span><span className="font-bold text-slate-700 dark:text-slate-200">{resultCountLabel}</span></>}
+      </p>
     </header>
     {journeyResult ? <><JourneyResultsPanel result={journeyResult} chosenJourneyId={chosenJourneyId} onOpenMap={(journey) => { setChosenJourneyId(journey.id); setSelectedRouteMap(journey); }} onRetry={() => void searchJourney()}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt} onCancel={cancelJourneySearch}/> : carpoolSection}
   </main>;

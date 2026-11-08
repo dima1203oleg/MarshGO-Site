@@ -700,7 +700,19 @@ html.dark .journey-segment-scroll-cue > span { border-color: var(--mg-border-med
 .route-map-screen[data-theme="dark"] .journey-segment-tile-heading { color: var(--mg-ink-primary); }
 .route-map-screen[data-theme="dark"] .journey-segment-tile-icon[data-icon-mode="WALK"] { color: var(--mg-ink-primary) !important; }
 .route-map-screen[data-theme="dark"] .journey-segment-tile-meta { color: var(--mg-ink-secondary); }
-.journey-result-card-content > .journey-segment-strip { margin-top: .25rem; }
+/*
+ * A results card summarises the journey; its tiles are labels, not tap targets, so the sheet's
+ * 52 px button floor only stretched every card. Two 12 px lines still fit inside 32 px.
+ */
+.journey-result-segments .journey-segment-tile-content { min-height: 2rem; gap: .05rem; padding-block: .05rem; }
+.journey-result-card-content > .journey-segment-strip { margin-top: .125rem; }
+/* On a card the proportion bar is read, not tapped: 8 px still shows the leg ratio and matches
+   the 32 px tile height, while the route sheet keeps the taller 11 px bar of its own scope. */
+.journey-result-card-content .journey-segment-ribbon { height: 8px; }
+/* The route-number pill is the tallest part of a tile; tighter block padding trims 3 px per
+   card without touching the 12 px label or its mode tint. */
+.journey-result-card-content .journey-segment-tile-badge { padding-block: .05rem; line-height: 1.1; }
+.search-truncation[open] .search-truncation-chevron { transform: rotate(90deg); }
 .journey-result-action-badge,
 .journey-result-transfer-badge,
 .journey-result-save-visual { border: 1px solid #D9E2EC; }

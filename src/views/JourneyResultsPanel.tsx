@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import {
   ArrowLeftRight, Check, ChevronRight, Clock, Coins, Flag, Heart, Info, Scale, Star, Timer, X,
 } from 'lucide-react';
@@ -9,17 +9,20 @@ import { journeyLegCaveat } from './journeyLegLabel';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
   buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
-  formatJourneyDurationTile, journeyBoardingNote,
+  formatJourneyDurationTile, journeyArrivalDayNote, journeyBoardingNote, journeyTimeBreakdown,
   journeyRouteBadge, providerErrorNotices, searchPendingCopy, unavailableTransportNotices,
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay, type JourneyPriceDisplay } from './cashFare';
 import { strategyJourneys } from './journeyStrategySelection';
-import { diagnosticsRequested, funnelLines, partialReasonNotices, splitResultNotices, truncationNotices } from './resultsDiagnostics';
+import { groupJourneyDepartures, journeyGroupAlternatives } from './journeyDepartureGrouping';
+import { diagnosticsRequested, funnelLines, gtfsTruncationNotices, partialReasonNotices, splitResultNotices, truncationNotices } from './resultsDiagnostics';
 import { JOURNEY_EMPTY_PROVIDER_FAILURE_COPY, JOURNEY_EMPTY_PROVIDER_FAILURE_TITLE, journeyEmptyStateKind } from './journeySearchRecovery';
 
 const FAVORITES_KEY = 'marshgo.saved-route-results.v1';
 
-const strategyConfig: Array<{ id: ApiJourneyStrategy; label: string; Icon: typeof Scale; tone: string }> = [
+type PanelStrategy = 'BALANCED' | 'FASTEST' | 'CHEAPEST';
+
+const strategyConfig: Array<{ id: PanelStrategy; label: string; Icon: typeof Scale; tone: string }> = [
   { id: 'BALANCED', label: 'Оптимальний', Icon: Scale, tone: 'text-[var(--mg-blue)]' },
   { id: 'FASTEST', label: 'Найшвидший', Icon: Timer, tone: 'text-[var(--mg-amber)]' },
   { id: 'CHEAPEST', label: 'Найдешевший', Icon: Coins, tone: 'text-[var(--mg-green)]' },
@@ -49,10 +52,11 @@ function journeyCaveats(journey: ApiJourney): string[] {
   return [...new Set(journey.legs.map(leg => journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource)).filter((text): text is string => Boolean(text)))];
 }
 
-function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
+function RouteResultCard({ journey, index, caveats, alternatives, chosen, onOpen }: {
   journey: ApiJourney;
   index: number;
   caveats: string[];
+  alternatives: ApiJourney[];
   chosen: boolean;
   onOpen: (journey: ApiJourney) => void;
 }) {
@@ -65,6 +69,8 @@ function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
     .reduce((sum, segment) => sum + segment.durationSeconds, 0);
   const firstLeg = journey.legs[0];
   const lastLeg = journey.legs.at(-1);
+  const departuresId = useId();
+  const [departuresOpen, setDeparturesOpen] = useState(false);
   const [saved, setSaved] = useState(() => {
     try { return JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? '[]').includes(journey.id); }
     catch { return false; }
@@ -102,8 +108,10 @@ function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
   const startAt = firstLeg.departureAt;
   const boardingLabel = journeyBoardingNote(journey);
   // A journey that boards at once already says that time in «Відправлення»; the note only earns
-  // its line when the passenger walks first and the vehicle leaves later.
+  // its words when the passenger walks first and the vehicle leaves later.
   const showsBoarding = Boolean(boardingLabel) && !boardingLabel.endsWith(formatJourneyClock(startAt));
+  const arrivalDay = journeyArrivalDayNote(lastLeg.arrivalAt, journey.requestedDepartureAt ?? startAt);
+  const split = journeyTimeBreakdown(journey);
   const openLabel = `Відкрити маршрут: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${spokenJourneyPrice(journeyPrice)}${showsBoarding ? `, ${boardingLabel}` : ''}`;
 
   const toggleSaved = () => {
@@ -128,6 +136,7 @@ function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
     data-journey-id={journey.id}
     data-top-pick={index === 0 ? 'true' : undefined}
     data-chosen={chosen ? 'true' : undefined}
+    data-group-size={alternatives.length + 1}
     className={`journey-result-card mg-press-subtle relative isolate overflow-hidden rounded-[var(--mg-radius-lg)] border bg-[var(--mg-surface-card)] transition-all duration-[var(--mg-dur-fast)] ${chosen ? 'border-[var(--mg-action)] ring-1 ring-[var(--mg-action)] shadow-[0_4px_20px_rgba(11,99,214,.18)]' : 'border-[var(--mg-line)] hover:border-[var(--mg-action-subtle)] shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]'}`}
   >
     <button type="button" aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[var(--mg-radius-lg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
@@ -142,7 +151,6 @@ function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
         priceClassName="journey-result-total-price"
         priceUnavailable={totalPrice === '—'}
         priceCaption={priceCaptionText ? <span data-testid="journey-result-price-caption" className="block max-w-[7.5rem] truncate text-xs font-semibold leading-4 text-slate-500 dark:text-slate-400">{priceCaptionText}</span> : undefined}
-        summaryNote={index === 0 ? <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-[var(--mg-blue-tint)] px-2 py-[3px] text-xs font-extrabold uppercase tracking-[.07em] text-[var(--mg-blue-ink)]"><Star size={10} className="shrink-0 fill-current" aria-hidden="true"/>Рекомендований</span> : undefined}
         actionsClassName="journey-result-actions flex shrink-0 items-center gap-1"
         summaryRowClassName="journey-result-header"
         actions={<>
@@ -157,21 +165,45 @@ function RouteResultCard({ journey, index, caveats, chosen, onOpen }: {
         items={stripItems}
         ariaLabel="Послідовність етапів маршруту"
         className="pointer-events-none"
-        stripClassName="mt-1.5 pointer-events-none"
-        durationNote={waitingSeconds > 0 ? <span data-testid="journey-result-wait" className="text-xs font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">Очікування · {formatJourneyDuration(waitingSeconds)}</span> : undefined}
+        stripClassName="mt-0.5 pointer-events-none"
+        durationNote={waitingSeconds > 0 ? <span data-testid="journey-result-wait" className="text-xs font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">Очікування · {formatJourneyDurationTile(waitingSeconds)}</span> : undefined}
       />
-      <p data-testid="journey-result-window" className="journey-result-window mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs font-bold leading-4 tabular-nums text-slate-700 dark:text-slate-200">
-        <span className="inline-flex items-center gap-1"><Clock size={13} className="shrink-0" aria-hidden="true"/>Відправлення: {formatJourneyClock(startAt)}</span>
-        <span className="inline-flex items-center gap-1"><Flag size={13} className="shrink-0" aria-hidden="true"/>Прибуття: {formatJourneyClock(lastLeg.arrivalAt)}</span>
+      {/* The clock window is one line; boarding, ride and walk times are one line below it.
+          Two fixed rows beat one flexible paragraph that wrapped into three on a phone. The
+          rank marker and the grouped-departure toggle live on the clock row: both are facts
+          about when the journey leaves, and on the timing row they wrapped every card. */}
+      <p data-testid="journey-result-window" className="journey-result-window mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-bold leading-4 tabular-nums text-slate-700 dark:text-slate-200">
+        <span className="inline-flex items-center gap-1"><Clock size={12} className="shrink-0" aria-hidden="true"/>Відправлення: {formatJourneyClock(startAt)}</span>
+        <span className="inline-flex items-center gap-1"><Flag size={12} className="shrink-0" aria-hidden="true"/>Прибуття: {formatJourneyClock(lastLeg.arrivalAt)}{arrivalDay ? ` · ${arrivalDay}` : ''}</span>
+        {index === 0 && <span data-testid="journey-result-top-pick" className="inline-flex items-center gap-0.5 rounded-full bg-[var(--mg-blue-tint)] px-1.5 text-xs font-extrabold uppercase tracking-[.06em] text-[var(--mg-blue-ink)]"><Star size={9} className="shrink-0 fill-current" aria-hidden="true"/>Рекомендований</span>}
+        {alternatives.length > 0 && <button type="button" aria-expanded={departuresOpen} aria-controls={departuresId} aria-label={`${departuresOpen ? 'Згорнути' : 'Показати'} інші відправлення (${alternatives.length})`} onClick={() => setDeparturesOpen(open => !open)} className="mg-press-subtle pointer-events-auto relative z-20 inline-flex items-center gap-0.5 rounded text-xs font-extrabold text-[var(--mg-blue-ink)] before:absolute before:-inset-x-1 before:-inset-y-3.5 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-[var(--mg-blue)]">
+          <ChevronRight size={12} className={`shrink-0 transition-transform ${departuresOpen ? 'rotate-90' : ''}`} aria-hidden="true"/>Ще {alternatives.length}
+        </button>}
       </p>
-      {showsBoarding && (
-        <p data-testid="journey-result-boarding" className="mt-1 flex items-center gap-1 text-xs font-semibold leading-4 tabular-nums text-slate-600 dark:text-slate-300">
-          <Clock size={10} className="shrink-0" aria-hidden="true"/>
-          {boardingLabel}
-        </p>
-      )}
+      <p data-testid="journey-result-timing" className="mt-px flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs leading-4 tabular-nums text-slate-600 dark:text-slate-300">
+        {showsBoarding && <span data-testid="journey-result-boarding" className="inline-flex items-center gap-1 font-semibold"><Clock size={10} className="shrink-0" aria-hidden="true"/>{boardingLabel}</span>}
+        {split.ridingSeconds > 0 && <span className="font-semibold">У дорозі {formatJourneyDuration(split.ridingSeconds)}</span>}
+        {split.walkingSeconds > 0 && <span className="font-semibold">Пішки {formatJourneyDuration(split.walkingSeconds)}</span>}
+      </p>
       {segments.map(segment => segment.leg && <span key={segment.id} className="sr-only">{formatJourneyDistance(segment.leg.distanceMeters)}</span>)}
-      {caveats.length > 0 && <p className="journey-result-caveat mt-1 text-xs leading-4 text-amber-800 dark:text-amber-200">{caveats.join(' ')}</p>}
+      {caveats.length > 0 && <p className="journey-result-caveat mt-0.5 text-xs leading-4 text-amber-800 dark:text-amber-200">{caveats.join(' ')}</p>}
+      {alternatives.length > 0 && <div className="journey-group-departures mt-0.5">
+        {departuresOpen && <ul id={departuresId} data-testid="journey-group-departure-list" className="space-y-px border-t border-slate-100 pt-0.5 dark:border-slate-800">
+          {alternatives.map(alt => {
+            const altFirst = alt.legs[0];
+            const altLast = alt.legs.at(-1);
+            if (!altFirst || !altLast) return null;
+            const altDay = journeyArrivalDayNote(altLast.arrivalAt, alt.requestedDepartureAt ?? altFirst.departureAt);
+            const altPrice = journeyPriceDisplay(alt).label;
+            return <li key={alt.id}>
+              <button type="button" onClick={() => onOpen(alt)} aria-label={`Відкрити відправлення ${formatJourneyClock(altFirst.departureAt)} — ${formatJourneyClock(altLast.arrivalAt)}${altDay ? ', ' + altDay : ''}`} className="pointer-events-auto relative z-20 flex min-h-8 w-full items-center gap-2 rounded-lg px-1 text-left text-xs font-semibold tabular-nums text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60">
+                <span className="min-w-0 flex-1 truncate">{formatJourneyClock(altFirst.departureAt)} → {formatJourneyClock(altLast.arrivalAt)}{altDay ? ` · ${altDay}` : ''} · {formatJourneyDuration(alt.totalDurationSeconds)}</span>
+                <span className="shrink-0 font-extrabold">{altPrice}</span>
+              </button>
+            </li>;
+          })}
+        </ul>}
+      </div>}
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
     </div>
   </article>;
@@ -231,11 +263,23 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
   const [activeStrategy, setActiveStrategy] = useState<ApiJourneyStrategy>(defaultStrategy);
   useEffect(() => setActiveStrategy(defaultStrategy), [result, defaultStrategy]);
   const shownJourneys = strategyJourneys(result, activeStrategy);
-  const shownCaveats = shownJourneys.map(journeyCaveats);
-  // A caveat repeated on every card is one fact about the search, not about a route.
-  const sharedCaveats = shownJourneys.length
-    ? shownCaveats[0].filter(text => shownCaveats.every(list => list.includes(text)))
-    : [];
+  const strategyCounts = useMemo(() => ({
+    BALANCED: strategyJourneys(result, 'BALANCED').length,
+    FASTEST: strategyJourneys(result, 'FASTEST').length,
+    CHEAPEST: strategyJourneys(result, 'CHEAPEST').length,
+  }), [result]);
+  const groups = useMemo(() => groupJourneyDepartures(shownJourneys), [shownJourneys]);
+  const shownCaveats = new Map(shownJourneys.map(journey => [journey.id, journeyCaveats(journey)]));
+  // A caveat on most cards is one fact about the data source, so it is stated once above the list
+  // instead of repeating on every card; card-level warnings keep only what is unique to a route.
+  const caveatCounts = new Map<string, number>();
+  for (const caveats of shownCaveats.values()) {
+    for (const text of new Set(caveats)) caveatCounts.set(text, (caveatCounts.get(text) ?? 0) + 1);
+  }
+  const dominantCaveats = [...caveatCounts.entries()]
+    .filter(([, count]) => shownJourneys.length >= 2 && count >= Math.ceil(shownJourneys.length / 2))
+    .map(([text]) => text);
+  const gtfsLimits = gtfsTruncationNotices(result);
 
   const preferenceMessages: Record<string, string> = {
     preferredVehicleClass: 'клас автомобіля не застосовується до розкладів громадського транспорту',
@@ -249,7 +293,9 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
   const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
   const reasonNotices = partialReasonNotices(result.partialReasons, result.completeness);
   reasonNotices.forEach(notice => notices.push(notice));
-  if (result.partial && !reasonNotices.length) notices.push({ tone: 'amber', text: 'Пошук має обмеження. Розкладні рейси показано за розкладом; наявність місць і тариф стороннього перевізника потрібно підтвердити у нього.' });
+  // The limits summary above already names every partial stage; this line only adds the
+  // provenance fact a passenger must act on, so it stays one short sentence.
+  if (result.partial && !reasonNotices.length) notices.push({ tone: 'amber', text: 'Розклади показано за джерелом; місця й тариф стороннього перевізника не підтверджені.' });
   const preferenceTokens = result.unsupportedPreferences.filter(token => !token.startsWith('transportType:'));
   // Provider and preference messages arrive as full sentences (often already
   // ending with a period); trim their terminal punctuation so the wrapper
@@ -263,7 +309,6 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
   providerErrorNotices(userProviderErrors).forEach(notice => notices.push(notice));
   truncationNotices(result).forEach(notice => notices.push(notice));
   unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
-  sharedCaveats.forEach(text => notices.push({ tone: 'amber', text }));
   technicalProviderErrors.forEach(text => notices.push({ tone: 'slate', text }));
   const { headline, technical } = splitResultNotices(notices);
   const showDiagnostics = diagnosticsRequested(
@@ -273,23 +318,49 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
   const funnel = showDiagnostics ? funnelLines(result) : [];
 
   return <section aria-label="Результати мультимодального пошуку" className="mt-2">
-    {/* Stacked under 390 px: three 1fr tracks leave 81–86 px for a label at 360–389 px,
-        and «Найдешевший» needs 89 px at the 12 px floor. From 390 px up the canonical
-        three-chip row returns and the widest label stays on one line. */}
-    <div role="group" aria-label="Режим пошуку маршрутів" className="mb-2 grid grid-cols-1 gap-1.5 min-[390px]:grid-cols-3">
+    {/* One row at every width: three stacked chips cost 151 px on a 320×568 screen, where the
+        first card then never fits. The label sits above its own count, so even a 92 px track
+        holds «Найдешевший» at the 12 px floor without breaking the word. */}
+    <div role="group" aria-label="Режим пошуку маршрутів" className="mb-2 grid max-w-md grid-cols-3 gap-1.5">
       {strategyConfig.map(({ id, label, Icon, tone }) => {
-        const count = strategyJourneys(result, id).length;
+        const count = strategyCounts[id];
         const active = activeStrategy === id;
         const disabled = count === 0;
         const filled = active && !disabled;
-        return <button key={id} type="button" disabled={disabled} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`mg-pill-switch mg-press-subtle flex min-h-11 min-w-0 items-center justify-center gap-0.5 rounded-xl border px-0.5 text-center transition-colors disabled:cursor-not-allowed ${filled ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : `border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] ${active ? 'border-[var(--mg-action)]' : disabled ? 'opacity-70' : 'hover:border-[var(--mg-blue)]'}`}`}>
-          {/* No whitespace-nowrap: each chip is a minmax(0,1fr) track, so a nowrap label
-              (Найдешевший is the longest) pushed the third chip past a 390 px viewport.
-              The span shrinks and wraps instead; type stays at the 12 px floor. */}
-          <Icon size={16} className={`shrink-0 ${filled ? 'text-white' : tone}`} aria-hidden="true"/><span className="min-w-0 break-words text-center text-xs font-extrabold leading-[1.15] tracking-[-0.03em]">{label}</span>
+        return <button key={id} type="button" disabled={disabled} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`mg-pill-switch mg-press-subtle flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed ${filled ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : `border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] ${active ? 'border-[var(--mg-action)]' : disabled ? 'opacity-70' : 'hover:border-[var(--mg-blue)]'}`}`}>
+          {/* A 320 px screen leaves 92 px per track: the icon only returns once the track can
+              hold it beside the label, and both lines stay nowrap so no word breaks mid-glyph. */}
+          <Icon size={16} className={`hidden min-[390px]:block shrink-0 ${filled ? 'text-white' : tone}`} aria-hidden="true"/>
+          <span className="flex min-w-0 flex-col items-center leading-[1.15]">
+            <span className="min-w-0 whitespace-nowrap text-xs font-extrabold tracking-[-0.03em]">{label}</span>
+            <span data-testid={`journey-strategy-count-${id.toLowerCase()}`} aria-hidden="true" className={`whitespace-nowrap text-xs font-extrabold tabular-nums ${filled ? 'text-white/85' : 'text-slate-500 dark:text-slate-400'}`}>· {count}</span>
+          </span>
         </button>;
       })}
     </div>
+
+    {/* Search limits and source-wide caveats are facts, not diagnostics: every active flag is
+        named in the summary itself, and the full sentences are one tap away. Keeping both in one
+        row leaves room for a third result card above the fold. */}
+    {(gtfsLimits.length > 0 || dominantCaveats.length > 0) && <details data-testid="journey-search-limits" className="search-truncation mb-1.5 rounded-xl border border-[var(--mg-line)] bg-[var(--mg-surface-tint)]">
+      <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1.5 px-2.5 text-xs font-extrabold leading-4 text-amber-900 dark:text-amber-100">
+        <Info size={13} className="shrink-0" aria-hidden="true"/>
+        <span className="min-w-0 flex-1">{gtfsLimits.length
+          ? `Пошук неповний · ${gtfsLimits.length}: ${gtfsLimits.map(limit => limit.short).join(', ')}${dominantCaveats.length ? ` · ${dominantCaveats.length} застереж.` : ''}`
+          : `Застереження до даних · ${dominantCaveats.length}`}</span>
+        <ChevronRight size={14} className="search-truncation-chevron shrink-0" aria-hidden="true"/>
+      </summary>
+      <ul className="space-y-1 px-2.5 pb-2 text-xs leading-4 text-amber-900 dark:text-amber-100">
+        {gtfsLimits.map(limit => <li key={limit.short} className="flex gap-1.5">
+          <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"/>
+          <span>{limit.text}</span>
+        </li>)}
+        {dominantCaveats.map(text => <li key={text} data-testid="journey-shared-caveat" className="flex gap-1.5">
+          <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"/>
+          <span>{text}</span>
+        </li>)}
+      </ul>
+    </details>}
 
     {headline && <p role="status" className={`search-headline-note mb-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-xs font-bold leading-4 ${noticeTone[headline.tone].softBg} ${noticeTone[headline.tone].text}`}><Info size={13} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{headline.text}</span></p>}
     {showDiagnostics && (technical.length > 0 || funnel.length > 0) && <details className="search-notices mb-3 rounded-2xl border border-[var(--mg-line)] bg-[var(--mg-surface-tint)]">
@@ -308,7 +379,10 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
       </ul>
     </details>}
 
-    {shownJourneys.length ? <div className="mg-stagger-list space-y-1.5" data-testid="journey-results-list">{shownJourneys.map((journey, index) => <RouteResultCard key={journey.id} journey={journey} index={index} caveats={shownCaveats[index].filter(text => !sharedCaveats.includes(text))} chosen={journey.id === chosenJourneyId} onOpen={onOpenMap}/>)}</div>
+    {groups.length ? <div className="mg-stagger-list space-y-1.5" data-testid="journey-results-list">{groups.map((group, index) => {
+      const primaryCaveats = shownCaveats.get(group.primary.id) ?? [];
+      return <RouteResultCard key={group.primary.id} journey={group.primary} index={index} caveats={primaryCaveats.filter(text => !dominantCaveats.includes(text))} alternatives={journeyGroupAlternatives(group)} chosen={group.primary.id === chosenJourneyId || group.departures.some(journey => journey.id === chosenJourneyId)} onOpen={onOpenMap}/>;
+    })}</div>
       : <div className="rounded-2xl border border-[var(--mg-line)] bg-[var(--mg-surface-card)] p-6 text-center">
         {result.journeys.length === 0 && journeyEmptyStateKind(result) === 'provider-failure' ? <>
           <p role="alert" className="font-bold text-rose-800 dark:text-rose-100">{JOURNEY_EMPTY_PROVIDER_FAILURE_TITLE}</p>
