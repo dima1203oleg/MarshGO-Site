@@ -26,6 +26,12 @@ export interface ViewportCoordinateOptions {
   topBarHeight?: number;
   isDesktop?: boolean;
   hasWarningNote?: boolean;
+  /**
+   * Height of floating chrome anchored above the sheet (the live-leg chip).
+   * The fit rectangle has to clear it as well, otherwise the last focus point
+   * lands behind a control sitting inside the bottom of the visible band.
+   */
+  extraBottomInset?: number;
   bearing?: number;
 }
 
@@ -43,15 +49,19 @@ export function calculateAdaptiveMapPadding(options: ViewportCoordinateOptions):
     topBarHeight = 92,
     isDesktop = false,
     hasWarningNote = false,
+    extraBottomInset = 0,
     bearing,
   } = options;
+  const extraBottom = Math.max(0, extraBottomInset);
 
   if (isDesktop) {
+    // The live chip is centred over the map on desktop too, anchored at the
+    // sheet's detent height; keep the corridor above it instead of behind it.
     return {
       top: 96 + (hasWarningNote ? 24 : 0),
       left: 490,
       right: 40,
-      bottom: 40,
+      bottom: extraBottom > 0 ? sheetHeight + 8 + extraBottom : 40,
       bearing: bearing ?? 0,
     };
   }
@@ -60,11 +70,13 @@ export function calculateAdaptiveMapPadding(options: ViewportCoordinateOptions):
   // Top padding clears the compact header
   const top = topBarHeight + (hasWarningNote ? 26 : 0) + 6;
 
-  // Bottom padding clears the bottom sheet height.
-  // In expanded state, guarantee at least 96–120 px of top interactive map strip.
-  const minVisibleMapHeight = Math.min(120, Math.max(96, Math.round(viewportHeight * 0.14)));
-  const maxSafeBottom = Math.max(60, viewportHeight - top - minVisibleMapHeight);
-  const bottom = Math.min(sheetHeight + 8, maxSafeBottom);
+  // Bottom padding must clear the sheet itself, not just leave a nominal band:
+  // the fit rectangle ends above the sheet top, so a focused point or segment is
+  // never projected underneath the sheet. Floating chrome above the sheet (the
+  // live-leg chip) is part of that inset for the same reason. MapLibre only
+  // requires the combined vertical padding to stay below the viewport, which
+  // keeps this honest even at the expanded detent on short phones.
+  const bottom = Math.min(sheetHeight + 8 + extraBottom, Math.max(8, viewportHeight - top - 8));
 
   // Side margins: compact 18–24px to maximize horizontal route span.
   const side = Math.min(24, Math.max(16, Math.round(viewportWidth * 0.05)));

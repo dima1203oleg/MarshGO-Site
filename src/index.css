@@ -844,7 +844,9 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
 .production-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
   border-radius: .9rem;
 }
-.production-app :is(.journey-search-card button, .journey-offer-card, button.w-full) { min-height: 2.75rem; }
+/* The blanket 44 px floor outranks a single-class component rule, which silently
+   capped .mg-route-cta below its own 52 px floor. Keep the floor, exempt the CTA. */
+.production-app :is(.journey-search-card button, .journey-offer-card, button.w-full:not(.mg-route-cta)) { min-height: 2.75rem; }
 .production-app .app-tabbar button { min-width: 3.5rem; }
 .production-app [role="status"] { line-height: 1.45; }
 
@@ -1892,28 +1894,46 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 }
 
 .mg-route-cta {
-  min-height: 56px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #A21CFF 0%, #7C1BE3 100%);
+  min-height: 52px;
+  border-radius: 16px;
+  /* Canonical action ramp: action blue fading into the graphite navy it sits on.
+     No second brand hue — the primary action must read as MARSHGO, not as a
+     promotional gradient, and white on every stop clears WCAG AA. */
+  background: linear-gradient(
+    135deg,
+    var(--mg-action) 0%,
+    color-mix(in srgb, var(--mg-action) 62%, var(--mg-navy)) 58%,
+    color-mix(in srgb, var(--mg-action) 34%, var(--mg-navy)) 100%
+  );
   color: #fff;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 900;
   letter-spacing: -.01em;
-  box-shadow: 0 12px 28px rgba(139, 60, 230, .42), inset 0 1px 0 rgba(255, 255, 255, .28);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--mg-action) 34%, transparent), inset 0 1px 0 rgba(255, 255, 255, .22);
   transition: transform .16s var(--mg-ease-entrance), filter .16s ease, box-shadow .16s ease;
   touch-action: manipulation;
 }
 .mg-route-cta:active { transform: scale(.985); filter: brightness(1.06); }
 .mg-route-cta:disabled { opacity: .5; box-shadow: none; }
-.mg-route-cta:focus-visible { outline: 3px solid rgba(162, 28, 255, .55); outline-offset: 3px; }
+.mg-route-cta:focus-visible { outline: 3px solid color-mix(in srgb, var(--mg-blue) 68%, transparent); outline-offset: 3px; }
 
 .mg-route-book {
-  border: 1px solid color-mix(in srgb, #A855F7 55%, transparent);
-  background: color-mix(in srgb, #A855F7 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mg-action) 46%, transparent);
+  background: color-mix(in srgb, var(--mg-action) 12%, transparent);
   color: var(--route-ink);
   transition: background-color .16s ease, transform .16s var(--mg-ease-entrance);
 }
 .mg-route-book:active { transform: scale(.99); }
+
+/* FULL-state bridge back to the map: a sheet-aware pill that names the current
+   camera focus instead of leaving the passenger to guess what was fitted. */
+.route-show-on-map {
+  border: 1px solid var(--route-control-border);
+  background: var(--route-control-bg);
+  color: var(--route-ink);
+  box-shadow: var(--mg-label-shadow);
+  backdrop-filter: blur(12px);
+}
 
 /* ----- Map callouts ----- */
 .route-map-screen .mg-map-label {
