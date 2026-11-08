@@ -156,9 +156,10 @@ export const CALLOUT_SIZE = { width: 200, height: 58 } as const;
 export const CALLOUT_MIN_BAND_PX = CALLOUT_SIZE.height + 24;
 /** Breathing room between two hint cards so they never read as one stacked block. */
 export const CALLOUT_GAP_PX = 8;
-/** Hints stay readable for two seconds, then dissolve over one base motion step. */
+/** Hints stay readable for two seconds, then dissolve slowly (--mg-dur-dissolve) so the
+ *  expanded map strip is never permanently covered. Keep in sync with --mg-dur-dissolve. */
 export const CALLOUT_VISIBLE_MS = 2000;
-export const CALLOUT_EXIT_MS = 300;
+export const CALLOUT_EXIT_MS = 900;
 
 /** Map strip left between the compact top bar and the live sheet height. */
 export function calloutVisibleBand(viewportHeight: number, sheetHeight: number, topHudHeight = 84): number {

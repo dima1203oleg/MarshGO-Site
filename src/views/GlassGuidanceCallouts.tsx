@@ -21,7 +21,8 @@ export function GlassGuidanceCallouts({
   return (
     <div
       aria-label="Підказки огляду маршруту"
-      className="pointer-events-none absolute inset-0 z-[var(--mg-z-map-control)] overflow-hidden"
+      style={{ bottom: viewport.sheetHeight }}
+      className="pointer-events-none absolute inset-0 z-[var(--mg-z-control)] overflow-hidden"
     >
       {placements.map(({ callout, left, top, pointerDirection }, index) => {
         const isExiting = callout.stage === 'exit';
@@ -41,7 +42,7 @@ export function GlassGuidanceCallouts({
               data-testid={`glass-callout-${callout.type.toLowerCase()}`}
               onClick={() => onDismiss?.(callout.id)}
               style={{ ['--mg-stagger-i' as string]: String(index) }}
-              className={`mg-callout pointer-events-auto rounded-xl border p-2 shadow-lg backdrop-blur-xl transition-opacity duration-[var(--mg-dur-base)] ease-[var(--mg-ease-exit)] motion-reduce:transition-none ${
+              className={`mg-callout pointer-events-auto rounded-xl border p-2 shadow-lg backdrop-blur-xl transition-opacity duration-[var(--mg-dur-dissolve)] ease-[var(--mg-ease-dissolve)] motion-reduce:transition-none ${
                 isExiting ? 'pointer-events-none opacity-0' : 'opacity-100'
               } border-white/20 bg-slate-900/85 text-white shadow-black/40 dark:border-white/15 dark:bg-[#0A1628]/90 dark:text-white`}
             >

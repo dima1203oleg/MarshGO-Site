@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   CALLOUT_EXIT_MS,
   CALLOUT_GAP_PX,
@@ -167,10 +168,28 @@ test('cinematic route engine — a compact callout never crosses the live sheet 
   }
 });
 
-test('cinematic route engine — hints live two seconds then dissolve within one motion step', () => {
+test('cinematic route engine — hints live two seconds then dissolve slowly in sync with --mg-dur-dissolve', () => {
   assert.equal(CALLOUT_VISIBLE_MS, 2000);
-  assert.ok(CALLOUT_EXIT_MS > 0);
-  assert.ok(CALLOUT_EXIT_MS <= 420, `exit ${CALLOUT_EXIT_MS} ms must not exceed the slow motion step`);
+  // Owner requirement: hints must fade out slowly, not vanish within one motion step.
+  assert.equal(CALLOUT_EXIT_MS, 900);
+  const css = readFileSync('src/index.css', 'utf8');
+  const token = css.match(/--mg-dur-dissolve:\s*(\d+)ms/);
+  assert.ok(token, '--mg-dur-dissolve має бути оголошений у src/index.css');
+  assert.equal(Number(token[1]), CALLOUT_EXIT_MS, 'JS-таймер видалення і CSS-перехід мають збігатися до мілісекунди');
+});
+
+test('cinematic route engine — callout layer paints below the sheet, clips at its top edge, and fades with the dissolve token', () => {
+  const css = readFileSync('src/index.css', 'utf8');
+  const zOf = (name: string) => Number(css.match(new RegExp(`${name}:\\s*(\\d+)`))?.[1]);
+  assert.ok(zOf('--mg-z-control') < zOf('--mg-z-sticky'), 'шар підказок має бути нижче шторки в стеку');
+
+  const source = readFileSync('src/views/GlassGuidanceCallouts.tsx', 'utf8');
+  assert.match(source, /z-\[var\(--mg-z-control\)\]/, 'шар підказок використовує z нижче шторки');
+  assert.doesNotMatch(source, /z-\[var\(--mg-z-map-control\)\]/, 'старе z поверх шторки заборонене');
+  assert.match(source, /bottom:\s*viewport\.sheetHeight/, 'шар обрізається по верхньому краю губи');
+  assert.match(source, /duration-\[var\(--mg-dur-dissolve\)\]/, 'затухання використовує повільний токен');
+  assert.match(source, /ease-\[var\(--mg-ease-dissolve\)\]/, 'затухання використовує симетричну повільну криву');
+  assert.match(css, /--mg-ease-dissolve:\s*cubic-bezier\(/, 'крива затухання оголошена токеном');
 });
 
 test('cinematic route engine — cleanStopName strips database IDs and suffixes', () => {
