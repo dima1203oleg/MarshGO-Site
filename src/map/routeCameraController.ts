@@ -1,7 +1,7 @@
 import type { Coordinate } from '../../shared/navigation/contracts';
 import type { RouteFitPadding, MapAdapter } from './MapAdapter';
 import { boundsOf, corridorFitPoints } from './routeContextCorridor';
-import { extentMeters, principalBearing } from './routeCameraFocus';
+import { extentMeters, principalBearing, segmentBearingForViewport } from './routeCameraFocus';
 
 export type RouteCameraMode = 'ROUTE_OVERVIEW' | 'SEGMENT_FOCUS' | 'STOP_FOCUS' | 'MANUAL_CAMERA';
 
@@ -35,11 +35,15 @@ export function calculateSegmentFocusTarget(
   segmentCoordinates: Coordinate[],
   contextLines: Coordinate[][] = [],
   segmentId = '',
+  /** Real map band left by the sheet: a wide strip calls for a horizontal leg. */
+  visibleArea?: { width: number; height: number },
 ): SegmentFocusTarget | null {
   if (segmentCoordinates.length < 2) return null;
   const points = corridorFitPoints(segmentCoordinates, contextLines, 0.5);
   const bounds = boundsOf(points);
-  const bearing = extentMeters(segmentCoordinates) > 60 ? principalBearing(segmentCoordinates) : null;
+  const bearing = extentMeters(segmentCoordinates) > 60
+    ? segmentBearingForViewport(principalBearing(segmentCoordinates), visibleArea?.width ?? 1, visibleArea?.height ?? 2)
+    : null;
   const boundsKey = bounds ? bounds.map((val) => val.toFixed(5)).join(',') : '';
   const bearingKey = bearing === null ? 'flat' : bearing.toFixed(1);
   return {

@@ -104,6 +104,32 @@ test('TEST 3: expanded state bounds cap bottom padding to guarantee top map stri
   );
 });
 
+test('TEST 3b: the padded fit region ends above the sheet and centres on the real visible band', () => {
+  for (const vp of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 430, height: 932 }]) {
+    const heights = routeSheetHeights(vp.height);
+    for (const snap of ['half', 'expanded'] as const) {
+      const area = computeVisibleMapArea({
+        viewportWidth: vp.width,
+        viewportHeight: vp.height,
+        sheetHeight: heights[snap],
+        sheetSnap: snap,
+        topBarHeight: 84,
+      });
+      const sheetTop = vp.height - heights[snap];
+      const fitBottom = area.insets.top + area.visibleHeight;
+      assert.ok(
+        fitBottom <= sheetTop,
+        `${vp.width}x${vp.height} ${snap}: fit region bottom ${fitBottom} must not reach under the sheet at ${sheetTop}`,
+      );
+      const bandCenter = (84 + sheetTop) / 2;
+      assert.ok(
+        Math.abs(area.visibleCenterY - bandCenter) <= 8,
+        `${vp.width}x${vp.height} ${snap}: fit centre ${area.visibleCenterY} must sit in the visible band centred at ${bandCenter}`,
+      );
+    }
+  }
+});
+
 test('TEST 5: segment focus calculates dominant bearing and corridor fit bounds', () => {
   // A northbound bus leg in Kyiv
   const busCoordinates: Coordinate[] = [
@@ -121,6 +147,34 @@ test('TEST 5: segment focus calculates dominant bearing and corridor fit bounds'
     `bearing should point north along travel, got ${target.bearing}`,
   );
   assert.ok(target.key.startsWith('bus-1:'));
+});
+
+test('TEST 5b: the map strip left by the expanded sheet rotates a leg to use its full width', () => {
+  const northbound: Coordinate[] = [
+    [30.5234, 50.4501],
+    [30.5238, 50.4550],
+    [30.5242, 50.4610],
+  ];
+
+  const tallBand = calculateSegmentFocusTarget(northbound, [], 'leg-tall', { width: 360, height: 600 });
+  const wideBand = calculateSegmentFocusTarget(northbound, [], 'leg-wide', { width: 390, height: 88 });
+  assert.ok(tallBand !== null && wideBand !== null);
+
+  // Tall band: the leg already runs up the screen, so the camera stays north-up.
+  assert.ok(
+    tallBand.bearing !== null && (tallBand.bearing <= 15 || tallBand.bearing >= 345),
+    `tall band should keep north-up, got ${tallBand.bearing}`,
+  );
+  // Wide band under the expanded sheet: the leg is turned across the screen.
+  assert.ok(
+    wideBand.bearing !== null && (Math.abs(wideBand.bearing - 270) <= 15 || Math.abs(wideBand.bearing - 90) <= 15),
+    `wide band should turn a northbound leg east-west, got ${wideBand.bearing}`,
+  );
+  assert.notEqual(tallBand.key, wideBand.key, 'the focus key must change when the band orientation changes');
+
+  // A leg too short to have a meaningful direction never rotates the camera.
+  const stub: Coordinate[] = [[30.5234, 50.4501], [30.52345, 50.45015]];
+  assert.equal(calculateSegmentFocusTarget(stub, [], 'leg-stub', { width: 390, height: 88 })?.bearing, null);
 });
 
 test('TEST 6 & TEST 8: RouteCameraController handles overview, segment focus, stop focus, and recenter button visibility', () => {

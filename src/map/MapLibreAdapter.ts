@@ -16,7 +16,8 @@ import { configuredMapDarkStyleUrl, configuredMapStyleUrl } from './mapConfig';
 import { journeySegmentsForFocus, visibleJourneyWaypoints } from './focusMode';
 import { nearestRouteHitIds } from './routeHitTesting';
 import { placeJourneyLabels } from './routeLabelPlacement';
-import { cameraMotionDuration, interruptCameraForUserGesture } from './cameraMotion';
+import { cameraEasing, cameraMotionDuration, CAMERA_FOCUS_DURATION_MS, interruptCameraForUserGesture } from './cameraMotion';
+import { cameraForRotatedPoints } from './routeCameraFocus';
 
 const pmtilesProtocol = new Protocol();
 let pmtilesProtocolRegistered = false;
@@ -302,6 +303,8 @@ export class MapLibreAdapter implements MapAdapter {
       container.dataset.marshgoCameraZoom = this.map.getZoom().toFixed(2);
       container.dataset.marshgoCameraCenter = `${center.lng.toFixed(6)},${center.lat.toFixed(6)}`;
       container.dataset.marshgoCameraBearing = this.map.getBearing().toFixed(2);
+      const pad = this.map.getPadding();
+      container.dataset.marshgoCameraPadding = `${pad.top},${pad.right},${pad.bottom},${pad.left}`;
       container.dataset.marshgoCameraSettledId = String(this.cameraRequestSequence);
       container.dataset.marshgoCameraMoving = 'false';
     });
@@ -532,8 +535,8 @@ export class MapLibreAdapter implements MapAdapter {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': ['case', ['==', ['get', 'selected'], true], '#0284C7', '#0369A1'],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 6, 15, 14],
-        'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.75, 0.4],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 9, 15, 16],
+        'line-opacity': ['case', ['==', ['get', 'selected'], true], 0.85, 0.55],
         'line-blur': 4,
       },
     });
@@ -543,9 +546,12 @@ export class MapLibreAdapter implements MapAdapter {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': ['case', ['==', ['get', 'selected'], true], '#38BDF8', '#0EA5E9'],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 4.5, 15, 8.5],
-        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.4, 1.0],
-        'line-dasharray': [0.15, 1.7],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 6, 15, 10],
+        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], 0.5, 1.0],
+        // Dash lengths scale with line width: a 0.15-on pattern paints sub-pixel
+        // dots below zoom 13 and reads as a missing pedestrian path, so the
+        // confirmed walk stays visibly dashed at every zoom.
+        'line-dasharray': [0.8, 1.05],
       },
     });
     // A separate transparent hit layer gives route segments a 44 px touch
@@ -1193,11 +1199,44 @@ export class MapLibreAdapter implements MapAdapter {
       left: Math.min(maxSidePadding, overrides.left ?? Math.min(32, clientWidth * 0.1)),
     };
     this.markCameraRequest();
+    if (typeof overrides.bearing === 'number' && Number.isFinite(overrides.bearing) && overrides.bearing !== 0) {
+      this.fitRotatedCoordinates(points, padding, maxZoom, overrides.bearing);
+      return;
+    }
     this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
       padding,
       duration: this.motionDuration(520),
       maxZoom,
-      ...(typeof overrides.bearing === 'number' && Number.isFinite(overrides.bearing) ? { bearing: overrides.bearing } : {}),
+    });
+  }
+
+  /**
+   * Fits the rotated point cloud itself rather than MapLibre's rotated bounding box.
+   * `fitBounds` rotates the corners of the lat/lng AABB, so a diagonal leg arrives
+   * as a wide diamond and a 350×118 strip zooms out until the diamond fits — the
+   * leg then uses less than half of the available width.
+   */
+  private fitRotatedCoordinates(points: Coordinate[], padding: { top: number; right: number; bottom: number; left: number }, maxZoom: number, bearing: number) {
+    const { clientWidth, clientHeight } = this.map.getContainer();
+    const camera = cameraForRotatedPoints(
+      points,
+      bearing,
+      Math.max(1, clientWidth - padding.left - padding.right),
+      Math.max(1, clientHeight - padding.top - padding.bottom),
+      this.map.getZoom(),
+      maxZoom,
+    );
+    if (!camera) return;
+    // `easeTo` with padding keeps this center at the middle of the padded strip.
+    // The entrance curve matches the sheet's motion, so the turn and the rising
+    // sheet settle together instead of the map snapping ahead of the panel.
+    this.map.easeTo({
+      center: camera.center,
+      zoom: camera.zoom,
+      bearing,
+      padding,
+      duration: this.motionDuration(CAMERA_FOCUS_DURATION_MS),
+      easing: cameraEasing(),
     });
   }
   recenter(point?: Coordinate) {

@@ -1928,6 +1928,17 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 .mg-route-book:active { transform: scale(.99); }
 
 /* ----- Map callouts ----- */
+/* Guidance hints arrive after the camera begins its turn: each card lifts in
+   with a small stagger, then holds until the 2 s dissolve. `backwards` fill
+   only, so the exit opacity transition still owns the final state. */
+@keyframes mg-callout-in {
+  from { opacity: 0; transform: translateY(6px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+.mg-callout {
+  animation: mg-callout-in var(--mg-dur-base) var(--mg-ease-entrance) backwards;
+  animation-delay: calc(120ms + var(--mg-stagger-i, 0) * var(--mg-stagger-step));
+}
 .route-map-screen .mg-map-label {
   display: inline-flex;
   flex-direction: row;
@@ -2230,6 +2241,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   .route-address-summary > svg,
   .mg-route-segment,
   .mg-route-stops,
+  .mg-callout,
   .mg-stagger {
     animation: none !important;
     animation-delay: 0ms !important;

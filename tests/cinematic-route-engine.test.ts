@@ -1,12 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  CALLOUT_EXIT_MS,
+  CALLOUT_GAP_PX,
+  CALLOUT_MIN_BAND_PX,
+  CALLOUT_SIZE,
+  CALLOUT_VISIBLE_MS,
   distanceMeters,
   interpolateLineProgress,
   generateSmartStepSummary,
   calculateCalloutAnchor,
   calloutIconType,
+  calloutVisibleBand,
   cleanStopName,
+  layoutCallouts,
+  type CinematicCallout,
   type JourneyLeg,
 } from '../src/map/cinematicRouteEngine';
 
@@ -118,10 +126,165 @@ test('cinematic route engine — calculateCalloutAnchor keeps callout in visible
   assert.ok(anchor.top + 60 <= 844 - 320 - 12);
 });
 
+test('cinematic route engine — callouts stay off the expanded sheet and hide when no strip is left', () => {
+  // Expanded sheet on a 844 px viewport leaves an 88 px map strip under the top HUD.
+  const strip = calloutVisibleBand(844, 672, 84);
+  assert.equal(strip, 88);
+  assert.ok(strip >= CALLOUT_MIN_BAND_PX, `expected the ${strip} px strip to fit a callout`);
+
+  // A sheet tall enough to consume the strip (e.g. mid-gesture) removes the hints
+  // instead of painting them over the sheet.
+  assert.ok(calloutVisibleBand(844, 760, 84) < CALLOUT_MIN_BAND_PX);
+  assert.ok(calloutVisibleBand(844, 844, 84) < CALLOUT_MIN_BAND_PX);
+  // Degenerate input must not produce NaN and keep the overlay hidden.
+  assert.equal(calloutVisibleBand(Number.NaN, Number.NaN, Number.NaN), 0);
+});
+
+test('cinematic route engine — a compact callout never crosses the live sheet edge', () => {
+  const viewHeight = 844;
+  const sheetHeight = 672;
+  const sheetTop = viewHeight - sheetHeight;
+
+  // Every projected anchor (including one far below the strip) must clamp above the sheet.
+  for (const screenY of [110, 260, 520, 1_200]) {
+    const anchor = calculateCalloutAnchor(
+      200,
+      screenY,
+      390,
+      viewHeight,
+      sheetHeight,
+      84,
+      CALLOUT_SIZE.width,
+      CALLOUT_SIZE.height,
+    );
+    assert.ok(anchor.top >= 84 + 12, `callout top ${anchor.top} must clear the top HUD`);
+    assert.ok(
+      anchor.top + CALLOUT_SIZE.height <= sheetTop - 12,
+      `callout bottom ${anchor.top + CALLOUT_SIZE.height} must stay above the sheet at ${sheetTop}`,
+    );
+    assert.ok(anchor.left >= 12);
+    assert.ok(anchor.left + CALLOUT_SIZE.width <= 390 - 12);
+  }
+});
+
+test('cinematic route engine — hints live two seconds then dissolve within one motion step', () => {
+  assert.equal(CALLOUT_VISIBLE_MS, 2000);
+  assert.ok(CALLOUT_EXIT_MS > 0);
+  assert.ok(CALLOUT_EXIT_MS <= 420, `exit ${CALLOUT_EXIT_MS} ms must not exceed the slow motion step`);
+});
+
 test('cinematic route engine — cleanStopName strips database IDs and suffixes', () => {
   assert.equal(cleanStopName('Львівська політехніка (64)'), 'Львівська політехніка');
   assert.equal(cleanStopName('Залізничний вокзал (117)'), 'Залізничний вокзал');
   assert.equal(cleanStopName('вул. Степана Бандери, 12'), 'вул. Степана Бандери');
   assert.equal(cleanStopName('Центр (зупинка)'), 'Центр');
   assert.equal(cleanStopName(''), '');
+});
+
+function hint(type: CinematicCallout['type'], id: string, x: number, y: number): CinematicCallout {
+  return {
+    id,
+    type,
+    coordinates: [24.02, 49.84],
+    title: type,
+    subtitle: 'тест',
+    accentColor: '#91A6BB',
+    iconType: 'pin',
+    stage: 'enter',
+    screenPos: { x, y },
+  };
+}
+
+function rectsOverlap(
+  a: { left: number; top: number },
+  b: { left: number; top: number },
+): boolean {
+  return a.left < b.left + CALLOUT_SIZE.width + CALLOUT_GAP_PX
+    && b.left < a.left + CALLOUT_SIZE.width + CALLOUT_GAP_PX
+    && a.top < b.top + CALLOUT_SIZE.height + CALLOUT_GAP_PX
+    && b.top < a.top + CALLOUT_SIZE.height + CALLOUT_GAP_PX;
+}
+
+test('callout layout — negative control: raw anchors stack same-coordinate hints on top of each other', () => {
+  const alighting = calculateCalloutAnchor(195, 130, 390, 844, 672, 84, CALLOUT_SIZE.width, CALLOUT_SIZE.height);
+  const transfer = calculateCalloutAnchor(195, 130, 390, 844, 672, 84, CALLOUT_SIZE.width, CALLOUT_SIZE.height);
+  assert.deepEqual(alighting, transfer);
+  assert.ok(rectsOverlap(alighting, transfer), 'the unlayouted anchors must overlap, otherwise this control proves nothing');
+});
+
+test('callout layout — expanded 88 px strip keeps one priority hint, never a stack over the sheet', () => {
+  const viewport = { width: 390, height: 844, sheetHeight: 672, topHudHeight: 84 };
+  const callouts = [
+    hint('BOARDING', 'b', 120, 150),
+    hint('ALIGHTING', 'a', 195, 130),
+    hint('TRANSFER', 't', 195, 130),
+  ];
+  const placed = layoutCallouts(callouts, viewport);
+  assert.equal(placed.length, 1, `expected one card in the ${calloutVisibleBand(844, 672, 84)} px strip, got ${placed.length}`);
+  assert.equal(placed[0]!.callout.type, 'TRANSFER');
+  assert.ok(placed[0]!.top >= 96);
+  assert.ok(placed[0]!.top + CALLOUT_SIZE.height <= 844 - 672 - 12);
+});
+
+test('callout layout — priority winner does not depend on input order', () => {
+  const viewport = { width: 390, height: 844, sheetHeight: 672 };
+  const callouts = [hint('STOPS_COUNT', 's', 195, 130), hint('ALIGHTING', 'a', 195, 130), hint('TRANSFER', 't', 195, 130)];
+  const forward = layoutCallouts(callouts, viewport).map(p => p.callout.id);
+  const backward = layoutCallouts([...callouts].reverse(), viewport).map(p => p.callout.id);
+  assert.deepEqual(forward, ['t']);
+  assert.deepEqual(backward, forward);
+});
+
+test('callout layout — half detent separates same-coordinate hints and keeps every card inside the band', () => {
+  const viewport = { width: 390, height: 844, sheetHeight: 317, topHudHeight: 84 };
+  const placed = layoutCallouts([
+    hint('BOARDING', 'b', 60, 470),
+    hint('ALIGHTING', 'a', 195, 180),
+    hint('TRANSFER', 't', 195, 180),
+    hint('STOPS_COUNT', 's', 330, 360),
+  ], viewport);
+  assert.equal(placed.length, 4, 'the tall half-detent band fits all four hints');
+  for (let i = 0; i < placed.length; i += 1) {
+    const p = placed[i]!;
+    assert.ok(p.top >= 96, `${p.callout.id} top ${p.top} must clear the HUD`);
+    assert.ok(p.top + CALLOUT_SIZE.height <= 844 - 317 - 12, `${p.callout.id} must stay above the sheet`);
+    assert.ok(p.left >= 12 && p.left + CALLOUT_SIZE.width <= 378);
+    for (let j = i + 1; j < placed.length; j += 1) {
+      assert.ok(!rectsOverlap(p, placed[j]!), `${p.callout.id} overlaps ${placed[j]!.callout.id}`);
+    }
+  }
+  const alighting = placed.find(p => p.callout.id === 'a')!;
+  const transfer = placed.find(p => p.callout.id === 't')!;
+  assert.notEqual(alighting.top, transfer.top, 'same-coordinate hints must flip to opposite sides');
+  assert.equal(transfer.pointerDirection, 'down');
+  assert.equal(alighting.pointerDirection, 'up');
+});
+
+test('callout layout — a hint with both sides taken is dropped, never stacked or moved off its anchor', () => {
+  const viewport = { width: 390, height: 844, sheetHeight: 317 };
+  const placed = layoutCallouts([
+    hint('TRANSFER', 't', 195, 200),
+    hint('ALIGHTING', 'a', 195, 200),
+    hint('STOPS_COUNT', 's', 195, 214),
+  ], viewport);
+  assert.deepEqual(placed.map(p => p.callout.id), ['t', 'a']);
+  assert.ok(!rectsOverlap(placed[0]!, placed[1]!));
+});
+
+test('callout layout — a strip shorter than one card renders nothing instead of covering the sheet', () => {
+  assert.ok(CALLOUT_MIN_BAND_PX >= CALLOUT_SIZE.height + 24);
+  for (const sheetHeight of [700, 760, 844]) {
+    assert.deepEqual(layoutCallouts([hint('TRANSFER', 't', 195, 130)], { width: 390, height: 844, sheetHeight }), []);
+  }
+});
+
+test('callout layout — unprojected hints are skipped and horizontal anchors stay clamped', () => {
+  const viewport = { width: 390, height: 844, sheetHeight: 317 };
+  const unprojected = { ...hint('BOARDING', 'u', 0, 0), screenPos: undefined };
+  const placed = layoutCallouts([unprojected, hint('TRANSFER', 't', 2, 300), hint('BOARDING', 'b', 388, 300)], viewport);
+  assert.deepEqual(placed.map(p => p.callout.id).sort(), ['b', 't']);
+  for (const p of placed) {
+    assert.ok(p.left >= 12, `left ${p.left} must respect the margin`);
+    assert.ok(p.left + CALLOUT_SIZE.width <= 378, `right edge ${p.left + CALLOUT_SIZE.width} must stay on screen`);
+  }
 });

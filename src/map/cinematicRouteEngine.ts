@@ -150,6 +150,24 @@ export function generateSmartStepSummary(currentLeg: JourneyLeg, nextLeg?: Journ
   };
 }
 
+/** Compact callout footprint used by both placement and the map band guard. */
+export const CALLOUT_SIZE = { width: 200, height: 58 } as const;
+/** A card needs its own height plus the 12 px corridor margin on both edges. */
+export const CALLOUT_MIN_BAND_PX = CALLOUT_SIZE.height + 24;
+/** Breathing room between two hint cards so they never read as one stacked block. */
+export const CALLOUT_GAP_PX = 8;
+/** Hints stay readable for two seconds, then dissolve over one base motion step. */
+export const CALLOUT_VISIBLE_MS = 2000;
+export const CALLOUT_EXIT_MS = 300;
+
+/** Map strip left between the compact top bar and the live sheet height. */
+export function calloutVisibleBand(viewportHeight: number, sheetHeight: number, topHudHeight = 84): number {
+  const height = Number.isFinite(viewportHeight) ? viewportHeight : 0;
+  const sheet = Number.isFinite(sheetHeight) ? Math.max(0, sheetHeight) : 0;
+  const hud = Number.isFinite(topHudHeight) ? Math.max(0, topHudHeight) : 0;
+  return height - sheet - hud;
+}
+
 /** Callout positioning helper to prevent occlusion by headers or bottom sheet. */
 export function calculateCalloutAnchor(
   screenX: number,
@@ -183,4 +201,86 @@ export function calculateCalloutAnchor(
   left = Math.max(margin, Math.min(viewWidth - calloutWidth - margin, left));
 
   return { left, top, pointerDirection };
+}
+
+export type CalloutViewport = {
+  width: number;
+  height: number;
+  sheetHeight: number;
+  topHudHeight?: number;
+};
+
+export type CalloutPlacement = {
+  callout: CinematicCallout;
+  left: number;
+  top: number;
+  pointerDirection: 'down' | 'up';
+};
+
+/** The next action matters more than a restatement of where the leg ends. */
+const CALLOUT_PRIORITY: Record<CinematicCallout['type'], number> = {
+  TRANSFER: 0,
+  NEXT_ACTION: 1,
+  BOARDING: 2,
+  ALIGHTING: 3,
+  STOPS_COUNT: 4,
+};
+
+/**
+ * Boarding, alighting and transfer hints can share one coordinate, and the
+ * expanded sheet leaves room for a single card. Place by priority, flip a card
+ * to the other side of its anchor when the first side is taken, and drop what
+ * still does not fit instead of stacking hints on top of each other.
+ */
+export function layoutCallouts(
+  callouts: readonly CinematicCallout[],
+  viewport: CalloutViewport,
+): CalloutPlacement[] {
+  const topHudHeight = viewport.topHudHeight ?? 84;
+  if (calloutVisibleBand(viewport.height, viewport.sheetHeight, topHudHeight) < CALLOUT_MIN_BAND_PX) return [];
+
+  const margin = 12;
+  const corridorTop = topHudHeight + margin;
+  const corridorBottom = viewport.height - viewport.sheetHeight - margin;
+  const ordered = callouts
+    .map((callout, index) => ({ callout, index }))
+    .filter(entry => entry.callout.screenPos)
+    .sort((a, b) => (CALLOUT_PRIORITY[a.callout.type] - CALLOUT_PRIORITY[b.callout.type]) || (a.index - b.index));
+
+  const placed: CalloutPlacement[] = [];
+  for (const { callout } of ordered) {
+    const pos = callout.screenPos!;
+    const anchor = calculateCalloutAnchor(
+      pos.x,
+      pos.y,
+      viewport.width,
+      viewport.height,
+      viewport.sheetHeight,
+      topHudHeight,
+      CALLOUT_SIZE.width,
+      CALLOUT_SIZE.height,
+    );
+    const candidates = anchor.pointerDirection === 'up'
+      ? [anchor.top, pos.y - CALLOUT_SIZE.height - margin]
+      : [anchor.top, pos.y + 16];
+
+    for (const candidate of candidates) {
+      const top = Math.max(corridorTop, Math.min(corridorBottom - CALLOUT_SIZE.height, candidate));
+      if (!Number.isFinite(top)) continue;
+      const overlaps = placed.some(existing =>
+        anchor.left < existing.left + CALLOUT_SIZE.width + CALLOUT_GAP_PX
+        && existing.left < anchor.left + CALLOUT_SIZE.width + CALLOUT_GAP_PX
+        && top < existing.top + CALLOUT_SIZE.height + CALLOUT_GAP_PX
+        && existing.top < top + CALLOUT_SIZE.height + CALLOUT_GAP_PX);
+      if (overlaps) continue;
+      placed.push({
+        callout,
+        left: anchor.left,
+        top,
+        pointerDirection: top + CALLOUT_SIZE.height / 2 < pos.y ? 'down' : 'up',
+      });
+      break;
+    }
+  }
+  return placed;
 }

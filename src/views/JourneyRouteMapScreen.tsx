@@ -42,6 +42,8 @@ import {
   type RouteCameraMode,
 } from '../map/routeCameraController';
 import {
+  CALLOUT_EXIT_MS,
+  CALLOUT_VISIBLE_MS,
   calloutIconType,
   cleanStopName,
   generateSmartStepSummary,
@@ -163,6 +165,15 @@ export function JourneyRouteMapScreen({
   const [callouts, setCallouts] = useState<CinematicCallout[]>([]);
   const revealAnimRef = useRef<number | null>(null);
   const activeRevealLegId = useRef<string | null>(null);
+  const calloutTimers = useRef<number[]>([]);
+  const clearCalloutTimers = useCallback(() => {
+    for (const timer of calloutTimers.current) window.clearTimeout(timer);
+    calloutTimers.current = [];
+  }, []);
+  const dismissCallouts = useCallback(() => {
+    clearCalloutTimers();
+    setCallouts(prev => (prev.length === 0 ? prev : []));
+  }, [clearCalloutTimers]);
   const [scale, setScale] = useState<{ label: string; widthPx: number } | null>(null);
   const [saved, setSaved] = useState(() => {
     try { return (JSON.parse(window.localStorage.getItem('marshgo.saved-route-results.v1') ?? '[]') as unknown[]).includes(journey.id); }
@@ -346,6 +357,11 @@ export function JourneyRouteMapScreen({
     return `${routeLinePoints.length}:${first[0].toFixed(4)},${first[1].toFixed(4)}:${last[0].toFixed(4)},${last[1].toFixed(4)}`;
   }, [routeLinePoints]);
 
+  const visibleMapArea = useMemo(() => ({
+    width: Math.max(1, viewportWidth - (mapPadding.left ?? 0) - (mapPadding.right ?? 0)),
+    height: Math.max(1, viewportHeight - (mapPadding.top ?? 0) - (mapPadding.bottom ?? 0)),
+  }), [mapPadding, viewportHeight, viewportWidth]);
+
   const segmentFocus = useMemo(() => {
     const segment = activeSegmentId ? model.routeSegments.find(item => item.id === activeSegmentId) : undefined;
     if (!segment || segment.coordinates.length < 2) return null;
@@ -355,8 +371,8 @@ export function JourneyRouteMapScreen({
       ...(route.zones?.beforeBoarding ? [route.zones.beforeBoarding] : []),
       ...(route.zones?.afterAlighting ? [route.zones.afterAlighting] : []),
     ]);
-    return calculateSegmentFocusTarget(segment.coordinates, contextLines, segment.id);
-  }, [activeSegmentId, liveJourney, model.routeSegments]);
+    return calculateSegmentFocusTarget(segment.coordinates, contextLines, segment.id, visibleMapArea);
+  }, [activeSegmentId, liveJourney, model.routeSegments, visibleMapArea]);
 
   const segmentFocusKey = segmentFocus?.key ?? null;
 
@@ -466,7 +482,7 @@ export function JourneyRouteMapScreen({
         id: `callout-alighting-${leg.id}`,
         type: 'ALIGHTING',
         coordinates: endCoord,
-        title: isLast ? 'ПРИБУТТЯ' : 'ВИСАДКА',
+        title: isLast ? 'ПРИБУТТЯ' : leg.mode === 'WALK' ? 'КІНЕЦЬ ПІШКИ' : 'ВИСАДКА',
         subtitle: destClean,
         time: formatTime(leg.arrivalAt),
         accentColor: isLast ? '#10B981' : color,
@@ -501,9 +517,10 @@ export function JourneyRouteMapScreen({
       revealAnimRef.current = null;
     }
     mapAdapter.current?.clearSegmentReveal?.();
+    clearCalloutTimers();
     setCallouts([]);
     cameraController.current?.showOverview(routeLinePoints);
-  }, [routeLinePoints]);
+  }, [clearCalloutTimers, routeLinePoints]);
 
   const chooseSegment = useCallback((id: string) => {
     setMapSegmentChoices(null);
@@ -515,7 +532,7 @@ export function JourneyRouteMapScreen({
       const leg = journey.legs[legIndex];
       const nextLeg = journey.legs[legIndex + 1];
       const seg = model.routeSegments.find(s => s.id === id);
-      const target = seg ? calculateSegmentFocusTarget(seg.coordinates, [], id) : null;
+      const target = seg ? calculateSegmentFocusTarget(seg.coordinates, [], id, visibleMapArea) : null;
       cameraController.current?.focusSegment(id, target, routeLinePoints);
 
       if (leg) {
@@ -526,6 +543,15 @@ export function JourneyRouteMapScreen({
           return s ? { ...c, screenPos: s } : c;
         });
         setCallouts(initialProjected);
+        // Hints explain the selected leg, then dissolve on their own so the
+        // expanded map strip is never permanently covered by five floating cards.
+        clearCalloutTimers();
+        const batch = new Set(initialProjected.map(callout => callout.id));
+        calloutTimers.current.push(
+          window.setTimeout(() => setCallouts(prev => prev.map(callout => batch.has(callout.id)
+            ? { ...callout, stage: 'exit' as const } : callout)), CALLOUT_VISIBLE_MS),
+          window.setTimeout(() => setCallouts(prev => prev.filter(callout => !batch.has(callout.id))), CALLOUT_VISIBLE_MS + CALLOUT_EXIT_MS),
+        );
 
         if (revealAnimRef.current) {
           cancelAnimationFrame(revealAnimRef.current);
@@ -569,16 +595,17 @@ export function JourneyRouteMapScreen({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       block: 'nearest',
     }));
-  }, [activeSegmentId, buildCalloutsForLeg, journey.legs, liveJourney?.segments, model.routeSegments, reducedMotion, routeLinePoints, showWholeRoute, updateCalloutScreenPositions]);
+  }, [activeSegmentId, buildCalloutsForLeg, clearCalloutTimers, journey.legs, liveJourney?.segments, model.routeSegments, reducedMotion, routeLinePoints, showWholeRoute, updateCalloutScreenPositions, visibleMapArea]);
 
   useEffect(() => {
     return () => {
       if (revealAnimRef.current) {
         cancelAnimationFrame(revealAnimRef.current);
       }
+      clearCalloutTimers();
       mapAdapter.current?.clearSegmentReveal?.();
     };
-  }, []);
+  }, [clearCalloutTimers]);
 
   useEffect(() => {
     if (callouts.length === 0) return;
@@ -649,6 +676,10 @@ export function JourneyRouteMapScreen({
     const renderedHeight = sheetElement.current?.getBoundingClientRect().height ?? sheetHeightRef.current;
     sheetHeightRef.current = renderedHeight;
     draggingRef.current = true;
+    // The hints sit above the sheet in z-order; while the grabber moves the sheet
+    // edge directly in the DOM, a hint anchored to the old height would float over
+    // the sheet, so grabbing the sheet dismisses them instead of letting them overlap.
+    dismissCallouts();
     if (sheetElement.current) {
       sheetElement.current.dataset.dragging = 'true';
       sheetElement.current.style.transition = 'none';
@@ -908,6 +939,7 @@ export function JourneyRouteMapScreen({
       {/* Cinematic Glass Guidance Callouts anchored to points */}
       <GlassGuidanceCallouts
         callouts={callouts}
+        viewport={{ width: viewportWidth, height: viewportHeight, sheetHeight, topHudHeight: 84 }}
         onDismiss={id => setCallouts(prev => prev.filter(c => c.id !== id))}
       />
 
