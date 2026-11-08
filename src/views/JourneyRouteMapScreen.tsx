@@ -1219,10 +1219,10 @@ export function JourneyRouteMapScreen({
           {/* Independent scrolling for details in medium and expanded modes */}
           {(sheetSnap === 'half' || sheetSnap === 'expanded') && (
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-1.5" data-testid="route-segment-list">
-              {recommendation && <p data-testid="journey-route-recommendation" className="mb-1 text-xs font-semibold leading-4 text-[var(--route-muted)]">Рекомендація: {recommendation}</p>}
               <ol className="space-y-1 pt-0.5">
                 {renderSegmentCards()}
               </ol>
+              {recommendation && <p data-testid="journey-route-recommendation" className="mb-1 text-xs font-semibold leading-4 text-[var(--route-muted)]">Рекомендація: {recommendation}</p>}
               {alternativeDepartures.length > 0 && <details data-testid="journey-alternative-departures" className="mt-2 overflow-hidden rounded-xl border border-[var(--route-border)] bg-[var(--route-card)]">
                 <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-xs font-extrabold text-[var(--route-ink)]">
                   <span>Інші відправлення</span>
