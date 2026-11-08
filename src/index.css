@@ -457,16 +457,20 @@ html.dark .search-screen .journey-search-card .trip-tile { background: var(--mg-
 html.dark .search-screen .journey-search-card .trip-tile small { color: var(--mg-ink-muted); }
 html.dark .search-screen .journey-search-card .trip-tile--stepper > button { border-color: var(--mg-border-subtle); background: var(--mg-bg-secondary); color: var(--mg-blue); }
 /*
- * A seat stepper needs 88 px for two 44 px buttons and the budget needs its value on one line, but
- * half of a 390 px card leaves the text column 24 px — that is how «1 пасажир» wrapped under the
- * minus button and «Без обмеж…» lost its tail. Below 430 px these two controls take the whole row.
- * An armed arrival tile needs the same treatment: measured at 390 px, its 164 px half could not hold
+ * Passengers and budget share one row at every width (owner, 2026-11-08). A 164 px half cannot hold
+ * the 88 px stepper pair beside its text — that is how «1 пасажир» once wrapped under the minus
+ * button — so on mobile the pair wraps to a second line INSIDE the tile and both stay whole.
+ * An armed arrival tile still stacks: measured at 390 px, its 164 px half could not hold
  * a 44 px clear button and the 95 px «5 лист., 20:00» together, so the pair stacks once a limit is set.
  */
+@media (max-width: 639px) {
+  .search-screen .journey-search-card .trip-tile--stepper { flex-wrap: wrap; justify-content: center; row-gap: .35rem; padding: .5rem .7rem; }
+  /* The Coins glyph and the chevron are decoration on a tile that is already one big select; together
+     they cost the value 47 px, which is exactly what «Без обмеження» needs to stay untruncated. */
+  .search-screen .journey-search-card .search-trip-details--stack > label.trip-tile > svg { display: none; }
+}
 @media (max-width: 430px) {
-  .search-screen .journey-search-card .search-trip-details--stack { grid-template-columns: minmax(0, 1fr); }
   .search-screen .journey-search-card .search-trip-details--armed { grid-template-columns: minmax(0, 1fr); }
-  .search-screen .journey-search-card .trip-tile--stepper { padding: .5rem .7rem; }
 }
 .journey-search-card label { min-height: 3.65rem; }
 .journey-search-card input { font-size: 16px; } /* Prevent WKWebView input zoom. */
@@ -884,10 +888,16 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .production-app .journey-search-card { padding: .65rem; }
   .production-app .transport-mode-grid { gap: .35rem; }
   /* At 320 px a half-card leaves the departure value 107 px against 117 px of text, so the date pair
-     stacks too; the two-column pin here is what produced that 14 px clip. */
-  .search-screen .journey-search-card .search-trip-details { grid-template-columns: minmax(0, 1fr); }
+     stacks too; the two-column pin here is what produced that 14 px clip. The stepper+budget row is
+     exempt: the owner asked for it on one line, and its tiles wrap their own content instead. */
+  .search-screen .journey-search-card .search-trip-details:not(.search-trip-details--stack) { grid-template-columns: minmax(0, 1fr); }
+  /* «Без обмеження» measures 107 px; the default .7rem side padding left the value 106 px and the
+     ellipsis ate the tail. Half a rem gives the text its full width back. */
+  .search-screen .journey-search-card .search-trip-details--stack > .trip-tile { padding-inline: .5rem; }
   .transport-types-inline > div:first-child { gap: .25rem; }
-  .transport-types-inline > div:first-child h2 { white-space: nowrap; font-size: .8rem; }
+  /* The two pill actions need 188 px; a nowrap heading pushed them 12 px past the 320 px viewport.
+     Wrapping the heading keeps both actions reachable inside the same 44 px row. */
+  .transport-types-inline > div:first-child h2 { font-size: .8rem; }
 }
 
 @media (max-width: 639px) {
