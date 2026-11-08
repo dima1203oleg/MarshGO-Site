@@ -4,7 +4,7 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { resolveMapAssets } from '../map/mapConfig';
 import { themeService } from '../services/theme';
 import { productionApi, type ApiPlace } from '../services/productionApi';
-import { coordinateMapPlace, geolocationFailureMessage, getBrowserPosition } from '../domain/mapPointSelection';
+import { coordinateMapPlace, geolocationFailureMessage, getBrowserPosition, resolvePlaceAtCoordinates } from '../domain/mapPointSelection';
 
 type Props = { title: string; initial: { latitude: number; longitude: number } | null; onConfirm: (place: ApiPlace) => void; onClose: () => void };
 const UKRAINE_CENTER: [number, number] = [31.1656, 48.3794];
@@ -27,15 +27,18 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
   const resolve = async (latitude: number, longitude: number) => {
     const ticket = ++lookup.current;
     setState('resolving'); setMessage('');
-    try {
-      const found = await productionApi.reverseGeocode(latitude, longitude);
-      if (ticket !== lookup.current) return;
-      setPlace({ ...found, latitude, longitude });
+    const result = await resolvePlaceAtCoordinates(
+      latitude,
+      longitude,
+      (lat, lon) => productionApi.reverseGeocode(lat, lon),
+    );
+    if (ticket !== lookup.current) return;
+    setPlace(result.place);
+    if (result.addressResolved) {
       setState('ready');
-    } catch (error) {
-      if (ticket !== lookup.current) return;
+    } else {
       setState('error');
-      setMessage(error instanceof Error ? `Адресу не визначено: ${error.message}. Координату можна підтвердити без адреси.` : 'Адресу не визначено. Координату можна підтвердити без адреси.');
+      setMessage('Адресу не визначено. Координату можна підтвердити без адреси.');
     }
   };
 
