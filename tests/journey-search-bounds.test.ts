@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { budgetLabel, journeySearchBounds } from '../src/domain/journeySearchBounds';
+import { budgetLabel, journeySearchBounds, MAX_JOURNEY_BUDGET_UAH, parseJourneyBudgetUah } from '../src/domain/journeySearchBounds';
 import { areAllProvidersSelected, countSelectedProviders, toggleProvider, useAllProviders, type TransportSelection } from '../src/domain/transportPreferences';
 
 const groups = [
@@ -46,6 +46,19 @@ describe('journey search bounds from the «З»/«По»/budget controls', () =>
     assert.equal(budgetLabel(null), 'Без обмеження');
     assert.equal(budgetLabel(0), 'Без обмеження');
     assert.equal(budgetLabel(300), 'До 300 грн');
+  });
+
+  it('converts a valid custom whole-UAH amount into the route-search price bound', () => {
+    const budget = parseJourneyBudgetUah('450');
+    assert.equal(budget, 450);
+    assert.deepEqual(journeySearchBounds('2026-05-15T08:00', null, budget), { maxPriceMinor: 45_000 });
+    assert.equal(parseJourneyBudgetUah(String(MAX_JOURNEY_BUDGET_UAH)), MAX_JOURNEY_BUDGET_UAH);
+  });
+
+  it('rejects blank, non-numeric, fractional, zero, negative and over-limit custom amounts', () => {
+    for (const value of ['', 'abc', '1.5', '0', '-1', String(MAX_JOURNEY_BUDGET_UAH + 1)]) {
+      assert.equal(parseJourneyBudgetUah(value), null, `expected ${JSON.stringify(value)} to be rejected`);
+    }
   });
 });
 

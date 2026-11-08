@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CalendarDays, ChevronLeft, Clock3, MoreHorizontal, Timer } from 'lucide-react';
+import { ArrowRight, CalendarDays, ChevronLeft, Clock3, MoreHorizontal, Ticket, Timer } from 'lucide-react';
 import { TicketQr } from '../components/TicketQr';
 import { formatJourneyDuration } from './journeyResultPresentation';
 import { seatsLabel } from '../domain/plural';
@@ -111,9 +111,7 @@ export function MarshPassTicket({ originName, destinationName, departureAt, arri
             <h2 className="font-display text-[34px] font-extrabold leading-none tracking-[.01em] text-[var(--pass-ink)]">MARSH PASS</h2>
             <p className="mt-2 text-[15px] font-semibold text-[var(--pass-ink-secondary)]">Квиток попутчика</p>
           </div>
-          <svg aria-hidden viewBox="0 0 44 44" className="mt-1 h-11 w-11 shrink-0">
-            {Array.from({ length: 4 }).map((_, row) => Array.from({ length: 4 }).map((_, col) => <circle key={`${row}-${col}`} cx={6 + col * 11} cy={6 + row * 11} r="2.1" fill="var(--pass-stroke)" opacity={0.85 - (row + col) * 0.1} />))}
-          </svg>
+          <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--mg-radius-md)] border border-[var(--pass-stroke)]/30 bg-[var(--pass-stroke)]/10 text-[var(--pass-stroke)]"><Ticket className="h-5 w-5" strokeWidth={1.8} /></span>
         </div>
 
         <div className="relative mt-6">
@@ -125,8 +123,10 @@ export function MarshPassTicket({ originName, destinationName, departureAt, arri
             <span className="min-w-0 flex-1 truncate">{detailPart(originName) || ' '}</span>
             <span className="min-w-0 flex-1 truncate text-right">{detailPart(destinationName) || ' '}</span>
           </p>}
-          <div aria-hidden className="mt-2.5 flex items-center gap-1.5">
+          <div aria-hidden className="marsh-pass-ticket__route-track mt-2.5 flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--pass-stroke)]" />
+            <span className="h-[2px] flex-1 rounded-full bg-[var(--pass-track)]" />
+            <ArrowRight className="h-4 w-4 shrink-0 text-[var(--pass-stroke)]" strokeWidth={1.8} />
             <span className="h-[2px] flex-1 rounded-full bg-[var(--pass-track)]" />
             <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--pass-stroke)]" />
           </div>
