@@ -208,6 +208,8 @@ export type CalloutViewport = {
   height: number;
   sheetHeight: number;
   topHudHeight?: number;
+  /** Chrome floating above the sheet (the half-detent mode chip) that hints must not cover. */
+  bottomReservedPx?: number;
 };
 
 export type CalloutPlacement = {
@@ -241,7 +243,8 @@ export function layoutCallouts(
 
   const margin = 12;
   const corridorTop = topHudHeight + margin;
-  const corridorBottom = viewport.height - viewport.sheetHeight - margin;
+  const corridorBottom = viewport.height - viewport.sheetHeight - margin - (viewport.bottomReservedPx ?? 0);
+  if (corridorBottom - corridorTop < CALLOUT_SIZE.height) return [];
   const ordered = callouts
     .map((callout, index) => ({ callout, index }))
     .filter(entry => entry.callout.screenPos)

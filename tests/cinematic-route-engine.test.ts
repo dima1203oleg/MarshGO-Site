@@ -288,3 +288,24 @@ test('callout layout — unprojected hints are skipped and horizontal anchors st
     assert.ok(p.left + CALLOUT_SIZE.width <= 378, `right edge ${p.left + CALLOUT_SIZE.width} must stay on screen`);
   }
 });
+
+test('callout layout — the half-detent mode chip zone stays clear of hints', () => {
+  // 390x844 half: sheet 316, the floating mode chip occupies roughly [sheetTop-56, sheetTop-8].
+  const viewport = { width: 390, height: 844, sheetHeight: 316, topHudHeight: 84, bottomReservedPx: 52 };
+  const corridorBottom = 844 - 316 - 12 - 52;
+  const placed = layoutCallouts([hint('BOARDING', 'b', 195, 500), hint('TRANSFER', 't', 100, 300)], viewport);
+  const boarding = placed.find(p => p.callout.id === 'b');
+  assert.ok(boarding, 'a hint anchored inside the chip zone is pulled above it, not dropped');
+  for (const p of placed) {
+    assert.ok(p.top + CALLOUT_SIZE.height <= corridorBottom, `${p.callout.id} bottom ${p.top + CALLOUT_SIZE.height} must stay above the reserved chip zone ${corridorBottom}`);
+  }
+  const unreserved = layoutCallouts([hint('BOARDING', 'b', 195, 500)], { width: 390, height: 844, sheetHeight: 316, topHudHeight: 84 });
+  assert.ok(unreserved[0]!.top + CALLOUT_SIZE.height > corridorBottom, 'negative control: without the reservation the same hint lands in the chip zone');
+});
+
+test('callout layout — a band that fits a card but not the reserved chip shows no hints', () => {
+  // Band 100 px fits a 58 px card with margins, but reserving the 52 px chip leaves 24 px.
+  const viewport = { width: 390, height: 844, sheetHeight: 660, topHudHeight: 84, bottomReservedPx: 52 };
+  assert.ok(calloutVisibleBand(844, 660, 84) >= CALLOUT_MIN_BAND_PX);
+  assert.deepEqual(layoutCallouts([hint('TRANSFER', 't', 195, 130)], viewport), []);
+});

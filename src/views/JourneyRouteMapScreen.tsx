@@ -939,7 +939,7 @@ export function JourneyRouteMapScreen({
       {/* Cinematic Glass Guidance Callouts anchored to points */}
       <GlassGuidanceCallouts
         callouts={callouts}
-        viewport={{ width: viewportWidth, height: viewportHeight, sheetHeight, topHudHeight: 84 }}
+        viewport={{ width: viewportWidth, height: viewportHeight, sheetHeight, topHudHeight: 84, bottomReservedPx: showChrome && sheetSnap !== 'peek' && liveLeg ? 52 : 0 }}
         onDismiss={id => setCallouts(prev => prev.filter(c => c.id !== id))}
       />
 
