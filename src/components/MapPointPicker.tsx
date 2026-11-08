@@ -4,7 +4,7 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { resolveMapAssets } from '../map/mapConfig';
 import { themeService } from '../services/theme';
 import { productionApi, type ApiPlace } from '../services/productionApi';
-import { coordinateMapPlace, geolocationFailureMessage, getBrowserPosition, resolvePlaceAtCoordinates } from '../domain/mapPointSelection';
+import { coordinateMapPlace, createReverseLookupGate, geolocationFailureMessage, getBrowserPosition, resolvePlaceAtCoordinates } from '../domain/mapPointSelection';
 
 type Props = { title: string; initial: { latitude: number; longitude: number } | null; onConfirm: (place: ApiPlace) => void; onClose: () => void };
 const UKRAINE_CENTER: [number, number] = [31.1656, 48.3794];
@@ -18,7 +18,11 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
   const [message, setMessage] = useState('');
   const lookup = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gate = useRef(createReverseLookupGate());
   const scheduleResolve = (latitude: number, longitude: number) => {
+    // A resize or camera settle emits `moveend` too, and the panel copy changes the
+    // map height, so an ungated handler would re-look-up the same point forever.
+    if (!gate.current.shouldLookup(latitude, longitude)) return;
     lookup.current += 1; setPlace(coordinateMapPlace(latitude, longitude)); setState('resolving'); setMessage('');
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void resolve(latitude, longitude), 450);
@@ -53,16 +57,16 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
       mapRef.current = map;
       map.on('click', (event) => {
         const point = event.lngLat;
+        // A deliberate tap is also the retry for an address that failed to resolve.
+        gate.current.forget();
         scheduleResolve(point.lat, point.lng);
         map!.easeTo({ center: point, duration: 200 });
       });
       map.on('moveend', () => { const c = map!.getCenter(); scheduleResolve(c.lat, c.lng); });
       map.once('load', () => {
         const c = map!.getCenter();
-        if (initial) {
-          setPlace(coordinateMapPlace(c.lat, c.lng));
-          void resolve(c.lat, c.lng);
-        } else setState('ready');
+        if (initial) scheduleResolve(c.lat, c.lng);
+        else setState('ready');
       });
     }).catch(() => { setState('error'); setMessage('Не вдалося завантажити мапу.'); });
     return () => { cancelled = true; if (timer.current) clearTimeout(timer.current); map?.remove(); mapRef.current = null; };

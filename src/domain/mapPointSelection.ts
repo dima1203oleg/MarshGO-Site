@@ -1,5 +1,31 @@
 import type { ApiPlace } from '../services/productionApi';
 
+export type ReverseLookupGate = {
+  /** False for a coordinate the picker has already asked about, so a layout
+   *  change that emits `moveend` cannot restart the same rate-limited lookup. */
+  shouldLookup: (latitude: number, longitude: number) => boolean;
+  /** Forget the last coordinate after a real pan to a different point. */
+  forget: () => void;
+};
+
+/** ~11 m buckets: smaller map jitter is the same place, a visible pan is not. */
+const REVERSE_KEY_SCALE = 10_000;
+
+export function createReverseLookupGate(): ReverseLookupGate {
+  let lastKey: string | null = null;
+  const keyOf = (latitude: number, longitude: number) =>
+    `${Math.round(latitude * REVERSE_KEY_SCALE)},${Math.round(longitude * REVERSE_KEY_SCALE)}`;
+  return {
+    shouldLookup(latitude, longitude) {
+      const key = keyOf(latitude, longitude);
+      if (key === lastKey) return false;
+      lastKey = key;
+      return true;
+    },
+    forget() { lastKey = null; },
+  };
+}
+
 /** A map-selected coordinate remains usable when reverse geocoding is offline. */
 export function coordinateMapPlace(latitude: number, longitude: number): ApiPlace {
   return {
