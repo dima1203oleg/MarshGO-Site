@@ -7,7 +7,7 @@ export type PlaceSearchState = {
 };
 
 export const PLACE_SEARCH_UNAVAILABLE_COPY =
-  'Сервіс пошуку місць тимчасово недоступний. Введену адресу збережено — повторіть пошук за мить.';
+  'Пошук адрес тимчасово недоступний. Виберіть точку на мапі — координати можна підтвердити без адреси — або повторіть пошук пізніше.';
 
 /**
  * Structural match on ProductionApiError's public shape (status/code) instead of importing the
