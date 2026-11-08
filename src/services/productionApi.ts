@@ -717,11 +717,11 @@ export const productionApi = {
       '/offers', { method: 'POST', body: JSON.stringify(input) },
     );
   },
-  suggestPlaces(query: string, bias?: { latitude: number; longitude: number }) {
+  suggestPlaces(query: string, bias?: { latitude: number; longitude: number }, signal?: AbortSignal) {
     const normalized = normalizePlaceQuery(query);
     if (!normalized) return Promise.resolve<ApiPlace[]>([]);
     const locality = bias ? `&lat=${encodeURIComponent(String(bias.latitude))}&lon=${encodeURIComponent(String(bias.longitude))}` : '';
-    return request<ApiPlace[]>(`/places/suggest?q=${encodeURIComponent(normalized)}${locality}`);
+    return request<ApiPlace[]>(`/places/suggest?q=${encodeURIComponent(normalized)}${locality}`, { signal });
   },
   reverseGeocode(latitude: number, longitude: number) {
     return request<ApiPlace>(`/places/reverse?lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`);

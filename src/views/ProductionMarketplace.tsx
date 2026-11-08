@@ -984,29 +984,40 @@ export function ProductionMarketplace() {
   };
 
   useEffect(() => {
-    if (!routePlaceField) return;
+    if (!routePlaceField) {
+      setPlaceSearchBusy(false);
+      return;
+    }
     const query = (routePlaceField === 'origin' ? origin : destination).trim();
     if (query.length < 3) {
       setRoutePlaceSearch(placeSearchPending());
+      setPlaceSearchBusy(false);
       return;
     }
     let cancelled = false;
+    const controller = new AbortController();
     const lookup = async () => {
-      const places = await productionApi.suggestPlaces(query, await currentPlaceBias());
-      if (!cancelled) setRoutePlaceSearch(placeSearchResults(places));
+      const bias = await currentPlaceBias();
+      if (controller.signal.aborted) return;
+      const places = await productionApi.suggestPlaces(query, bias, controller.signal);
+      if (!cancelled && !controller.signal.aborted) setRoutePlaceSearch(placeSearchResults(places));
     };
     const timer = window.setTimeout(() => {
       setPlaceSearchBusy(true);
       void lookup()
         .catch((error: unknown) => {
-          if (cancelled) return;
+          if (cancelled || controller.signal.aborted) return;
           const next = placeSearchFailure(error);
           setRoutePlaceSearch(next);
           if (!next.unavailable) setStatusMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.');
         })
-        .finally(() => { if (!cancelled) setPlaceSearchBusy(false); });
+        .finally(() => { if (!cancelled && !controller.signal.aborted) setPlaceSearchBusy(false); });
     }, 280);
-    return () => { cancelled = true; window.clearTimeout(timer); };
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      controller.abort('superseded');
+    };
   }, [destination, origin, routePlaceField]);
 
   useEffect(() => { setRoutePlaceActive(-1); }, [routePlaceSearch.suggestions, routePlaceField]);
