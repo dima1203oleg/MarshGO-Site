@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { coordinateMapPlace, geolocationFailureMessage, getBrowserPosition, placeSearchFailureMessage, resolvePlaceAtCoordinates } from '../src/domain/mapPointSelection';
+import { coordinateMapPlace, createReverseLookupGate, geolocationFailureMessage, getBrowserPosition, placeSearchFailureMessage, resolvePlaceAtCoordinates } from '../src/domain/mapPointSelection';
 
 test('map selection remains a valid coordinate when reverse geocoding is unavailable', () => {
   assert.deepEqual(coordinateMapPlace(49.8419, 24.0315), {
@@ -48,6 +48,29 @@ test('browser location retries with a coarse cached fix after high-accuracy time
     { enableHighAccuracy: true, maximumAge: 0, timeout: 8_000 },
     { enableHighAccuracy: false, maximumAge: 60_000, timeout: 15_000 },
   ]);
+});
+
+test('map picker reverse geocodes a settled point once, even when moveend repeats', () => {
+  const gate = createReverseLookupGate();
+  assert.equal(gate.shouldLookup(49.8397, 24.0297), true);
+  assert.equal(gate.shouldLookup(49.8397, 24.0297), false, 'a resize-induced moveend must not repeat the rate-limited lookup');
+  assert.equal(gate.shouldLookup(49.83970, 24.02970), false, 'map jitter under ~11 m is the same point');
+  assert.equal(gate.shouldLookup(49.8400, 24.0297), true, 'a visible pan is a new point');
+  assert.equal(gate.shouldLookup(49.8397, 24.0297), true, 'returning to a point after another one is a new lookup');
+});
+
+test('map picker tap re-runs a failed reverse geocode for the same point', () => {
+  const gate = createReverseLookupGate();
+  assert.equal(gate.shouldLookup(49.8397, 24.0297), true);
+  gate.forget();
+  assert.equal(gate.shouldLookup(49.8397, 24.0297), true);
+});
+
+test('reverse lookup gate keys coordinates on both sides of zero distinctly', () => {
+  const gate = createReverseLookupGate();
+  assert.equal(gate.shouldLookup(-0.0001, 24.0297), true);
+  assert.equal(gate.shouldLookup(0.0001, 24.0297), true);
+  assert.equal(gate.shouldLookup(-0.0001, 24.0297), true);
 });
 
 test('place search turns expired sessions and unavailable geocoders into actionable Ukrainian messages', () => {
