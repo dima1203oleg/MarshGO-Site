@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
-import { allAvailableTypesSelected, choiceFor, hasJourneySearchProvider, isJourneySearchSupported, providersForJourneySearch, toggleAvailableTypes, toggleProvider, toggleType, transportTypes, type TransportSelection, type TransportTypeId } from '../domain/transportPreferences';
+import { allAvailableTypesSelected, choiceFor, hasJourneySearchProvider, isJourneySearchSupported, providersForJourneySearch, supportedJourneySearchTypes, toggleAvailableTypes, toggleProvider, toggleType, transportTypes, type TransportSelection, type TransportTypeId } from '../domain/transportPreferences';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import type { ApiTransportProviders } from '../services/productionApi';
@@ -46,6 +46,9 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
     </div>}
     {groups === null && <p role="status" className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-4 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
       Покриття маршрутів ще не перевірено; наявність провайдерів не підтверджена.
+    </p>}
+    {!providersOnly && groups !== null && availableTypes.length < supportedJourneySearchTypes.length && <p role="status" className="mb-2 rounded-xl bg-[var(--mg-surface-tint)] px-3 py-2 text-xs leading-4 text-[var(--mg-ink-muted)]">
+      У цій зоні маршрутний пошук має провайдерів для {availableTypes.length} із {supportedJourneySearchTypes.length} видів. «Усі види» вибирає доступні категорії; для інших ще не підключені джерела.
     </p>}
     {!compact && !providersOnly && <p className="mb-3 text-xs leading-5 text-slate-500">Оберіть види транспорту, які вам підходять для поїздки.</p>}
     {!providersOnly && <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>}
