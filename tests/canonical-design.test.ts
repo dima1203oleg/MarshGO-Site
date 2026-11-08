@@ -378,6 +378,9 @@ test('compact result cards show time and transport chain with details and favori
   assert.match(panel, /journey-result-save-button/, 'each compact card keeps its favorite action');
   assert.match(mapScreen, /data-testid="journey-alternative-departures"/, 'grouped departures remain reachable in route details');
   assert.match(mapScreen, /journey-route-recommendation/, 'strategy ranking remains in route details');
+  assert.match(mapScreen, /const alternativeDepartureAt = altFirst\.departureAt;/, 'alternative departure rows must use the itinerary departure, not the requested search time');
+  assert.match(mapScreen, /journeyArrivalDayNote\(altLast\.arrivalAt, alternativeDepartureAt\)/, 'overnight labels must compare arrival to the actual first leg departure');
+  assert.doesNotMatch(mapScreen, /formatTime\(alternative\.requestedDepartureAt \?\? altFirst\.departureAt\)/, 'alternative rows must not show the search time as the departure');
   assert.doesNotMatch(panel, /durationTitle=/, 'a title-only duration is the reason the window was invisible');
   // Both screens mount the same strip, so the route number has to appear on both.
   assert.match(panel, /badge: journeyRouteBadge\(segment\.leg\?\.routeName\)/, 'the results strip lost the route number');

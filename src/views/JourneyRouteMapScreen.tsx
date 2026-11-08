@@ -1234,10 +1234,11 @@ export function JourneyRouteMapScreen({
                     const altLast = alternative.legs.at(-1);
                     if (!altFirst || !altLast) return null;
                     const altPrice = journeyPriceDisplay(alternative);
-                    const altArrivalDay = journeyArrivalDayNote(altLast.arrivalAt, alternative.requestedDepartureAt ?? altFirst.departureAt);
+                    const alternativeDepartureAt = altFirst.departureAt;
+                    const altArrivalDay = journeyArrivalDayNote(altLast.arrivalAt, alternativeDepartureAt);
                     return <li key={alternative.id}>
-                      <button type="button" onClick={() => onSelectAlternative?.(alternative)} aria-label={`Відкрити відправлення ${formatTime(alternative.requestedDepartureAt ?? altFirst.departureAt)} — ${formatTime(altLast.arrivalAt)}${altArrivalDay ? `, ${altArrivalDay}` : ''}; ${formatDuration(alternative.totalDurationSeconds)}; ${altPrice.label === '—' ? 'ціна невідома' : altPrice.label}`} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-1 text-left text-xs font-semibold tabular-nums text-[var(--route-ink)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
-                        <span className="min-w-0 flex-1 truncate">{formatTime(alternative.requestedDepartureAt ?? altFirst.departureAt)} → {formatTime(altLast.arrivalAt)}{altArrivalDay ? ` · ${altArrivalDay}` : ''} · {formatDuration(alternative.totalDurationSeconds)}</span>
+                      <button type="button" onClick={() => onSelectAlternative?.(alternative)} aria-label={`Відкрити відправлення ${formatTime(alternativeDepartureAt)} — ${formatTime(altLast.arrivalAt)}${altArrivalDay ? `, ${altArrivalDay}` : ''}; ${formatDuration(alternative.totalDurationSeconds)}; ${altPrice.label === '—' ? 'ціна невідома' : altPrice.label}`} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-1 text-left text-xs font-semibold tabular-nums text-[var(--route-ink)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
+                        <span className="min-w-0 flex-1 truncate">{formatTime(alternativeDepartureAt)} → {formatTime(altLast.arrivalAt)}{altArrivalDay ? ` · ${altArrivalDay}` : ''} · {formatDuration(alternative.totalDurationSeconds)}</span>
                         <span className="shrink-0 font-extrabold">{altPrice.label}</span>
                       </button>
                     </li>;
