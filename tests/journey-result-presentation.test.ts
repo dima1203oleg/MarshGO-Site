@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ApiJourney } from '../src/services/productionApi';
 import {
-  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyBoardingNote, journeyRouteBadge, searchPendingCopy, unavailableTransportNotices,
+  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyArrivalDayNote, journeyBoardingNote, journeyRouteBadge, journeyTimeBreakdown, searchPendingCopy, unavailableTransportNotices,
 } from '../src/views/journeyResultPresentation';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
@@ -265,5 +265,35 @@ describe('journeyRouteBadge', () => {
     assert.equal(journeyRouteBadge(undefined), null);
     assert.equal(journeyRouteBadge(null), null);
     assert.equal(journeyRouteBadge('   '), null);
+  });
+});
+
+describe('journey arrival day and time split', () => {
+  it('names an arrival after midnight instead of showing an ambiguous clock', () => {
+    assert.equal(journeyArrivalDayNote('2026-11-10T00:48:00+02:00', '2026-11-09T08:00:00+02:00'), 'наступного дня');
+    assert.equal(journeyArrivalDayNote('2026-11-09T23:48:00+02:00', '2026-11-09T08:00:00+02:00'), '');
+    assert.equal(journeyArrivalDayNote('2026-11-11T02:00:00+02:00', '2026-11-09T22:00:00+02:00'), 'через 2 дні');
+    assert.equal(journeyArrivalDayNote('2026-11-14T02:00:00+02:00', '2026-11-09T22:00:00+02:00'), 'через 5 днів');
+  });
+
+  it('compares Kyiv calendar days, not UTC days', () => {
+    // 23:30 UTC on Nov 9 is already 01:30 on Nov 10 in Kyiv (UTC+2 in winter).
+    assert.equal(journeyArrivalDayNote('2026-11-09T23:30:00Z', '2026-11-09T20:00:00Z'), 'наступного дня');
+  });
+
+  it('stays silent when a timestamp is missing instead of guessing a day', () => {
+    assert.equal(journeyArrivalDayNote('not-a-time', '2026-11-09T08:00:00+02:00'), '');
+    assert.equal(journeyArrivalDayNote('2026-11-09T09:00:00+02:00'), '');
+  });
+
+  it('separates riding, walking and waiting from the real timestamps', () => {
+    const split = journeyTimeBreakdown(journey());
+    assert.deepEqual(split, { walkingSeconds: 300, ridingSeconds: 900, waitingSeconds: 300 });
+  });
+
+  it('derives the wait from the total when the server omits it', () => {
+    const split = journeyTimeBreakdown(journey({ waitingSeconds: undefined, totalDurationSeconds: 1500 }));
+    assert.equal(split.waitingSeconds, 300);
+    assert.equal(split.walkingSeconds + split.ridingSeconds + split.waitingSeconds, 1500);
   });
 });

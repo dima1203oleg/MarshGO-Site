@@ -337,6 +337,20 @@ export type ApiJourneySearchResult = {
   resultsTruncated?: boolean;
   candidateGenerationTruncated?: boolean;
   resultSamplingTruncated?: boolean;
+  /**
+   * Per-stage limits of the GTFS itinerary search. Each true flag is an independent fact about
+   * how the candidate pool was built; the results screen must disclose them, not fold them into
+   * the single `resultsTruncated` bit.
+   */
+  gtfsTruncation?: {
+    stopSelection: boolean;
+    candidateGraph: boolean;
+    searchBudget: boolean;
+    searchStepLimit: boolean;
+    candidatePoolLimit: boolean;
+    candidateSampling: boolean;
+    responsePage: boolean;
+  };
   partial: boolean;
   partialReasons?: string[];
   blockedProviders: string[];

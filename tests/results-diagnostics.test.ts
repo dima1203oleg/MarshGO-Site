@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
-import { diagnosticsRequested, funnelLines, partialReasonNotices, showsCarpoolSection, splitResultNotices } from '../src/views/resultsDiagnostics';
+import test, { describe } from 'node:test';
+import { diagnosticsRequested, funnelLines, gtfsTruncationNotices, partialReasonNotices, showsCarpoolSection, splitResultNotices } from '../src/views/resultsDiagnostics';
 import type { ApiJourneySearchResult } from '../src/services/productionApi';
 
 const searchResult = {
@@ -100,3 +100,42 @@ test('extended walking reach discloses only server-provided returned count and n
   assert.doesNotMatch(withoutMeasurements.text, /Маршрутів із довшим пішим підходом:|\d+ м/);
 });
 
+
+describe('gtfs truncation flags', () => {
+  const flags = (overrides: Partial<NonNullable<ApiJourneySearchResult['gtfsTruncation']>> = {}) => ({
+    stopSelection: false, candidateGraph: false, searchBudget: false, searchStepLimit: false,
+    candidatePoolLimit: false, candidateSampling: false, responsePage: false, ...overrides,
+  });
+
+  test('every true flag becomes its own passenger-visible limit', () => {
+    const notices = gtfsTruncationNotices({ gtfsTruncation: flags({
+      stopSelection: true, candidateGraph: true, searchBudget: true, searchStepLimit: true,
+      candidatePoolLimit: true, candidateSampling: true, responsePage: true,
+    }) });
+    assert.equal(notices.length, 7);
+    assert.deepEqual(notices.map(notice => notice.tone), Array(7).fill('amber'));
+    for (const expected of ['зупинки пересадки', 'граф варіантів', 'бюджет пошуку', 'кроки пошуку',
+      'пул кандидатів', 'вибірка кандидатів', 'сторінка відповіді']) {
+      assert.ok(notices.some(notice => notice.short === expected), `missing ${expected}`);
+    }
+    assert.ok(notices.every(notice => notice.text.endsWith('.')));
+  });
+
+  test('a false flag stays silent instead of claiming a limit that did not happen', () => {
+    const notices = gtfsTruncationNotices({ gtfsTruncation: flags({ candidateGraph: true }) });
+    assert.deepEqual(notices.map(notice => notice.short), ['граф варіантів']);
+    assert.deepEqual(gtfsTruncationNotices({ gtfsTruncation: flags() }), []);
+  });
+
+  test('a response without the block produces no invented limits', () => {
+    assert.deepEqual(gtfsTruncationNotices({}), []);
+  });
+
+  test('the developer funnel names every truncated stage', () => {
+    const lines = funnelLines({
+      ...searchResult,
+      gtfsTruncation: flags({ candidateGraph: true, candidatePoolLimit: true }),
+    }).join('\n');
+    assert.match(lines, /Зрізано: results, candidate-generation, sampling, candidateGraph, candidatePoolLimit/);
+  });
+});

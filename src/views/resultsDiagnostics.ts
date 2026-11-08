@@ -20,6 +20,31 @@ export function truncationNotices(result: Pick<ApiJourneySearchResult, 'resultsT
   return notices;
 }
 
+/**
+ * The Server flags each limit of the itinerary search independently. Each true flag is a fact a
+ * passenger is entitled to: the list is incomplete for that reason, and saying only "best options"
+ * would hide which part of the search was cut.
+ */
+export const gtfsTruncationCopy: Record<keyof NonNullable<ApiJourneySearchResult['gtfsTruncation']>, { short: string; text: string }> = {
+  stopSelection: { short: 'зупинки пересадки', text: 'Вибір зупинок для пересадок був обмежений, тому частину пересадок не перевірено.' },
+  candidateGraph: { short: 'граф варіантів', text: 'Перевірено не всі можливі комбінації видів транспорту, тому частина варіантів може бути відсутня.' },
+  searchBudget: { short: 'бюджет пошуку', text: 'Пошук вичерпав ліміт на повний перебір варіантів і зупинився достроково.' },
+  searchStepLimit: { short: 'кроки пошуку', text: 'Пошук досяг ліміту кроків, тому не всі варіанти встигли перевірити.' },
+  candidatePoolLimit: { short: 'пул кандидатів', text: 'Кількість кандидатів обмежена, тому частина можливих маршрутів не дійшла до ранжування.' },
+  candidateSampling: { short: 'вибірка кандидатів', text: 'Частину кандидатів відібрано вибіркою, а не повним перебором.' },
+  responsePage: { short: 'сторінка відповіді', text: 'Відповідь повернуто посторінково, тому показано лише частину знайдених варіантів.' },
+};
+
+export function gtfsTruncationNotices(
+  result: Pick<ApiJourneySearchResult, 'gtfsTruncation'>,
+): Array<ResultNotice & { short: string }> {
+  const flags = result.gtfsTruncation;
+  if (!flags) return [];
+  return (Object.keys(gtfsTruncationCopy) as Array<keyof typeof gtfsTruncationCopy>)
+    .filter(flag => flags[flag] === true)
+    .map(flag => ({ tone: 'amber' as const, short: gtfsTruncationCopy[flag].short, text: gtfsTruncationCopy[flag].text }));
+}
+
 /** Candidate counts for each search stage, so a missing route can be attributed instead of guessed. */
 export function funnelLines(result: ApiJourneySearchResult): string[] {
   const lines: string[] = [];
@@ -36,7 +61,9 @@ export function funnelLines(result: ApiJourneySearchResult): string[] {
   }
   lines.push(`Ранжування: кандидатів ${result.candidateCount ?? '—'} · Pareto ${result.paretoCount ?? '—'} · повернуто ${result.returnedCount ?? '—'} · ліміт ${result.alternativeLimitPerStrategy ?? '—'} на режим`);
   const truncated = [result.resultsTruncated && 'results', result.candidateGenerationTruncated && 'candidate-generation',
-    result.resultSamplingTruncated && 'sampling'].filter(Boolean);
+    result.resultSamplingTruncated && 'sampling',
+    ...Object.entries(result.gtfsTruncation ?? {}).filter(([, value]) => value === true).map(([flag]) => flag),
+  ].filter(Boolean);
   lines.push(`Зрізано: ${truncated.length ? truncated.join(', ') : 'нічого'}`);
   return lines;
 }
