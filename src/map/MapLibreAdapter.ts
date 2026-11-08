@@ -17,6 +17,7 @@ import { journeySegmentsForFocus, visibleJourneyWaypoints } from './focusMode';
 import { nearestRouteHitIds } from './routeHitTesting';
 import { placeJourneyLabels } from './routeLabelPlacement';
 import { cameraMotionDuration, interruptCameraForUserGesture } from './cameraMotion';
+import { measureProjectedFocus } from './routeFocusMeasurement';
 
 const pmtilesProtocol = new Protocol();
 let pmtilesProtocolRegistered = false;
@@ -253,6 +254,10 @@ export class MapLibreAdapter implements MapAdapter {
   /** Last label feed; placement is recomputed from it whenever the camera settles. */
   private journeyLabelInput: MapAnnotation[] = [];
   private focusedTransitOverlay: FocusedTransitMapOverlay | null = null;
+  /** Coordinates of the last camera fit, measured against the visible band after each settle. */
+  private lastFitPoints: Coordinate[] = [];
+  /** MapLibre's fitBounds consumes and drops its padding, so the intended band is recorded here. */
+  private lastFitPadding: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 };
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
   onRouteSegmentSelect: (id: string) => void = () => undefined;
@@ -304,6 +309,7 @@ export class MapLibreAdapter implements MapAdapter {
       container.dataset.marshgoCameraBearing = this.map.getBearing().toFixed(2);
       container.dataset.marshgoCameraSettledId = String(this.cameraRequestSequence);
       container.dataset.marshgoCameraMoving = 'false';
+      this.publishFocusMeasure();
     });
     // Callout de-cluttering lives in screen space, so a zoom or pan changes which
     // labels compete for it. Recompute once per camera settle — never per frame;
@@ -353,6 +359,34 @@ export class MapLibreAdapter implements MapAdapter {
   private markCameraRequest() {
     this.cameraRequestSequence += 1;
     this.map.getContainer().dataset.marshgoCameraRequestId = String(this.cameraRequestSequence);
+  }
+
+  /**
+   * Publishes the projected last-fit geometry against the padded (visible) map
+   * rect, so acceptance can assert "the focused object is actually on screen"
+   * instead of trusting the padding numbers alone.
+   */
+  private publishFocusMeasure() {
+    const container = this.map.getContainer();
+    if (this.lastFitPoints.length === 0) {
+      delete container.dataset.marshgoFocusMeasure;
+      return;
+    }
+    const { clientWidth, clientHeight } = container;
+    const { top, right, bottom, left } = this.lastFitPadding;
+    const rect = {
+      left,
+      top,
+      right: clientWidth - right,
+      bottom: clientHeight - bottom,
+    };
+    const measure = measureProjectedFocus(this.lastFitPoints.map(point => this.map.project(point)), rect);
+    container.dataset.marshgoFocusMeasure = JSON.stringify({
+      ...measure,
+      rect,
+      viewport: { width: clientWidth, height: clientHeight },
+      requestId: this.cameraRequestSequence,
+    });
   }
 
   private motionDuration(durationMs: number): number {
@@ -808,12 +842,14 @@ export class MapLibreAdapter implements MapAdapter {
     if (!segment || segment.coordinates.length < 2) return false;
     this.cameraMode = 'FREE';
     this.map.getContainer().dataset.marshgoFocusedRouteSegmentId = id;
+    this.lastFitPoints = segment.coordinates;
     this.fitCoordinates(segment.coordinates, padding, 17);
     return true;
   }
   focusCoordinates(points: Coordinate[], padding: RouteFitPadding = {}, maxZoom = 15) {
-    if (points.length === 1) { this.focus(points[0], maxZoom); return; }
+    if (points.length === 0) return;
     this.cameraMode = 'FREE';
+    this.lastFitPoints = points;
     this.fitCoordinates(points, padding, maxZoom);
   }
   project(coordinate: Coordinate): ScreenPoint | null {
@@ -1157,11 +1193,13 @@ export class MapLibreAdapter implements MapAdapter {
     const points = this.route.length >= 2 ? this.route : this.waypoints.map(point => point.coordinate);
     if (points.length === 0) return;
     delete this.map.getContainer().dataset.marshgoFocusedRouteSegmentId;
-    if (points.length === 1) { this.focus(points[0], 14); return; }
+    this.lastFitPoints = points;
+    if (points.length === 1) { this.focus(points[0], 14, overrides); return; }
     this.cameraMode = 'OVERVIEW';
     this.fitCoordinates(points, overrides, 15);
   }
   private fitCoordinates(points: Coordinate[], overrides: RouteFitPadding, maxZoom: number) {
+    if (points.length === 0) return;
     const lngs = points.map((point) => point[0]); const lats = points.map((point) => point[1]);
     // Full-screen navigation reserves room for its overlays; small previews must scale the padding down or MapLibre rejects the fit.
     const { clientWidth, clientHeight } = this.map.getContainer();
@@ -1192,8 +1230,17 @@ export class MapLibreAdapter implements MapAdapter {
       bottom: Math.min(Math.max(0, clientHeight - top - minFitHeight), requestedBottom),
       left: Math.min(maxSidePadding, overrides.left ?? Math.min(32, clientWidth * 0.1)),
     };
+    this.lastFitPadding = padding;
+    // A single focus point (transfer, stop) has zero-area bounds; MapLibre would
+    // otherwise resolve the zoom to the maxZoom corner. Expand around the point's
+    // centre so the padded fit lands on it instead of clamping one edge.
+    const minLng = Math.min(...lngs); const maxLng = Math.max(...lngs);
+    const minLat = Math.min(...lats); const maxLat = Math.max(...lats);
+    const padLng = Math.max(maxLng - minLng, 0.00002) / 2;
+    const padLat = Math.max(maxLat - minLat, 0.00002) / 2;
+    const centerLng = (minLng + maxLng) / 2; const centerLat = (minLat + maxLat) / 2;
     this.markCameraRequest();
-    this.map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
+    this.map.fitBounds([[centerLng - padLng, centerLat - padLat], [centerLng + padLng, centerLat + padLat]], {
       padding,
       duration: this.motionDuration(520),
       maxZoom,
@@ -1255,7 +1302,25 @@ export class MapLibreAdapter implements MapAdapter {
     this.transportDisplayPreferences = preferences;
     this.transport?.setDisplayPreferences(preferences);
   }
-  focus(point: Coordinate, zoom = 13) { this.cameraMode = 'FREE'; this.markCameraRequest(); this.map.easeTo({ center: point, zoom, duration: this.motionDuration(600), essential: true }); }
+  focus(point: Coordinate, zoom = 13, padding?: RouteFitPadding) {
+    this.cameraMode = 'FREE';
+    this.lastFitPoints = [point];
+    this.markCameraRequest();
+    const safePadding = padding ? {
+      top: Math.max(0, padding.top ?? 0),
+      bottom: Math.max(0, padding.bottom ?? 0),
+      left: Math.max(0, padding.left ?? 0),
+      right: Math.max(0, padding.right ?? 0),
+    } : null;
+    this.lastFitPadding = safePadding ?? { top: 0, right: 0, bottom: 0, left: 0 };
+    this.map.easeTo({
+      center: point,
+      zoom,
+      duration: this.motionDuration(600),
+      essential: true,
+      ...(safePadding ? { padding: safePadding } : {}),
+    });
+  }
   setCameraMode(mode: CameraMode) { this.setCameraModeInternal(mode); }
   setTheme(theme: MapTheme) {
     const nextTheme = this.themeForLayer(this.layer, theme);

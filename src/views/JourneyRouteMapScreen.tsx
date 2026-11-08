@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronDown, Clock3, Globe, Heart, Navigation, Play, Share2, X,
+  ArrowLeft, ArrowRight, ChevronDown, Clock3, Footprints, Globe, Heart, Map as MapIcon, Navigation, Play, Share2, Shuffle, X,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
@@ -38,17 +38,15 @@ import { calculateAdaptiveMapPadding } from '../map/mapViewportCoordinator';
 import {
   RouteCameraController,
   calculateSegmentFocusTarget,
+  initialRouteCameraState,
   shouldShowRecenterButton,
   type RouteCameraMode,
 } from '../map/routeCameraController';
 import {
-  calloutIconType,
   cleanStopName,
-  generateSmartStepSummary,
   interpolateLineProgress,
-  type CinematicCallout,
 } from '../map/cinematicRouteEngine';
-import { GlassGuidanceCallouts } from './GlassGuidanceCallouts';
+import type { Coordinate } from '../../shared/navigation/contracts';
 
 type JourneyLeg = ApiJourney['legs'][number];
 type TimelineItem = {
@@ -109,6 +107,49 @@ type RibbonItem = {
   leg: JourneyLeg;
 };
 
+/**
+ * A transfer is a property of the pair of legs it joins, so it belongs between
+ * their two cards in the sheet — not in a floating map callout that can land on
+ * top of either card. Walk legs already explain their own transfer, so only
+ * transit→transit joins get a row here.
+ */
+type InlineTransferHint = {
+  id: string;
+  nextLeg: JourneyLeg;
+  coordinate: Coordinate;
+  contextPoints: Coordinate[];
+  waitSeconds: number;
+};
+
+function inlineTransferHints(legs: JourneyLeg[]): Map<string, InlineTransferHint> {
+  const hints = new Map<string, InlineTransferHint>();
+  legs.forEach((leg, index) => {
+    const next = legs[index + 1];
+    if (!next || leg.mode === 'WALK' || next.mode === 'WALK') return;
+    const rawCoordinate = next.origin?.coordinates ?? leg.destination?.coordinates;
+    if (!rawCoordinate || rawCoordinate.length !== 2) return;
+    const coordinate: Coordinate = [rawCoordinate[0], rawCoordinate[1]];
+    const waitMs = Date.parse(next.departureAt) - Date.parse(leg.arrivalAt);
+    hints.set(leg.id, {
+      id: `transfer:${leg.id}:${next.id}`,
+      nextLeg: next,
+      coordinate,
+      contextPoints: [leg.coordinates?.at(-1) ?? coordinate, next.coordinates?.[0] ?? coordinate],
+      waitSeconds: Number.isFinite(waitMs) ? Math.max(0, Math.round(waitMs / 1000)) : 0,
+    });
+  });
+  return hints;
+}
+
+function walkHintFor(legs: JourneyLeg[], index: number): { title: string; detail: string } | null {
+  if (legs[index]?.mode !== 'WALK') return null;
+  const next = legs[index + 1];
+  if (index === 0) return { title: 'Почніть пішки', detail: next && next.mode !== 'WALK' ? `до ${legLabel(next)}` : '' };
+  if (next && next.mode !== 'WALK') return { title: 'Пересадка пішки', detail: `до ${legLabel(next)}` };
+  if (!next) return { title: 'Пройдіть пішки до фінішу', detail: '' };
+  return { title: 'Пішки', detail: '' };
+}
+
 export function JourneyRouteMapScreen({
   journey,
   onBack,
@@ -143,6 +184,7 @@ export function JourneyRouteMapScreen({
   const [cameraMode, setCameraMode] = useState<RouteCameraMode>('ROUTE_OVERVIEW');
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [activeStopId, setActiveStopId] = useState<string | null>(null);
+  const [activeTransferId, setActiveTransferId] = useState<string | null>(null);
   const cameraController = useRef<RouteCameraController | null>(null);
   if (cameraController.current === null) {
     cameraController.current = new RouteCameraController({
@@ -150,6 +192,7 @@ export function JourneyRouteMapScreen({
         setCameraMode(state.mode);
         setActiveSegmentId(state.activeSegmentId);
         setActiveStopId(state.activeStopId);
+        setActiveTransferId(state.activeTransferId);
       },
     });
   }
@@ -160,7 +203,11 @@ export function JourneyRouteMapScreen({
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
 
   const [stopsLegId, setStopsLegId] = useState<string | null>(null);
-  const [callouts, setCallouts] = useState<CinematicCallout[]>([]);
+  const transferHints = useMemo(() => inlineTransferHints(journey.legs), [journey.legs]);
+  const activeTransfer = useMemo(
+    () => [...transferHints.values()].find(hint => hint.id === activeTransferId) ?? null,
+    [activeTransferId, transferHints],
+  );
   const revealAnimRef = useRef<number | null>(null);
   const activeRevealLegId = useRef<string | null>(null);
   const [scale, setScale] = useState<{ label: string; widthPx: number } | null>(null);
@@ -316,6 +363,9 @@ export function JourneyRouteMapScreen({
 
   const isDesktop = viewportWidth >= 1024;
   const settledHeight = snapHeight(sheetSnap);
+  // The live chip floats just above the sheet in MEDIUM/COMPACT, inside the
+  // band a camera fit would otherwise use for the last focus point.
+  const floatingChipVisible = Boolean(liveLeg) && sheetSnap !== 'peek' && sheetSnap !== 'expanded';
 
   // Dynamic visible map padding calculation
   const mapPadding = useMemo<RouteFitPadding>(() => calculateAdaptiveMapPadding({
@@ -323,10 +373,12 @@ export function JourneyRouteMapScreen({
     viewportHeight,
     sheetHeight: settledHeight,
     sheetSnap,
-    topBarHeight: 84,
+    // 102 px is the measured compact header (top 8 + row 44 + gap 6 + address 36 + bottom 8).
+    topBarHeight: 100,
     isDesktop,
     hasWarningNote: Boolean(mapStatusIsWarning && dataNote),
-  }), [dataNote, isDesktop, mapStatusIsWarning, settledHeight, sheetSnap, viewportHeight, viewportWidth]);
+    extraBottomInset: floatingChipVisible ? 58 : 0,
+  }), [dataNote, floatingChipVisible, isDesktop, mapStatusIsWarning, settledHeight, sheetSnap, viewportHeight, viewportWidth]);
 
   const routeLinePoints = useMemo(() => {
     const itinerary = model.routeSegments.flatMap(segment => segment.coordinates);
@@ -393,107 +445,6 @@ export function JourneyRouteMapScreen({
     };
   }, [mapPadding, mapAdapterReady, routeFitKey, segmentFocusKey, sheetSnap]);
 
-  const updateCalloutScreenPositions = useCallback(() => {
-    const adapter = mapAdapter.current;
-    if (!adapter?.project) return;
-    setCallouts(prev => {
-      if (prev.length === 0) return prev;
-      let changed = false;
-      const updated = prev.map(c => {
-        const screen = adapter.project!(c.coordinates);
-        if (!screen) return c;
-        if (!c.screenPos || Math.abs(c.screenPos.x - screen.x) > 0.5 || Math.abs(c.screenPos.y - screen.y) > 0.5) {
-          changed = true;
-          return { ...c, screenPos: screen };
-        }
-        return c;
-      });
-      return changed ? updated : prev;
-    });
-  }, []);
-
-  const buildCalloutsForLeg = useCallback((leg: JourneyLeg, nextLeg?: JourneyLeg): CinematicCallout[] => {
-    const result: CinematicCallout[] = [];
-    const coords = leg.coordinates ?? [];
-    const color = journeyModeColor(leg.mode, leg.transportType);
-    const icon = calloutIconType(leg);
-
-    const startCoord: [number, number] | null = leg.origin?.coordinates
-      ? [leg.origin.coordinates[0], leg.origin.coordinates[1]]
-      : coords[0] ? [coords[0][0], coords[0][1]] : null;
-
-    const endCoord: [number, number] | null = leg.destination?.coordinates
-      ? [leg.destination.coordinates[0], leg.destination.coordinates[1]]
-      : coords.length > 0 ? [coords.at(-1)![0], coords.at(-1)![1]] : null;
-
-    const originClean = cleanStopName(leg.origin?.name) || 'Початкова точка';
-    const destClean = cleanStopName(leg.destination?.name) || 'Кінцева точка';
-
-    if (startCoord) {
-      result.push({
-        id: `callout-boarding-${leg.id}`,
-        type: 'BOARDING',
-        coordinates: startCoord,
-        title: leg.mode === 'WALK' ? 'ПОЧАТОК ПІШКИ' : 'ПОСАДКА',
-        subtitle: originClean,
-        time: formatTime(leg.departureAt),
-        accentColor: color,
-        iconType: icon,
-        stage: 'enter',
-      });
-    }
-
-    if (coords.length >= 3 && leg.mode !== 'WALK') {
-      const midIdx = Math.floor(coords.length / 2);
-      const midCoord: [number, number] = [coords[midIdx]![0], coords[midIdx]![1]];
-      const stopCount = leg.stops?.length ?? 0;
-      result.push({
-        id: `callout-stops-${leg.id}`,
-        type: 'STOPS_COUNT',
-        coordinates: midCoord,
-        title: 'У ДОРОЗІ',
-        subtitle: stopCount > 0 ? `${formatStopCount(stopCount)} до висадки` : `${formatDuration(leg.durationSeconds)} у русі`,
-        time: formatDuration(leg.durationSeconds),
-        accentColor: color,
-        iconType: icon,
-        stage: 'enter',
-      });
-    }
-
-    if (endCoord) {
-      const isLast = leg.id === journey.legs.at(-1)?.id;
-      result.push({
-        id: `callout-alighting-${leg.id}`,
-        type: 'ALIGHTING',
-        coordinates: endCoord,
-        title: isLast ? 'ПРИБУТТЯ' : 'ВИСАДКА',
-        subtitle: destClean,
-        time: formatTime(leg.arrivalAt),
-        accentColor: isLast ? '#10B981' : color,
-        iconType: 'pin',
-        stage: 'enter',
-      });
-
-      if (nextLeg) {
-        const nextClean = nextLeg.routeName || journeyLegLabel(nextLeg.mode, nextLeg.transportType);
-        result.push({
-          id: `callout-transfer-${leg.id}`,
-          type: 'TRANSFER',
-          coordinates: endCoord,
-          title: 'ПЕРЕСАДКА',
-          subtitle: nextLeg.mode === 'WALK'
-            ? `Пішки ${nextLeg.distanceMeters ?? 100} м (${Math.max(1, Math.round(nextLeg.durationSeconds / 60))} хв)`
-            : `Пересадка на ${nextClean}`,
-          accentColor: 'var(--mg-blue)',
-          iconType: 'transfer',
-          stage: 'enter',
-        });
-      }
-    }
-
-    return result;
-  }, [journey.legs]);
-
   const showWholeRoute = useCallback(() => {
     haptic(6);
     if (revealAnimRef.current) {
@@ -501,7 +452,6 @@ export function JourneyRouteMapScreen({
       revealAnimRef.current = null;
     }
     mapAdapter.current?.clearSegmentReveal?.();
-    setCallouts([]);
     cameraController.current?.showOverview(routeLinePoints);
   }, [routeLinePoints]);
 
@@ -511,22 +461,12 @@ export function JourneyRouteMapScreen({
     if (activeSegmentId === id) {
       showWholeRoute();
     } else {
-      const legIndex = journey.legs.findIndex(l => l.id === id);
-      const leg = journey.legs[legIndex];
-      const nextLeg = journey.legs[legIndex + 1];
+      const leg = journey.legs.find(item => item.id === id);
       const seg = model.routeSegments.find(s => s.id === id);
       const target = seg ? calculateSegmentFocusTarget(seg.coordinates, [], id) : null;
       cameraController.current?.focusSegment(id, target, routeLinePoints);
 
       if (leg) {
-        const rawCallouts = buildCalloutsForLeg(leg, nextLeg);
-        const adapter = mapAdapter.current;
-        const initialProjected = rawCallouts.map(c => {
-          const s = adapter?.project?.(c.coordinates);
-          return s ? { ...c, screenPos: s } : c;
-        });
-        setCallouts(initialProjected);
-
         if (revealAnimRef.current) {
           cancelAnimationFrame(revealAnimRef.current);
           revealAnimRef.current = null;
@@ -545,7 +485,6 @@ export function JourneyRouteMapScreen({
             const easeProgress = 1 - (1 - progress) * (1 - progress);
             const subCoords = interpolateLineProgress(fullCoords, easeProgress);
             mapAdapter.current?.revealSegmentProgress?.(subCoords, color);
-            updateCalloutScreenPositions();
 
             if (progress < 1) {
               revealAnimRef.current = requestAnimationFrame(animateReveal);
@@ -569,7 +508,16 @@ export function JourneyRouteMapScreen({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       block: 'nearest',
     }));
-  }, [activeSegmentId, buildCalloutsForLeg, journey.legs, liveJourney?.segments, model.routeSegments, reducedMotion, routeLinePoints, showWholeRoute, updateCalloutScreenPositions]);
+  }, [activeSegmentId, journey.legs, liveJourney?.segments, model.routeSegments, reducedMotion, routeLinePoints, showWholeRoute]);
+
+  const chooseTransfer = useCallback((hint: InlineTransferHint) => {
+    haptic(8);
+    if (activeTransferId === hint.id) {
+      showWholeRoute();
+      return;
+    }
+    cameraController.current?.focusTransfer(hint.id, hint.coordinate, hint.contextPoints);
+  }, [activeTransferId, showWholeRoute]);
 
   useEffect(() => {
     return () => {
@@ -579,12 +527,6 @@ export function JourneyRouteMapScreen({
       mapAdapter.current?.clearSegmentReveal?.();
     };
   }, []);
-
-  useEffect(() => {
-    if (callouts.length === 0) return;
-    const t = window.setTimeout(updateCalloutScreenPositions, 120);
-    return () => window.clearTimeout(t);
-  }, [callouts.length, sheetHeight, sheetSnap, updateCalloutScreenPositions]);
 
   const handleStopSelect = useCallback((stop: { id: string; name: string; coordinates?: [number, number] }, coordinate?: [number, number]) => {
     const coords = coordinate ?? stop.coordinates;
@@ -740,19 +682,26 @@ export function JourneyRouteMapScreen({
   const canStartNavigation = Boolean(lastLeg && onStartJourney);
   const showChrome = sheetSnap !== 'expanded';
   const showRecenter = shouldShowRecenterButton(cameraController.current?.getState() ?? {
+    ...initialRouteCameraState(),
     mode: cameraMode,
     activeSegmentId,
     activeStopId,
-    activeStopCoordinate: null,
   });
+  // The FULL state keeps a living map strip; say what the camera is showing so
+  // the passenger can collapse back to it without guessing.
+  const focusLabel = cameraMode === 'SEGMENT_FOCUS' && selectedLeg ? legLabel(selectedLeg)
+    : cameraMode === 'TRANSFER_FOCUS' && activeTransfer ? `Пересадка до ${legLabel(activeTransfer.nextLeg)}`
+      : cameraMode === 'STOP_FOCUS' ? 'Зупинка на карті'
+        : cameraMode === 'MANUAL_CAMERA' ? 'Вільна карта'
+          : 'Весь маршрут';
 
-  const renderSegmentCards = () => timeline.map((item, index) => {
+  const renderSegmentCards = () => timeline.flatMap((item, index) => {
     if (item.kind === 'WAIT') {
-      return (
+      return [(
         <li key={item.id} className="rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2 text-xs text-[var(--route-muted)]">
           <span className="inline-flex items-center gap-2"><Clock3 size={14} className="text-[var(--route-subtle)]"/>Очікування · {formatDuration(item.durationSeconds)}</span>
         </li>
-      );
+      )];
     }
     const leg = item.leg!;
     const color = item.color;
@@ -763,8 +712,12 @@ export function JourneyRouteMapScreen({
     const canBook = Boolean(leg.offerId) && leg.availabilityStatus !== 'UNAVAILABLE';
     const stops = leg.stops ?? [];
     const price = legPriceDisplay(leg);
+    const legIndex = journey.legs.findIndex(entry => entry.id === leg.id);
+    const walkHint = walkHintFor(journey.legs, legIndex);
+    const transferHint = transferHints.get(leg.id);
 
-    return (
+    return [
+      (
       <li
         key={leg.id}
         ref={node => setCardRef(leg.id, node)}
@@ -780,13 +733,13 @@ export function JourneyRouteMapScreen({
           ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}),
         }}
       >
-        <div className="flex items-start gap-2.5 p-2">
+        <div className="flex items-start gap-2 p-1.5">
           <button
             type="button"
             onClick={() => chooseSegment(leg.id)}
             aria-pressed={selected}
             aria-label={`Вибрати сегмент: ${legLabel(leg)}`}
-            className="mg-press-subtle flex min-w-0 flex-1 items-start gap-2.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
+            className="mg-press-subtle flex min-w-0 flex-1 items-start gap-2 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
           >
             <span
               className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white shadow-[0_2px_8px_color-mix(in_srgb,var(--segment-color)_42%,transparent)]"
@@ -812,6 +765,15 @@ export function JourneyRouteMapScreen({
               <span className="mt-0.5 block truncate text-xs font-medium leading-4 text-[var(--route-subtle)]">
                 {leg.mode === 'COMMUNITY' ? `Посадка: ${cleanStopName(leg.origin.name)} · висадка: ${cleanStopName(leg.destination.name)}` : `${cleanStopName(leg.origin.name)} → ${cleanStopName(leg.destination.name)}`}
               </span>
+              {walkHint && (
+                <span
+                  data-testid="route-walk-hint"
+                  className="mt-1 flex items-center gap-1.5 rounded-lg bg-[var(--route-hover)] px-2 py-1 text-xs font-bold text-[var(--mg-blue-ink)]"
+                >
+                  <Footprints size={13} className="shrink-0" aria-hidden="true"/>
+                  <span className="truncate">{walkHint.title}{walkHint.detail ? ` · ${walkHint.detail}` : ''}</span>
+                </span>
+              )}
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1">
@@ -846,7 +808,7 @@ export function JourneyRouteMapScreen({
               <button
                 type="button"
                 onClick={() => onBookOffer(leg.offerId!, journey.id, leg.id)}
-                className="mg-press inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#8845E8] px-4 text-xs font-extrabold text-white shadow-[0_0_18px_rgba(168,85,247,.28)] hover:bg-[#9958F2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="mg-press inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--mg-action)] px-4 text-xs font-extrabold text-white shadow-[var(--mg-card-shadow)] hover:bg-[var(--mg-action-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
               >
                 Забронювати <span aria-hidden="true">→</span>
               </button>
@@ -854,7 +816,25 @@ export function JourneyRouteMapScreen({
           </div>
         )}
       </li>
-    );
+      ),
+      ...(transferHint ? [(
+        <li key={transferHint.id} data-testid="route-inline-transfer" data-transfer-id={transferHint.id} data-active={activeTransferId === transferHint.id}>
+          <button
+            type="button"
+            onClick={() => chooseTransfer(transferHint)}
+            aria-pressed={activeTransferId === transferHint.id}
+            aria-label={`Показати пересадку на ${legLabel(transferHint.nextLeg)} на карті`}
+            className={`mg-press-subtle flex min-h-11 w-full items-center gap-2 rounded-lg border border-dashed px-2.5 py-1 text-left text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)] ${activeTransferId === transferHint.id ? 'border-[var(--mg-blue)] bg-[var(--route-hover)]' : 'border-[var(--route-border)] bg-[var(--route-card-alt)] hover:bg-[var(--route-hover)]'}`}
+          >
+            <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-[var(--route-card)] text-[var(--mg-blue)]"><Shuffle size={13}/></span>
+            <span className="shrink-0 font-black">Пересадка</span>
+            <span className="min-w-0 flex-1 truncate font-bold text-[var(--route-muted)]">{legLabel(transferHint.nextLeg)}</span>
+            {transferHint.waitSeconds >= 60 && <span className="shrink-0 font-semibold tabular-nums text-[var(--route-muted)]">{formatDuration(transferHint.waitSeconds)}</span>}
+            <ArrowRight size={13} className="shrink-0 text-[var(--route-muted)]" aria-hidden="true"/>
+          </button>
+        </li>
+      )] : []),
+    ];
   });
 
   return (
@@ -883,9 +863,6 @@ export function JourneyRouteMapScreen({
               adapter.onCameraModeChange = (mode) => {
                 if (mode === 'FREE') cameraController.current?.onUserMapInteraction();
               };
-              adapter.onCameraMove = () => {
-                updateCalloutScreenPositions();
-              };
             }
           }}
           activeRouteSegmentId={activeSegmentId}
@@ -904,12 +881,6 @@ export function JourneyRouteMapScreen({
           }}
         />
       </div>
-
-      {/* Cinematic Glass Guidance Callouts anchored to points */}
-      <GlassGuidanceCallouts
-        callouts={callouts}
-        onDismiss={id => setCallouts(prev => prev.filter(c => c.id !== id))}
-      />
 
       {mapSegmentChoices && (
         <div role="group" aria-label="Виберіть відрізок маршруту" className="absolute z-[30] w-[min(15rem,calc(100vw-1.5rem))] rounded-2xl border border-[var(--route-border)] bg-[var(--route-floating)] p-2 text-[var(--route-ink)] shadow-2xl backdrop-blur-xl" style={{ left: mapSegmentChoices.x, top: mapSegmentChoices.y }}>
@@ -1044,6 +1015,29 @@ export function JourneyRouteMapScreen({
         </button>
         <MapLayersControl overlays variant="navigation" />
       </div>
+
+      {/* FULL keeps a live map strip; this returns the sheet to MEDIUM so the
+          focused target is visible again instead of hidden behind the details.
+          It lives in the strip's top padding: the camera fits focus below it. */}
+      {sheetSnap === 'expanded' && (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-10 mx-auto flex max-w-3xl justify-center px-4"
+          style={{ top: 'max(.5rem, env(safe-area-inset-top))' }}
+        >
+          <button
+            type="button"
+            data-testid="route-show-on-map"
+            onClick={() => moveToSnap('half')}
+            aria-label={`${focusLabel}. Показати на карті`}
+            className="pointer-events-auto route-show-on-map mg-press-subtle inline-flex min-h-11 max-w-full items-center gap-2 rounded-full px-3.5 text-xs font-extrabold"
+          >
+            <MapIcon size={15} className="shrink-0" aria-hidden="true"/>
+            <span className="truncate">{focusLabel}</span>
+            <span aria-hidden="true" className="shrink-0 text-[var(--route-muted)]">·</span>
+            <span className="shrink-0">Показати на карті</span>
+          </button>
+        </div>
+      )}
 
       {showChrome && scale && (
         <div className="route-map-scale" style={{ left: 16, bottom: sheetHeight + (sheetSnap === 'peek' ? 14 : 64) }} aria-hidden="true">
@@ -1202,55 +1196,20 @@ export function JourneyRouteMapScreen({
                   );
                 })}
               </div>
-
-              {sheetSnap === 'half' && (
-                <p data-testid="route-medium-stages" className="shrink-0 truncate px-4 pb-0.5 text-xs font-medium tabular-nums text-[var(--route-muted)] opacity-85">
-                  {ribbonItems.map(item => `${item.label}${item.badge ? ` ${item.badge}` : ''} (${formatJourneyDurationTile(item.durationSeconds)})`).join(' → ')}
-                </p>
-              )}
             </>
           )}
 
           {/* Independent scrolling for details in medium and expanded modes */}
           {(sheetSnap === 'half' || sheetSnap === 'expanded') && (
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-2" data-testid="route-segment-list">
-              <ol className="space-y-1.5 pt-0.5">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-1.5" data-testid="route-segment-list">
+              <ol className="space-y-1 pt-0.5">
                 {renderSegmentCards()}
               </ol>
             </div>
           )}
 
           {/* Pinned CTA in all four snap states */}
-          <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-2 pt-0.5' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1 mb-1'}`}>
-            {sheetSnap !== 'peek' && (() => {
-              const activeLeg = selectedLeg ?? firstLeg;
-              if (!activeLeg) return null;
-              const legIdx = journey.legs.findIndex(l => l.id === activeLeg.id);
-              const nextLeg = journey.legs[legIdx + 1];
-              const summary = generateSmartStepSummary(activeLeg, nextLeg);
-              return (
-                <aside
-                  data-testid="smart-step-guidance"
-                  aria-label="Пояснення наступного етапу"
-                  className="mb-1.5 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2 text-xs shadow-xs backdrop-blur-md"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 font-black text-[var(--mg-blue)]">
-                      <Navigation size={13} className="shrink-0" />
-                      <span className="truncate">{selectedLeg ? summary.headline : `Ваш 1-й етап: ${summary.headline}`}</span>
-                    </span>
-                    {summary.transitBadge && (
-                      <span className="shrink-0 rounded-full bg-[var(--route-card)] px-2 py-0.5 text-xs font-black text-[var(--route-muted)]">
-                        {summary.transitBadge}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-xs font-medium leading-snug text-[var(--route-ink)] line-clamp-2">
-                    {summary.narrative}
-                  </p>
-                </aside>
-              );
-            })()}
+          <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-2 pt-0.5' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-0.5 mb-0.5'}`}>
             {sheetSnap !== 'peek' && communityLeg?.offerId && onBookOffer && (() => {
               const communityPrice = legPriceDisplay(communityLeg).value;
               return (

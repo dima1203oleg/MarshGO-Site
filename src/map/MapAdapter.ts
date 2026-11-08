@@ -81,7 +81,7 @@ export interface MapAdapter {
   setPerspective(perspective: MapPerspective): void;
   setTransportLayers(layers: ReadonlySet<import('./transportLayers').TransportLayerId>): void;
   setTransportDisplayPreferences(preferences: MapDisplayPreferences): void;
-  focus(point: Coordinate, zoom?: number): void;
+  focus(point: Coordinate, zoom?: number, padding?: RouteFitPadding): void;
   onTransportHint: (message: string | null) => void;
   retry(): void;
   destroy(): void;
