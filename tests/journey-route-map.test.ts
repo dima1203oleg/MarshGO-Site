@@ -107,6 +107,18 @@ test('keeps a server-fabricated straight walking line dashed, not solid', () => 
   assert.equal(model.routeSegments[0]?.approximate, true);
 });
 
+test('reports a walking leg without verified geometry and never draws a substitute line', () => {
+  const model = buildJourneyRouteMapModel(legs([{
+    id: 'missing-walk-shape', mode: 'WALK', source: 'osrm-foot-route',
+    origin: { coordinates: [24.0323, 49.8397] }, destination: { coordinates: [24.0245, 49.8410] },
+  }]));
+
+  assert.deepEqual(model.routeSegments, []);
+  assert.equal(model.missingWalkingShapeCount, 1);
+  assert.equal(model.missingShapeCount, 0);
+  assert.equal(model.approximateWalkCount, 0);
+});
+
 test('keeps a routed walking leg solid', () => {
   const model = buildJourneyRouteMapModel(legs([
     { id: 'routed-walk', mode: 'WALK', source: 'osrm-foot-route',
