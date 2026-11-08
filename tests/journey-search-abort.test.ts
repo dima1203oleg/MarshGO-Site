@@ -76,20 +76,19 @@ describe('bounded journey search', () => {
     assert.equal(sent.length, 1);
   });
 
-  it('keeps the same deadline on the legacy-preferences retry', async () => {
-    const controller = new AbortController();
-    respond = async (index) => (index === 0
-      ? jsonResponse(400, { error: { code: 'bad_request', message: 'unknown field' } })
-      : jsonResponse(200, { data: { journeys: [] } }));
-    await productionApi.searchJourneys({
-      ...searchInput,
-      preferences: { allowedTransportTypes: ['bus'], maxWalkMeters: 800 },
-      signal: controller.signal,
-    });
-    assert.equal(sent.length, 2);
-    assert.deepEqual(sent[0]?.body.preferences, { allowedTransportTypes: ['bus'], maxWalkMeters: 800 });
-    assert.deepEqual(sent[1]?.body.preferences, { maxWalkMeters: 800 });
-    assert.equal(sent[1]?.signal, controller.signal);
+  it('never retries a rejected search after silently removing passenger constraints', async () => {
+    respond = async () => jsonResponse(400, { error: { code: 'bad_request', message: 'unknown field' } });
+    const preferences = {
+      allowedTransportTypes: ['carpool', 'bus'],
+      allowedTransitProviders: ['lviv:operator-a'],
+      maxPriceMinor: 45_000,
+      maxTotalDurationSeconds: 3_600,
+    };
+    const error = await productionApi.searchJourneys({ ...searchInput, preferences }).then(() => null, (caught: unknown) => caught);
+    assert.ok(error instanceof Error);
+    assert.equal((error as { status?: number }).status, 400);
+    assert.equal(sent.length, 1);
+    assert.deepEqual(sent[0]?.body.preferences, preferences);
   });
 
   it('gives up before the gateway stops answering, so the passenger learns why', () => {

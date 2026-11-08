@@ -735,18 +735,11 @@ export const productionApi = {
     preferences?: Record<string, boolean | number | string[] | Record<string, string[]>>;
     signal?: AbortSignal;
   }) {
-    const send = (body: typeof input) => request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(body), signal });
-    try { return await send(input); } catch (error) {
-      if (signal?.aborted) throw error;
-      // An older API release does not know the schedule-provider preferences or the budget/deadline bounds and rejects the whole request:
-      // retry once with the fields it accepts, so a stale deployment degrades the filters instead of the search.
-      const unsupportedByLegacyRelease = ['allowedTransportTypes', 'allowedTransitProviders', 'allowedTransitProvidersByType', 'maxPriceMinor', 'maxTotalDurationSeconds'] as const;
-      const preferences = { ...input.preferences };
-      if (!unsupportedByLegacyRelease.some((key) => preferences[key] !== undefined)) throw error;
-      if (error instanceof Error && /Забагато запитів/.test(error.message)) throw error;
-      for (const key of unsupportedByLegacyRelease) delete preferences[key];
-      return send({ ...input, preferences });
-    }
+    // Search constraints are part of the passenger's request. Retrying an older server with
+    // those preferences removed can return routes that violate the selected modes, providers,
+    // budget or arrival deadline while the UI still shows those constraints as active.
+    // Surface contract failures instead; a compatible API must apply the submitted preferences.
+    return request<ApiJourneySearchResult>('/journeys/search', { method: 'POST', body: JSON.stringify(input), signal });
   },
   journeys() { return request<ApiStoredJourney[]>('/journeys/me'); },
   journey(id: string) { return request<ApiStoredJourney>(`/journeys/${encodeURIComponent(id)}`); },
