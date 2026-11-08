@@ -307,6 +307,11 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-dasharray: 3 7;
+  /* Dashes drift toward the destination dot: the promo reads as a route, not a static squiggle. */
+  animation: mg-promo-route-drift 2.6s linear infinite;
+}
+@keyframes mg-promo-route-drift {
+  to { stroke-dashoffset: -20; }
 }
 .home-marshpass-promo__route circle { fill: var(--mg-surface-primary); stroke: currentColor; stroke-width: 2; }
 .home-marshpass-promo__title { max-width: 78%; text-wrap: balance; }
@@ -506,6 +511,18 @@ html.dark .journey-results .journey-result-card {
  */
 .journey-result-card[data-top-pick="true"] { border-color: #B9D8F7; }
 html.dark .journey-results .journey-result-card[data-top-pick="true"] { border-color: color-mix(in srgb, var(--mg-blue) 58%, transparent); }
+/* A luminous top edge says "ranked first" without adding a second selection-style ring. */
+.journey-result-card[data-top-pick="true"]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14%;
+  right: 14%;
+  height: 2px;
+  border-radius: var(--mg-radius-pill);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mg-blue) 80%, transparent), transparent);
+  pointer-events: none;
+}
 /*
  * The card the passenger actually opened is a fact, not a ranking, so it owns a real selection
  * marker: a ring around the border. It comes after the rank-1 rules and repeats the dark
@@ -544,7 +561,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   border-radius: var(--mg-radius-pill);
   transition: filter .18s ease, opacity .18s ease;
 }
-.journey-segment-tiles-viewport { position: relative; min-width: 0; margin-top: .25rem; }
+.journey-segment-tiles-viewport { position: relative; min-width: 0; margin-top: .125rem; }
 .journey-segment-tiles {
   display: flex;
   min-width: 0;
@@ -592,7 +609,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   font-weight: 700;
   line-height: 1.15;
 }
-.journey-segment-tile-icon { display: grid; flex: 0 0 1.25rem; place-items: center; }
+.journey-segment-tile-icon { display: grid; flex: 0 0 1.25rem; place-items: center; border-radius: .375rem; background: color-mix(in srgb, var(--mg-blue) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mg-blue) 14%, transparent); }
 .journey-metro-glyph { font-size: 1.2rem; font-weight: 950; font-style: italic; line-height: .9; letter-spacing: -.12em; transform: translateX(-.04em); }
 .journey-segment-tile-icon[data-icon-mode="WALK"] { color: #172638 !important; }
 .journey-segment-tile-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -706,9 +723,9 @@ html.dark .journey-segment-scroll-cue > span { border-color: var(--mg-border-med
  */
 .journey-result-segments .journey-segment-tile-content { min-height: 2rem; gap: .05rem; padding-block: .05rem; }
 .journey-result-card-content > .journey-segment-strip { margin-top: .125rem; }
-/* On a card the proportion bar is read, not tapped: 8 px still shows the leg ratio and matches
-   the 32 px tile height, while the route sheet keeps the taller 11 px bar of its own scope. */
-.journey-result-card-content .journey-segment-ribbon { height: 8px; }
+/* On a card the proportion bar is read, not tapped: 6 px still shows the leg ratio, while the
+   route sheet keeps the taller 11 px bar of its own scope. The soft glow lifts it off the card. */
+.journey-result-card-content .journey-segment-ribbon { height: 6px; box-shadow: 0 1px 6px color-mix(in srgb, var(--mg-blue) 28%, transparent); }
 /* The route-number pill is the tallest part of a tile; tighter block padding trims 3 px per
    card without touching the 12 px label or its mode tint. */
 .journey-result-card-content .journey-segment-tile-badge { padding-block: .05rem; line-height: 1.1; }
@@ -1459,10 +1476,24 @@ html.dark .coverage-details[open] { border-color: var(--mg-border-medium); }
 .journey-results [data-testid="journey-result-card"] { transition: box-shadow var(--mg-dur-fast) var(--mg-ease-standard), border-color var(--mg-dur-fast) var(--mg-ease-standard), transform var(--mg-dur-tap) var(--mg-ease-standard); }
 .journey-results [data-testid="journey-result-card"]:active { transform: scale(.99); }
 @media (hover: hover) and (pointer: fine) {
-  .journey-results [data-testid="journey-result-card"]:hover { box-shadow: 0 8px 24px rgba(30, 64, 110, .12); }
+  .journey-results [data-testid="journey-result-card"]:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(30, 64, 110, .14); }
+  html.dark .journey-results [data-testid="journey-result-card"]:hover { box-shadow: 0 10px 28px rgba(0, 0, 0, .42), 0 0 0 1px color-mix(in srgb, var(--mg-blue) 25%, transparent); }
 }
 /* The search button is the busiest control on the screen: make its waiting state obvious. */
-.search-submit { background: var(--mg-action); }
+.search-submit { position: relative; overflow: hidden; background: var(--mg-action); }
+/* Same slow sheen as the route CTA: one primary-action language across the app. */
+.search-submit:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  transform: skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .2), transparent);
+  pointer-events: none;
+  animation: mg-cta-sheen 4.4s var(--mg-ease-standard) infinite;
+}
 .search-submit:not(:disabled) { transition: transform var(--mg-dur-tap) var(--mg-ease-standard), box-shadow var(--mg-dur-fast) var(--mg-ease-standard), filter var(--mg-dur-fast) var(--mg-ease-standard); }
 .search-submit:active:not(:disabled) { transform: scale(.985); }
 .search-submit:disabled { animation: mg-wait 1.6s var(--mg-ease-standard) infinite; }
@@ -1548,8 +1579,10 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 .home-action-grid > .home-action-card { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) both; animation-delay: calc(90ms + var(--mg-stagger-i, 0) * var(--mg-stagger-step)); }
 .home-popular-routes { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) 260ms both; }
 .home-popular-route { transition: transform var(--mg-dur-base) var(--mg-ease-entrance), box-shadow var(--mg-dur-base) var(--mg-ease-standard); }
+.home-popular-route img { transition: transform var(--mg-dur-slow) var(--mg-ease-standard); }
 @media (hover: hover) and (pointer: fine) {
   .home-popular-route:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(17, 47, 88, .16); }
+  .home-popular-route:hover img { transform: scale(1.06); }
 }
 html.dark .home-canonical-banner > span[aria-hidden="true"] { background: linear-gradient(90deg,rgba(7,21,33,.96),rgba(7,21,33,.82) 60%,rgba(7,21,33,.18)); }
 html.dark .home-canonical-banner { border-color: var(--mg-border-medium); box-shadow: var(--mg-card-shadow); }
@@ -2115,6 +2148,18 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 @media (min-width: 1024px) {
   .route-map-screen [data-testid="route-segment-list"] { max-height: 46vh; }
 }
+/* Scroll surfaces belong to the navy system: a thin blue thumb on a transparent track
+   instead of the platform default. .no-scrollbar rows still opt out entirely. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--mg-blue) 35%, transparent) transparent;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { border-radius: var(--mg-radius-pill); background: color-mix(in srgb, var(--mg-blue) 35%, transparent); }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--mg-blue) 55%, transparent); }
+.route-map-screen [data-testid="route-segment-list"] { scrollbar-color: color-mix(in srgb, var(--mg-blue) 40%, transparent) transparent; }
+.route-map-screen [data-testid="route-segment-list"]::-webkit-scrollbar { width: 5px; }
 /* ----- Route details motion and selection cues ---------------------------
    Everything here answers "what did my tap just do?" and disappears under
    the global prefers-reduced-motion guard. */
@@ -2244,6 +2289,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   .mg-route-ribbon__pill.is-active::after,
   .mg-route-segment[data-active="true"]::after,
   .mg-route-cta:not(:disabled)::after,
+  .search-submit:not(:disabled)::after,
   .route-address-summary > svg,
   .mg-route-segment,
   .mg-route-stops,

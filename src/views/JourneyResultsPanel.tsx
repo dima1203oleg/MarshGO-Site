@@ -156,7 +156,7 @@ function RouteResultCard({ journey, index, caveats, alternatives, chosen, onOpen
         actions={<>
           <span data-testid="journey-result-transfers" aria-label={formatTransferCount(journey.transfers)} title={formatTransferCount(journey.transfers)} className="journey-result-transfer-badge inline-flex h-8 shrink-0 items-center gap-1 rounded-full border bg-slate-100 px-1.5 text-xs font-extrabold tabular-nums text-slate-700 dark:bg-[var(--mg-surface-tint)] dark:text-slate-200"><ArrowLeftRight size={13} aria-hidden="true"/>{journey.transfers}</span>
           <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} onPointerDown={event => event.stopPropagation()} className="journey-result-save-button mg-press-subtle pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-transparent text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800" title={saved ? 'Збережено на цьому пристрої' : 'Зберегти маршрут'}>
-            <span className="journey-result-save-visual"><Heart size={19} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''} aria-hidden="true"/></span>
+            <span className={`journey-result-save-visual${saved ? ' mg-pop' : ''}`}><Heart size={19} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''} aria-hidden="true"/></span>
           </button>
           {chosen
             ? <span data-testid="journey-result-chosen" role="img" aria-label="Обраний маршрут" className="journey-result-chosen-badge grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--mg-action)] text-white"><Check size={18} strokeWidth={2.6} aria-hidden="true"/></span>
@@ -234,16 +234,23 @@ export function JourneySearchPending({ startedAt, onCancel }: { startedAt: numbe
     </button>}
     {[0, 1, 2].map(i => <div
       key={i}
-      className="mg-rise mg-stagger flex items-start gap-3 rounded-2xl border border-slate-200/70 bg-white/70 p-3 dark:border-slate-700/60 dark:bg-slate-900/50"
+      className="mg-rise mg-stagger rounded-2xl border border-slate-200/70 bg-white/70 p-2.5 dark:border-slate-700/60 dark:bg-slate-900/50"
       style={{ '--mg-stagger-i': i } as React.CSSProperties}
       aria-hidden="true"
     >
-      <span className="mg-skeleton h-11 w-11 shrink-0 rounded-xl" />
-      <span className="min-w-0 flex-1 space-y-2 pt-0.5">
-        <span className="mg-skeleton block h-3 w-2/3" />
-        <span className="mg-skeleton block h-3 w-1/3" />
+      {/* The placeholder mirrors the real card: summary row, proportion bar, stage tiles, clock row. */}
+      <span className="flex items-center justify-between gap-3">
+        <span className="mg-skeleton h-5 w-24 rounded-md" />
+        <span className="mg-skeleton h-5 w-14 rounded-md" />
+        <span className="mg-skeleton h-8 w-8 shrink-0 rounded-full" />
       </span>
-      <span className="mg-skeleton h-8 w-16 shrink-0 rounded-lg" />
+      <span className="mg-skeleton mt-2 block h-1.5 w-full rounded-full" />
+      <span className="mt-1.5 flex gap-2">
+        <span className="mg-skeleton h-8 flex-1 rounded-lg" />
+        <span className="mg-skeleton h-8 flex-1 rounded-lg" />
+        <span className="mg-skeleton h-8 flex-1 rounded-lg" />
+      </span>
+      <span className="mg-skeleton mt-2 block h-3 w-1/2" />
     </div>)}
   </section>;
 }
@@ -379,7 +386,7 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
       </ul>
     </details>}
 
-    {groups.length ? <div className="mg-stagger-list space-y-1.5" data-testid="journey-results-list">{groups.map((group, index) => {
+    {groups.length ? <div className="mg-stagger-list space-y-1" data-testid="journey-results-list">{groups.map((group, index) => {
       const primaryCaveats = shownCaveats.get(group.primary.id) ?? [];
       return <RouteResultCard key={group.primary.id} journey={group.primary} index={index} caveats={primaryCaveats.filter(text => !dominantCaveats.includes(text))} alternatives={journeyGroupAlternatives(group)} chosen={group.primary.id === chosenJourneyId || group.departures.some(journey => journey.id === chosenJourneyId)} onOpen={onOpenMap}/>;
     })}</div>
