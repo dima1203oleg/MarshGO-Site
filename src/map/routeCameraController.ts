@@ -3,13 +3,16 @@ import type { RouteFitPadding, MapAdapter } from './MapAdapter';
 import { boundsOf, corridorFitPoints } from './routeContextCorridor';
 import { extentMeters, principalBearing } from './routeCameraFocus';
 
-export type RouteCameraMode = 'ROUTE_OVERVIEW' | 'SEGMENT_FOCUS' | 'STOP_FOCUS' | 'MANUAL_CAMERA';
+export type RouteCameraMode = 'ROUTE_OVERVIEW' | 'SEGMENT_FOCUS' | 'TRANSFER_FOCUS' | 'STOP_FOCUS' | 'MANUAL_CAMERA';
 
 export interface RouteCameraState {
   mode: RouteCameraMode;
   activeSegmentId: string | null;
   activeStopId: string | null;
   activeStopCoordinate: Coordinate | null;
+  activeTransferId: string | null;
+  activeTransferCoordinate: Coordinate | null;
+  activeTransferPoints: Coordinate[] | null;
 }
 
 export function initialRouteCameraState(): RouteCameraState {
@@ -18,11 +21,17 @@ export function initialRouteCameraState(): RouteCameraState {
     activeSegmentId: null,
     activeStopId: null,
     activeStopCoordinate: null,
+    activeTransferId: null,
+    activeTransferCoordinate: null,
+    activeTransferPoints: null,
   };
 }
 
 export function shouldShowRecenterButton(state: RouteCameraState): boolean {
-  return state.mode === 'MANUAL_CAMERA' || state.mode === 'SEGMENT_FOCUS' || state.mode === 'STOP_FOCUS';
+  return state.mode === 'MANUAL_CAMERA'
+    || state.mode === 'SEGMENT_FOCUS'
+    || state.mode === 'TRANSFER_FOCUS'
+    || state.mode === 'STOP_FOCUS';
 }
 
 export interface SegmentFocusTarget {
@@ -91,10 +100,8 @@ export class RouteCameraController {
 
   showOverview(routePoints: Coordinate[], maxZoom = 15.2) {
     this.updateState({
+      ...initialRouteCameraState(),
       mode: 'ROUTE_OVERVIEW',
-      activeSegmentId: null,
-      activeStopId: null,
-      activeStopCoordinate: null,
     });
     this.adapter?.setActiveRouteSegment?.(null);
     const padding = { ...this.padding, bearing: 0 };
@@ -111,10 +118,9 @@ export class RouteCameraController {
       return;
     }
     this.updateState({
+      ...initialRouteCameraState(),
       mode: 'SEGMENT_FOCUS',
       activeSegmentId: segmentId,
-      activeStopId: null,
-      activeStopCoordinate: null,
     });
     this.adapter?.setActiveRouteSegment?.(segmentId);
     const padding = {
@@ -124,14 +130,30 @@ export class RouteCameraController {
     this.adapter?.focusCoordinates?.(target.points, padding, 17);
   }
 
+  focusTransfer(transferId: string, coordinate: Coordinate, contextPoints: Coordinate[] = []) {
+    const points = contextPoints.length >= 2 ? contextPoints : [coordinate];
+    this.updateState({
+      ...initialRouteCameraState(),
+      mode: 'TRANSFER_FOCUS',
+      activeTransferId: transferId,
+      activeTransferCoordinate: coordinate,
+      activeTransferPoints: points,
+    });
+    this.adapter?.setActiveRouteSegment?.(null);
+    // A short two-point corridor keeps the transfer inside the sheet-aware fit
+    // rectangle without zooming so far that the adjoining segments are lost.
+    this.adapter?.focusCoordinates?.(points, { ...this.padding, bearing: 0 }, 16.4);
+  }
+
   focusStop(stopId: string, coordinate: Coordinate) {
     this.updateState({
+      ...initialRouteCameraState(),
       mode: 'STOP_FOCUS',
       activeStopId: stopId,
       activeStopCoordinate: coordinate,
     });
-    // Smoothly focus on stop position with clear zoom
-    this.adapter?.focus(coordinate, 16.5);
+    // Smoothly focus on stop position with clear zoom, inside the visible map band.
+    this.adapter?.focus(coordinate, 16.5, this.padding);
   }
 
   /**
@@ -147,7 +169,11 @@ export class RouteCameraController {
       return;
     }
     if (this.state.mode === 'STOP_FOCUS' && this.state.activeStopCoordinate) {
-      this.adapter?.focus(this.state.activeStopCoordinate, 16.5);
+      this.adapter?.focus(this.state.activeStopCoordinate, 16.5, this.padding);
+      return;
+    }
+    if (this.state.mode === 'TRANSFER_FOCUS' && this.state.activeTransferPoints?.length) {
+      this.adapter?.focusCoordinates?.(this.state.activeTransferPoints, { ...this.padding, bearing: 0 }, 16.4);
       return;
     }
     if (this.state.mode === 'SEGMENT_FOCUS' && options.segmentTarget) {
