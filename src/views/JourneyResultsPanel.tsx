@@ -1,6 +1,6 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeftRight, Check, ChevronRight, Clock, Coins, Flag, Heart, Info, Scale, Star, Timer, X,
+  ArrowLeftRight, Check, ChevronRight, Coins, Heart, Info, Scale, Timer, X,
 } from 'lucide-react';
 import type { ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy } from '../services/productionApi';
 import { CanonicalRouteLip } from '../design-system/journey/CanonicalRouteLip';
@@ -8,8 +8,8 @@ import type { JourneySegmentStripItem } from '../design-system/journey/JourneySe
 import { journeyLegCaveat } from './journeyLegLabel';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
-  buildJourneyResultSegments, formatJourneyClock, formatJourneyDistance, formatJourneyDuration,
-  formatJourneyDurationTile, journeyArrivalDayNote, journeyBoardingNote, journeyTimeBreakdown,
+  buildJourneyResultSegments, formatJourneyClock, formatJourneyDuration,
+  formatJourneyDurationTile, journeyArrivalDayNote,
   journeyRouteBadge, providerErrorNotices, searchPendingCopy, unavailableTransportNotices,
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay, type JourneyPriceDisplay } from './cashFare';
@@ -52,25 +52,18 @@ function journeyCaveats(journey: ApiJourney): string[] {
   return [...new Set(journey.legs.map(leg => journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource)).filter((text): text is string => Boolean(text)))];
 }
 
-function RouteResultCard({ journey, index, caveats, alternatives, chosen, onOpen }: {
+function RouteResultCard({ journey, alternatives, chosen, recommendation, onOpen }: {
   journey: ApiJourney;
-  index: number;
-  caveats: string[];
   alternatives: ApiJourney[];
   chosen: boolean;
-  onOpen: (journey: ApiJourney) => void;
+  recommendation?: string;
+  onOpen: (journey: ApiJourney, alternatives: ApiJourney[], recommendation?: string) => void;
 }) {
-  const allSegments = buildJourneyResultSegments(journey);
-  // The reference ribbon describes actual travel modes. Waiting remains
-  // visible as a small timing note instead of masquerading as a transport leg.
-  const segments = allSegments.filter(segment => segment.kind === 'LEG');
-  const waitingSeconds = allSegments
-    .filter(segment => segment.kind === 'WAIT' && segment.label === 'Очікування')
-    .reduce((sum, segment) => sum + segment.durationSeconds, 0);
+  // The card is a scan surface: waits and source notes remain in route details, while the
+  // compact chain shows only actual modes and their durations.
+  const segments = buildJourneyResultSegments(journey).filter(segment => segment.kind === 'LEG');
   const firstLeg = journey.legs[0];
   const lastLeg = journey.legs.at(-1);
-  const departuresId = useId();
-  const [departuresOpen, setDeparturesOpen] = useState(false);
   const [saved, setSaved] = useState(() => {
     try { return JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? '[]').includes(journey.id); }
     catch { return false; }
@@ -87,7 +80,6 @@ function RouteResultCard({ journey, index, caveats, alternatives, chosen, onOpen
   if (!firstLeg || !lastLeg) return null;
   const journeyPrice = journeyPriceDisplay(journey);
   const totalPrice = journeyPrice.label;
-  const priceCaptionText = journeyPrice.caption;
   const legPrice = (leg: ApiJourney['legs'][number] | undefined) => (!leg || leg.mode === 'WALK' ? '' : legPriceDisplay(leg).value);
   const stripItems: JourneySegmentStripItem[] = segments.map(segment => {
     const priceText = legPrice(segment.leg);
@@ -101,18 +93,16 @@ function RouteResultCard({ journey, index, caveats, alternatives, chosen, onOpen
       accessibilityLabel: segment.label + (segment.leg?.routeName ? ', маршрут ' + segment.leg.routeName : '') + ', ' + formatJourneyDuration(segment.durationSeconds) + (priceText ? ', ' + priceText : ''),
       durationSeconds: segment.durationSeconds,
       durationLabel: formatJourneyDurationTile(segment.durationSeconds),
-      priceLabel: priceText,
+      // Segment prices are available in route details; the compact chain carries duration only.
+      priceLabel: '',
       color: segment.color,
     };
   });
+  // Show the actual first leg's departure, not the search's requested time; these can differ
+  // when a route includes an access walk or a scheduled wait before boarding.
   const startAt = firstLeg.departureAt;
-  const boardingLabel = journeyBoardingNote(journey);
-  // A journey that boards at once already says that time in «Відправлення»; the note only earns
-  // its words when the passenger walks first and the vehicle leaves later.
-  const showsBoarding = Boolean(boardingLabel) && !boardingLabel.endsWith(formatJourneyClock(startAt));
-  const arrivalDay = journeyArrivalDayNote(lastLeg.arrivalAt, journey.requestedDepartureAt ?? startAt);
-  const split = journeyTimeBreakdown(journey);
-  const openLabel = `Відкрити маршрут: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${spokenJourneyPrice(journeyPrice)}${showsBoarding ? `, ${boardingLabel}` : ''}`;
+  const arrivalDay = journeyArrivalDayNote(lastLeg.arrivalAt, startAt);
+  const openLabel = `Відкрити деталі маршруту: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${formatJourneyClock(startAt)} — ${formatJourneyClock(lastLeg.arrivalAt)}${arrivalDay ? `, ${arrivalDay}` : ''}, ${spokenJourneyPrice(journeyPrice)}`;
 
   const toggleSaved = () => {
     let ids: string[] = [];
@@ -134,15 +124,14 @@ function RouteResultCard({ journey, index, caveats, alternatives, chosen, onOpen
   return <article
     data-testid="journey-result-card"
     data-journey-id={journey.id}
-    data-top-pick={index === 0 ? 'true' : undefined}
     data-chosen={chosen ? 'true' : undefined}
     data-group-size={alternatives.length + 1}
     className={`journey-result-card mg-press-subtle relative isolate overflow-hidden rounded-[var(--mg-radius-lg)] border bg-[var(--mg-surface-card)] transition-all duration-[var(--mg-dur-fast)] ${chosen ? 'border-[var(--mg-action)] ring-1 ring-[var(--mg-action)] shadow-[0_4px_20px_rgba(11,99,214,.18)]' : 'border-[var(--mg-line)] hover:border-[var(--mg-action-subtle)] shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]'}`}
   >
-    <button type="button" aria-label={openLabel} onClick={() => onOpen(journey)} className="absolute inset-0 z-0 h-full w-full rounded-[var(--mg-radius-lg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+    <button type="button" aria-label={openLabel} onClick={() => onOpen(journey, alternatives, recommendation)} className="absolute inset-0 z-0 h-full w-full rounded-[var(--mg-radius-lg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
       <span className="sr-only">Переглянути карту й деталі маршруту</span>
     </button>
-    <div className="journey-result-card-content pointer-events-none relative z-10 p-2">
+    <div className="journey-result-card-content pointer-events-none relative z-10 p-1.5">
       <CanonicalRouteLip
         durationLabel={formatJourneyDuration(journey.totalDurationSeconds)}
         durationClassName="journey-result-duration"
@@ -150,7 +139,6 @@ function RouteResultCard({ journey, index, caveats, alternatives, chosen, onOpen
         priceAccessibleLabel={`Загальна вартість: ${totalPrice === '—' ? 'невідома' : spokenJourneyPrice(journeyPrice)}`}
         priceClassName="journey-result-total-price"
         priceUnavailable={totalPrice === '—'}
-        priceCaption={priceCaptionText ? <span data-testid="journey-result-price-caption" className="block max-w-[7.5rem] truncate text-xs font-semibold leading-4 text-slate-500 dark:text-slate-400">{priceCaptionText}</span> : undefined}
         actionsClassName="journey-result-actions flex shrink-0 items-center gap-1"
         summaryRowClassName="journey-result-header"
         actions={<>
@@ -158,52 +146,19 @@ function RouteResultCard({ journey, index, caveats, alternatives, chosen, onOpen
           <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} onPointerDown={event => event.stopPropagation()} className="journey-result-save-button mg-press-subtle pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-transparent text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800" title={saved ? 'Збережено на цьому пристрої' : 'Зберегти маршрут'}>
             <span className={`journey-result-save-visual${saved ? ' mg-pop' : ''}`}><Heart size={19} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''} aria-hidden="true"/></span>
           </button>
-          {chosen
-            ? <span data-testid="journey-result-chosen" role="img" aria-label="Обраний маршрут" className="journey-result-chosen-badge grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--mg-action)] text-white"><Check size={18} strokeWidth={2.6} aria-hidden="true"/></span>
-            : <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/70 dark:bg-blue-950/50 dark:text-blue-300" aria-hidden="true"><ChevronRight size={18}/></span>}
+          <button type="button" data-testid="journey-result-details-button" aria-label={chosen ? `Обраний маршрут. ${openLabel}` : openLabel} onClick={() => onOpen(journey, alternatives, recommendation)} onPointerDown={event => event.stopPropagation()} className="journey-result-details-button mg-press-subtle pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-blue-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)] dark:text-[var(--mg-blue)]">
+            {chosen ? <Check size={18} strokeWidth={2.6} aria-hidden="true"/> : <ChevronRight size={18} aria-hidden="true"/>}
+          </button>
         </>}
         items={stripItems}
         ariaLabel="Послідовність етапів маршруту"
         className="pointer-events-none"
         stripClassName="mt-0.5 pointer-events-none"
-        durationNote={waitingSeconds > 0 ? <span data-testid="journey-result-wait" className="text-xs font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">Очікування · {formatJourneyDurationTile(waitingSeconds)}</span> : undefined}
       />
-      {/* The clock window is one line; boarding, ride and walk times are one line below it.
-          Two fixed rows beat one flexible paragraph that wrapped into three on a phone. The
-          rank marker and the grouped-departure toggle live on the clock row: both are facts
-          about when the journey leaves, and on the timing row they wrapped every card. */}
-      <p data-testid="journey-result-window" className="journey-result-window mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-bold leading-4 tabular-nums text-slate-700 dark:text-slate-200">
-        <span className="inline-flex items-center gap-1"><Clock size={12} className="shrink-0" aria-hidden="true"/>Відправлення: {formatJourneyClock(startAt)}</span>
-        <span className="inline-flex items-center gap-1"><Flag size={12} className="shrink-0" aria-hidden="true"/>Прибуття: {formatJourneyClock(lastLeg.arrivalAt)}{arrivalDay ? ` · ${arrivalDay}` : ''}</span>
-        {index === 0 && <span data-testid="journey-result-top-pick" className="inline-flex items-center gap-0.5 rounded-full bg-[var(--mg-blue-tint)] px-1.5 text-xs font-extrabold uppercase tracking-[.06em] text-[var(--mg-blue-ink)]"><Star size={9} className="shrink-0 fill-current" aria-hidden="true"/>Рекомендований</span>}
-        {alternatives.length > 0 && <button type="button" aria-expanded={departuresOpen} aria-controls={departuresId} aria-label={`${departuresOpen ? 'Згорнути' : 'Показати'} інші відправлення (${alternatives.length})`} onClick={() => setDeparturesOpen(open => !open)} className="mg-press-subtle pointer-events-auto relative z-20 inline-flex items-center gap-0.5 rounded text-xs font-extrabold text-[var(--mg-blue-ink)] before:absolute before:-inset-x-1 before:-inset-y-3.5 before:content-[''] focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-[var(--mg-blue)]">
-          <ChevronRight size={12} className={`shrink-0 transition-transform ${departuresOpen ? 'rotate-90' : ''}`} aria-hidden="true"/>Ще {alternatives.length}
-        </button>}
+      <p data-testid="journey-result-window" aria-label={`Відправлення ${formatJourneyClock(startAt)}, прибуття ${formatJourneyClock(lastLeg.arrivalAt)}${arrivalDay ? `, ${arrivalDay}` : ''}`} className="journey-result-window mt-0.5 flex min-w-0 items-center gap-1.5 text-xs font-bold leading-4 tabular-nums text-slate-700 dark:text-slate-200">
+        <span className="truncate">{formatJourneyClock(startAt)} <span aria-hidden="true" className="text-[var(--mg-ink-secondary)]">→</span> {formatJourneyClock(lastLeg.arrivalAt)}</span>
+        {arrivalDay && <span className="shrink-0 text-[var(--mg-ink-secondary)]">· {arrivalDay}</span>}
       </p>
-      <p data-testid="journey-result-timing" className="mt-px flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs leading-4 tabular-nums text-slate-600 dark:text-slate-300">
-        {showsBoarding && <span data-testid="journey-result-boarding" className="inline-flex items-center gap-1 font-semibold"><Clock size={10} className="shrink-0" aria-hidden="true"/>{boardingLabel}</span>}
-        {split.ridingSeconds > 0 && <span className="font-semibold">У дорозі {formatJourneyDuration(split.ridingSeconds)}</span>}
-        {split.walkingSeconds > 0 && <span className="font-semibold">Пішки {formatJourneyDuration(split.walkingSeconds)}</span>}
-      </p>
-      {segments.map(segment => segment.leg && <span key={segment.id} className="sr-only">{formatJourneyDistance(segment.leg.distanceMeters)}</span>)}
-      {caveats.length > 0 && <p className="journey-result-caveat mt-0.5 text-xs leading-4 text-amber-800 dark:text-amber-200">{caveats.join(' ')}</p>}
-      {alternatives.length > 0 && <div className="journey-group-departures mt-0.5">
-        {departuresOpen && <ul id={departuresId} data-testid="journey-group-departure-list" className="space-y-px border-t border-slate-100 pt-0.5 dark:border-slate-800">
-          {alternatives.map(alt => {
-            const altFirst = alt.legs[0];
-            const altLast = alt.legs.at(-1);
-            if (!altFirst || !altLast) return null;
-            const altDay = journeyArrivalDayNote(altLast.arrivalAt, alt.requestedDepartureAt ?? altFirst.departureAt);
-            const altPrice = journeyPriceDisplay(alt).label;
-            return <li key={alt.id}>
-              <button type="button" onClick={() => onOpen(alt)} aria-label={`Відкрити відправлення ${formatJourneyClock(altFirst.departureAt)} — ${formatJourneyClock(altLast.arrivalAt)}${altDay ? ', ' + altDay : ''}`} className="pointer-events-auto relative z-20 flex min-h-8 w-full items-center gap-2 rounded-lg px-1 text-left text-xs font-semibold tabular-nums text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60">
-                <span className="min-w-0 flex-1 truncate">{formatJourneyClock(altFirst.departureAt)} → {formatJourneyClock(altLast.arrivalAt)}{altDay ? ` · ${altDay}` : ''} · {formatJourneyDuration(alt.totalDurationSeconds)}</span>
-                <span className="shrink-0 font-extrabold">{altPrice}</span>
-              </button>
-            </li>;
-          })}
-        </ul>}
-      </div>}
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
     </div>
   </article>;
@@ -258,7 +213,7 @@ export function JourneySearchPending({ startedAt, onCancel }: { startedAt: numbe
 export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetry }: {
   result: ApiJourneySearchResult;
   chosenJourneyId?: string | null;
-  onOpenMap: (journey: ApiJourney) => void;
+  onOpenMap: (journey: ApiJourney, alternatives: ApiJourney[], recommendation?: string) => void;
   onRetry?: () => void;
 }) {
   const requestedStrategy = strategyConfig.some(strategy => strategy.id === result.requestedStrategy)
@@ -318,6 +273,8 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
   unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
   technicalProviderErrors.forEach(text => notices.push({ tone: 'slate', text }));
   const { headline, technical } = splitResultNotices(notices);
+  const blockingHeadline = headline?.tone === 'rose' ? headline : null;
+  const detailNotices = blockingHeadline ? technical : [...notices];
   const showDiagnostics = diagnosticsRequested(
     typeof window !== 'undefined' ? window.location.search : '',
     typeof window !== 'undefined' ? window.localStorage.getItem('marshgo.results.diagnostics') : null,
@@ -346,30 +303,32 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
       })}
     </div>
 
-    {/* Search limits and source-wide caveats are facts, not diagnostics: every active flag is
-        named in the summary itself, and the full sentences are one tap away. Keeping both in one
-        row leaves room for a third result card above the fold. */}
-    {(gtfsLimits.length > 0 || dominantCaveats.length > 0) && <details data-testid="journey-search-limits" className="search-truncation mb-1.5 rounded-xl border border-[var(--mg-line)] bg-[var(--mg-surface-tint)]">
-      <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1.5 px-2.5 text-xs font-extrabold leading-4 text-amber-900 dark:text-amber-100">
+    {blockingHeadline && <p role="alert" className={`search-headline-note mb-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-xs font-bold leading-4 ${noticeTone.rose.softBg} ${noticeTone.rose.text}`}><Info size={13} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{blockingHeadline.text}</span></p>}
+    {groups.length > 0 && unavailable.length > 0 && <p role="status" data-testid="journey-unavailable-summary" className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold leading-4 text-slate-600 dark:text-slate-300">
+      <Info size={13} className="shrink-0" aria-hidden="true"/>
+      Недоступні види транспорту в цьому пошуку · {unavailable.length}. Деталі — нижче.
+    </p>}
+    {(detailNotices.length > 0 || gtfsLimits.length > 0 || dominantCaveats.length > 0) && <details data-testid="journey-search-limits" className="search-truncation mb-1.5 rounded-xl border border-[var(--mg-line)] bg-[var(--mg-surface-tint)]">
+      <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1.5 px-2.5 text-xs font-bold leading-4 text-[var(--mg-ink-secondary)]">
         <Info size={13} className="shrink-0" aria-hidden="true"/>
-        <span className="min-w-0 flex-1">{gtfsLimits.length
-          ? `Пошук неповний · ${gtfsLimits.length}: ${gtfsLimits.map(limit => limit.short).join(', ')}${dominantCaveats.length ? ` · ${dominantCaveats.length} застереж.` : ''}`
-          : `Застереження до даних · ${dominantCaveats.length}`}</span>
+        <span className="min-w-0 flex-1">Джерела й умови пошуку{detailNotices.length + gtfsLimits.length + dominantCaveats.length ? ` · ${detailNotices.length + gtfsLimits.length + dominantCaveats.length}` : ''}</span>
         <ChevronRight size={14} className="search-truncation-chevron shrink-0" aria-hidden="true"/>
       </summary>
-      <ul className="space-y-1 px-2.5 pb-2 text-xs leading-4 text-amber-900 dark:text-amber-100">
+      <ul className="space-y-1 px-2.5 pb-2 text-xs leading-4 text-[var(--mg-ink-secondary)]">
+        {detailNotices.map(notice => <li key={notice.text} className="flex gap-1.5">
+          <span aria-hidden="true" className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${noticeTone[notice.tone].dot}`}/>
+          <span className={noticeTone[notice.tone].text}>{notice.text}</span>
+        </li>)}
         {gtfsLimits.map(limit => <li key={limit.short} className="flex gap-1.5">
           <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"/>
-          <span>{limit.text}</span>
+          <span className="text-amber-900 dark:text-amber-100">{limit.text}</span>
         </li>)}
-        {dominantCaveats.map(text => <li key={text} data-testid="journey-shared-caveat" className="flex gap-1.5">
+        {dominantCaveats.map(text => <li key={text} data-testid="journey-shared-caveat" className="flex gap-1.5 text-amber-900 dark:text-amber-100">
           <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"/>
           <span>{text}</span>
         </li>)}
       </ul>
     </details>}
-
-    {headline && <p role="status" className={`search-headline-note mb-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-xs font-bold leading-4 ${noticeTone[headline.tone].softBg} ${noticeTone[headline.tone].text}`}><Info size={13} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{headline.text}</span></p>}
     {showDiagnostics && (technical.length > 0 || funnel.length > 0) && <details className="search-notices mb-3 rounded-2xl border border-[var(--mg-line)] bg-[var(--mg-surface-tint)]">
       <summary aria-label="Діагностика пошуку для розробників" className="search-notices-summary flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs font-extrabold text-slate-700 dark:text-slate-200">
         <Info size={14} aria-hidden="true"/>
@@ -386,10 +345,7 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
       </ul>
     </details>}
 
-    {groups.length ? <div className="mg-stagger-list space-y-1" data-testid="journey-results-list">{groups.map((group, index) => {
-      const primaryCaveats = shownCaveats.get(group.primary.id) ?? [];
-      return <RouteResultCard key={group.primary.id} journey={group.primary} index={index} caveats={primaryCaveats.filter(text => !dominantCaveats.includes(text))} alternatives={journeyGroupAlternatives(group)} chosen={group.primary.id === chosenJourneyId || group.departures.some(journey => journey.id === chosenJourneyId)} onOpen={onOpenMap}/>;
-    })}</div>
+    {groups.length ? <div className="mg-stagger-list space-y-0.5" data-testid="journey-results-list">{groups.map((group, index) => <RouteResultCard key={group.primary.id} journey={group.primary} alternatives={journeyGroupAlternatives(group)} chosen={group.primary.id === chosenJourneyId || group.departures.some(journey => journey.id === chosenJourneyId)} recommendation={index === 0 ? `Перший варіант у режимі «${strategyConfig.find(strategy => strategy.id === activeStrategy)?.label ?? 'пошуку'}»` : undefined} onOpen={onOpenMap}/>)}</div>
       : <div className="rounded-2xl border border-[var(--mg-line)] bg-[var(--mg-surface-card)] p-6 text-center">
         {result.journeys.length === 0 && journeyEmptyStateKind(result) === 'provider-failure' ? <>
           <p role="alert" className="font-bold text-rose-800 dark:text-rose-100">{JOURNEY_EMPTY_PROVIDER_FAILURE_TITLE}</p>

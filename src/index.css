@@ -497,8 +497,8 @@ html.dark .search-screen .journey-search-card .trip-tile--stepper > button { bor
   background-image: linear-gradient(145deg, #FFFFFF 0%, #FBFDFF 56%, #F7FAFE 100%);
   box-shadow: 0 5px 16px rgba(11, 45, 82, .075);
 }
-.journey-result-card-content { padding: .25rem .5rem; }
-.journey-result-header { min-height: 2.75rem; }
+.journey-result-card-content { padding: .2rem .45rem; }
+.journey-result-header { min-height: 2.5rem; }
 html.dark .journey-results {
   background: linear-gradient(180deg, var(--mg-canvas) 0%, var(--mg-bg-secondary) 100%);
 }
@@ -509,28 +509,13 @@ html.dark .journey-results .journey-result-card {
   box-shadow: var(--mg-card-shadow);
 }
 /*
- * Position in the list is not selection. The rank-1 journey of the active mode is marked with a
- * data attribute and a visible label, so its border only needs to be one notch stronger than the
- * other cards — a full ring here read as "already opened" while nothing was selected.
+ * Position in the list is not selection. Strategy order stays in the results data, while the
+ * recommendation is described only after opening route details.
  */
-.journey-result-card[data-top-pick="true"] { border-color: #B9D8F7; }
-html.dark .journey-results .journey-result-card[data-top-pick="true"] { border-color: color-mix(in srgb, var(--mg-blue) 58%, transparent); }
-/* A luminous top edge says "ranked first" without adding a second selection-style ring. */
-.journey-result-card[data-top-pick="true"]::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 14%;
-  right: 14%;
-  height: 2px;
-  border-radius: var(--mg-radius-pill);
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mg-blue) 80%, transparent), transparent);
-  pointer-events: none;
-}
 /*
  * The card the passenger actually opened is a fact, not a ranking, so it owns a real selection
- * marker: a ring around the border. It comes after the rank-1 rules and repeats the dark
- * `` so it wins over the stronger-looking top pick.
+ * marker: a ring around the border. This is the only card-specific accent; strategy order is
+ * described after opening route details.
  */
 .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mg-blue) 30%, transparent), 0 5px 16px rgba(11, 45, 82, .075) !important; }
 html.dark .journey-results .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--mg-blue) 45%, transparent) !important; }
@@ -723,13 +708,16 @@ html.dark .journey-segment-scroll-cue > span { border-color: var(--mg-border-med
 .route-map-screen[data-theme="dark"] .journey-segment-tile-meta { color: var(--mg-ink-secondary); }
 /*
  * A results card summarises the journey; its tiles are labels, not tap targets, so the sheet's
- * 52 px button floor only stretched every card. Two 12 px lines still fit inside 32 px.
+ * 52 px button floor only stretched every card. The mode label and duration fit in a 30 px row.
  */
-.journey-result-segments .journey-segment-tile-content { min-height: 2rem; gap: .05rem; padding-block: .05rem; }
-.journey-result-card-content > .journey-segment-strip { margin-top: .125rem; }
+.journey-result-segments .journey-segment-tile-content { min-height: 1.875rem; gap: 0; padding-block: 0; }
+.journey-result-card-content > .journey-segment-strip { margin-top: 0; }
 /* On a card the proportion bar is read, not tapped: 6 px still shows the leg ratio, while the
    route sheet keeps the taller 11 px bar of its own scope. The soft glow lifts it off the card. */
 .journey-result-card-content .journey-segment-ribbon { height: 6px; box-shadow: 0 1px 6px color-mix(in srgb, var(--mg-blue) 28%, transparent); }
+/* Fares and their payment basis stay in route details; the compact chain shows one duration. */
+.journey-result-card-content .journey-segment-tile-meta { white-space: nowrap; overflow-wrap: normal; -webkit-line-clamp: 1; }
+.journey-result-card-content .journey-result-window { margin-top: .125rem; }
 /* The route-number pill is the tallest part of a tile; tighter block padding trims 3 px per
    card without touching the 12 px label or its mode tint. */
 .journey-result-card-content .journey-segment-tile-badge { padding-block: .05rem; line-height: 1.1; }
@@ -743,7 +731,6 @@ html.dark .journey-segment-scroll-cue > span { border-color: var(--mg-border-med
 .journey-result-transfer-badge { min-width: 2.5rem; }
 .journey-result-save-button { margin-block: 0; background-color: transparent; }
 .journey-result-save-visual { display: grid; width: 2.5rem; height: 2.5rem; place-items: center; border-radius: 999px; background: transparent; }
-.journey-result-actions > span:last-child { width: 2.75rem; height: 2.75rem; }
 html.dark .journey-result-action-badge,
 html.dark .journey-result-transfer-badge,
 html.dark .journey-result-save-visual { border-color: #223C52; }

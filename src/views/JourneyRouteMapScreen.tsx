@@ -11,8 +11,9 @@ import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
 import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
-import { journeyLegLabel } from './journeyLegLabel';
+import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
 import {
+  journeyArrivalDayNote,
   formatJourneyDuration as formatDuration,
   formatJourneyDurationTile,
   formatJourneyDistance,
@@ -75,7 +76,7 @@ function timelineFor(journey: ApiJourney): TimelineItem[] {
     const departure = Date.parse(leg.departureAt);
     const arrival = Date.parse(leg.arrivalAt);
     const waitSeconds = Number.isFinite(departure) && cursor > 0 ? Math.max(0, Math.round((departure - cursor) / 1000)) : 0;
-    if (waitSeconds >= 60) items.push({ id: `wait:${leg.id}`, targetLegId: leg.id, kind: 'WAIT', durationSeconds: waitSeconds, color: '#74879A' });
+    if (waitSeconds > 0) items.push({ id: `wait:${leg.id}`, targetLegId: leg.id, kind: 'WAIT', durationSeconds: waitSeconds, color: '#74879A' });
     const timestampDuration = Number.isFinite(departure) && Number.isFinite(arrival) ? Math.max(0, Math.round((arrival - departure) / 1000)) : 0;
     const durationSeconds = timestampDuration || Math.max(0, leg.durationSeconds);
     items.push({ id: `leg:${leg.id}`, targetLegId: leg.id, kind: 'LEG', durationSeconds, color: journeyModeColor(leg.mode, leg.transportType), leg });
@@ -152,11 +153,18 @@ function walkHintFor(legs: JourneyLeg[], index: number): { title: string; detail
 
 export function JourneyRouteMapScreen({
   journey,
+  alternativeDepartures = [],
+  onSelectAlternative,
+  recommendation,
   onBack,
   onBookOffer,
   onStartJourney,
 }: {
   journey: ApiJourney;
+  /** Same-shape departures grouped under the result card, available from the detail sheet. */
+  alternativeDepartures?: ApiJourney[];
+  onSelectAlternative?: (journey: ApiJourney) => void;
+  recommendation?: string;
   onBack: () => void;
   onBookOffer?: (offerId: string, journeyId: string, journeyLegId: string) => void;
   /** Opens the active stage map for this itinerary; the route is never re-entered. */
@@ -718,6 +726,7 @@ export function JourneyRouteMapScreen({
     const canBook = Boolean(leg.offerId) && leg.availabilityStatus !== 'UNAVAILABLE';
     const stops = leg.stops ?? [];
     const price = legPriceDisplay(leg);
+    const dataCaveat = journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource);
     const legIndex = journey.legs.findIndex(entry => entry.id === leg.id);
     const walkHint = walkHintFor(journey.legs, legIndex);
     const transferHint = transferHints.get(leg.id);
@@ -771,6 +780,7 @@ export function JourneyRouteMapScreen({
               <span className="mt-0.5 block truncate text-xs font-medium leading-4 text-[var(--route-subtle)]">
                 {leg.mode === 'COMMUNITY' ? `Посадка: ${cleanStopName(leg.origin.name)} · висадка: ${cleanStopName(leg.destination.name)}` : `${cleanStopName(leg.origin.name)} → ${cleanStopName(leg.destination.name)}`}
               </span>
+              <span data-testid="journey-route-segment-source" title={leg.source} className="mt-0.5 block truncate text-xs leading-4 text-[var(--route-muted)]">Джерело: {leg.providerName || leg.source}</span>
               {walkHint && (
                 <span
                   data-testid="route-walk-hint"
@@ -780,6 +790,7 @@ export function JourneyRouteMapScreen({
                   <span className="truncate">{walkHint.title}{walkHint.detail ? ` · ${walkHint.detail}` : ''}</span>
                 </span>
               )}
+              {dataCaveat && <span data-testid="journey-route-segment-caveat" className="mt-1 block text-xs leading-4 text-amber-800 dark:text-amber-200">{dataCaveat}</span>}
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1">
@@ -1208,9 +1219,31 @@ export function JourneyRouteMapScreen({
           {/* Independent scrolling for details in medium and expanded modes */}
           {(sheetSnap === 'half' || sheetSnap === 'expanded') && (
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-1.5" data-testid="route-segment-list">
+              {recommendation && <p data-testid="journey-route-recommendation" className="mb-1 text-xs font-semibold leading-4 text-[var(--route-muted)]">Рекомендація: {recommendation}</p>}
               <ol className="space-y-1 pt-0.5">
                 {renderSegmentCards()}
               </ol>
+              {alternativeDepartures.length > 0 && <details data-testid="journey-alternative-departures" className="mt-2 overflow-hidden rounded-xl border border-[var(--route-border)] bg-[var(--route-card)]">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-xs font-extrabold text-[var(--route-ink)]">
+                  <span>Інші відправлення</span>
+                  <span className="rounded-full bg-[var(--route-card-alt)] px-2 py-1 tabular-nums text-[var(--route-muted)]">{alternativeDepartures.length}</span>
+                </summary>
+                <ul className="divide-y divide-[var(--route-border)] border-t border-[var(--route-border)] px-2">
+                  {alternativeDepartures.map(alternative => {
+                    const altFirst = alternative.legs[0];
+                    const altLast = alternative.legs.at(-1);
+                    if (!altFirst || !altLast) return null;
+                    const altPrice = journeyPriceDisplay(alternative);
+                    const altArrivalDay = journeyArrivalDayNote(altLast.arrivalAt, alternative.requestedDepartureAt ?? altFirst.departureAt);
+                    return <li key={alternative.id}>
+                      <button type="button" onClick={() => onSelectAlternative?.(alternative)} aria-label={`Відкрити відправлення ${formatTime(alternative.requestedDepartureAt ?? altFirst.departureAt)} — ${formatTime(altLast.arrivalAt)}${altArrivalDay ? `, ${altArrivalDay}` : ''}; ${formatDuration(alternative.totalDurationSeconds)}; ${altPrice.label === '—' ? 'ціна невідома' : altPrice.label}`} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-1 text-left text-xs font-semibold tabular-nums text-[var(--route-ink)] hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
+                        <span className="min-w-0 flex-1 truncate">{formatTime(alternative.requestedDepartureAt ?? altFirst.departureAt)} → {formatTime(altLast.arrivalAt)}{altArrivalDay ? ` · ${altArrivalDay}` : ''} · {formatDuration(alternative.totalDurationSeconds)}</span>
+                        <span className="shrink-0 font-extrabold">{altPrice.label}</span>
+                      </button>
+                    </li>;
+                  })}
+                </ul>
+              </details>}
             </div>
           )}
 

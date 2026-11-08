@@ -181,40 +181,45 @@ test('search trip details share one control family with thumb-sized steppers', a
   assert.doesNotMatch(css, /\.home-intro::after \{[\s\S]{0,200}radial-gradient/, 'the decorative blob behind the search heading came back');
 });
 
-// The first card of every strategy tab used to carry a blue ring — the same visual language the
-// app uses for "selected" — while nothing was selected; opening a card navigates to the map screen.
-test('result cards mark the ranked pick instead of faking a selection state', async () => {
+// Route ranking remains visible after opening a detail sheet, not as another badge on every card.
+test('result-card ranking moves into route details without faking a selected state', async () => {
   const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
   const panel = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/JourneyResultsPanel.tsx'), 'utf8');
-  assert.match(panel, /data-top-pick=\{index === 0 \? 'true' : undefined\}/,
-    'the rank-1 journey must be exposed as data, not as an ad-hoc class');
-  assert.match(panel, /Рекомендований/, 'the stronger-looking card has to say why it looks different');
+  const routeDetails = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/JourneyRouteMapScreen.tsx'), 'utf8');
+  assert.match(panel, /recommendation=\{index === 0 \? `Перший варіант у режимі/,
+    'the strategy winner must be passed to the detail sheet');
+  assert.match(routeDetails, /data-testid="journey-route-recommendation"/, 'the ranking reason belongs in route details');
+  assert.doesNotMatch(panel, /Рекомендований/, 'recommendation text must not take space on the compact result card');
   assert.doesNotMatch(panel, /ring-blue-100/, 'a selection ring on an unselected card is a false affordance');
-  assert.match(css, /\.journey-result-card\[data-top-pick="true"\] \{ border-color: #B9D8F7; \}/,
-    'the light theme lost its one-notch accent border for the ranked pick');
+  assert.doesNotMatch(css, /data-top-pick/, 'a separate rank accent would still visually label the card as recommended');
   assert.doesNotMatch(css, /\.journey-result-card:first-of-type \{[\s\S]{0,80}border-color: #1687FF/,
     'position-based border styling came back; it highlighted the first card in every tab');
 });
 
-// An unknown fare rendered as a bare em-dash with no explanation, and the segment scroll cue could
-// appear for flex rounding alone. Keep a measured floor for the cue and a caption beside the dash.
-test('segment scroll cue ignores rounding and unknown fare explains itself', async () => {
+// Unknown fare detail stays explicit while the result card keeps only the requested total price.
+test('compact result strips prices and keeps unknown-fare detail and segment scroll behavior', async () => {
   const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
-  const [strip, lip, panel, fare] = await Promise.all([
+  const [strip, lip, panel, fare, routeDetails] = await Promise.all([
     read('../src/design-system/journey/JourneySegmentStrip.tsx'),
     read('../src/design-system/journey/CanonicalRouteLip.tsx'),
     read('../src/views/JourneyResultsPanel.tsx'),
     read('../src/views/cashFare.ts'),
+    read('../src/views/JourneyRouteMapScreen.tsx'),
   ]);
   assert.match(strip, /hidden >= 24/, 'the cue needs a floor a real stage chip can actually cross');
   assert.doesNotMatch(strip, /clientWidth \+ 2/, 'the cue threshold drifted back to 2 px, where rounding alone triggers it');
   assert.match(lip, /priceCaption\?: ReactNode;/, 'the shared lip needs one caption slot for unavailable prices');
   assert.match(fare, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
-  // The card may not print a bare cash amount: the same journey is cheaper on
-  // the card product the planner ranked it by, so the caption is the promise.
-  assert.match(panel, /priceCaption=\{priceCaptionText \?/, 'the card must render the qualifier the price model provides');
+  assert.match(panel, /priceLabel: ''/, 'per-leg fares must not repeat under every segment on compact cards');
+  assert.doesNotMatch(panel, /priceCaption=/, 'payment basis belongs in route details, not the compact result');
+  assert.match(routeDetails, /route-total-fare-caption/, 'the route detail keeps fare basis visible');
+  assert.match(routeDetails, /journeyLegCaveat\(/, 'source and estimate caveats remain available per route leg');
+  assert.match(routeDetails, /journey-route-segment-source/, 'provider provenance stays inside route details');
   assert.match(panel, /spokenJourneyPrice\(journeyPrice\)/, 'the spoken price has to carry the qualifier too');
-  assert.match(panel, /max-w-\[7\.5rem\] truncate/, 'the caption must not widen the summary row on 360 px phones');
+  assert.match(panel, /priceAccessibleLabel=\{`Загальна вартість:/, 'the total fare keeps an accessible unknown-price explanation');
+  assert.match(panel, /journey-search-limits/, 'search completeness details remain available outside the primary card');
+  assert.match(panel, /headline\?\.tone === 'rose'/, 'critical provider failures remain visible in the result state');
+  assert.match(panel, /journey-unavailable-summary/, 'unavailable requested modes remain visibly summarized');
 });
 
 // The profile used to hide the privacy and safety screens behind a menu that only listed three
@@ -352,10 +357,9 @@ test('the journey screens read one accent token set and the sort tabs stay AA-sa
   assert.doesNotMatch(results, /bg-gradient-to-b from-\[#1687FF\]/, 'the sort-tab gradient put half of its white label under AA');
 });
 
-// The board shows «Відправлення 08:12 / Прибуття 09:40» as visible text with a № pill per stage,
-// and marks the card the passenger actually opened. Until now the times lived in a tooltip, the
-// stage chips printed only the mode word, and the tap left no trace on the list.
-test('the results card shows the departure window, the feed route number and a real chosen state', async () => {
+// The compact board uses an unlabeled time range, retains route identity in the stage chain and
+// moves alternate departures into the route detail sheet.
+test('compact result cards show time and transport chain with details and favorite actions', async () => {
   const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
   const [css, panel, strip, mapScreen, marketplace] = await Promise.all([
     read('../src/index.css'),
@@ -364,8 +368,16 @@ test('the results card shows the departure window, the feed route number and a r
     read('../src/views/JourneyRouteMapScreen.tsx'),
     read('../src/views/ProductionMarketplace.tsx'),
   ]);
-  assert.match(panel, /<p data-testid="journey-result-window"[\s\S]{0,400}Відправлення: \{formatJourneyClock\(startAt\)\}[\s\S]{0,160}Прибуття: \{formatJourneyClock\(lastLeg\.arrivalAt\)\}/,
-    'the departure and arrival times must be printed on the card, not hidden in a tooltip');
+  assert.match(panel, /const startAt = firstLeg\.departureAt;/,
+    'the visible time range must describe the actual itinerary, not a requested search time before access walking or waiting');
+  assert.match(panel, /data-testid="journey-result-window"[\s\S]{0,500}formatJourneyClock\(startAt\)\}\s*<span aria-hidden="true"[\s\S]{0,180}formatJourneyClock\(lastLeg\.arrivalAt\)/,
+    'the card must show the requested compact departure → arrival window');
+  assert.doesNotMatch(panel, /Відправлення:|Прибуття:|Рекомендований|У дорозі|Пішки \{formatJourneyDuration/,
+    'the result card must not repeat labels or secondary travel summaries');
+  assert.match(panel, /data-testid="journey-result-details-button"/, 'each compact card needs a visible route-details action');
+  assert.match(panel, /journey-result-save-button/, 'each compact card keeps its favorite action');
+  assert.match(mapScreen, /data-testid="journey-alternative-departures"/, 'grouped departures remain reachable in route details');
+  assert.match(mapScreen, /journey-route-recommendation/, 'strategy ranking remains in route details');
   assert.doesNotMatch(panel, /durationTitle=/, 'a title-only duration is the reason the window was invisible');
   // Both screens mount the same strip, so the route number has to appear on both.
   assert.match(panel, /badge: journeyRouteBadge\(segment\.leg\?\.routeName\)/, 'the results strip lost the route number');
@@ -383,8 +395,8 @@ test('the results card shows the departure window, the feed route number and a r
     'opening a card must record which journey is chosen');
   assert.match(marketplace, /setJourneySearchStartedAt\(Date\.now\(\)\); setShowResults\(true\); setChosenJourneyId\(null\)/,
     'a new search must clear the previous choice');
-  assert.match(panel, /data-testid="journey-result-chosen" role="img" aria-label="Обраний маршрут"/,
-    'the chosen card needs a named marker, not a decorative tick');
+  assert.match(panel, /data-testid="journey-result-details-button" aria-label=\{chosen \? `Обраний маршрут\. \$\{openLabel\}` : openLabel\}/,
+    'the chosen card state remains attached to the visible details action');
   assert.match(css, /\.journey-result-card\[data-chosen="true"\] \{ border-color: var\(--mg-blue\)/,
     'the chosen ring must use the single action blue token');
   assert.doesNotMatch(css, /\.journey-segment-tile-heading \{ font-size:/,
