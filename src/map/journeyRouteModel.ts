@@ -41,6 +41,7 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
   routeSegments: ColoredRouteSegment[];
   routeWaypoints: RouteWaypoint[];
   missingShapeCount: number;
+  missingWalkingShapeCount: number;
   approximateWalkCount: number;
   approximateMicromobilityCount: number;
 } {
@@ -114,6 +115,7 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     })),
     routeWaypoints,
     missingShapeCount: legs.filter(leg => leg.mode !== 'WALK' && !mappedLegIds.has(leg.id)).length,
+    missingWalkingShapeCount: legs.filter(leg => leg.mode === 'WALK' && !mappedLegIds.has(leg.id)).length,
     approximateWalkCount: mappedLegs.filter(leg => leg.approximate).length,
     approximateMicromobilityCount: legs.filter(isEstimatedMicromobility).length,
   };
