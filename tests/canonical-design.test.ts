@@ -17,6 +17,8 @@ test('search provider dialog does not repeat transport type controls', async () 
   assert.match(marketplace, /<TransportTypesPanel providersOnly selection=\{transportSelection\}/, 'the search Providers action must open a provider-only dialog');
   assert.match(marketplace, /<h2 id="transport-picker-title" className="font-extrabold">Провайдери<\/h2>/, 'the dialog title must match its action');
   assert.match(panel, /!providersOnly && <div className="mb-1 flex items-center justify-between gap-2"/, 'transport controls must stay out of the provider dialog');
+  assert.match(panel, /availableTypes\.length < supportedJourneySearchTypes\.length/, 'partial provider coverage must remain visible to users');
+  assert.match(panel, /У цій зоні маршрутний пошук має провайдерів для/, 'the coverage disclosure must not be removed as a design-only change');
   assert.match(panel, /!compact && !providersOnly && <button type="button" onClick=\{\(\) => setProvidersOpen/, 'the provider dialog must not show a second Configure Providers toggle');
   assert.match(panel, /providersOnly && selection\.active\.length === 0/, 'an empty provider selection must have a clear status message');
   assert.doesNotMatch(marketplace, /Обрати на мапі: \\{\(routePlaceField/, 'the duplicated wide map picker must be absent');
@@ -441,13 +443,17 @@ test('the search screen gives each field the width its value needs', async () =>
   assert.match(searchForm, /<input required title=\{(?:origin|destination) \|\| undefined\}/, 'a clipped address must still be readable in full');
   assert.equal((searchForm.match(/aria-label="Вибрати дату й час (?:відправлення|прибуття)"[\s\S]{0,700}?<ChevronDown/g) || []).length, 0,
     'the chevron inside a date tile is decoration on a control that is already a button, and it costs the value its last characters');
-  assert.match(searchForm, /search-trip-details search-trip-details--stack/, 'the seat stepper and the budget need a full row below 430 px');
+  assert.match(searchForm, /search-trip-details search-trip-details--stack/, 'the seat stepper and the budget share one row at every width (owner, 2026-11-08)');
   assert.match(searchForm, /search-trip-details--armed/, 'an armed arrival tile carries a 44 px clear button next to its value');
   assert.doesNotMatch(searchForm, /Скасувати обмеження прибуття[\s\S]{0,220}?size-8/, 'a 32 px clear button breaks the 44 px target rule');
   assert.match(css, /@media \(max-width: 430px\)[\s\S]{0,320}\.search-trip-details--armed \{ grid-template-columns: minmax\(0, 1fr\); \}/,
     'without the armed stack the 164 px half clips «5 лист., 20:00» by 18 px');
-  assert.match(css, /@media \(max-width: 430px\)[\s\S]{0,260}\.search-trip-details--stack \{ grid-template-columns: minmax\(0, 1fr\); \}/,
-    'the stack rule that gives the stepper and budget their width is gone');
+  assert.doesNotMatch(css, /\.search-trip-details--stack \{ grid-template-columns: minmax\(0, 1fr\); \}/,
+    'the owner asked for passengers and budget on one row; the full-width stack must not come back');
+  assert.match(css, /@media \(max-width: 360px\)[\s\S]{0,700}\.search-trip-details:not\(\.search-trip-details--stack\) \{ grid-template-columns: minmax\(0, 1fr\); \}/,
+    'at 320 px only the date pair may stack; the stepper+budget row keeps its two columns');
+  assert.match(css, /\.trip-tile--stepper \{ flex-wrap: wrap; justify-content: center;/,
+    'the 44 px stepper pair wraps inside its tile instead of squeezing «1 пасажир» down to 24 px');
   assert.doesNotMatch(css, /\.search-trip-details:not\(\.search-trip-details--stack\)[\s\S]{0,80}!important/,
     'a forced two-column date row came back; at 320 px it clips the departure time');
   assert.doesNotMatch(css, /\.trip-tile button\s*\{/,
