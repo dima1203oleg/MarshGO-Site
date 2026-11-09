@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Bike, BusFront, CarFront, Globe, MapPin, TrainFront, TramFront, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Bike, BusFront, CarFront, MapPin, TrainFront, TramFront, type LucideIcon } from 'lucide-react';
 import { productionApi, type ApiTransportCity } from '../services/productionApi';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
+import { MapBasemapControl, MapControlRail, MapPerspectiveControl, MapVoiceControl, MapZoomControls } from '../components/MapInteractionControls';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
 import { cityTransportLayerIds, getTransportLayers, hasStoredLayerChoice, minZoom, setTransportLayers, subscribeTransportLayers, toggleTransportLayer, type TransportLayerId } from '../map/transportLayers';
 import { getLayerAvailabilityState, loadLayerAvailability, subscribeLayerAvailability } from '../map/layerAvailability';
@@ -10,7 +11,6 @@ import { isLayerSelectable, layerUnavailableNote } from '../map/transportLayerCo
 import { mapStatusDetail } from '../map/mapStatusCopy';
 import { getVehicleQuality, subscribeVehicleQuality, type VehicleQuality } from '../map/transportQuality';
 import { StatusBadge } from '../design-system/ui/StatusBadge';
-import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { diagnosticsRequested } from './resultsDiagnostics';
 
 const chips: Array<{ label: string; id: TransportLayerId; Icon: LucideIcon }> = [
@@ -46,8 +46,6 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
   const [selected, setSelected] = useState(getTransportLayers());
   const [layerState, setLayerState] = useState(getLayerAvailabilityState);
   const [quality, setQuality] = useState<VehicleQuality | null>(getVehicleQuality());
-  const [mapLayer, setLocalMapLayer] = useState<MapLayer>(getMapLayer);
-  const [mapPerspective, setLocalPerspective] = useState<MapPerspective>(getMapPerspective);
   const [mapAdapter, setMapAdapter] = useState<MapAdapter | null>(null);
   const selectedCity = useMemo(() => cities.find((city) => city.id === cityId) ?? null, [cities, cityId]);
   useEffect(() => subscribeTransportLayers(setSelected), []);
@@ -68,8 +66,6 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
     setTransportLayers(ids, true);
   }, [layerState.availability]);
   useEffect(() => subscribeVehicleQuality(setQuality), []);
-  useEffect(() => subscribeMapLayer(setLocalMapLayer), []);
-  useEffect(() => subscribeMapPerspective(setLocalPerspective), []);
   useEffect(() => {
     const controller = new AbortController();
     void productionApi.transportCities(controller.signal).then((response) => {
@@ -129,47 +125,12 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
       {!showDiagnostics && (status === 'failed' || status === 'unconfigured') && <p role="status" className="pointer-events-auto self-start rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-primary)] px-3 py-2 text-xs font-semibold text-[var(--mg-ink-secondary)] shadow">Карта недоступна</p>}
       {!showDiagnostics && status === 'degraded' && <p role="status" className="pointer-events-auto self-start rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-primary)] px-3 py-2 text-xs font-semibold text-[var(--mg-ink-secondary)] shadow">Карта завантажена частково</p>}
     </div>
-    <div className="absolute right-4 top-1/2 z-[500] flex -translate-y-1/2 flex-col gap-2">
-      <button
-        type="button"
-        aria-label={mapPerspective === '3d' ? 'Повернути плоский 2D-вигляд' : "Увімкнути об'ємну 3D-перспективу"}
-        title={mapPerspective === '3d' ? '2D' : '3D'}
-        aria-pressed={mapPerspective === '3d'}
-        onClick={() => {
-          const next: MapPerspective = mapPerspective === '3d' ? '2d' : '3d';
-          setMapPerspective(next);
-          setLocalPerspective(next);
-        }}
-        className={`grid h-12 w-12 place-items-center rounded-full text-xs font-black shadow-lg transition-all ${
-          mapPerspective === '3d'
-            ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30 ring-2 ring-blue-400/50'
-            : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[var(--mg-surface-secondary)]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
-        }`}
-      >
-        {mapPerspective === '3d' ? '2D' : '3D'}
-      </button>
-      <button
-        type="button"
-        aria-label={satelliteBasemapAvailable ? (mapLayer === 'satellite' ? 'Повернути схематичну карту' : 'Увімкнути супутникову карту') : 'Супутник зараз недоступний'}
-        title={satelliteBasemapAvailable ? (mapLayer === 'satellite' ? 'Схема' : 'Супутник') : 'Недоступно зараз'}
-        aria-pressed={satelliteBasemapAvailable && mapLayer === 'satellite'}
-        aria-disabled={!satelliteBasemapAvailable}
-        disabled={!satelliteBasemapAvailable}
-        onClick={() => {
-          if (!satelliteBasemapAvailable) return;
-          const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
-          setMapLayer(next);
-          setLocalMapLayer(next);
-        }}
-        className={`grid h-12 w-12 place-items-center rounded-full shadow-lg transition-all ${
-          mapLayer === 'satellite' && satelliteBasemapAvailable
-            ? 'bg-[var(--mg-action)] text-white shadow-blue-500/30 ring-2 ring-blue-400/50'
-            : 'border border-slate-200/80 bg-white/95 text-slate-700 shadow-md backdrop-blur hover:bg-slate-50 dark:border-white/10 dark:bg-[var(--mg-surface-secondary)]/95 dark:text-slate-200 dark:hover:bg-[#182635]'
-        }${satelliteBasemapAvailable ? '' : ' opacity-45'}`}
-      >
-        <Globe size={20} />
-      </button>
+    <MapControlRail className="absolute right-4 top-1/2 z-[500] -translate-y-1/2" label="Керування транспортною картою">
+      <MapZoomControls map={mapAdapter}/>
+      <MapVoiceControl />
+      <MapPerspectiveControl />
+      <MapBasemapControl />
       <MapLayersControl overlays />
-    </div>
+    </MapControlRail>
   </main>;
 }

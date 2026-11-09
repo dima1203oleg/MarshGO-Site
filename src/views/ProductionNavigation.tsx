@@ -6,9 +6,11 @@ import { ApiNavigationMatch, ApiNavigationSession, ApiPlace, ProductionApiError,
 import type { LocationFix } from '../../shared/navigation/contracts';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
+import { MapBasemapControl, MapControlRail, MapPerspectiveControl, MapVoiceControl, MapZoomControls } from '../components/MapInteractionControls';
 import { schemePreviewAttribution, schemePreviewTiles } from '../map/mapConfig';
 import { mapStatusDetail } from '../map/mapStatusCopy';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
+import { setVoiceGuidancePreference, useVoiceGuidancePreference } from '../services/voiceGuidancePreference';
 import { isDuplicateLocationFix, WebGeolocationProvider, validateLocationFix } from '../platform/LocationProvider';
 import { currentPlaceBias } from '../platform/placeBias';
 import { NavigationStore } from '../navigation/NavigationStore';
@@ -20,7 +22,7 @@ import { OffRouteGuard } from '../navigation/OffRouteGuard';
 import { snapNavigationSheet, type NavigationSheetLevel } from '../navigation/navigationSheet';
 import { createNavigationShareUrl } from '../routing/navigationShare';
 import { navigationDestinationName } from '../navigation/destinationName';
-import { getMapLayer, getMapPerspective, mapLayers, satelliteAttribution, satelliteTiles, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
+import { getMapLayer, mapLayers, satelliteAttribution, satelliteTiles, setMapLayer, subscribeMapLayer, type MapLayer } from '../map/mapMode';
 
 function navigationErrorMessage(error: unknown, fallback: string) {
   if (!(error instanceof Error)) return fallback;
@@ -51,8 +53,6 @@ function navigationErrorMessage(error: unknown, fallback: string) {
 
 const hasRoute = (session: ApiNavigationSession) => (session.route?.length ?? 0) >= 2 && session.route_distance_m !== null && session.route_duration_s !== null;
 
-const VOICE_KEY = 'marshgo.navigation.voice';
-const voicePreferred = () => { try { return localStorage.getItem(VOICE_KEY) === 'on'; } catch { return false; } };
 /** Speaks Ukrainian guidance with the device voice; silently does nothing where speech synthesis is unavailable. */
 function speak(text: string) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -64,13 +64,6 @@ function speak(text: string) {
   if (voice) utterance.voice = voice;
   utterance.rate = 1.02;
   synth.speak(utterance);
-}
-
-function NavigationPerspectiveControl() {
-  const [perspective, setPerspective] = useState<MapPerspective>(getMapPerspective());
-  useEffect(() => subscribeMapPerspective(setPerspective), []);
-  const next: MapPerspective = perspective === '3d' ? '2d' : '3d';
-  return <button type="button" aria-label={`${perspective === '3d' ? 'Вимкнути' : 'Увімкнути'} 3D-перспективу`} title={perspective === '3d' ? '2D' : '3D'} aria-pressed={perspective === '3d'} onClick={() => setMapPerspective(next)} className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white/95 text-sm font-extrabold text-[#0B1730] shadow-lg backdrop-blur dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]/90 dark:text-[var(--mg-ink-primary)]">{perspective === '3d' ? '2D' : '3D'}</button>;
 }
 
 function previewTileUrl(layer: MapLayer, center: [number, number] | null) {
@@ -146,7 +139,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const [liveHeading, setLiveHeading] = useState<number | null>(null);
   const [liveSpeed, setLiveSpeed] = useState<number | null>(null);
   const [following, setFollowing] = useState(false);
-  const [voiceOn, setVoiceOn] = useState(voicePreferred);
+  const voiceOn = useVoiceGuidancePreference();
   const spokenRef = useRef<Set<string>>(new Set());
   const [topQuery, setTopQuery] = useState('');
   const [topSuggestions, setTopSuggestions] = useState<ApiPlace[]>([]);
@@ -398,10 +391,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     ids.forEach((id) => spokenRef.current.add(id));
     speak(voiceLine(guidance.next, guidance.distanceMeters));
   }, [voiceOn, guidance?.next?.id, Math.round((guidance?.distanceMeters ?? 0) / 10), session?.state]);
-  const toggleVoice = () => {
-    const next = !voiceOn;
-    setVoiceOn(next);
-    try { localStorage.setItem(VOICE_KEY, next ? 'on' : 'off'); } catch { /* preference is optional */ }
+  const toggleVoice = (next = !voiceOn) => {
+    setVoiceGuidancePreference(next);
     if (next) speak(guidance?.next ? voiceLine(guidance.next, guidance.distanceMeters) : 'Голосові підказки увімкнено');
     else if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   };
@@ -695,12 +686,13 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       </span>
       {(mapStatus === 'degraded' || mapStatus === 'failed') && <button type="button" className="pointer-events-auto shrink-0 rounded-lg px-1 py-0.5 underline underline-offset-2" onClick={() => mapRef.current?.retry()}>Повторити завантаження карти</button>}
     </div>}
-    {sheetLevel !== 'expanded' && <div className="absolute right-3 top-[max(6rem,calc(env(safe-area-inset-top)+4rem))] z-[var(--mg-z-nav-sheet)] flex flex-col items-center gap-2">
-      <MapLayersControl overlays variant="navigation" visible={isPresented}/><NavigationPerspectiveControl/>
-      <button type="button" aria-label={voiceOn ? 'Вимкнути голосові підказки' : 'Увімкнути голосові підказки'} aria-pressed={voiceOn} onClick={toggleVoice} title={voiceOn ? 'Голос увімкнено' : 'Голос вимкнено'} className={`grid h-12 w-12 place-items-center rounded-full border border-slate-200 shadow-lg backdrop-blur dark:border-[var(--mg-border-subtle)] ${voiceOn ? 'bg-[var(--mg-action)] text-white' : 'bg-white/95 text-[#0B1730] dark:bg-[var(--mg-surface-primary)]/90 dark:text-[var(--mg-ink-primary)]'}`}><Volume2 size={20}/></button>
+    {sheetLevel !== 'expanded' && <MapControlRail className="absolute right-3 top-[max(6rem,calc(env(safe-area-inset-top)+4rem))] z-[var(--mg-z-nav-sheet)]" label="Керування картою навігації">
+      <MapZoomControls map={mapRef.current} enabled={mapStatus !== 'failed' && mapStatus !== 'unconfigured'}/>
+      <MapVoiceControl enabled={voiceOn} onToggle={toggleVoice}/>
+      <MapLayersControl overlays visible={isPresented}/><MapPerspectiveControl/><MapBasemapControl/>
       <button type="button" aria-label="Показати моє місце" aria-pressed={following} onClick={() => { const point = navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number] : liveFix ?? session?.current_location ?? undefined; mapRef.current?.recenter(point ?? undefined); }} title="Показати моє місце" className={`grid h-12 w-12 place-items-center rounded-full border border-slate-200 shadow-lg backdrop-blur dark:border-[var(--mg-border-subtle)] ${following ? 'bg-[var(--mg-action)] text-white' : 'bg-white/95 text-[#0B1730] dark:bg-[var(--mg-surface-primary)]/90 dark:text-[var(--mg-ink-primary)]'}`}><Navigation size={20} fill={following ? 'currentColor' : 'none'}/></button>
       <button type="button" aria-label="Інструменти навігації" aria-expanded={actionsOpen} onClick={() => setActionsOpen(true)} title="Інструменти навігації" className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white/95 text-[#0B1730] shadow-lg backdrop-blur dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]/90 dark:text-[var(--mg-ink-primary)]"><MoreHorizontal size={22}/></button>
-    </div>}
+    </MapControlRail>}
     {actionsOpen && <div style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))' }} className="fixed inset-x-0 top-0 z-[var(--mg-z-modal)] flex items-end justify-center bg-slate-950/45 px-0 pt-[max(.8rem,env(safe-area-inset-top))] backdrop-blur-sm sm:items-center sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setActionsOpen(false); }}>
       <section ref={actionsDialogRef} role="dialog" aria-modal="true" aria-labelledby="navigation-actions-title" tabIndex={-1} className="max-h-[calc(100dvh-5.5rem-env(safe-area-inset-bottom))] w-full max-w-xl overflow-y-auto rounded-t-[var(--mg-radius-3xl)] border border-slate-200 bg-white px-4 pb-4 pt-2 text-[#0B1730] shadow-2xl dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:text-[var(--mg-ink-primary)] sm:rounded-[var(--mg-radius-3xl)]">
         <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600 sm:hidden" aria-hidden="true"/>
@@ -712,7 +704,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
           <button type="button" disabled={!session?.route?.length} onClick={() => void shareRoute()} className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Share2 size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Поділитися маршрутом</b><small className="text-xs text-slate-500 dark:text-slate-400">Одержувач побудує маршрут до цієї точки зі свого місця</small></span><ChevronUp size={17} className="rotate-90 text-slate-400"/></button>
           <button type="button" disabled title="Серверне джерело дорожніх подій ще не підключене" className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><TriangleAlert size={21} className="shrink-0 text-amber-600"/><span className="flex-1"><b className="block text-sm">Повідомити про подію</b><small className="text-xs text-slate-500 dark:text-slate-400">Надсилання дорожніх подій ще не підключене</small></span><small className="text-xs">недоступно</small></button>
           <button type="button" aria-pressed={focusMode} onClick={() => { setFocusMode((value) => !value); setActionsOpen(false); }} className="flex min-h-14 w-full items-center gap-3 py-2 text-left"><Eye size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Фокус-режим карти</b><small className="text-xs text-slate-500 dark:text-slate-400">Приховати другорядні транспортні шари й мініатюру карти</small></span><span className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform ${focusMode ? 'bg-[var(--mg-action)] after:translate-x-4' : 'bg-slate-300 dark:bg-slate-600'}`}/></button>
-          <button type="button" aria-pressed={voiceOn} onClick={toggleVoice} className="flex min-h-14 w-full items-center gap-3 py-2 text-left"><span className={`grid h-9 w-9 place-items-center rounded-full ${voiceOn ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>{voiceOn ? <Volume2 size={19}/> : <VolumeX size={19}/>}</span><span className="flex-1"><b className="block text-sm">Голосові підказки</b><small className="text-xs text-slate-500 dark:text-slate-400">Українське озвучення маневрів</small></span><span className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform ${voiceOn ? 'bg-[var(--mg-action)] after:translate-x-4' : 'bg-slate-300 dark:bg-slate-600'}`}/></button>
+          <button type="button" aria-pressed={voiceOn} onClick={() => toggleVoice()} className="flex min-h-14 w-full items-center gap-3 py-2 text-left"><span className={`grid h-9 w-9 place-items-center rounded-full ${voiceOn ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>{voiceOn ? <Volume2 size={19}/> : <VolumeX size={19}/>}</span><span className="flex-1"><b className="block text-sm">Голосові підказки</b><small className="text-xs text-slate-500 dark:text-slate-400">Українське озвучення маневрів</small></span><span className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform ${voiceOn ? 'bg-[var(--mg-action)] after:translate-x-4' : 'bg-slate-300 dark:bg-slate-600'}`}/></button>
           <button type="button" disabled={busy} onClick={() => { setActionsOpen(false); void end(); }} className="flex min-h-14 w-full items-center gap-3 py-2 text-left text-rose-600 disabled:opacity-45"><span className="grid h-9 w-9 place-items-center rounded-full bg-rose-100 dark:bg-rose-500/15"><Square size={17} fill="currentColor"/></span><span className="flex-1"><b className="block text-sm">Завершити навігацію</b><small className="text-xs text-slate-500 dark:text-slate-400">Зупинити ведення маршрутом</small></span></button>
         </div>
       </section>

@@ -54,7 +54,7 @@ function UnavailableRow({ label, icon: Icon }: { label: string; icon: LucideIcon
 }
 
 /** Mobile-first layers sheet with truthful provider availability and desktop popover fallback. */
-export function MapLayersControl({ overlays = false, variant = 'explore', visible = true }: { overlays?: boolean; variant?: 'explore' | 'navigation'; visible?: boolean }) {
+export function MapLayersControl({ overlays = false, visible = true }: { overlays?: boolean; visible?: boolean }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<TransportLayerId>>(getTransportLayers());
   const [layerState, setLayerState] = useState(getLayerAvailabilityState);
@@ -69,13 +69,12 @@ export function MapLayersControl({ overlays = false, variant = 'explore', visibl
   const available = layerState.availability;
   const unavailableNote = layerUnavailableNote(layerState.probeFailed);
   const showLayers = overlays;
-  const navigationMode = variant === 'navigation';
   const toggleGroup = (ids: TransportLayerId[], enabled: boolean) => setTransportLayers(ids, enabled);
   const togglePreference = (id: MapDisplayPreferenceId, enabled: boolean) => setMapDisplayPreference(id, enabled);
 
   return <>
     <div className="relative">
-      <button type="button" aria-label="Шари карти" aria-expanded={open} aria-controls="marshgo-map-layers" onClick={() => setOpen((value) => !value)} className={`relative grid h-12 w-12 place-items-center rounded-full shadow-lg ${navigationMode ? 'border border-slate-200 bg-white/95 text-[#0B1730] backdrop-blur dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]/90 dark:text-[var(--mg-ink-primary)]' : 'bg-white text-[var(--mg-blue)] dark:bg-[var(--mg-surface-primary)] dark:text-[var(--mg-blue)]'}`}>
+      <button type="button" aria-label="Шари карти" aria-expanded={open} aria-controls="marshgo-map-layers" onClick={() => setOpen((value) => !value)} className="map-interaction-control mg-press-subtle relative grid h-12 w-12 place-items-center rounded-full shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]">
         {open ? <X size={22}/> : <Layers size={22}/>}
         {showLayers && selected.size > 0 && !open && <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--mg-action)] px-1 text-xs font-bold text-white">{selected.size}</span>}
       </button>

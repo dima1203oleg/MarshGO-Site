@@ -6,6 +6,7 @@ const css = () => readFileSync('src/index.css', 'utf8');
 const mode = () => readFileSync('src/map/mapMode.ts', 'utf8');
 const explore = () => readFileSync('src/views/TransportMapView.tsx', 'utf8');
 const route = () => readFileSync('src/views/JourneyRouteMapScreen.tsx', 'utf8');
+const mapControls = () => readFileSync('src/components/MapInteractionControls.tsx', 'utf8');
 const marketplace = () => readFileSync('src/views/ProductionMarketplace.tsx', 'utf8');
 const photo = () => readFileSync('src/components/DriverPhotoCard.tsx', 'utf8');
 
@@ -23,16 +24,15 @@ describe('a control must not claim a capability the build does not have', () => 
   });
 
   it('gates every satellite control on that flag instead of toggling a look', () => {
-    for (const [name, src] of [['explore map', explore()], ['route map', route()]] as const) {
-      const block = src.match(/aria-label=\{\s*satelliteBasemapAvailable[\s\S]{0,1400}?(?=<Globe)/);
-      assert.ok(block, `${name}: the globe chip has to branch its accessible name on satelliteBasemapAvailable`);
-      assert.match(block[0], /aria-pressed=\{satelliteBasemapAvailable && mapLayer === 'satellite'\}/, `${name}: aria-pressed must never be true without imagery`);
-      assert.match(block[0], /aria-disabled=\{!satelliteBasemapAvailable\}/, `${name}: the chip must announce itself disabled`);
-      assert.match(block[0], /disabled=\{!satelliteBasemapAvailable\}/, `${name}: a real disabled attribute keeps keyboard and screen-reader users out`);
-      assert.match(block[0], /if \(!satelliteBasemapAvailable\) return;/, `${name}: the click handler must refuse`);
-    }
-    // A control that cannot work also has to look like it cannot work.
-    assert.match(explore(), /satelliteBasemapAvailable \? '' : ' opacity-45'/);
+    const component = mapControls().split('export function MapBasemapControl()')[1];
+    assert.ok(component, 'all map views must reuse one basemap control');
+    assert.match(component, /satelliteBasemapAvailable[\s\S]{0,500}aria-label=\{label\}/, 'the shared globe chip needs an honest accessible name');
+    assert.match(component, /aria-pressed=\{satelliteBasemapAvailable && layer === 'satellite'\}/, 'aria-pressed must never be true without imagery');
+    assert.match(component, /aria-disabled=\{!satelliteBasemapAvailable\}/, 'the chip must announce itself disabled');
+    assert.match(component, /disabled=\{!satelliteBasemapAvailable\}/, 'a real disabled attribute keeps keyboard and screen-reader users out');
+    assert.match(component, /if \(satelliteBasemapAvailable\) setMapLayer\(next\)/, 'the handler must refuse unavailable imagery');
+    assert.doesNotMatch(route(), /satelliteBasemapAvailable/);
+    assert.doesNotMatch(explore(), /satelliteBasemapAvailable/);
   });
 
   it('lets a control that cannot work look like it cannot work', () => {
@@ -52,9 +52,11 @@ describe('pressed state is owned by the theme, not by a utility class that loses
   });
 
   it('drops the dead Tailwind active classes from the route-screen chips', () => {
-    const chips = [...route().matchAll(/className=\{?\s*([`"])([^`"]*route-map-control[^`"]*)\1/g)].map((m) => m[2]);
-    assert.ok(chips.length >= 2, `both the 3D and the satellite chip are route-map-controls, found ${chips.length}`);
-    for (const chip of chips) assert.doesNotMatch(chip, /bg-\[var\(--mg-action\)\]/, 'a layered utility cannot outrank the unlayered rule; keeping it teaches the next reader the wrong lesson');
+    const controls = mapControls();
+    assert.match(route(), /<MapPerspectiveControl\s*\/>/);
+    assert.match(route(), /<MapBasemapControl\s*\/>/);
+    assert.doesNotMatch(controls, /bg-\[var\(--mg-action\)\]/, 'the shared pressed style is owned by the unlayered map-control rule');
+    assert.match(css(), /\.map-interaction-control\[aria-pressed="true"\]\s*\{[^}]*background: var\(--mg-action\);[^}]*color: #fff;/s);
   });
 });
 
