@@ -7,6 +7,8 @@ export function cameraMotionDuration(durationMs: number, reducedMotion: boolean)
 export const CAMERA_ENTRANCE_BEZIER = [0.16, 0.84, 0.28, 1] as const;
 /** A focused leg gets a longer glide than an overview refit so the turn reads. */
 export const CAMERA_FOCUS_DURATION_MS = 700;
+/** A manual zoom step is feedback, not a journey: shorter than the overview refit. */
+export const CAMERA_ZOOM_STEP_DURATION_MS = 320;
 
 /**
  * MapLibre takes a plain easing function; this is the same cubic-bezier the CSS
