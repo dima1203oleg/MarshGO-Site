@@ -9,11 +9,12 @@ export type JourneyLifecycleOutcome =
   | { readonly confirmed: true; readonly state: string; readonly currentLegId: string | null; readonly message: string | null }
   | { readonly confirmed: false; readonly state: null; readonly currentLegId: null; readonly message: string };
 
-const declined = (error: unknown, fallback: string): JourneyLifecycleOutcome => ({
+const declined = (_error: unknown, fallback: string): JourneyLifecycleOutcome => ({
   confirmed: false,
   state: null,
   currentLegId: null,
-  message: error instanceof Error && error.message.trim() !== '' ? error.message : fallback,
+  // Keep transport/server diagnostics out of the passenger interface.
+  message: fallback,
 });
 
 /**

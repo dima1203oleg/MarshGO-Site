@@ -87,7 +87,7 @@ export function CurrentCitySelector({ city, onSelect, onLocate, locating, locati
             <span className="min-w-0 flex-1">{locating ? 'Визначаємо місто…' : 'Моє місцезнаходження'}<small className="block truncate text-xs font-medium text-[var(--mg-ink-secondary)]">GPS використовуємо лише за вашою дією або попереднім дозволом</small></span>
           </button>
           {locationMessage && <p role="status" className="rounded-xl border border-[var(--mg-line)] px-3 py-2 text-xs leading-5 text-[var(--mg-ink-secondary)]">{locationMessage}</p>}
-          {city.name && <p className="rounded-xl bg-[var(--mg-surface-tint)] px-3 py-2 text-xs leading-5 text-[var(--mg-ink-secondary)]">{city.verified ? 'Місто підтверджене геокодером або реєстром.' : 'Назву введено вручну; міські транспортні дані можуть бути недоступні.'}</p>}
+          {city.name && <p className="rounded-xl bg-[var(--mg-surface-tint)] px-3 py-2 text-xs leading-5 text-[var(--mg-ink-secondary)]">{city.verified ? 'Місто вибрано зі списку.' : 'Назву міста введено вручну. Транспортна карта для нього може бути недоступна.'}</p>}
           <label className="block text-xs font-bold text-[var(--mg-ink-secondary)]" htmlFor="current-city-search">Обрати місто</label>
           <div className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--mg-line)] bg-[var(--mg-surface-primary)] px-3 focus-within:border-[var(--mg-blue-ink)]">
             <Search size={17} className="shrink-0 text-[var(--mg-ink-secondary)]" aria-hidden="true" />

@@ -11,21 +11,24 @@ test('shows a clear localized message when the API upstream is unavailable', () 
   assert.equal(requestErrorMessage(504), 'Сервіс MARSHGO тимчасово недоступний. Спробуйте ще раз пізніше.');
 });
 
-test('preserves a safe server-provided explanation and the existing fallback for other errors', () => {
+test('preserves safe localized explanations and hides technical or untranslated server details', () => {
   assert.equal(requestErrorMessage(502, 'Сервіс входу тимчасово недоступний.'), 'Сервіс входу тимчасово недоступний.');
-  assert.equal(requestErrorMessage(404), 'MARSHGO не знайшов ці дані — можливо, вони змінилися або посилання застаріло.');
+  assert.equal(requestErrorMessage(400, 'unsupported preference: allowedProviderIdsByType'), 'Перевірте введені дані та спробуйте ще раз.');
+  assert.equal(requestErrorMessage(500, 'PostgreSQL connection ETIMEDOUT'), 'Не вдалося виконати дію. Спробуйте ще раз пізніше.');
+  assert.equal(requestErrorMessage(500, 'Database connection failed'), 'Не вдалося виконати дію. Спробуйте ще раз пізніше.');
+  assert.equal(requestErrorMessage(404), 'Не знайшли ці дані. Можливо, вони змінилися або посилання застаріло.');
 });
 
-test('names an HTTP failure in Ukrainian and keeps the status visible for support', () => {
-  assert.equal(requestErrorMessage(400), 'Сервер не прийняв запит: перевірте введені дані.');
-  assert.equal(requestErrorMessage(409), 'Дані на сервері змінилися, поки тривав запит. Оновіть екран і спробуйте ще раз.');
-  assert.equal(requestErrorMessage(418), 'MARSHGO не зміг виконати запит (HTTP 418). Спробуйте ще раз.');
+test('uses concise product copy for request failures without exposing protocol details', () => {
+  assert.equal(requestErrorMessage(400), 'Перевірте введені дані та спробуйте ще раз.');
+  assert.equal(requestErrorMessage(409), 'Дані змінилися. Оновіть екран і спробуйте ще раз.');
+  assert.equal(requestErrorMessage(418), 'Не вдалося виконати дію. Спробуйте ще раз.');
   assert.equal(/Failed to fetch|Request failed/.test(requestErrorMessage(500)), false);
 });
 
 test('separates a dead network from an unanswering server without inventing a cause', () => {
   assert.equal(networkFailureMessage(false), 'Немає з’єднання з інтернетом. Перевірте мережу й повторіть спробу.');
-  assert.equal(networkFailureMessage(true), 'Немає зв’язку із сервером. Повторіть спробу за мить.');
+  assert.equal(networkFailureMessage(true), 'Не вдалося з’єднатися. Повторіть спробу за мить.');
 });
 
 test('explains missing SMS configuration and delivery failure without exposing backend English', () => {
@@ -44,7 +47,7 @@ test('shows restore failures but keeps an expired session silent', () => {
   assert.equal(authRestoreErrorMessage(new Error('Request failed (403)')), null);
   assert.equal(
     authRestoreErrorMessage(new DOMException('timed out', 'AbortError')),
-    'Сервер не відповідає. Перевірте з’єднання та спробуйте ще раз.',
+    'З’єднання перервано. Спробуйте ще раз.',
   );
   assert.equal(
     authRestoreErrorMessage(new Error('Сервіс MARSHGO тимчасово недоступний. Спробуйте ще раз пізніше.')),

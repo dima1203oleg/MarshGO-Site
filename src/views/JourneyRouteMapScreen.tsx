@@ -12,6 +12,7 @@ import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer,
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
+import { diagnosticsRequested } from './resultsDiagnostics';
 import {
   journeyArrivalDayNote,
   formatJourneyDuration as formatDuration,
@@ -170,6 +171,10 @@ export function JourneyRouteMapScreen({
   /** Opens the active stage map for this itinerary; the route is never re-entered. */
   onStartJourney?: () => void;
 }) {
+  const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
+    window.location.search,
+    (() => { try { return window.localStorage.getItem('marshgo.results.diagnostics'); } catch { return null; } })(),
+  );
   const model = useMemo(() => buildJourneyRouteMapModel(journey.legs), [journey.legs]);
   const timeline = useMemo(() => timelineFor(journey), [journey]);
   const firstLeg = journey.legs[0];
@@ -207,7 +212,6 @@ export function JourneyRouteMapScreen({
 
   const [mapSegmentChoices, setMapSegmentChoices] = useState<{ ids: string[]; x: number; y: number } | null>(null);
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
-  const [liveJourneyRequestState, setLiveJourneyRequestState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
 
   const [stopsLegId, setStopsLegId] = useState<string | null>(null);
@@ -273,19 +277,16 @@ export function JourneyRouteMapScreen({
   useEffect(() => {
     if (!liveLegId) {
       setLiveJourney(null);
-      setLiveJourneyRequestState('idle');
       return;
     }
     if (!hasApiSession()) {
       setLiveJourney(null);
-      setLiveJourneyRequestState('idle');
       return;
     }
     let stopped = false;
     let timer: number | undefined;
     let controller: AbortController | undefined;
     let reschedule = true;
-    setLiveJourneyRequestState('loading');
     const poll = async () => {
       controller = new AbortController();
       reschedule = true;
@@ -293,12 +294,10 @@ export function JourneyRouteMapScreen({
         const live = await productionApi.journeyLive(journey.id, liveLegId, controller.signal);
         if (!stopped) {
           setLiveJourney(live);
-          setLiveJourneyRequestState('ready');
         }
       } catch (error) {
         if (!stopped) {
           setLiveJourney(null);
-          setLiveJourneyRequestState('failed');
           if (error instanceof ProductionApiError && error.status === 401) reschedule = false;
         }
       }
@@ -356,18 +355,7 @@ export function JourneyRouteMapScreen({
     return () => window.removeEventListener('resize', updateViewport);
   }, [sheetSnap, snapHeight]);
 
-  const dataNote = mapStatus === 'failed' ? 'Карта недоступна'
-    : mapStatus === 'degraded' ? 'Карта завантажена частково'
-      : mapStatus === 'unconfigured' ? 'Мапа без вулиць — маршрут видно'
-        : liveJourneyRequestState === 'failed' ? 'Не вдалося оновити рух; показано розклад'
-          : liveJourneyRequestState === 'loading' ? 'Перевіряємо дані руху…'
-            : liveJourney?.segments[0]?.reason === 'provider_unavailable' ? 'Джерело руху недоступне; лінію не домальовуємо'
-              : liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' ? 'Немає свіжих позицій транспорту'
-                : model.missingShapeCount > 0 ? 'Частину маршруту без лінії на карті'
-                  : model.approximateWalkCount > 0 ? 'Частина піших відрізків — оцінка' : '';
-  const mapStatusIsWarning = mapStatus === 'failed' || mapStatus === 'degraded' || mapStatus === 'unconfigured'
-    || liveJourneyRequestState === 'failed' || liveJourney?.segments[0]?.reason === 'provider_unavailable'
-    || liveJourney?.segments[0]?.reason === 'no_fresh_matching_vehicle' || model.missingShapeCount > 0 || model.approximateWalkCount > 0;
+  const mapUnavailable = mapStatus === 'failed';
 
   const isDesktop = viewportWidth >= 1024;
   const settledHeight = snapHeight(sheetSnap);
@@ -384,9 +372,9 @@ export function JourneyRouteMapScreen({
     // 102 px is the measured compact header (top 8 + row 44 + gap 6 + address 36 + bottom 8).
     topBarHeight: 100,
     isDesktop,
-    hasWarningNote: Boolean(mapStatusIsWarning && dataNote),
+    hasWarningNote: mapUnavailable,
     extraBottomInset: floatingChipVisible ? 58 : 0,
-  }), [dataNote, floatingChipVisible, isDesktop, mapStatusIsWarning, settledHeight, sheetSnap, viewportHeight, viewportWidth]);
+  }), [floatingChipVisible, isDesktop, mapUnavailable, settledHeight, sheetSnap, viewportHeight, viewportWidth]);
 
   // Segment orientation follows the real camera band after route and sheet insets.
   const visibleMapArea = useMemo(() => ({
@@ -768,7 +756,7 @@ export function JourneyRouteMapScreen({
                 {liveStatus && leg.mode !== 'WALK' && (
                   <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-black ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
                     {liveStatus === 'LIVE' && <span aria-hidden="true" className="mg-live-pulse inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"/>}
-                    {liveStatus === 'LIVE' ? 'ЗА РУХОМ' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНИЙ' : 'ДАНІ НЕ ПІДТВЕРДЖЕНІ'}
+                    {liveStatus === 'LIVE' ? 'ЗА РУХОМ' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНО' : 'ОРІЄНТОВНО'}
                   </span>
                 )}
               </span>
@@ -780,7 +768,7 @@ export function JourneyRouteMapScreen({
               <span className="mt-0.5 block truncate text-xs font-medium leading-4 text-[var(--route-subtle)]">
                 {leg.mode === 'COMMUNITY' ? `Посадка: ${cleanStopName(leg.origin.name)} · висадка: ${cleanStopName(leg.destination.name)}` : `${cleanStopName(leg.origin.name)} → ${cleanStopName(leg.destination.name)}`}
               </span>
-              <span data-testid="journey-route-segment-source" title={leg.source} className="mt-0.5 block truncate text-xs leading-4 text-[var(--route-muted)]">Джерело: {leg.providerName || leg.source}</span>
+              {showDiagnostics && <span data-testid="journey-route-segment-source" title={leg.source} className="mt-0.5 block truncate text-xs leading-4 text-[var(--route-muted)]">Джерело: {leg.providerName || leg.source}</span>}
               {walkHint && (
                 <span
                   data-testid="route-walk-hint"
@@ -790,7 +778,7 @@ export function JourneyRouteMapScreen({
                   <span className="truncate">{walkHint.title}{walkHint.detail ? ` · ${walkHint.detail}` : ''}</span>
                 </span>
               )}
-              {dataCaveat && <span data-testid="journey-route-segment-caveat" className="mt-1 block text-xs leading-4 text-amber-800 dark:text-amber-200">{dataCaveat}</span>}
+              {showDiagnostics && dataCaveat && <span data-testid="journey-route-segment-caveat" className="mt-1 block text-xs leading-4 text-[var(--route-muted)]">{dataCaveat}</span>}
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1">
@@ -808,7 +796,7 @@ export function JourneyRouteMapScreen({
                 <ChevronDown size={16} className={`route-stops-chevron transition-transform duration-[var(--mg-dur-fast)]${stopsOpen ? ' is-open' : ''}`}/>
               </button>
             )}
-            {scheduled && stops.length === 0 && <span className="mt-0.5 block text-right text-xs leading-4 text-amber-700 dark:text-amber-200">Перелік зупинок не надійшов від транспортного джерела.</span>}
+            {showDiagnostics && scheduled && stops.length === 0 && <span className="mt-0.5 block text-right text-xs leading-4 text-[var(--route-muted)]">Перелік зупинок не надійшов від транспортного джерела.</span>}
           </div>
         </div>
 
@@ -820,7 +808,7 @@ export function JourneyRouteMapScreen({
 
         {leg.mode === 'COMMUNITY' && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--route-border)] px-3 py-2.5">
-            <span className="text-xs text-[var(--route-muted)]">{leg.availabilityStatus === 'AVAILABLE' ? 'Наявність перевірена під час пошуку' : 'Місця потрібно перевірити перед бронюванням'}</span>
+            <span className="text-xs font-semibold text-[var(--route-muted)]">{leg.availabilityStatus === 'AVAILABLE' ? 'Місця є' : 'Перевірити місця'}</span>
             {canBook && leg.offerId && onBookOffer && (
               <button
                 type="button"
@@ -968,9 +956,14 @@ export function JourneyRouteMapScreen({
               {cleanStopName(lastLeg?.destination.name) || 'Кінець'}
             </span>
           </div>
-          {mapStatus === 'failed' && (
-            <p role="status" title={mapStatusDetail(mapStatus, 'journey')} className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-bold">
+          {mapUnavailable && (
+            <p role="status" className="mx-auto w-fit max-w-full truncate rounded-full bg-[var(--route-card)] px-2.5 py-1 text-xs font-semibold text-[var(--route-muted)]">
               {mapStatusNote(mapStatus)}
+            </p>
+          )}
+          {showDiagnostics && mapStatus !== 'available' && (
+            <p data-testid="map-status-details" className="mx-auto mt-1 w-fit max-w-full text-center text-xs text-[var(--route-muted)]">
+              {mapStatusDetail(mapStatus, 'journey')}
             </p>
           )}
         </header>

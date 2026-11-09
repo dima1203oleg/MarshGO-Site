@@ -87,7 +87,8 @@ test('a refused activation never reports the journey as running', async () => {
     assert.equal(result.confirmed, false);
     assert.equal(result.state, null);
     assert.equal(result.currentLegId, null);
-    assert.match(result.message ?? '', /cannot be activated/);
+    assert.equal(result.message, 'Поїздку не позначено як активну.');
+    assert.doesNotMatch(result.message ?? '', /journey_already_finished|cannot be activated/i);
   });
 });
 
@@ -99,7 +100,8 @@ test('a failed completion keeps reporting the journey as unfinished', async () =
     const result = await completePassengerJourney(productionApi, 'j1');
     assert.equal(result.confirmed, false);
     assert.notEqual(result.state, 'COMPLETED');
-    assert.match(result.message ?? '', /booking first/);
+    assert.equal(result.message, 'Поїздку не вдалося завершити.');
+    assert.doesNotMatch(result.message ?? '', /booking_lifecycle_active|cancel the active booking/i);
   });
 });
 

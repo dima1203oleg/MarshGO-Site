@@ -17,12 +17,36 @@ test('search provider dialog does not repeat transport type controls', async () 
   assert.match(marketplace, /<TransportTypesPanel providersOnly selection=\{transportSelection\}/, 'the search Providers action must open a provider-only dialog');
   assert.match(marketplace, /<h2 id="transport-picker-title" className="font-extrabold">Провайдери<\/h2>/, 'the dialog title must match its action');
   assert.match(panel, /!providersOnly && <div className="mb-1 flex items-center justify-between gap-2"/, 'transport controls must stay out of the provider dialog');
-  assert.match(panel, /localProviderTypes\.length < supportedJourneySearchTypes\.length - 1/, 'partial local provider coverage must remain visible to users');
-  assert.match(panel, /Провайдери біля вибраних точок знайдені для/, 'local discovery must be described as endpoint coverage');
-  assert.match(panel, /«Усі види» додасть решту/, 'coverage gaps must not prevent searching selected modes along the full corridor');
+  assert.match(panel, /showDiagnostics && !providersOnly && groups !== null && localProviderTypes\.length < supportedJourneySearchTypes\.length - 1/, 'partial provider coverage belongs in explicit diagnostics');
+  assert.match(panel, /Провайдери біля вибраних точок знайдені для/, 'diagnostics must retain endpoint coverage detail');
+  assert.match(panel, /«Усі види» додасть решту/, 'diagnostics must explain that coverage gaps do not block corridor search');
   assert.match(panel, /!compact && !providersOnly && <button type="button" onClick=\{\(\) => setProvidersOpen/, 'the provider dialog must not show a second Configure Providers toggle');
   assert.match(panel, /providersOnly && selection\.active\.length === 0/, 'an empty provider selection must have a clear status message');
   assert.doesNotMatch(marketplace, /Обрати на мапі: \\{\(routePlaceField/, 'the duplicated wide map picker must be absent');
+});
+
+test('traveler surfaces keep technical search and map diagnostics out of the default design', async () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const [panel, mapDetails, transportMap, marketplace, transportTypes, canonicalDesign] = await Promise.all([
+    readFile(resolve(root, '../src/views/JourneyResultsPanel.tsx'), 'utf8'),
+    readFile(resolve(root, '../src/views/JourneyRouteMapScreen.tsx'), 'utf8'),
+    readFile(resolve(root, '../src/views/TransportMapView.tsx'), 'utf8'),
+    readFile(resolve(root, '../src/views/ProductionMarketplace.tsx'), 'utf8'),
+    readFile(resolve(root, '../src/components/TransportTypesPanel.tsx'), 'utf8'),
+    readFile(resolve(root, '../docs/design/canonical/README.md'), 'utf8'),
+  ]);
+
+  assert.match(panel, /showDiagnostics && blockingHeadline/);
+  assert.match(panel, /showDiagnostics && \(detailNotices\.length/);
+  assert.match(mapDetails, /showDiagnostics && dataCaveat/);
+  assert.match(mapDetails, /showDiagnostics && <span data-testid="journey-route-segment-source"/);
+  assert.match(transportMap, /showDiagnostics && hint/);
+  assert.match(transportMap, /Карта недоступна/);
+  assert.doesNotMatch(transportMap, /bg-amber-50/);
+  assert.match(transportTypes, /showDiagnostics && !providersOnly && groups !== null/);
+  assert.match(canonicalDesign, /Keep technical diagnostics out of the default customer interface/);
+  assert.match(marketplace, /Немає з’єднання\. Деякі дані можуть бути неактуальними\./);
+  assert.doesNotMatch(marketplace, /Офлайн: новий пошук, розклади, живі позиції/);
 });
 
 const references = [
@@ -215,12 +239,12 @@ test('compact result strips prices and keeps unknown-fare detail and segment scr
   assert.doesNotMatch(panel, /priceCaption=/, 'payment basis belongs in route details, not the compact result');
   assert.match(routeDetails, /route-total-fare-caption/, 'the route detail keeps fare basis visible');
   assert.match(routeDetails, /journeyLegCaveat\(/, 'source and estimate caveats remain available per route leg');
-  assert.match(routeDetails, /journey-route-segment-source/, 'provider provenance stays inside route details');
+  assert.match(routeDetails, /showDiagnostics && <span data-testid="journey-route-segment-source"/, 'provider provenance is developer-only');
   assert.match(panel, /spokenJourneyPrice\(journeyPrice\)/, 'the spoken price has to carry the qualifier too');
   assert.match(panel, /priceAccessibleLabel=\{`Загальна вартість:/, 'the total fare keeps an accessible unknown-price explanation');
-  assert.match(panel, /journey-search-limits/, 'search completeness details remain available outside the primary card');
-  assert.match(panel, /headline\?\.tone === 'rose'/, 'critical provider failures remain visible in the result state');
-  assert.match(panel, /journey-unavailable-summary/, 'unavailable requested modes remain visibly summarized');
+  assert.match(panel, /showDiagnostics && \(detailNotices\.length > 0/, 'technical search completeness is hidden from the passenger UI');
+  assert.match(panel, /showDiagnostics && blockingHeadline/, 'provider diagnostics are only shown in developer mode');
+  assert.match(panel, /showDiagnostics && groups\.length > 0 && unavailable\.length > 0/, 'unavailable-mode explanations are developer-only');
 });
 
 // The profile used to hide the privacy and safety screens behind a menu that only listed three

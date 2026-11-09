@@ -71,9 +71,9 @@ test('normal suggestions pass through untouched', () => {
   assert.deepEqual(state.suggestions, [place, second]);
 });
 
-test('unavailable copy offers coordinate selection without reverse geocoding and retry', () => {
-  assert.match(PLACE_SEARCH_UNAVAILABLE_COPY, /недоступний/);
+test('unavailable copy offers a clear retry or map-selection fallback', () => {
+  assert.match(PLACE_SEARCH_UNAVAILABLE_COPY, /Не вдалося знайти місце/);
   assert.match(PLACE_SEARCH_UNAVAILABLE_COPY, /точку на мапі/i);
-  assert.match(PLACE_SEARCH_UNAVAILABLE_COPY, /координати можна підтвердити без адреси/i);
-  assert.match(PLACE_SEARCH_UNAVAILABLE_COPY, /повторіть пошук пізніше/i);
+  assert.match(PLACE_SEARCH_UNAVAILABLE_COPY, /Спробуйте ще раз/i);
+  assert.doesNotMatch(PLACE_SEARCH_UNAVAILABLE_COPY, /геокодер|координат|сервіс|провайдер/i);
 });

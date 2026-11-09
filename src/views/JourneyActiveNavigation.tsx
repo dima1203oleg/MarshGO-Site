@@ -14,6 +14,7 @@ import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { buildRouteMapAnnotations, formatStopCount, isTransitLeg } from './routeMapAnnotations';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
 import { nextStopsLegId } from './journeyStopsPanel';
+import { diagnosticsRequested } from './resultsDiagnostics';
 import {
   createFrameWriter,
   prefersReducedMotion,
@@ -64,6 +65,10 @@ export function JourneyActiveNavigation({
   initialLegIndex?: number | null;
   onStageChange?: (legIndex: number) => void;
 }) {
+  const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
+    window.location.search,
+    (() => { try { return window.localStorage.getItem('marshgo.results.diagnostics'); } catch { return null; } })(),
+  );
   const legs = journey.legs;
   const model = useMemo(() => buildJourneyRouteMapModel(legs), [legs]);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -345,8 +350,8 @@ export function JourneyActiveNavigation({
   const showRibbon = sheetSnap === 'expanded' || (sheetSnap === 'half' && viewportHeight >= 700);
   const showAction = sheetSnap !== 'collapsed';
   const destination = activeNavigationDestination(legs);
-  const mapWarning = mapStatusNote(mapStatus);
-  const liveLabel = liveJourneyRequestState === 'failed' ? 'Рух недоступний · за розкладом' : null;
+  const mapWarning = mapStatus === 'failed' ? mapStatusNote(mapStatus) : null;
+  const liveLabel = liveJourneyRequestState === 'failed' ? 'За розкладом' : null;
 
   const advance = () => {
     haptic([8, 24, 8]);
@@ -397,7 +402,8 @@ export function JourneyActiveNavigation({
           <Layers size={20}/>
         </button>
       </div>
-      {(mapWarning || liveLabel) && <p role="status" title={mapStatusDetail(mapStatus)} className="route-map-note mx-auto w-fit max-w-full truncate rounded-full px-3 py-1 text-xs font-bold">{mapWarning || liveLabel}</p>}
+      {(mapWarning || liveLabel) && <p role="status" className="mx-auto w-fit max-w-full truncate rounded-full bg-[var(--route-card)] px-3 py-1 text-xs font-semibold text-[var(--route-muted)]">{mapWarning || liveLabel}</p>}
+      {showDiagnostics && mapStatus !== 'available' && <p data-testid="active-map-status-details" className="mx-auto mt-1 w-fit max-w-full text-center text-xs text-[var(--route-muted)]">{mapStatusDetail(mapStatus, 'journey')}</p>}
     </header>
 
     <div className="absolute right-4 z-10" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 5rem)' }}>
@@ -470,7 +476,7 @@ export function JourneyActiveNavigation({
             </div>
           </div>
           <p className="mt-1 text-xs font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</p>
-          {notice && <p role="status" data-testid="active-nav-notice" className={`mt-2 rounded-xl border px-3 py-2.5 text-[12px] font-bold leading-[16px] ${isDark ? 'border-amber-300/30 bg-amber-400/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>{notice}</p>}
+          {notice && <p role="status" data-testid="active-nav-notice" className="mt-2 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2.5 text-[12px] font-bold leading-[16px] text-[var(--route-ink)]">{notice}</p>}
         </div>
 
         {showRibbon && <div className="mg-route-ribbon mt-3 shrink-0 px-5" role="list" aria-label="Етапи навігації">

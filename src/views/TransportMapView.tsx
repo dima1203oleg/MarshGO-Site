@@ -11,6 +11,7 @@ import { mapStatusDetail } from '../map/mapStatusCopy';
 import { getVehicleQuality, subscribeVehicleQuality, type VehicleQuality } from '../map/transportQuality';
 import { StatusBadge } from '../design-system/ui/StatusBadge';
 import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
+import { diagnosticsRequested } from './resultsDiagnostics';
 
 const chips: Array<{ label: string; id: TransportLayerId; Icon: LucideIcon }> = [
   { label: 'Увесь транспорт', id: 'PUBLIC_TRANSPORT', Icon: BusFront },
@@ -33,6 +34,10 @@ const normalizedCity = (name: string) => name.trim().toLocaleLowerCase('uk-UA').
 
 /** 2D map for planning: city transport is on until the user chooses otherwise, and that choice survives leaving the screen. */
 export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack: () => void; cityName: string; onCitySelected: (name: string) => void }) {
+  const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
+    window.location.search,
+    (() => { try { return window.localStorage.getItem('marshgo.results.diagnostics'); } catch { return null; } })(),
+  );
   const [status, setStatus] = useState<MapStatus>('loading');
   const [hint, setHint] = useState<string | null>(null);
   const [cityRegistryHint, setCityRegistryHint] = useState<string | null>(null);
@@ -108,21 +113,21 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
       <div className="pointer-events-auto flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Швидкі шари">
         {chips.map(({ label, id, Icon }) => {
           const selectable = isLayerSelectable(layerState.availability, id);
-          return <button key={id} type="button" disabled={!selectable} aria-pressed={selected.has(id)} aria-label={selectable ? label : `${label}: ${layerUnavailableNote(layerState.probeFailed)}`} onClick={() => toggleTransportLayer(id)} className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold shadow ${selected.has(id) ? 'bg-[var(--mg-action)] text-white' : 'bg-white text-slate-700 dark:bg-[var(--mg-surface-secondary)] dark:text-[var(--mg-ink-primary)]'} ${selectable ? '' : 'cursor-not-allowed bg-slate-50 text-slate-400 dark:bg-[var(--mg-surface-elevated)] dark:text-[var(--mg-ink-muted)]'}`}>
+          return <button key={id} type="button" disabled={!selectable} aria-pressed={selected.has(id)} aria-label={selectable ? label : `${label}: зараз недоступно`} onClick={() => toggleTransportLayer(id)} className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold shadow ${selected.has(id) ? 'bg-[var(--mg-action)] text-white' : 'bg-white text-slate-700 dark:bg-[var(--mg-surface-secondary)] dark:text-[var(--mg-ink-primary)]'} ${selectable ? '' : 'cursor-not-allowed bg-slate-50 text-slate-400 dark:bg-[var(--mg-surface-elevated)] dark:text-[var(--mg-ink-muted)]'}`}>
             <Icon size={15}/>{label}
-            {!selectable && <span className="text-xs font-semibold">· {layerUnavailableNote(layerState.probeFailed)}</span>}
+            {showDiagnostics && !selectable && <span className="text-xs font-semibold">· {layerUnavailableNote(layerState.probeFailed)}</span>}
           </button>;
         })}
       </div>
-      {hint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold leading-snug text-slate-600 shadow dark:bg-[var(--mg-surface-primary)]/95 dark:text-[var(--mg-ink-secondary)]">{hint}</p>}
-      {cityRegistryHint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold leading-snug text-slate-600 shadow dark:bg-[var(--mg-surface-primary)]/95 dark:text-[var(--mg-ink-secondary)]">{cityRegistryHint}</p>}
-      {quality && <p role="status" aria-label="Якість даних живого транспорту" className="pointer-events-auto self-start shadow"><StatusBadge status={quality.status} label={quality.label} size="sm"/></p>}
-      {selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow">
+      {showDiagnostics && hint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl bg-[var(--mg-surface-primary)]/95 px-3 py-2 text-xs font-semibold leading-snug text-[var(--mg-ink-secondary)] shadow">{hint}</p>}
+      {cityRegistryHint && <p role="status" className="pointer-events-auto max-w-[22rem] self-start rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-primary)]/95 px-3 py-2 text-xs font-semibold leading-snug text-[var(--mg-ink-secondary)] shadow">Транспортна карта для цього міста поки недоступна.</p>}
+      {showDiagnostics && quality && <p role="status" aria-label="Якість даних живого транспорту" className="pointer-events-auto self-start shadow"><StatusBadge status={quality.status} label={quality.label} size="sm"/></p>}
+      {showDiagnostics && selectedCity && <p className="pointer-events-auto self-start rounded-xl bg-[var(--mg-surface-primary)]/95 px-3 py-2 text-xs font-semibold text-[var(--mg-ink-secondary)] shadow">
         {selectedCity.routeCount} маршрутів · {selectedCity.stopCount} зупинок · статичний розклад{selectedCity.realtimeAvailable ? ' · realtime джерело підключене' : ''}
       </p>}
-      {status === 'failed' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">{mapStatusDetail(status, 'transport')}</p>}
-      {status === 'unconfigured' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">{mapStatusDetail(status, 'transport')}</p>}
-      {status === 'degraded' && <p role="alert" className="pointer-events-auto self-start rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 shadow">{mapStatusDetail(status, 'transport')}</p>}
+      {showDiagnostics && status !== 'available' && <p role="status" className="pointer-events-auto self-start rounded-xl bg-[var(--mg-surface-primary)] px-3 py-2 text-xs font-semibold text-[var(--mg-ink-secondary)] shadow">{mapStatusDetail(status, 'transport')}</p>}
+      {!showDiagnostics && (status === 'failed' || status === 'unconfigured') && <p role="status" className="pointer-events-auto self-start rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-primary)] px-3 py-2 text-xs font-semibold text-[var(--mg-ink-secondary)] shadow">Карта недоступна</p>}
+      {!showDiagnostics && status === 'degraded' && <p role="status" className="pointer-events-auto self-start rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-primary)] px-3 py-2 text-xs font-semibold text-[var(--mg-ink-secondary)] shadow">Карта завантажена частково</p>}
     </div>
     <div className="absolute right-4 top-1/2 z-[500] flex -translate-y-1/2 flex-col gap-2">
       <button
@@ -145,8 +150,8 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
       </button>
       <button
         type="button"
-        aria-label={satelliteBasemapAvailable ? (mapLayer === 'satellite' ? 'Повернути схематичну карту' : 'Увімкнути супутникову карту') : 'Супутникові знімки недоступні'}
-        title={satelliteBasemapAvailable ? (mapLayer === 'satellite' ? 'Схема' : 'Супутник') : 'Супутникові знімки не підключені'}
+        aria-label={satelliteBasemapAvailable ? (mapLayer === 'satellite' ? 'Повернути схематичну карту' : 'Увімкнути супутникову карту') : 'Супутник зараз недоступний'}
+        title={satelliteBasemapAvailable ? (mapLayer === 'satellite' ? 'Схема' : 'Супутник') : 'Недоступно зараз'}
         aria-pressed={satelliteBasemapAvailable && mapLayer === 'satellite'}
         aria-disabled={!satelliteBasemapAvailable}
         disabled={!satelliteBasemapAvailable}
