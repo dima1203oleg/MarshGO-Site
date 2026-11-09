@@ -8,9 +8,6 @@ interface MapPreviewProps {
   destination: string;
   routeGeometry?: Coordinate[];
   vehicleLocation?: Coordinate | null;
-  intermediateStops?: string[];
-  activeDetour?: { minutes: number; km: number; pickupName: string; dropoffName: string };
-  interactive?: boolean;
   className?: string;
 }
 
