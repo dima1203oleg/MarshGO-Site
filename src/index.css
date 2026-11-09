@@ -1961,6 +1961,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   transition: transform .16s var(--mg-ease-entrance), filter .16s ease, box-shadow .16s ease;
   touch-action: manipulation;
 }
+.route-sheet-peek-cta { min-height: 48px; }
 .mg-route-cta:active { transform: scale(.985); filter: brightness(1.06); }
 .mg-route-cta:disabled { opacity: .5; box-shadow: none; }
 .mg-route-cta:focus-visible { outline: 3px solid color-mix(in srgb, var(--mg-blue) 68%, transparent); outline-offset: 3px; }

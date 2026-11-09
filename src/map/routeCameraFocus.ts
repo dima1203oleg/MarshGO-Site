@@ -96,6 +96,9 @@ export function segmentBearingForViewport(
 
 export type RotatedFitCamera = { center: Coordinate; zoom: number };
 
+/** Keep bearing optimization aligned with the segment-focus camera zoom ceiling. */
+export const SEGMENT_FOCUS_MAX_ZOOM = 17;
+
 function toMercator(point: Coordinate): [number, number] {
   const lat = Math.max(-85.0511287798, Math.min(85.0511287798, point[1]));
   const sin = Math.sin(lat * Math.PI / 180);
@@ -157,6 +160,81 @@ export function cameraForRotatedPoints(
     ),
     zoom: Math.min(currentZoom + Math.log2(scale), maxZoom),
   };
+}
+
+function circularBearingDistance(a: number, b: number): number {
+  return Math.abs(((a - b) % 360 + 540) % 360 - 180);
+}
+
+function orientedBearingForAxis(axis: number, preferredBearing: number): number {
+  const normalizedAxis = ((axis % 180) + 180) % 180;
+  const forward = normalizedAxis;
+  const reverse = (normalizedAxis + 180) % 360;
+  return circularBearingDistance(forward, preferredBearing) <= circularBearingDistance(reverse, preferredBearing)
+    ? forward
+    : reverse;
+}
+
+/**
+ * Find the rotation that gives this geometry the largest readable fit in the
+ * currently visible map rectangle. The coarse sweep includes diagonal as well
+ * as horizontal/vertical alignments; a local refinement avoids wasting pixels.
+ */
+export function maximizeFitBearing(
+  points: readonly Coordinate[],
+  visibleWidth: number,
+  visibleHeight: number,
+  preferredBearing: number,
+  maxZoom = SEGMENT_FOCUS_MAX_ZOOM,
+): number {
+  const validPoints = points.filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+  if (validPoints.length < 2 || !(visibleWidth > 0) || !(visibleHeight > 0) || !Number.isFinite(preferredBearing)) {
+    return Number.isFinite(preferredBearing) ? ((preferredBearing % 360) + 360) % 360 : 0;
+  }
+
+  const preferred = ((preferredBearing % 360) + 360) % 360;
+  const projectedPoints = validPoints.map(toMercator);
+  const fitZoom = (axis: number) => {
+    const angle = -axis * Math.PI / 180;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const [x, y] of projectedPoints) {
+      const rotatedX = x * cos - y * sin;
+      const rotatedY = x * sin + y * cos;
+      if (rotatedX < minX) minX = rotatedX;
+      if (rotatedX > maxX) maxX = rotatedX;
+      if (rotatedY < minY) minY = rotatedY;
+      if (rotatedY > maxY) maxY = rotatedY;
+    }
+    const scale = Math.min(
+      visibleWidth / Math.max(1e-9, (maxX - minX) * 512),
+      visibleHeight / Math.max(1e-9, (maxY - minY) * 512),
+    );
+    return Number.isFinite(scale) && scale > 0 ? Math.min(Math.log2(scale), maxZoom) : Number.NEGATIVE_INFINITY;
+  };
+  let bestAxis = preferred % 180;
+  let bestZoom = fitZoom(bestAxis);
+  let bestAlignment = circularBearingDistance(orientedBearingForAxis(bestAxis, preferred), preferred);
+  const consider = (axis: number) => {
+    const normalized = ((axis % 180) + 180) % 180;
+    const zoom = fitZoom(normalized);
+    const alignment = circularBearingDistance(orientedBearingForAxis(normalized, preferred), preferred);
+    if (zoom > bestZoom + 0.005 || (Math.abs(zoom - bestZoom) <= 0.005 && alignment < bestAlignment)) {
+      bestAxis = normalized;
+      bestZoom = zoom;
+      bestAlignment = alignment;
+    }
+  };
+
+  const coarseStep = 3;
+  for (let axis = 0; axis < 180; axis += coarseStep) consider(axis);
+  const coarseBest = bestAxis;
+  for (let offset = -coarseStep; offset <= coarseStep; offset += 0.25) consider(coarseBest + offset);
+  return orientedBearingForAxis(bestAxis, preferred);
 }
 
 /** Longest side of the points' bounding box, in metres. */

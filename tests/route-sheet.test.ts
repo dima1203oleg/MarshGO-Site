@@ -21,14 +21,14 @@ test('route sheet keeps four ordered detents (PEEK -> COMPACT -> MEDIUM -> FULL)
   });
   for (const viewport of [568, 667, 844, 932]) {
     const heights = routeSheetHeights(viewport);
-    assert.ok(heights.peek >= 170 && heights.peek <= 220, `peek height ${heights.peek} on ${viewport}px must be inside 170–220 px`);
+    assert.ok(heights.peek >= 160 && heights.peek <= 220, `peek height ${heights.peek} on ${viewport}px must remain compact without clipping controls`);
     assert.ok(heights.peek < heights.collapsed);
     assert.ok(heights.collapsed < heights.half);
     assert.ok(heights.half < heights.expanded);
     assert.ok(viewport - heights.expanded >= 172);
     assert.ok(heights.collapsed >= 200);
   }
-  assert.equal(routeSheetHeights(844).peek, 190);
+  assert.equal(routeSheetHeights(844).peek, 168);
   assert.equal(routeSheetHeights(844).half, 316.5);
   assert.equal(routeSheetHeights(844).expanded, 672);
   assert.ok(routeSheetHeights(844).expanded - routeSheetHeights(844).half >= 300);

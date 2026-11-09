@@ -19,6 +19,11 @@ const css = read('src/index.css');
 const stops = read('src/views/JourneyLegStops.tsx');
 const adapter = read('src/map/MapLibreAdapter.ts');
 
+test('peek sheet separates duration and fare while retaining a compact action', () => {
+  assert.match(routeScreen, /data-testid="route-peek-summary-divider"/);
+  assert.match(routeScreen, /route-sheet-peek-cta/);
+});
+
 const route: Coordinate[] = [[30.5, 50.4], [30.52, 50.45], [30.55, 50.5]];
 
 /**
