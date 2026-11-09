@@ -27,6 +27,22 @@ describe('home banner geometry and profile trust ink', () => {
     assert.match(css(), /\.home-marshpass-promo__route/);
   });
 
+  it('distributes tall-phone hero slack instead of leaving dead space above the tab bar', () => {
+    const sheet = css();
+    assert.match(sheet, /\.home-marshpass-promo \{[^}]*flex-grow: 1;[^}]*max-height: 14rem;/, 'the promo must absorb slack but stay capped');
+    assert.match(sheet, /\.home-popular-routes \{[^}]*flex-grow: 1;/, 'popular routes share the slack');
+    assert.match(sheet, /\.home-popular-routes__row \{ flex: 1; \}/, 'the card row stretches inside the section');
+    assert.match(sheet, /\.home-popular-route \{ height: auto; min-height: 4rem; \}/, 'cards stretch from a floor, not a fixed height');
+    assert.match(hero(), /home-popular-routes__row no-scrollbar flex/, 'the row keeps its stretch hook');
+  });
+
+  it('transport tile labels wrap instead of truncating mid-word', () => {
+    const panel = readFileSync('src/components/TransportTypesPanel.tsx', 'utf8');
+    assert.doesNotMatch(panel, /truncate/, 'truncate cut «Маршрутка»/«Тролейбус» mid-word on 390px tiles');
+    assert.match(panel, /transport-mode-tile__label w-full font-bold/, 'the label keeps its full-width wrap hook');
+    assert.match(css(), /@media \(max-width: 380px\) \{\s*\.transport-types-inline \.transport-mode-tile__label \{ font-size: \.625rem;/, 'narrow phones scale to the 10px floor, never below');
+  });
+
   it('renders an unverified profile in neutral ink instead of the success colour', () => {
     const line = marketplace().split('\n').find((row) => row.includes('Профіль не верифіковано'));
     assert.ok(line, 'the profile screen must state the verification status');

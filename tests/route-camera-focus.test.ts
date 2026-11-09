@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Coordinate } from '../shared/navigation/contracts';
-import { cameraForRotatedPoints, extentMeters, principalBearing, segmentBearingForViewport } from '../src/map/routeCameraFocus';
+import { cameraForRotatedPoints, extentMeters, principalBearing, segmentBearingForViewport, shortestBearingDelta, cameraMoveEffort } from '../src/map/routeCameraFocus';
 
 const line = (points: Array<[number, number]>): Coordinate[] => points;
 
@@ -113,4 +113,31 @@ test('extent is measured in metres, not degrees', () => {
   assert.equal(walk, 0);
   const kilometre = extentMeters(line([[24.0, 49.8], [24.0145, 49.8]]));
   assert.ok(kilometre > 1000 && kilometre < 1100, `expected about 1055 m, got ${kilometre}`);
+});
+
+test('shortest bearing delta takes the small arc across north', () => {
+  assert.equal(shortestBearingDelta(350, 10), 20);
+  assert.equal(shortestBearingDelta(10, 350), 20);
+  assert.equal(shortestBearingDelta(0, 180), 180);
+  assert.equal(shortestBearingDelta(90, 90), 0);
+  assert.equal(shortestBearingDelta(Number.NaN, 10), 0);
+});
+
+test('camera move effort reports distance, zoom and turn from the current pose', () => {
+  const current = { center: line([[24.0, 49.8]])[0]!, zoom: 12, bearing: 0 };
+  const effort = cameraMoveEffort(current, { center: [24.0145, 49.8], zoom: 15, bearing: 90 });
+  assert.ok(effort.distanceMeters! > 1000 && effort.distanceMeters! < 1100, `expected ~1055 m, got ${effort.distanceMeters}`);
+  assert.equal(effort.zoomDelta, 3);
+  assert.equal(effort.bearingDelta, 90);
+});
+
+test('missing target fields contribute zero effort instead of NaN', () => {
+  const current = { center: line([[24.0, 49.8]])[0]!, zoom: 12, bearing: 30 };
+  const effort = cameraMoveEffort(current, {});
+  assert.equal(effort.distanceMeters, 0);
+  assert.equal(effort.zoomDelta, 0);
+  assert.equal(effort.bearingDelta, 0);
+  const zoomOnly = cameraMoveEffort(current, { zoom: 16 });
+  assert.equal(zoomOnly.distanceMeters, 0);
+  assert.equal(zoomOnly.zoomDelta, 4);
 });

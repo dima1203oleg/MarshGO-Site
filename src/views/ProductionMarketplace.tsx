@@ -147,6 +147,7 @@ export function ProductionMarketplace() {
   const [journeyArrivalBy, setJourneyArrivalBy] = useState<string | null>(null);
   const [arrivalPickerOpen, setArrivalPickerOpen] = useState(false);
   const [journeyBudgetUah, setJourneyBudgetUah] = useState<number | null>(null);
+  const [journeyDirectOnly, setJourneyDirectOnly] = useState(false);
   const [customJourneyBudgetOpen, setCustomJourneyBudgetOpen] = useState(false);
   const [customJourneyBudgetDraft, setCustomJourneyBudgetDraft] = useState('');
   const [transportPickerOpen, setTransportPickerOpen] = useState(false);
@@ -875,7 +876,7 @@ export function ProductionMarketplace() {
         origin: { name: searchOriginPlace.label, coordinates: [searchOriginPlace.longitude, searchOriginPlace.latitude] },
         destination: { name: searchDestinationPlace.label, coordinates: [searchDestinationPlace.longitude, searchDestinationPlace.latitude] },
         departureAt: departure.toISOString(), passengers: seats, strategy: journeyStrategy,
-        preferences: { ...toJourneyPreferences(transportSelection, providerGroups), ...journeySearchBounds(journeyDeparture, journeyArrivalBy, journeyBudgetUah) },
+        preferences: { ...toJourneyPreferences(transportSelection, providerGroups), ...journeySearchBounds(journeyDeparture, journeyArrivalBy, journeyBudgetUah, journeyDirectOnly) },
         signal: controller.signal,
       });
       setJourneyResult(result); setShowResults(true);
@@ -1895,6 +1896,11 @@ export function ProductionMarketplace() {
     </div>}
     <TransportTypesPanel compact selection={transportSelection} groups={providerGroups} onChange={changeTransportSelection}
       onManageProviders={() => setTransportPickerOpen(true)}/>
+    <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] px-3 py-1.5">
+      <input type="checkbox" checked={journeyDirectOnly} onChange={(event) => setJourneyDirectOnly(event.target.checked)} className="size-5 shrink-0 accent-[var(--mg-action)]" />
+      <span className="shrink-0 text-xs font-bold text-[var(--mg-ink-primary)]">Без пересадок</span>
+      <span className="ml-auto min-w-0 truncate text-xs font-semibold text-[var(--mg-ink-secondary)]">один вид транспорту</span>
+    </label>
     <button type="submit" disabled={busy || isOffline} aria-label={isOffline ? 'Знайти маршрут: потрібне з’єднання з інтернетом' : undefined} className="search-submit mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 disabled:opacity-60">{isOffline ? <WifiOff size={17}/> : <Search size={17}/>}{busy ? 'Шукаємо…' : isOffline ? 'Немає з’єднання' : 'Знайти маршрут'}{!isOffline && <ArrowRight size={17}/>}</button>
   </form>;
 

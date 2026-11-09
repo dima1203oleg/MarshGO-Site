@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronDown, Clock3, Footprints, Globe, Heart, Map as MapIcon, Navigation, Play, Share2, Shuffle, X,
+  ArrowLeft, ArrowRight, ChevronDown, Clock3, Footprints, Globe, Heart, Map as MapIcon, Minus, Navigation, Play, Plus, Share2, Shuffle, X,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
@@ -48,6 +48,8 @@ import {
   cleanStopName,
   interpolateLineProgress,
 } from '../map/cinematicRouteEngine';
+import { cameraEasing } from '../map/cameraMotion';
+import { SEGMENT_REVEAL_TOKENS } from '../map/routeGeometryTokens';
 import type { Coordinate } from '../../shared/navigation/contracts';
 
 type JourneyLeg = ApiJourney['legs'][number];
@@ -221,6 +223,7 @@ export function JourneyRouteMapScreen({
     [activeTransferId, transferHints],
   );
   const revealAnimRef = useRef<number | null>(null);
+  const revealTimersRef = useRef<number[]>([]);
   const activeRevealLegId = useRef<string | null>(null);
   const [scale, setScale] = useState<{ label: string; widthPx: number } | null>(null);
   const [saved, setSaved] = useState(() => {
@@ -453,6 +456,8 @@ export function JourneyRouteMapScreen({
       cancelAnimationFrame(revealAnimRef.current);
       revealAnimRef.current = null;
     }
+    revealTimersRef.current.forEach(timer => window.clearTimeout(timer));
+    revealTimersRef.current = [];
     mapAdapter.current?.clearSegmentReveal?.();
     cameraController.current?.showOverview(routeLinePoints);
   }, [routeLinePoints]);
@@ -473,30 +478,35 @@ export function JourneyRouteMapScreen({
           cancelAnimationFrame(revealAnimRef.current);
           revealAnimRef.current = null;
         }
+        revealTimersRef.current.forEach(timer => window.clearTimeout(timer));
+        revealTimersRef.current = [];
         if (!reducedMotion && leg.coordinates && leg.coordinates.length >= 2) {
           const fullCoords = leg.coordinates;
           const color = journeyModeColor(leg.mode, leg.transportType);
           const startTime = performance.now();
-          const duration = 850;
+          const ease = cameraEasing();
           activeRevealLegId.current = id;
 
           const animateReveal = (now: number) => {
             if (activeRevealLegId.current !== id) return;
             const elapsed = now - startTime;
-            const progress = Math.min(1, elapsed / duration);
-            const easeProgress = 1 - (1 - progress) * (1 - progress);
-            const subCoords = interpolateLineProgress(fullCoords, easeProgress);
+            const progress = Math.min(1, elapsed / SEGMENT_REVEAL_TOKENS.durationMs);
+            const subCoords = interpolateLineProgress(fullCoords, ease(progress));
             mapAdapter.current?.revealSegmentProgress?.(subCoords, color);
 
             if (progress < 1) {
               revealAnimRef.current = requestAnimationFrame(animateReveal);
             } else {
               revealAnimRef.current = null;
-              window.setTimeout(() => {
-                if (activeRevealLegId.current === id) {
-                  mapAdapter.current?.clearSegmentReveal?.();
-                }
-              }, 400);
+              revealTimersRef.current.push(window.setTimeout(() => {
+                if (activeRevealLegId.current !== id) return;
+                mapAdapter.current?.fadeSegmentReveal?.();
+                revealTimersRef.current.push(window.setTimeout(() => {
+                  if (activeRevealLegId.current === id) {
+                    mapAdapter.current?.clearSegmentReveal?.();
+                  }
+                }, SEGMENT_REVEAL_TOKENS.fadeMs));
+              }, SEGMENT_REVEAL_TOKENS.holdMs));
             }
           };
 
@@ -526,6 +536,7 @@ export function JourneyRouteMapScreen({
       if (revealAnimRef.current) {
         cancelAnimationFrame(revealAnimRef.current);
       }
+      revealTimersRef.current.forEach(timer => window.clearTimeout(timer));
       mapAdapter.current?.clearSegmentReveal?.();
     };
   }, []);
@@ -977,6 +988,26 @@ export function JourneyRouteMapScreen({
         inert={sheetSnap === 'expanded'}
         style={{ top: 'calc(max(.5rem, env(safe-area-inset-top)) + 5.75rem)' }}
       >
+        <div className="flex gap-2">
+          <button
+            type="button"
+            aria-label="Збільшити масштаб"
+            title="Збільшити масштаб"
+            onClick={() => mapAdapter.current?.zoomBy?.(1)}
+            className="route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg"
+          >
+            <Plus size={19}/>
+          </button>
+          <button
+            type="button"
+            aria-label="Зменшити масштаб"
+            title="Зменшити масштаб"
+            onClick={() => mapAdapter.current?.zoomBy?.(-1)}
+            className="route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg"
+          >
+            <Minus size={19}/>
+          </button>
+        </div>
         {showRecenter && (
           <button
             type="button"

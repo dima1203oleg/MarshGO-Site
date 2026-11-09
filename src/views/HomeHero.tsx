@@ -134,10 +134,10 @@ export function HomeHero({
 
     <section className="home-popular-routes mt-3 min-h-0" aria-labelledby="popular-routes-title">
       <div className="mb-2 flex items-center justify-between px-1"><h2 id="popular-routes-title" className="text-[15px] font-black text-[var(--mg-ink)]">Популярні напрямки</h2><button type="button" onClick={onSearchTrip} className="mg-press-subtle inline-flex min-h-11 items-center gap-1 text-[12px] font-bold text-blue-600">Показати всі <ChevronRight className="inline" size={13}/></button></div>
-      <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
+      <div className="home-popular-routes__row no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
         {popularRoutes.map(({ city, image }) => <button key={city} type="button" onClick={() => onSearchDestination(city)} className="home-popular-route mg-press relative h-[68px] min-w-[108px] flex-1 overflow-hidden rounded-2xl border border-white/70 bg-slate-200 text-left shadow-sm">
           <img src={image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover"/>
-          <span className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"/>
+          <span className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/35 to-transparent"/>
           <span className="absolute inset-x-2 bottom-2 flex items-end justify-between gap-1 text-[12px] font-extrabold leading-tight text-white">Львів → {city}<ChevronRight size={14} className="shrink-0"/></span>
         </button>)}
       </div>

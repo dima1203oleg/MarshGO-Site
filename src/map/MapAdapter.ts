@@ -69,7 +69,9 @@ export interface MapAdapter {
   onCameraMove?: () => void;
   project?(coordinate: Coordinate): ScreenPoint | null;
   revealSegmentProgress?(coordinates: Coordinate[], color: string): void;
+  fadeSegmentReveal?(): void;
   clearSegmentReveal?(): void;
+  zoomBy?(delta: number): void;
   setVehicle(point: Coordinate, heading?: number | null): void;
   onCameraModeChange: (mode: CameraMode) => void;
   setWaypoints(points: RouteWaypoint[]): void;
