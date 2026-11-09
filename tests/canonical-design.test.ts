@@ -236,7 +236,7 @@ test('compact result strips prices and keeps unknown-fare detail and segment scr
   assert.match(strip, /journey-segment-tiles--draggable/, 'overflowing route chains need a visible desktop drag affordance');
   assert.match(strip, /setPointerCapture\(event\.pointerId\)[\s\S]*?scrollLeft = drag\.startScrollLeft - deltaX/s,
     'a mouse drag must move the horizontal chain instead of selecting the result card');
-  assert.match(css, /journey-result-card-content > \.journey-segment-strip \.journey-segment-tiles-viewport \{ pointer-events: auto; \}/,
+  assert.match(css, /journey-result-card-content \.journey-segment-strip \.journey-segment-tiles-viewport \{ pointer-events: auto; \}/,
     'the chain scrollport must receive pointer events through the otherwise inert compact card');
   assert.doesNotMatch(strip, /clientWidth \+ 2/, 'the cue threshold drifted back to 2 px, where rounding alone triggers it');
   assert.match(lip, /priceCaption\?: ReactNode;/, 'the shared lip needs one caption slot for unavailable prices');
