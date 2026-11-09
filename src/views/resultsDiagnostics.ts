@@ -68,7 +68,7 @@ export function funnelLines(result: ApiJourneySearchResult): string[] {
   return lines;
 }
 
-/** Diagnostics never render for ordinary customers; a developer opts in with ?debug=1 or the stored flag. */
+/** UI callers must add the development-build guard and pass null; never read a persistent browser flag for diagnostics. */
 export const diagnosticsRequested = (search: string, storedFlag: string | null): boolean =>
   /(?:^|[?&])debug=1(?:&|$)/.test((search ?? '').replace(/^\?/, '')) || storedFlag === '1';
 

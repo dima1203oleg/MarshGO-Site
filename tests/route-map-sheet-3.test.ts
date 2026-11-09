@@ -108,6 +108,13 @@ test('the adapter publishes the projected last-fit measurement after every settl
     'map.getPadding() is 0 after fitBounds and would measure the whole viewport');
 });
 
+test('the route map keeps mouse drag panning enabled and preserves manual camera mode', () => {
+  assert.match(adapter, /interactive: true, dragPan: true/,
+    'MapLibre drag panning must be explicit for desktop map navigation');
+  assert.match(routeScreen, /adapter\.onCameraModeChange = \(mode\) => \{\s*if \(mode === 'FREE'\) cameraController\.current\?\.onUserMapInteraction\(\);/,
+    'a user pan must enter manual camera mode so sheet updates do not recenter the map');
+});
+
 test('a transfer owns a camera mode, a recenter affordance and a snap refit', () => {
   let state = initialRouteCameraState();
   let focused: Coordinate[] | null = null;

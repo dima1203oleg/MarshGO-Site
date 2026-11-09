@@ -65,10 +65,8 @@ export function JourneyActiveNavigation({
   initialLegIndex?: number | null;
   onStageChange?: (legIndex: number) => void;
 }) {
-  const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
-    window.location.search,
-    (() => { try { return window.localStorage.getItem('marshgo.results.diagnostics'); } catch { return null; } })(),
-  );
+  const showDiagnostics = import.meta.env.DEV && typeof window !== 'undefined'
+    && diagnosticsRequested(window.location.search, null);
   const legs = journey.legs;
   const model = useMemo(() => buildJourneyRouteMapModel(legs), [legs]);
   const [nowMs, setNowMs] = useState(() => Date.now());

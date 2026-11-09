@@ -267,10 +267,8 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
   const { headline, technical } = splitResultNotices(notices);
   const blockingHeadline = headline?.tone === 'rose' ? headline : null;
   const detailNotices = blockingHeadline ? technical : [...notices];
-  const showDiagnostics = diagnosticsRequested(
-    typeof window !== 'undefined' ? window.location.search : '',
-    typeof window !== 'undefined' ? window.localStorage.getItem('marshgo.results.diagnostics') : null,
-  );
+  const showDiagnostics = import.meta.env.DEV && typeof window !== 'undefined'
+    && diagnosticsRequested(window.location.search, null);
   const funnel = showDiagnostics ? funnelLines(result) : [];
 
   return <section aria-label="Результати мультимодального пошуку" className="mt-2">

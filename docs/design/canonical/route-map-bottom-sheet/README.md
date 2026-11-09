@@ -1,5 +1,9 @@
 # Canonical MARSHGO route map and bottom sheet
 
+On 2026-11-09 the owner confirmed the working route-details screen currently open on canonical `http://127.0.0.1:7777` as the reference to preserve. Keep its navy/graphite and blue visual language, working map, complete route chain, camera focus, navigation action, and four sheet positions. Do not replace it with another port or stale build. Any isolated layout refinement must be compared with that working screen and preserve map and itinerary behavior before it can replace the canonical implementation. The active `:7777` process is left untouched during this work.
+
+The expanded sheet keeps route details compact and calm: the route ribbon shows the colored leg sequence and each leg duration; the leg cards carry the mode, any meaningful live/unavailable/predicted/frequency status, time range, distance/stops when available, endpoints, and fare; a transfer has one quiet row with its wait. Do not repeat mode labels or durations in both the ribbon and cards, walking prompts, the same wait in two rows, recommendation explanations, or technical/source diagnostics in customer view. Provider and geometry diagnostics remain in API/operations data and development-only diagnostics.
+
 GPS behavior, transit line focus, full line/fleet overlays, and mutual carpool rendezvous are specified in [GPS_LIVE_TRACKING_SPEC.md](./GPS_LIVE_TRACKING_SPEC.md). This document is the canonical interaction contract for those GPS states.
 
 The latest three owner-provided dark references below define the canonical collapsed, half-open, and expanded route-map states. They supersede earlier dark images for these corresponding states. All JPEGs are retained byte-for-byte and SHA-256 locked in `tests/canonical-design.test.ts`. The owner has also approved the corresponding [light-theme references](./light/README.md).

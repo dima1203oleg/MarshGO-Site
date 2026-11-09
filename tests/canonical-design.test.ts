@@ -224,14 +224,20 @@ test('result-card ranking moves into route details without faking a selected sta
 // Unknown fare detail stays explicit while the result card keeps only the requested total price.
 test('compact result strips prices and keeps unknown-fare detail and segment scroll behavior', async () => {
   const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
-  const [strip, lip, panel, fare, routeDetails] = await Promise.all([
+  const [strip, lip, panel, fare, routeDetails, css] = await Promise.all([
     read('../src/design-system/journey/JourneySegmentStrip.tsx'),
     read('../src/design-system/journey/CanonicalRouteLip.tsx'),
     read('../src/views/JourneyResultsPanel.tsx'),
     read('../src/views/cashFare.ts'),
     read('../src/views/JourneyRouteMapScreen.tsx'),
+    read('../src/index.css'),
   ]);
   assert.match(strip, /hidden >= 24/, 'the cue needs a floor a real stage chip can actually cross');
+  assert.match(strip, /journey-segment-tiles--draggable/, 'overflowing route chains need a visible desktop drag affordance');
+  assert.match(strip, /setPointerCapture\(event\.pointerId\)[\s\S]*?scrollLeft = drag\.startScrollLeft - deltaX/s,
+    'a mouse drag must move the horizontal chain instead of selecting the result card');
+  assert.match(css, /journey-result-card-content \.journey-segment-strip \.journey-segment-tiles-viewport \{ pointer-events: auto; \}/,
+    'the chain scrollport must receive pointer events through the otherwise inert compact card');
   assert.doesNotMatch(strip, /clientWidth \+ 2/, 'the cue threshold drifted back to 2 px, where rounding alone triggers it');
   assert.match(lip, /priceCaption\?: ReactNode;/, 'the shared lip needs one caption slot for unavailable prices');
   assert.match(fare, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
