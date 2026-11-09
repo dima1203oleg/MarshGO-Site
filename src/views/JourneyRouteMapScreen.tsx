@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronDown, Clock3, Globe, Heart, Map as MapIcon, Navigation, Play, Share2, Shuffle, X,
+  ArrowLeft, ArrowRight, ChevronDown, Clock3, Footprints, Globe, Heart, Map as MapIcon, Navigation, Play, Share2, Shuffle, X,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
@@ -86,14 +86,23 @@ function timelineFor(journey: ApiJourney): TimelineItem[] {
   return items.filter(item => item.durationSeconds > 0);
 }
 
-function legTimeLabel(leg: JourneyLeg) {
+function legTimeLabel(leg: JourneyLeg, durationSeconds: number) {
   const departure = formatTime(leg.departureAt);
   const arrival = formatTime(leg.arrivalAt);
-  return departure === arrival ? departure : `${departure}–${arrival}`;
+  return departure === arrival && durationSeconds < 60
+    ? `${departure} · ${formatDuration(durationSeconds)}`
+    : `${departure}–${arrival}`;
 }
 
 function legLabel(leg: JourneyLeg) {
   return `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`;
+}
+
+function walkHintFor(legs: JourneyLeg[], index: number): { title: string } | null {
+  if (legs[index]?.mode !== 'WALK') return null;
+  if (index === 0) return { title: 'Пішки до транспорту' };
+  if (index === legs.length - 1) return { title: 'Пішки до пункту призначення' };
+  return { title: 'Пішки на пересадці' };
 }
 
 type RibbonItem = {
@@ -144,6 +153,7 @@ export function JourneyRouteMapScreen({
   journey,
   alternativeDepartures = [],
   onSelectAlternative,
+  recommendation,
   onBack,
   onBookOffer,
   onStartJourney,
@@ -709,6 +719,8 @@ export function JourneyRouteMapScreen({
     const stops = leg.stops ?? [];
     const price = legPriceDisplay(leg);
     const dataCaveat = journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource);
+    const legIndex = journey.legs.findIndex(entry => entry.id === leg.id);
+    const walkHint = walkHintFor(journey.legs, legIndex);
     const transferHint = transferHints.get(leg.id);
     const statusLabel = liveStatus === 'LIVE' ? 'У русі'
       : liveStatus === 'PREDICTED' ? 'Прогноз'
@@ -751,18 +763,19 @@ export function JourneyRouteMapScreen({
               <span className="flex min-w-0 items-center gap-1.5">
                 <b className="truncate text-xs font-black tracking-tight">{leg.mode === 'COMMUNITY' ? 'Попутка' : legLabel(leg)}</b>
                 {statusLabel && leg.mode !== 'WALK' && (
-                  <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
+                  <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-bold leading-none ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
                     {liveStatus === 'LIVE' && <span aria-hidden="true" className="mg-live-pulse inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"/>}
                     {statusLabel}
                   </span>
                 )}
               </span>
-              <span className="mt-0.5 block text-[11px] font-semibold leading-4 tabular-nums text-[var(--route-muted)]">
-                {legTimeLabel(leg)}
+              <span className="mt-0.5 block text-xs font-semibold leading-4 tabular-nums text-[var(--route-muted)]">
+                {legTimeLabel(leg, item.durationSeconds)}
                 {typeof leg.distanceMeters === 'number' && Number.isFinite(leg.distanceMeters) ? ` · ${formatJourneyDistance(leg.distanceMeters)}` : ''}
                 {scheduled && stops.length ? ` · ${formatStopCount(stops.length)}` : ''}
               </span>
-              <span className="mt-0.5 block truncate text-[11px] font-medium leading-4 text-[var(--route-subtle)]">
+              <span className="mt-0.5 block truncate text-xs font-medium leading-4 text-[var(--route-subtle)]">
+                {walkHint && <span data-testid="route-walk-hint" className="mr-1 inline-flex items-center gap-1 font-semibold text-[var(--mg-blue-ink)]"><Footprints size={13} aria-hidden="true"/><span>{walkHint.title}</span></span>}
                 {leg.mode === 'COMMUNITY' ? `Посадка: ${cleanStopName(leg.origin.name)} · висадка: ${cleanStopName(leg.destination.name)}` : `${cleanStopName(leg.origin.name)} → ${cleanStopName(leg.destination.name)}`}
               </span>
               {showDiagnostics && <span data-testid="journey-route-segment-source" title={leg.source} className="mt-0.5 block truncate text-xs leading-4 text-[var(--route-muted)]">Джерело: {leg.providerName || leg.source}</span>}
@@ -771,7 +784,7 @@ export function JourneyRouteMapScreen({
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1">
             {leg.mode !== 'WALK' && <b className="text-xs font-black tabular-nums" style={{ color: isDark ? color : 'var(--route-ink)' }}>{price.value}</b>}
-            {leg.mode !== 'WALK' && price.caption && <span className="text-[10px] font-semibold text-[var(--route-muted)]">{price.caption}</span>}
+            {leg.mode !== 'WALK' && price.caption && <span className="text-xs font-semibold text-[var(--route-muted)]">{price.caption}</span>}
             {scheduled && stops.length > 0 && (
               <button
                 type="button"
@@ -1197,9 +1210,10 @@ export function JourneyRouteMapScreen({
           {/* Independent scrolling for details in medium and expanded modes */}
           {(sheetSnap === 'half' || sheetSnap === 'expanded') && (
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-1.5" data-testid="route-segment-list">
-              <ol className="space-y-0.5 pt-0.5">
+              <ol className="space-y-1 pt-0.5">
                 {renderSegmentCards()}
               </ol>
+              {recommendation && <p data-testid="journey-route-recommendation" className="mb-1 text-xs font-semibold leading-4 text-[var(--route-muted)]">Рекомендація: {recommendation}</p>}
               {alternativeDepartures.length > 0 && <details data-testid="journey-alternative-departures" className="mt-2 overflow-hidden rounded-xl border border-[var(--route-border)] bg-[var(--route-card)]">
                 <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-xs font-extrabold text-[var(--route-ink)]">
                   <span>Інші відправлення</span>
