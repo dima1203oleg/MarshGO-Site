@@ -1169,9 +1169,10 @@ export function JourneyRouteMapScreen({
 
         <div id="route-sheet-content" className="flex min-h-0 flex-1 flex-col">
           {sheetSnap === 'peek' ? (
-            <div className="flex shrink-0 flex-col gap-1 px-4 pb-0.5" data-testid="route-peek-summary">
-              <div className="flex items-baseline justify-between gap-3">
+            <div className="flex shrink-0 flex-col gap-0.5 px-4 pb-0.5" data-testid="route-peek-summary">
+              <div className="flex items-center justify-between gap-3">
                 <strong data-testid="canonical-route-duration" className="text-[19px] font-black leading-tight tracking-tight tabular-nums">{formatDuration(allDuration)}</strong>
+                <span data-testid="route-peek-summary-divider" aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-[var(--route-border)]"/>
                 <strong data-testid="route-total-fare" aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : `${totalPriceLabel}${priceDisplay.caption ? ` ${priceDisplay.caption}` : ''}`}`} className={`text-[16px] font-black tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
               </div>
               <p data-testid="route-peek-chain" className="truncate text-xs font-bold tabular-nums text-[var(--route-muted)]">
@@ -1273,7 +1274,7 @@ export function JourneyRouteMapScreen({
           )}
 
           {/* Pinned CTA in all four snap states */}
-          <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-2 pt-0.5' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-0.5 mb-0.5'}`}>
+          <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-1 pt-0.5' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-0.5 mb-0.5'}`}>
             {sheetSnap !== 'peek' && communityLeg?.offerId && onBookOffer && (() => {
               const communityPrice = legPriceDisplay(communityLeg).value;
               return (
@@ -1290,7 +1291,7 @@ export function JourneyRouteMapScreen({
               type="button"
               disabled={!canStartNavigation}
               onClick={() => onStartJourney?.()}
-              className="mg-route-cta mg-press-subtle flex w-full items-center justify-center gap-2.5"
+              className={`mg-route-cta mg-press-subtle flex w-full items-center justify-center gap-2.5${sheetSnap === 'peek' ? ' route-sheet-peek-cta' : ''}`}
             >
               <Play size={18} fill="currentColor" aria-hidden="true"/>
               <span className="font-black tracking-tight">{journey.legs.some(leg => leg.mode === 'COMMUNITY') ? 'Розпочати поїздку' : 'Розпочати'}</span>

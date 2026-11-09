@@ -10,6 +10,7 @@ import {
   shouldShowRecenterButton,
   initialRouteCameraState,
 } from '../src/map/routeCameraController';
+import { cameraForRotatedPoints, principalBearing, segmentBearingForViewport, SEGMENT_FOCUS_MAX_ZOOM } from '../src/map/routeCameraFocus';
 import { routeSheetHeights } from '../src/views/routeSheet';
 import type { Coordinate } from '../shared/navigation/contracts';
 
@@ -160,16 +161,32 @@ test('TEST 5b: the map strip left by the expanded sheet rotates a leg to use its
   const wideBand = calculateSegmentFocusTarget(northbound, [], 'leg-wide', { width: 390, height: 88 });
   assert.ok(tallBand !== null && wideBand !== null);
 
-  // Tall band: the leg already runs up the screen, so the camera stays north-up.
-  assert.ok(
-    tallBand.bearing !== null && (tallBand.bearing <= 15 || tallBand.bearing >= 345),
-    `tall band should keep north-up, got ${tallBand.bearing}`,
-  );
-  // Wide band under the expanded sheet: the leg is turned across the screen.
-  assert.ok(
-    wideBand.bearing !== null && (Math.abs(wideBand.bearing - 270) <= 15 || Math.abs(wideBand.bearing - 90) <= 15),
-    `wide band should turn a northbound leg east-west, got ${wideBand.bearing}`,
-  );
+  const travelBearing = principalBearing(northbound);
+  assert.ok(travelBearing !== null);
+  for (const [target, width, height, label] of [
+    [tallBand, 360, 600, 'tall'],
+    [wideBand, 390, 88, 'wide'],
+  ] as const) {
+    assert.ok(target.bearing !== null);
+    const optimized = cameraForRotatedPoints(northbound, target.bearing, width, height, 0, SEGMENT_FOCUS_MAX_ZOOM);
+    const previousHeuristic = cameraForRotatedPoints(
+      northbound,
+      segmentBearingForViewport(travelBearing, width, height),
+      width,
+      height,
+      0,
+      SEGMENT_FOCUS_MAX_ZOOM,
+    );
+    assert.ok(optimized && previousHeuristic);
+
+    let oracleZoom = Number.NEGATIVE_INFINITY;
+    for (let bearing = 0; bearing < 180; bearing += 0.5) {
+      const camera = cameraForRotatedPoints(northbound, bearing, width, height, 0, SEGMENT_FOCUS_MAX_ZOOM);
+      if (camera) oracleZoom = Math.max(oracleZoom, camera.zoom);
+    }
+    assert.ok(optimized.zoom >= oracleZoom - 0.02, `${label} band should approach exhaustive best fit`);
+    assert.ok(optimized.zoom >= previousHeuristic.zoom - 0.02, `${label} band should not be worse than prior fit`);
+  }
   assert.notEqual(tallBand.key, wideBand.key, 'the focus key must change when the band orientation changes');
 
   // A leg too short to have a meaningful direction never rotates the camera.

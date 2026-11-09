@@ -13,7 +13,7 @@ export const ROUTE_SHEET_LOGICAL_LABELS: Readonly<Record<RouteSheetSnap, RouteSh
 
 /**
  * Snap points match the approved 4-position route-sheet composition:
- * - peek (PEEK, 170–220 px) leaves the maximum map view with only handle,
+ * - peek (PEEK, 168–176 px) leaves the maximum map view with only handle,
  *   total duration, total fare, one-line stage chain, compact scale and CTA;
  * - collapsed (COMPACT) keeps the departure/arrival summary, ribbon and CTA;
  * - half (MEDIUM) adds concise stage context while keeping the map interactive;
@@ -25,7 +25,7 @@ export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
   const expanded = Math.min(840, viewport * 0.9, Math.max(0, viewport - 172));
   const half = Math.min(430, Math.max(300, viewport * 0.375));
   const collapsed = Math.min(300, Math.max(240, Math.round(viewport * 0.29)), Math.max(180, half - 44));
-  const peek = Math.min(collapsed - 36, Math.max(176, Math.min(208, Math.round(viewport * 0.225))));
+  const peek = Math.min(collapsed - 36, Math.max(168, Math.min(176, Math.round(viewport * 0.18))));
   return { peek, collapsed, half, expanded };
 }
 

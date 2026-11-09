@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Coordinate } from '../shared/navigation/contracts';
-import { cameraForRotatedPoints, extentMeters, principalBearing, segmentBearingForViewport, shortestBearingDelta, cameraMoveEffort } from '../src/map/routeCameraFocus';
+import { cameraForRotatedPoints, extentMeters, maximizeFitBearing, principalBearing, segmentBearingForViewport, shortestBearingDelta, cameraMoveEffort, SEGMENT_FOCUS_MAX_ZOOM } from '../src/map/routeCameraFocus';
 
 const line = (points: Array<[number, number]>): Coordinate[] => points;
 
@@ -99,6 +99,28 @@ test('turning the leg across a short band earns zoom that the north-up fit canno
   const northSpan = rotatedSpan(diagonal, northUp, 0);
   assert.ok(northSpan.height > 117 && northSpan.height <= 118.5, `north-up leg should fill the band height, got ${northSpan.height}`);
   assert.ok(northSpan.width < 300, 'north-up leaves most of the strip width unused');
+});
+
+test('segment focus optimizes diagonal as well as cardinal rotations for the visible rectangle', () => {
+  const bent = line([
+    [24.000, 49.800], [24.004, 49.801], [24.006, 49.807],
+    [24.012, 49.810], [24.019, 49.814], [24.021, 49.821],
+  ]);
+  const width = 390;
+  const height = 648;
+  const preferred = segmentBearingForViewport(principalBearing(bent), width, height);
+  const optimized = maximizeFitBearing(bent, width, height, preferred);
+  const optimizedCamera = cameraForRotatedPoints(bent, optimized, width, height, 0, SEGMENT_FOCUS_MAX_ZOOM)!;
+  const preferredCamera = cameraForRotatedPoints(bent, preferred, width, height, 0, SEGMENT_FOCUS_MAX_ZOOM)!;
+
+  let oracleZoom = Number.NEGATIVE_INFINITY;
+  for (let bearing = 0; bearing < 180; bearing += 0.5) {
+    oracleZoom = Math.max(oracleZoom, cameraForRotatedPoints(bent, bearing, width, height, 0, SEGMENT_FOCUS_MAX_ZOOM)!.zoom);
+  }
+  assert.ok(optimizedCamera.zoom >= oracleZoom - 0.02,
+    `optimized zoom ${optimizedCamera.zoom} should be near exhaustive best ${oracleZoom}`);
+  assert.ok(optimizedCamera.zoom >= preferredCamera.zoom - 0.02,
+    'the optimized view must be no worse than the prior viewport heuristic');
 });
 
 test('a rotated fit refuses degenerate input instead of zooming to infinity', () => {

@@ -1,7 +1,7 @@
 import type { Coordinate } from '../../shared/navigation/contracts';
 import type { RouteFitPadding, MapAdapter } from './MapAdapter';
 import { boundsOf, corridorFitPoints } from './routeContextCorridor';
-import { extentMeters, principalBearing, segmentBearingForViewport } from './routeCameraFocus';
+import { extentMeters, maximizeFitBearing, principalBearing, segmentBearingForViewport, SEGMENT_FOCUS_MAX_ZOOM } from './routeCameraFocus';
 
 export type RouteCameraMode = 'ROUTE_OVERVIEW' | 'SEGMENT_FOCUS' | 'TRANSFER_FOCUS' | 'STOP_FOCUS' | 'MANUAL_CAMERA';
 
@@ -50,8 +50,16 @@ export function calculateSegmentFocusTarget(
   if (segmentCoordinates.length < 2) return null;
   const points = corridorFitPoints(segmentCoordinates, contextLines, 0.5);
   const bounds = boundsOf(points);
+  const preferredBearing = segmentBearingForViewport(
+    principalBearing(segmentCoordinates),
+    visibleArea?.width ?? 1,
+    visibleArea?.height ?? 2,
+  );
+  const measuredVisibleArea = visibleArea && visibleArea.width > 0 && visibleArea.height > 0 ? visibleArea : null;
   const bearing = extentMeters(segmentCoordinates) > 60
-    ? segmentBearingForViewport(principalBearing(segmentCoordinates), visibleArea?.width ?? 1, visibleArea?.height ?? 2)
+    ? measuredVisibleArea
+      ? maximizeFitBearing(points, measuredVisibleArea.width, measuredVisibleArea.height, preferredBearing, SEGMENT_FOCUS_MAX_ZOOM)
+      : preferredBearing
     : null;
   const boundsKey = bounds ? bounds.map((val) => val.toFixed(5)).join(',') : '';
   const bearingKey = bearing === null ? 'flat' : bearing.toFixed(1);
@@ -131,7 +139,7 @@ export class RouteCameraController {
       ...this.padding,
       bearing: target.bearing ?? 0,
     };
-    this.adapter?.focusCoordinates?.(target.points, padding, 17);
+    this.adapter?.focusCoordinates?.(target.points, padding, SEGMENT_FOCUS_MAX_ZOOM);
   }
 
   focusTransfer(transferId: string, coordinate: Coordinate, contextPoints: Coordinate[] = []) {
