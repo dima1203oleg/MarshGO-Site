@@ -55,8 +55,11 @@ export function calculateSegmentFocusTarget(
     visibleArea?.width ?? 1,
     visibleArea?.height ?? 2,
   );
+  const measuredVisibleArea = visibleArea && visibleArea.width > 0 && visibleArea.height > 0 ? visibleArea : null;
   const bearing = extentMeters(segmentCoordinates) > 60
-    ? maximizeFitBearing(points, visibleArea?.width ?? 1, visibleArea?.height ?? 2, preferredBearing, SEGMENT_FOCUS_MAX_ZOOM)
+    ? measuredVisibleArea
+      ? maximizeFitBearing(points, measuredVisibleArea.width, measuredVisibleArea.height, preferredBearing, SEGMENT_FOCUS_MAX_ZOOM)
+      : preferredBearing
     : null;
   const boundsKey = bounds ? bounds.map((val) => val.toFixed(5)).join(',') : '';
   const bearingKey = bearing === null ? 'flat' : bearing.toFixed(1);
