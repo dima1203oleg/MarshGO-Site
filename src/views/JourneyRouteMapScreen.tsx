@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronDown, Clock3, Footprints, Globe, Heart, Map as MapIcon, Navigation, Play, Share2, Shuffle, X,
+  ArrowLeft, ArrowRight, ChevronDown, Clock3, Globe, Heart, Map as MapIcon, Navigation, Play, Share2, Shuffle, X,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
@@ -86,13 +86,10 @@ function timelineFor(journey: ApiJourney): TimelineItem[] {
   return items.filter(item => item.durationSeconds > 0);
 }
 
-function legTimeLabel(leg: JourneyLeg, durationSeconds: number) {
+function legTimeLabel(leg: JourneyLeg) {
   const departure = formatTime(leg.departureAt);
   const arrival = formatTime(leg.arrivalAt);
-  const duration = formatDuration(durationSeconds);
-  return departure === arrival && durationSeconds < 60
-    ? `${departure} · ${duration}`
-    : `${departure}–${arrival} · ${duration}`;
+  return departure === arrival ? departure : `${departure}–${arrival}`;
 }
 
 function legLabel(leg: JourneyLeg) {
@@ -143,20 +140,10 @@ function inlineTransferHints(legs: JourneyLeg[]): Map<string, InlineTransferHint
   return hints;
 }
 
-function walkHintFor(legs: JourneyLeg[], index: number): { title: string; detail: string } | null {
-  if (legs[index]?.mode !== 'WALK') return null;
-  const next = legs[index + 1];
-  if (index === 0) return { title: 'Почніть пішки', detail: next && next.mode !== 'WALK' ? `до ${legLabel(next)}` : '' };
-  if (next && next.mode !== 'WALK') return { title: 'Пересадка пішки', detail: `до ${legLabel(next)}` };
-  if (!next) return { title: 'Пройдіть пішки до фінішу', detail: '' };
-  return { title: 'Пішки', detail: '' };
-}
-
 export function JourneyRouteMapScreen({
   journey,
   alternativeDepartures = [],
   onSelectAlternative,
-  recommendation,
   onBack,
   onBookOffer,
   onStartJourney,
@@ -171,10 +158,8 @@ export function JourneyRouteMapScreen({
   /** Opens the active stage map for this itinerary; the route is never re-entered. */
   onStartJourney?: () => void;
 }) {
-  const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
-    window.location.search,
-    (() => { try { return window.localStorage.getItem('marshgo.results.diagnostics'); } catch { return null; } })(),
-  );
+  const showDiagnostics = import.meta.env.DEV && typeof window !== 'undefined'
+    && diagnosticsRequested(window.location.search, null);
   const model = useMemo(() => buildJourneyRouteMapModel(journey.legs), [journey.legs]);
   const timeline = useMemo(() => timelineFor(journey), [journey]);
   const firstLeg = journey.legs[0];
@@ -699,9 +684,18 @@ export function JourneyRouteMapScreen({
 
   const renderSegmentCards = () => timeline.flatMap((item, index) => {
     if (item.kind === 'WAIT') {
+      const nextLegIndex = journey.legs.findIndex(leg => leg.id === item.targetLegId);
+      const nextLeg = journey.legs[nextLegIndex];
+      const previousLeg = nextLegIndex > 0 ? journey.legs[nextLegIndex - 1] : undefined;
+      // The transfer control below already carries this wait and focuses its map point.
+      if (previousLeg && nextLeg && previousLeg.mode !== 'WALK' && nextLeg.mode !== 'WALK' && transferHints.has(previousLeg.id)) return [];
       return [(
-        <li key={item.id} className="rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2 text-xs text-[var(--route-muted)]">
-          <span className="inline-flex items-center gap-2"><Clock3 size={14} className="text-[var(--route-subtle)]"/>Очікування · {formatDuration(item.durationSeconds)}</span>
+        <li key={item.id} className="flex min-h-7 items-center gap-2 px-2 text-xs text-[var(--route-muted)]">
+          <span aria-hidden="true" className="h-px min-w-3 flex-1 bg-[var(--route-border)]"/>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--route-card-alt)] px-2.5 py-1 font-semibold tabular-nums">
+            <Clock3 size={12} className="text-[var(--route-subtle)]"/>Очікування · {formatDuration(item.durationSeconds)}
+          </span>
+          <span aria-hidden="true" className="h-px min-w-3 flex-1 bg-[var(--route-border)]"/>
         </li>
       )];
     }
@@ -715,9 +709,12 @@ export function JourneyRouteMapScreen({
     const stops = leg.stops ?? [];
     const price = legPriceDisplay(leg);
     const dataCaveat = journeyLegCaveat(leg.mode, leg.source, leg.scheduleSemantics, leg.fareSource);
-    const legIndex = journey.legs.findIndex(entry => entry.id === leg.id);
-    const walkHint = walkHintFor(journey.legs, legIndex);
     const transferHint = transferHints.get(leg.id);
+    const statusLabel = liveStatus === 'LIVE' ? 'У русі'
+      : liveStatus === 'PREDICTED' ? 'Прогноз'
+        : liveStatus === 'UNAVAILABLE' ? 'Недоступно'
+          : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'Інтервал'
+            : null;
 
     return [
       (
@@ -736,54 +733,45 @@ export function JourneyRouteMapScreen({
           ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}),
         }}
       >
-        <div className="flex items-start gap-2 p-1.5">
+        <div className="flex items-center gap-2 p-1.5">
           <button
             type="button"
             onClick={() => chooseSegment(leg.id)}
             aria-pressed={selected}
             aria-label={`Вибрати сегмент: ${legLabel(leg)}`}
-            className="mg-press-subtle flex min-w-0 flex-1 items-start gap-2 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
+            className="mg-press-subtle flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
           >
             <span
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white shadow-[0_2px_8px_color-mix(in_srgb,var(--segment-color)_42%,transparent)]"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white shadow-[0_2px_8px_color-mix(in_srgb,var(--segment-color)_32%,transparent)]"
               style={{ backgroundColor: color, ['--segment-color' as string]: color }}
             >
               <TransportIcon mode={leg.mode} transportType={leg.transportType} size={16} strokeWidth={2.3}/>
             </span>
             <span className="min-w-0 flex-1">
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <b className="text-xs font-black tracking-tight">{leg.mode === 'COMMUNITY' ? 'Попутка · приватний автомобіль' : legLabel(leg)}</b>
-                {liveStatus && leg.mode !== 'WALK' && (
-                  <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-black ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <b className="truncate text-xs font-black tracking-tight">{leg.mode === 'COMMUNITY' ? 'Попутка' : legLabel(leg)}</b>
+                {statusLabel && leg.mode !== 'WALK' && (
+                  <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${liveStatus === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
                     {liveStatus === 'LIVE' && <span aria-hidden="true" className="mg-live-pulse inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"/>}
-                    {liveStatus === 'LIVE' ? 'ЗА РУХОМ' : liveStatus === 'PREDICTED' ? 'ПРОГНОЗ' : liveStatus === 'SCHEDULED' && leg.scheduleSemantics === 'frequency_estimate' ? 'ІНТЕРВАЛ' : liveStatus === 'SCHEDULED' ? 'РОЗКЛАД' : liveStatus === 'UNAVAILABLE' ? 'НЕДОСТУПНО' : 'ОРІЄНТОВНО'}
+                    {statusLabel}
                   </span>
                 )}
               </span>
-              <span className="mt-0.5 block text-xs font-semibold tabular-nums text-[var(--route-muted)]">
-                {legTimeLabel(leg, item.durationSeconds)}
+              <span className="mt-0.5 block text-[11px] font-semibold leading-4 tabular-nums text-[var(--route-muted)]">
+                {legTimeLabel(leg)}
                 {typeof leg.distanceMeters === 'number' && Number.isFinite(leg.distanceMeters) ? ` · ${formatJourneyDistance(leg.distanceMeters)}` : ''}
                 {scheduled && stops.length ? ` · ${formatStopCount(stops.length)}` : ''}
               </span>
-              <span className="mt-0.5 block truncate text-xs font-medium leading-4 text-[var(--route-subtle)]">
+              <span className="mt-0.5 block truncate text-[11px] font-medium leading-4 text-[var(--route-subtle)]">
                 {leg.mode === 'COMMUNITY' ? `Посадка: ${cleanStopName(leg.origin.name)} · висадка: ${cleanStopName(leg.destination.name)}` : `${cleanStopName(leg.origin.name)} → ${cleanStopName(leg.destination.name)}`}
               </span>
               {showDiagnostics && <span data-testid="journey-route-segment-source" title={leg.source} className="mt-0.5 block truncate text-xs leading-4 text-[var(--route-muted)]">Джерело: {leg.providerName || leg.source}</span>}
-              {walkHint && (
-                <span
-                  data-testid="route-walk-hint"
-                  className="mt-1 flex items-center gap-1.5 rounded-lg bg-[var(--route-hover)] px-2 py-1 text-xs font-bold text-[var(--mg-blue-ink)]"
-                >
-                  <Footprints size={13} className="shrink-0" aria-hidden="true"/>
-                  <span className="truncate">{walkHint.title}{walkHint.detail ? ` · ${walkHint.detail}` : ''}</span>
-                </span>
-              )}
               {showDiagnostics && dataCaveat && <span data-testid="journey-route-segment-caveat" className="mt-1 block text-xs leading-4 text-[var(--route-muted)]">{dataCaveat}</span>}
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1">
             {leg.mode !== 'WALK' && <b className="text-xs font-black tabular-nums" style={{ color: isDark ? color : 'var(--route-ink)' }}>{price.value}</b>}
-            {leg.mode !== 'WALK' && price.caption && <span className="text-xs font-semibold text-[var(--route-muted)]">{price.caption}</span>}
+            {leg.mode !== 'WALK' && price.caption && <span className="text-[10px] font-semibold text-[var(--route-muted)]">{price.caption}</span>}
             {scheduled && stops.length > 0 && (
               <button
                 type="button"
@@ -829,13 +817,11 @@ export function JourneyRouteMapScreen({
             onClick={() => chooseTransfer(transferHint)}
             aria-pressed={activeTransferId === transferHint.id}
             aria-label={`Показати пересадку на ${legLabel(transferHint.nextLeg)} на карті`}
-            className={`mg-press-subtle flex min-h-11 w-full items-center gap-2 rounded-lg border border-dashed px-2.5 py-1 text-left text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)] ${activeTransferId === transferHint.id ? 'border-[var(--mg-blue)] bg-[var(--route-hover)]' : 'border-[var(--route-border)] bg-[var(--route-card-alt)] hover:bg-[var(--route-hover)]'}`}
+            className={`mg-press-subtle flex min-h-11 w-full items-center gap-2 rounded-lg border-l-2 px-2.5 py-1 text-left text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)] ${activeTransferId === transferHint.id ? 'border-[var(--mg-blue)] bg-[var(--route-hover)]' : 'border-transparent hover:bg-[var(--route-hover)]'}`}
           >
-            <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-[var(--route-card)] text-[var(--mg-blue)]"><Shuffle size={13}/></span>
-            <span className="shrink-0 font-black">Пересадка</span>
-            <span className="min-w-0 flex-1 truncate font-bold text-[var(--route-muted)]">{legLabel(transferHint.nextLeg)}</span>
-            {transferHint.waitSeconds >= 60 && <span className="shrink-0 font-semibold tabular-nums text-[var(--route-muted)]">{formatDuration(transferHint.waitSeconds)}</span>}
-            <ArrowRight size={13} className="shrink-0 text-[var(--route-muted)]" aria-hidden="true"/>
+            <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center text-[var(--mg-blue)]"><Shuffle size={12}/></span>
+            <span className="min-w-0 flex-1 truncate font-semibold text-[var(--route-muted)]">Пересадка{transferHint.waitSeconds >= 60 ? ` · ${formatDuration(transferHint.waitSeconds)}` : ''}</span>
+            <ArrowRight size={12} className="shrink-0 text-[var(--route-subtle)]" aria-hidden="true"/>
           </button>
         </li>
       )] : []),
@@ -1127,7 +1113,7 @@ export function JourneyRouteMapScreen({
           <span className="route-sheet-grabber__handle"/>
         </button>
 
-        {sheetSnap !== 'peek' && model.missingWalkingShapeCount > 0 && (
+        {showDiagnostics && sheetSnap !== 'peek' && model.missingWalkingShapeCount > 0 && (
           <p
             role="status"
             aria-live="polite"
@@ -1191,7 +1177,7 @@ export function JourneyRouteMapScreen({
                 </span>
               </div>
 
-              <div className="mg-route-ribbon shrink-0 px-4 pb-1 pt-0.5" role="list" aria-label="Етапи маршруту">
+              <div className="mg-route-ribbon mg-route-ribbon--compact shrink-0 px-4 pb-1 pt-0.5" role="list" aria-label="Етапи маршруту">
                 {ribbonItems.map(item => {
                   const selected = activeSegmentId === item.id;
                   const walk = item.leg.mode === 'WALK';
@@ -1200,7 +1186,6 @@ export function JourneyRouteMapScreen({
                       <button type="button" onClick={() => chooseSegment(item.id)} aria-pressed={selected} aria-label={`Вибрати етап: ${item.label}, ${item.detail}`} className={`mg-route-ribbon__pill mg-press-subtle${selected ? ' is-active' : ''}`} style={{ backgroundColor: walk ? 'var(--route-ribbon-walk)' : item.color }}>
                         <TransportIcon mode={item.leg.mode} transportType={item.leg.transportType} size={16} strokeWidth={2.4}/>
                       </button>
-                      <span className="mg-route-ribbon__label">{item.label}</span>
                       <span className="mg-route-ribbon__detail">{item.detail}</span>
                     </div>
                   );
@@ -1212,10 +1197,9 @@ export function JourneyRouteMapScreen({
           {/* Independent scrolling for details in medium and expanded modes */}
           {(sheetSnap === 'half' || sheetSnap === 'expanded') && (
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-1.5" data-testid="route-segment-list">
-              <ol className="space-y-1 pt-0.5">
+              <ol className="space-y-0.5 pt-0.5">
                 {renderSegmentCards()}
               </ol>
-              {recommendation && <p data-testid="journey-route-recommendation" className="mb-1 text-xs font-semibold leading-4 text-[var(--route-muted)]">Рекомендація: {recommendation}</p>}
               {alternativeDepartures.length > 0 && <details data-testid="journey-alternative-departures" className="mt-2 overflow-hidden rounded-xl border border-[var(--route-border)] bg-[var(--route-card)]">
                 <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-xs font-extrabold text-[var(--route-ink)]">
                   <span>Інші відправлення</span>

@@ -1872,6 +1872,20 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   align-items: flex-start;
   gap: .5rem;
 }
+.mg-route-ribbon--compact {
+  gap: .35rem;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__item {
+  min-width: 44px;
+  gap: .12rem;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__pill {
+  height: 23px;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__detail {
+  font-size: 10.5px;
+  line-height: 1.1;
+}
 .mg-route-ribbon__item {
   display: flex;
   flex: 1 1 0%;

@@ -34,10 +34,8 @@ const normalizedCity = (name: string) => name.trim().toLocaleLowerCase('uk-UA').
 
 /** 2D map for planning: city transport is on until the user chooses otherwise, and that choice survives leaving the screen. */
 export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack: () => void; cityName: string; onCitySelected: (name: string) => void }) {
-  const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
-    window.location.search,
-    (() => { try { return window.localStorage.getItem('marshgo.results.diagnostics'); } catch { return null; } })(),
-  );
+  const showDiagnostics = import.meta.env.DEV && typeof window !== 'undefined'
+    && diagnosticsRequested(window.location.search, null);
   const [status, setStatus] = useState<MapStatus>('loading');
   const [hint, setHint] = useState<string | null>(null);
   const [cityRegistryHint, setCityRegistryHint] = useState<string | null>(null);
