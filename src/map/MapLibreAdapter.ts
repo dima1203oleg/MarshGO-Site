@@ -16,10 +16,11 @@ import { configuredMapDarkStyleUrl, configuredMapStyleUrl } from './mapConfig';
 import { journeySegmentsForFocus, visibleJourneyWaypoints } from './focusMode';
 import { nearestRouteHitIds } from './routeHitTesting';
 import { placeJourneyLabels } from './routeLabelPlacement';
-import { cameraEasing, cameraMotionDuration, CAMERA_FOCUS_DURATION_MS, CAMERA_ZOOM_STEP_DURATION_MS, interruptCameraForUserGesture } from './cameraMotion';
+import { cameraEasing, cameraMotionDuration, adaptiveCameraDuration, CAMERA_FOCUS_DURATION_MS, CAMERA_ZOOM_STEP_DURATION_MS, interruptCameraForUserGesture } from './cameraMotion';
 import { ROUTE_EMPHASIS_TOKENS, SEGMENT_REVEAL_TOKENS, routeArrowExpression, routeStrokeWidthExpression, walkGeometryTokens, walkWidthExpression, ROUTE_ARROW_TOKENS } from './routeGeometryTokens';
 import { measureProjectedFocus } from './routeFocusMeasurement';
-import { cameraForRotatedPoints } from './routeCameraFocus';
+import { cameraForRotatedPoints, cameraMoveEffort } from './routeCameraFocus';
+import { shouldGlideVehicle, interpolateVehicleCoordinate, vehicleDistanceMeters, vehicleGlideDuration } from './vehicleMotion';
 
 const pmtilesProtocol = new Protocol();
 let pmtilesProtocolRegistered = false;
@@ -254,6 +255,8 @@ export class MapLibreAdapter implements MapAdapter {
   private marker: maplibregl.Marker | null = null;
   private liveTransitMarker: maplibregl.Marker | null = null;
   private liveTransitElement: HTMLDivElement | null = null;
+  private liveTransitPrev: { coordinates: Coordinate; updatedAt: string } | null = null;
+  private liveTransitGlideRaf: number | null = null;
   private journeyLabelMarkers = new Map<string, { marker: maplibregl.Marker; key: string }>();
   /** Last label feed; placement is recomputed from it whenever the camera settles. */
   private journeyLabelInput: MapAnnotation[] = [];
@@ -400,6 +403,16 @@ export class MapLibreAdapter implements MapAdapter {
       && typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     return cameraMotionDuration(durationMs, reducedMotion);
+  }
+
+  /** Distance/zoom/turn-aware glide so a short hop snaps and a cross-city move glides (ТЗ §7). */
+  private glideDuration(baseMs: number, target: { center?: Coordinate; zoom?: number; bearing?: number } = {}): number {
+    const center = this.map.getCenter();
+    const effort = cameraMoveEffort(
+      { center: [center.lng, center.lat], zoom: this.map.getZoom(), bearing: this.map.getBearing() },
+      target,
+    );
+    return this.motionDuration(adaptiveCameraDuration(baseMs, effort));
   }
 
   private publish(status: MapStatus) { this.status = this.seenTileError && status === 'available' ? 'degraded' : status; this.onStatus(this.status); }
@@ -984,9 +997,11 @@ export class MapLibreAdapter implements MapAdapter {
   /** A separate marker for an exact, timestamp-verified public-transport journey position. */
   setLiveTransitPosition(position: LiveTransitPosition | null) {
     if (!position) {
+      this.cancelLiveTransitGlide();
       this.liveTransitMarker?.remove();
       this.liveTransitMarker = null;
       this.liveTransitElement = null;
+      this.liveTransitPrev = null;
       delete this.map.getContainer().dataset.marshgoLiveTransitUpdatedAt;
       return;
     }
@@ -1007,8 +1022,46 @@ export class MapLibreAdapter implements MapAdapter {
     Object.assign(this.liveTransitElement.style, { width: '30px', height: '30px', borderRadius: '50%', display: 'grid', placeItems: 'center' });
     const child = this.liveTransitElement.firstElementChild as HTMLElement | null;
     if (child) Object.assign(child.style, { width: '8px', height: '8px', borderRadius: '50%', background: '#fff' });
-    this.liveTransitMarker?.setLngLat(position.coordinates);
+    this.cancelLiveTransitGlide();
+    const prev = this.liveTransitPrev;
+    const now = Date.now();
+    const reducedMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prev && this.liveTransitMarker && shouldGlideVehicle({
+      fromUpdatedAt: prev.updatedAt,
+      toUpdatedAt: position.updatedAt,
+      distanceMeters: vehicleDistanceMeters(prev.coordinates, position.coordinates),
+      now,
+      reducedMotion,
+    })) {
+      const gapMs = Date.parse(position.updatedAt) - Date.parse(prev.updatedAt);
+      this.glideLiveTransit(prev.coordinates, position.coordinates, vehicleGlideDuration(gapMs));
+    } else {
+      this.liveTransitMarker?.setLngLat(position.coordinates);
+    }
+    this.liveTransitPrev = { coordinates: position.coordinates, updatedAt: position.updatedAt };
     this.map.getContainer().dataset.marshgoLiveTransitUpdatedAt = position.updatedAt;
+  }
+
+  private cancelLiveTransitGlide() {
+    if (this.liveTransitGlideRaf !== null) {
+      cancelAnimationFrame(this.liveTransitGlideRaf);
+      this.liveTransitGlideRaf = null;
+    }
+  }
+
+  /** Glide the verified journey marker between two fresh fixes; jumps are handled by the caller. */
+  private glideLiveTransit(from: Coordinate, to: Coordinate, durationMs: number) {
+    const start = performance.now();
+    const ease = cameraEasing();
+    const step = (now: number) => {
+      if (!this.liveTransitMarker) { this.liveTransitGlideRaf = null; return; }
+      const progress = durationMs > 0 ? Math.min(1, (now - start) / durationMs) : 1;
+      this.liveTransitMarker.setLngLat(interpolateVehicleCoordinate(from, to, ease(progress)));
+      if (progress < 1) this.liveTransitGlideRaf = requestAnimationFrame(step);
+      else this.liveTransitGlideRaf = null;
+    };
+    this.liveTransitGlideRaf = requestAnimationFrame(step);
   }
 
   /**
@@ -1244,7 +1297,7 @@ export class MapLibreAdapter implements MapAdapter {
       center: this.vehicle, zoom: Math.max(this.map.getZoom(), 17), pitch: tilt,
       bearing: this.heading ?? this.map.getBearing(),
       padding: { top: Math.round(clientHeight * 0.32), bottom: Math.round(clientHeight * 0.08), left: 0, right: 0 },
-      duration: this.motionDuration(duration), easing: cameraEasing(), essential: true,
+      duration: this.glideDuration(duration, { center: this.vehicle, zoom: Math.max(this.map.getZoom(), 17), bearing: this.heading ?? this.map.getBearing() }), easing: cameraEasing(), essential: true,
     });
   }
   setWaypoints(points: RouteWaypoint[]) {
@@ -1313,7 +1366,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.markCameraRequest();
     this.map.fitBounds([[centerLng - padLng, centerLat - padLat], [centerLng + padLng, centerLat + padLat]], {
       padding,
-      duration: this.motionDuration(520),
+      duration: this.glideDuration(520, { center: [centerLng, centerLat] }),
       easing: cameraEasing(),
       maxZoom,
     });
@@ -1335,7 +1388,7 @@ export class MapLibreAdapter implements MapAdapter {
       zoom: camera.zoom,
       bearing,
       padding,
-      duration: this.motionDuration(CAMERA_FOCUS_DURATION_MS),
+      duration: this.glideDuration(CAMERA_FOCUS_DURATION_MS, { center: camera.center, zoom: camera.zoom, bearing }),
       easing: cameraEasing(),
     });
   }
@@ -1408,7 +1461,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.easeTo({
       center: point,
       zoom,
-      duration: this.motionDuration(600),
+      duration: this.glideDuration(600, { center: point, zoom }),
       easing: cameraEasing(),
       essential: true,
       ...(safePadding ? { padding: safePadding } : {}),
@@ -1453,6 +1506,7 @@ export class MapLibreAdapter implements MapAdapter {
   }
   retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
   destroy() {
+    this.cancelLiveTransitGlide();
     this.marker?.remove();
     this.liveTransitMarker?.remove();
     for (const { marker } of this.journeyLabelMarkers.values()) marker.remove();

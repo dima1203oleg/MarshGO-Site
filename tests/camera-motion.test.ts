@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cameraEasing, cameraMotionDuration, CAMERA_FOCUS_DURATION_MS, interruptCameraForUserGesture } from '../src/map/cameraMotion';
+import { cameraEasing, cameraMotionDuration, adaptiveCameraDuration, CAMERA_FOCUS_DURATION_MS, interruptCameraForUserGesture } from '../src/map/cameraMotion';
 
 test('the camera easing is the entrance token: it starts fast and settles softly', () => {
   const easing = cameraEasing();
@@ -56,4 +56,51 @@ test('user gestures stop animation without redundant mode transitions when alrea
   interruptCameraForUserGesture({ type: 'wheel' }, 'FREE', () => stopped++, () => manual++);
   assert.equal(stopped, 1);
   assert.equal(manual, 0);
+});
+
+test('a near-static refit snaps faster than the base duration', () => {
+  const base = 700;
+  const snap = adaptiveCameraDuration(base, { distanceMeters: 0, zoomDelta: 0, bearingDelta: 0 });
+  assert.ok(snap < base, `expected a short hop below ${base}, got ${snap}`);
+  assert.ok(snap >= base * 0.5, `must never drop below half the base, got ${snap}`);
+});
+
+test('a cross-city move glides longer than a short hop but stays capped', () => {
+  const base = 700;
+  const short = adaptiveCameraDuration(base, { distanceMeters: 120 });
+  const long = adaptiveCameraDuration(base, { distanceMeters: 6000 });
+  assert.ok(long > short, `a long move (${long}) must outlast a short one (${short})`);
+  assert.ok(long <= 1400, `must not delay the user beyond 1.4 s, got ${long}`);
+});
+
+test('zoom change and turn angle each lengthen the glide on their own', () => {
+  const base = 600;
+  const flat = adaptiveCameraDuration(base, {});
+  assert.ok(adaptiveCameraDuration(base, { zoomDelta: 4 }) > flat, 'a 4-level zoom must glide longer');
+  assert.ok(adaptiveCameraDuration(base, { bearingDelta: 90 }) > flat, 'a 90° turn must glide longer');
+  // The dominant signal wins, they do not stack into an absurd duration.
+  assert.ok(adaptiveCameraDuration(base, { distanceMeters: 9000, zoomDelta: 8, bearingDelta: 180 }) <= 1400);
+});
+
+test('adaptive duration is monotonic in distance and rounded to 10 ms', () => {
+  let previous = -1;
+  for (let metres = 0; metres <= 4000; metres += 250) {
+    const value = adaptiveCameraDuration(700, { distanceMeters: metres });
+    assert.ok(value >= previous, `duration must not shrink as distance grows (${metres} m)`);
+    assert.equal(value % 10, 0, `expected a 10 ms grid, got ${value}`);
+    previous = value;
+  }
+});
+
+test('invalid or non-positive base yields no animation; reduced motion still wins upstream', () => {
+  assert.equal(adaptiveCameraDuration(0, { distanceMeters: 5000 }), 0);
+  assert.equal(adaptiveCameraDuration(-100, {}), 0);
+  assert.equal(adaptiveCameraDuration(Number.NaN, {}), 0);
+  assert.equal(cameraMotionDuration(adaptiveCameraDuration(700, { distanceMeters: 5000 }), true), 0);
+});
+
+test('non-finite effort signals are ignored instead of poisoning the duration', () => {
+  const base = 700;
+  const clean = adaptiveCameraDuration(base, {});
+  assert.equal(adaptiveCameraDuration(base, { distanceMeters: Number.NaN, zoomDelta: Number.POSITIVE_INFINITY }), clean);
 });

@@ -3,6 +3,32 @@ export function cameraMotionDuration(durationMs: number, reducedMotion: boolean)
   return reducedMotion ? 0 : durationMs;
 }
 
+/** How far the camera travels: centre displacement, zoom change and turn angle. */
+export type CameraMoveEffort = {
+  distanceMeters?: number;
+  zoomDelta?: number;
+  bearingDelta?: number;
+};
+
+/**
+ * Context-aware glide (ТЗ §7): a near-static refit snaps, a cross-city move
+ * glides cinematically. The dominant of distance / zoom / turn sets the effort,
+ * so one fixed animation never plays for every situation. The caller still runs
+ * the result through cameraMotionDuration for reduced motion.
+ */
+export function adaptiveCameraDuration(baseMs: number, effort: CameraMoveEffort = {}): number {
+  if (!Number.isFinite(baseMs) || baseMs <= 0) return 0;
+  const distance = Number.isFinite(effort.distanceMeters) ? Math.max(0, effort.distanceMeters!) : 0;
+  const zoom = Number.isFinite(effort.zoomDelta) ? Math.abs(effort.zoomDelta!) : 0;
+  const bearing = Number.isFinite(effort.bearingDelta) ? Math.abs(effort.bearingDelta!) : 0;
+  // Normalise each signal to 0..1: 2 km centre travel, 4 zoom levels, a 90° turn.
+  const level = Math.max(Math.min(1, distance / 2000), Math.min(1, zoom / 4), Math.min(1, bearing / 90));
+  const scaled = baseMs * (0.6 + 0.9 * level);
+  // Never slower than half the base, never a leisurely >1.4 s that delays the user.
+  const capped = Math.min(1400, Math.max(baseMs * 0.5, scaled));
+  return Math.round(capped / 10) * 10;
+}
+
 /** The entrance easing from the motion tokens: cubic-bezier(.16,.84,.28,1). */
 export const CAMERA_ENTRANCE_BEZIER = [0.16, 0.84, 0.28, 1] as const;
 /** A focused leg gets a longer glide than an overview refit so the turn reads. */

@@ -1,4 +1,38 @@
 import type { Coordinate } from '../../shared/navigation/contracts';
+import type { CameraMoveEffort } from './cameraMotion';
+
+/** Shortest absolute turn between two compass bearings, in degrees (0..180). */
+export function shortestBearingDelta(from: number, to: number): number {
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return 0;
+  return Math.abs(((to - from) % 360 + 540) % 360 - 180);
+}
+
+/** Great-circle distance between two coordinates in metres. */
+function haversineMeters(a: Coordinate, b: Coordinate): number {
+  const rad = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * rad;
+  const dLon = (b[0] - a[0]) * rad;
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLon = Math.sin(dLon / 2);
+  const h = sinDLat * sinDLat + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * sinDLon * sinDLon;
+  return 6371000 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/**
+ * Effort of a camera move from the current pose to a target pose. Missing target
+ * fields contribute zero, so a pure zoom step or a pure pan still adapts. Feeds
+ * adaptiveCameraDuration so the glide character matches the distance travelled.
+ */
+export function cameraMoveEffort(
+  current: { center: Coordinate; zoom: number; bearing: number },
+  target: { center?: Coordinate; zoom?: number; bearing?: number },
+): CameraMoveEffort {
+  return {
+    distanceMeters: target.center ? haversineMeters(current.center, target.center) : 0,
+    zoomDelta: typeof target.zoom === 'number' && Number.isFinite(target.zoom) ? target.zoom - current.zoom : 0,
+    bearingDelta: typeof target.bearing === 'number' ? shortestBearingDelta(current.bearing, target.bearing) : 0,
+  };
+}
 
 /**
  * Compass bearing (0–360°, clockwise from north) of the dominant direction of a
