@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, ArrowRight, ChevronDown, Flag, Layers, Navigation } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, Flag, Navigation } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
+import { MapLayersControl } from '../components/MapLayersControl';
+import { MapBasemapControl, MapControlRail, MapPerspectiveControl, MapVoiceControl, MapZoomControls } from '../components/MapInteractionControls';
 import {
   buildJourneyRouteMapModel, formatTransferCount, journeyModeColor,
 } from '../map/journeyRouteModel';
@@ -8,7 +10,6 @@ import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
-import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { buildRouteMapAnnotations, formatStopCount, isTransitLeg } from './routeMapAnnotations';
@@ -91,7 +92,6 @@ export function JourneyActiveNavigation({
 
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
-  const [mapLayer, setCurrentMapLayer] = useState<MapLayer>(getMapLayer);
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
   const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 340 : routeSheetHeights(window.innerHeight).half);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
@@ -374,6 +374,7 @@ export function JourneyActiveNavigation({
         routeWaypoints={model.routeWaypoints}
         routeLabels={routeLabels}
         routeFitPadding={mapPadding}
+        overlays
         theme={isDark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT'}
         onStatus={setMapStatus}
         onAdapter={adapter => { mapAdapter.current = adapter; setMapAdapterReady(Boolean(adapter)); if (adapter) adapter.setActiveRouteSegment?.(leg.id); }}
@@ -386,7 +387,7 @@ export function JourneyActiveNavigation({
     </div>
 
     <header className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-3xl flex-col gap-2 px-4 pb-2 pt-[max(.75rem,env(safe-area-inset-top))]">
-      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
+      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2">
         <button type="button" aria-label="Вийти з навігації до маршруту" onClick={onExit} className="route-header-back grid h-11 w-11 shrink-0 place-items-center rounded-full">
           <ArrowLeft size={20}/>
         </button>
@@ -394,19 +395,14 @@ export function JourneyActiveNavigation({
           <p className="text-xs font-extrabold uppercase tracking-[.14em] text-[var(--route-muted)]">Навігація</p>
           <p className="max-w-full truncate text-[16px] font-black leading-6 tracking-[-.02em] text-[var(--route-brand-ink)]">{destination}</p>
         </div>
-        <button type="button" aria-label={`Шар карти: ${mapLayers[mapLayer].label}. Перемкнути`} title={`Шар карти: ${mapLayers[mapLayer].label}`} onClick={() => {
-          const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
-          setCurrentMapLayer(next);
-          setMapLayer(next);
-        }} className="route-header-icon grid h-11 w-11 shrink-0 place-items-center rounded-full">
-          <Layers size={20}/>
-        </button>
       </div>
       {(mapWarning || liveLabel) && <p role="status" className="mx-auto w-fit max-w-full truncate rounded-full bg-[var(--route-card)] px-3 py-1 text-xs font-semibold text-[var(--route-muted)]">{mapWarning || liveLabel}</p>}
       {showDiagnostics && mapStatus !== 'available' && <p data-testid="active-map-status-details" className="mx-auto mt-1 w-fit max-w-full text-center text-xs text-[var(--route-muted)]">{mapStatusDetail(mapStatus, 'journey')}</p>}
     </header>
 
-    <div className="absolute right-4 z-10" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 5rem)' }}>
+    <MapControlRail className={`absolute right-4 z-10${sheetSnap === 'expanded' ? ' opacity-45' : ''}`} label="Керування картою активної поїздки" inert={sheetSnap === 'expanded'} style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 5rem)' }}>
+      <MapZoomControls map={mapAdapter.current} enabled={mapAdapterReady}/>
+      <MapVoiceControl />
       <button
         type="button"
         aria-label={focusWhole ? 'Наблизити поточний етап' : 'Показати весь маршрут'}
@@ -419,11 +415,14 @@ export function JourneyActiveNavigation({
           setFocusWhole(value => !value);
           haptic(8);
         }}
-        className={`route-map-control grid h-11 w-11 place-items-center rounded-full${focusWhole ? ' is-reset' : ''}`}
+        className={`map-interaction-control mg-press-subtle grid h-12 w-12 place-items-center rounded-full${focusWhole ? ' is-reset' : ''}`}
       >
         <Navigation size={19}/>
       </button>
-    </div>
+      <MapPerspectiveControl />
+      <MapBasemapControl />
+      <MapLayersControl overlays />
+    </MapControlRail>
 
     <section
       ref={sheetElement}

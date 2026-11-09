@@ -18,6 +18,7 @@ import { CAMERA_ZOOM_STEP_DURATION_MS, cameraMotionDuration } from '../src/map/c
 const adapter = readFileSync(new URL('../src/map/MapLibreAdapter.ts', import.meta.url), 'utf8');
 const screen = readFileSync(new URL('../src/views/JourneyRouteMapScreen.tsx', import.meta.url), 'utf8');
 const mapAdapterContract = readFileSync(new URL('../src/map/MapAdapter.ts', import.meta.url), 'utf8');
+const mapControls = readFileSync(new URL('../src/components/MapInteractionControls.tsx', import.meta.url), 'utf8');
 
 function luminance(hex: string): number {
   const value = hex.replace('#', '');
@@ -168,12 +169,13 @@ test('theme switches repaint the walking trail and reveal fallbacks', () => {
 });
 
 test('the screen offers animated zoom controls with honest labels', () => {
-  assert.match(screen, /aria-label="Збільшити масштаб"/);
-  assert.match(screen, /aria-label="Зменшити масштаб"/);
-  assert.match(screen, /zoomBy\?\.\(1\)/);
-  assert.match(screen, /zoomBy\?\.\(-1\)/);
-  const plusAt = screen.indexOf('aria-label="Збільшити масштаб"');
-  assert.match(screen.slice(plusAt, plusAt + 400), /h-11 w-11/, 'zoom targets keep the 44 px floor');
+  assert.match(screen, /<MapZoomControls\b/, 'the route map composes the canonical zoom pair');
+  const zoomButton = mapControls.slice(mapControls.indexOf('function ZoomButton'), mapControls.indexOf('/** Shared vertical zoom pair'));
+  assert.match(zoomButton, /direction > 0 \? 'Збільшити масштаб' : 'Зменшити масштаб'/);
+  assert.match(zoomButton, /aria-label=\{label\}/);
+  assert.match(zoomButton, /map\?\.zoomBy\?\.\(direction\)/);
+  assert.match(zoomButton, /disabled=\{!canZoom\}/, 'zoom is disabled until the map can handle it');
+  assert.match(mapControls, /const controlClass = '[^']*h-12 w-12/, 'shared zoom targets exceed the 44 px touch floor');
 });
 
 test('the segment reveal runs on tokens and cleans up every timer', () => {

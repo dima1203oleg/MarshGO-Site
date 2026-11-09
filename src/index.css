@@ -1830,6 +1830,33 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 }
 .route-map-control:active { transform: scale(.94); }
 
+/* Shared map controls also appear on screens outside the route-map theme scope. */
+.map-interaction-control {
+  border: 1px solid var(--mg-border-subtle);
+  background: color-mix(in srgb, var(--mg-surface-primary) 92%, transparent);
+  color: var(--mg-ink-primary);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform .16s var(--mg-ease-entrance), background-color .16s ease;
+}
+.map-interaction-control[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--mg-action);
+  color: #fff;
+}
+.map-interaction-control[aria-expanded="true"] {
+  border-color: transparent;
+  background: var(--mg-action);
+  color: #fff;
+}
+.map-interaction-control:disabled,
+.map-interaction-control[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: .5;
+  box-shadow: none;
+}
+.map-interaction-control:active { transform: scale(.94); }
+
 .route-map-note {
   border: 1px solid color-mix(in srgb, #F5B51B 35%, transparent);
   background: color-mix(in srgb, #6B4B08 42%, transparent);

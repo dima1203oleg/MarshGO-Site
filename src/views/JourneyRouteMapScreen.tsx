@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronDown, Clock3, Footprints, Globe, Heart, Map as MapIcon, Minus, Navigation, Play, Plus, Share2, Shuffle, X,
+  ArrowLeft, ArrowRight, ChevronDown, Clock3, Footprints, Heart, Map as MapIcon, Navigation, Play, Share2, Shuffle, X,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
+import { MapBasemapControl, MapControlRail, MapPerspectiveControl, MapVoiceControl, MapZoomControls } from '../components/MapInteractionControls';
 import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from '../map/journeyRouteModel';
 import { corridorFitPoints } from '../map/routeContextCorridor';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
 import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
-import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
@@ -184,10 +184,6 @@ export function JourneyRouteMapScreen({
   const primaryLeg = useMemo(() => primaryTransitLeg(journey.legs), [journey.legs]);
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
-  const [mapLayer, setCurrentMapLayer] = useState<MapLayer>(getMapLayer);
-  const [mapPerspective, setLocalPerspective] = useState<MapPerspective>(getMapPerspective);
-  useEffect(() => subscribeMapLayer(setCurrentMapLayer), []);
-  useEffect(() => subscribeMapPerspective(setLocalPerspective), []);
 
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
   const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 316 : routeSheetHeights(window.innerHeight).half);
@@ -983,31 +979,14 @@ export function JourneyRouteMapScreen({
       {/* Floating map controls. The expanded sheet's grabber spans the full width right
           over this band, so taps there dragged the sheet instead of reaching a control:
           the column is inert (and visibly inactive) while the sheet is expanded. */}
-      <div
-        className={`absolute right-3 z-10 flex flex-col gap-2${sheetSnap === 'expanded' ? ' opacity-45' : ''}`}
+      <MapControlRail
+        className={`absolute right-3 z-10${sheetSnap === 'expanded' ? ' opacity-45' : ''}`}
+        label="Керування картою маршруту"
         inert={sheetSnap === 'expanded'}
         style={{ top: 'calc(max(.5rem, env(safe-area-inset-top)) + 5.75rem)' }}
       >
-        <div className="flex gap-2">
-          <button
-            type="button"
-            aria-label="Збільшити масштаб"
-            title="Збільшити масштаб"
-            onClick={() => mapAdapter.current?.zoomBy?.(1)}
-            className="route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg"
-          >
-            <Plus size={19}/>
-          </button>
-          <button
-            type="button"
-            aria-label="Зменшити масштаб"
-            title="Зменшити масштаб"
-            onClick={() => mapAdapter.current?.zoomBy?.(-1)}
-            className="route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg"
-          >
-            <Minus size={19}/>
-          </button>
-        </div>
+        <MapZoomControls map={mapAdapter.current} enabled={mapAdapterReady}/>
+        <MapVoiceControl />
         {showRecenter && (
           <button
             type="button"
@@ -1019,43 +998,10 @@ export function JourneyRouteMapScreen({
             <Navigation size={19}/>
           </button>
         )}
-        <button
-          type="button"
-          aria-label={mapPerspective === '3d' ? 'Повернути плоский 2D-вигляд' : "Увімкнути об'ємну 3D-перспективу"}
-          title={mapPerspective === '3d' ? '2D' : '3D'}
-          aria-pressed={mapPerspective === '3d'}
-          onClick={() => {
-            const next: MapPerspective = mapPerspective === '3d' ? '2d' : '3d';
-            setMapPerspective(next);
-            setLocalPerspective(next);
-          }}
-          className="route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full text-xs font-black shadow-lg transition-all"
-        >
-          {mapPerspective === '3d' ? '2D' : '3D'}
-        </button>
-        <button
-          type="button"
-          aria-label={
-            satelliteBasemapAvailable
-              ? mapLayer === 'satellite' ? 'Повернути схематичну карту' : 'Увімкнути супутникову карту'
-              : 'Супутникові знімки недоступні'
-          }
-          title={satelliteBasemapAvailable ? (mapLayer === 'satellite' ? 'Схема' : 'Супутник') : 'Супутникові знімки не підключені'}
-          aria-pressed={satelliteBasemapAvailable && mapLayer === 'satellite'}
-          aria-disabled={!satelliteBasemapAvailable}
-          disabled={!satelliteBasemapAvailable}
-          onClick={() => {
-            if (!satelliteBasemapAvailable) return;
-            const next: MapLayer = mapLayer === 'simple' ? 'satellite' : 'simple';
-            setCurrentMapLayer(next);
-            setMapLayer(next);
-          }}
-          className={`route-map-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full shadow-lg transition-all ${satelliteBasemapAvailable ? '' : ' opacity-45'}`}
-        >
-          <Globe size={19} />
-        </button>
-        <MapLayersControl overlays variant="navigation" />
-      </div>
+        <MapPerspectiveControl />
+        <MapBasemapControl />
+        <MapLayersControl overlays />
+      </MapControlRail>
 
       {/* FULL keeps a live map strip; this returns the sheet to MEDIUM so the
           focused target is visible again instead of hidden behind the details.
