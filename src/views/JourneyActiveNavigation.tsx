@@ -7,12 +7,14 @@ import {
 import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
+import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
 import { getMapLayer, mapLayers, setMapLayer, type MapLayer } from '../map/mapMode';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { buildRouteMapAnnotations, formatStopCount, isTransitLeg } from './routeMapAnnotations';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
 import { nextStopsLegId } from './journeyStopsPanel';
+import { diagnosticsRequested } from './resultsDiagnostics';
 import {
   createFrameWriter,
   prefersReducedMotion,
@@ -63,6 +65,10 @@ export function JourneyActiveNavigation({
   initialLegIndex?: number | null;
   onStageChange?: (legIndex: number) => void;
 }) {
+  const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
+    window.location.search,
+    (() => { try { return window.localStorage.getItem('marshgo.results.diagnostics'); } catch { return null; } })(),
+  );
   const legs = journey.legs;
   const model = useMemo(() => buildJourneyRouteMapModel(legs), [legs]);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -344,7 +350,7 @@ export function JourneyActiveNavigation({
   const showRibbon = sheetSnap === 'expanded' || (sheetSnap === 'half' && viewportHeight >= 700);
   const showAction = sheetSnap !== 'collapsed';
   const destination = activeNavigationDestination(legs);
-  const mapWarning = mapStatus === 'failed' ? 'Карта тимчасово недоступна' : null;
+  const mapWarning = mapStatus === 'failed' ? mapStatusNote(mapStatus) : null;
   const liveLabel = liveJourneyRequestState === 'failed' ? 'За розкладом' : null;
 
   const advance = () => {
@@ -397,6 +403,7 @@ export function JourneyActiveNavigation({
         </button>
       </div>
       {(mapWarning || liveLabel) && <p role="status" className="mx-auto w-fit max-w-full truncate rounded-full bg-[var(--route-card)] px-3 py-1 text-xs font-semibold text-[var(--route-muted)]">{mapWarning || liveLabel}</p>}
+      {showDiagnostics && mapStatus !== 'available' && <p data-testid="active-map-status-details" className="mx-auto mt-1 w-fit max-w-full text-center text-xs text-[var(--route-muted)]">{mapStatusDetail(mapStatus, 'journey')}</p>}
     </header>
 
     <div className="absolute right-4 z-10" style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 5rem)' }}>
