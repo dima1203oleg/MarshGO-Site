@@ -316,7 +316,7 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
 .home-marshpass-promo__route circle { fill: var(--mg-surface-primary); stroke: currentColor; stroke-width: 2; }
 .home-marshpass-promo__title { max-width: 78%; text-wrap: balance; }
 .home-marshpass-promo__footer { letter-spacing: .2em; }
-.home-marshpass-promo__caption { margin-inline: auto 1rem; max-width: 58%; overflow: hidden; color: var(--mg-ink-muted); font-size: .6875rem; font-weight: 600; letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
+.home-marshpass-promo__caption { margin-inline: auto 1rem; max-width: 58%; overflow: hidden; color: var(--mg-ink-secondary); font-size: .75rem; font-weight: 600; letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
 .home-marshpass-card--active { position: relative; background: linear-gradient(122deg, var(--mg-surface-primary), color-mix(in srgb, var(--mg-action) 9%, var(--mg-surface-primary))); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mg-ink-primary) 7%, transparent), var(--mg-card-shadow); }
 .home-marshpass-card--active::before { position: absolute; inset: 0; background: radial-gradient(ellipse at 96% 6%, color-mix(in srgb, var(--mg-blue) 13%, transparent), transparent 45%); content: ""; pointer-events: none; }
 .home-pass-preview__header, .home-pass-preview__brand, .home-pass-preview__status, .home-pass-preview__route, .home-pass-preview__footer, .home-pass-preview__driver { display: flex; align-items: center; }
@@ -360,6 +360,10 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
   gap: .4rem;
 }
 .transport-types-inline .transport-mode-grid button { min-height: 4.25rem; }
+.transport-mode-tile__label { text-wrap: balance; }
+@media (max-width: 380px) {
+  .transport-types-inline .transport-mode-tile__label { font-size: .625rem; letter-spacing: -.01em; }
+}
 .transport-types-inline .transport-mode-grid button.transport-mode-tile--carpool { box-shadow: 0 0 0 1px var(--mg-action), var(--mg-card-shadow); }
 .home-screen .home-intro {
   position: relative;
@@ -1528,6 +1532,9 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 /* The banner is a content box, not a poster: a fixed height with overflow:hidden
    silently cut the publish CTA in half on 390×844. Keep the rhythm as a floor. */
 .home-canonical-banner { min-height: clamp(10rem, 20svh, 11.75rem); }
+/* The promo absorbs leftover hero height so the tab bar never floats over dead space;
+   the cap keeps it a banner, not a poster, on tall phones (iPhone 16 / 15 Pro Max). */
+.home-marshpass-promo { flex-grow: 1; max-height: 14rem; }
 .home-action-grid { flex: 0 0 auto; grid-template-rows: repeat(2, clamp(6.2rem, 12.5svh, 6.8rem)); gap: .5rem; }
 /* A single navy surface family keeps all four actions calm; hierarchy comes from blue glyphs
    and the primary search action, while labels stay high-contrast ink. */
@@ -1549,7 +1556,7 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 }
 .home-action-icon { border: 1px solid var(--mg-border-subtle); color: var(--mg-blue-ink); background: var(--mg-blue-tint); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mg-ink-primary) 6%, transparent); }
 .home-action-card--search .home-action-icon { color: var(--mg-blue); background: color-mix(in srgb, var(--mg-blue) 16%, transparent); }
-.home-action-card__title { color: var(--home-ink); }
+.home-action-card__title { color: var(--home-ink); text-wrap: balance; }
 .home-action-card__subtitle { color: var(--home-sub); }
 .home-action-card:focus-visible { outline: 3px solid var(--mg-blue); outline-offset: 3px; }
 .home-action-card__hint {
@@ -1563,8 +1570,9 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
   .home-action-card:hover .home-action-icon { transform: translateY(-1px) scale(1.06); }
 }
 .home-action-icon { transition: transform var(--mg-dur-base) var(--mg-ease-entrance); }
-.home-popular-routes { flex: 0 0 auto; }
-.home-popular-route { height: 4rem; }
+.home-popular-routes { display: flex; flex-direction: column; flex-grow: 1; }
+.home-popular-routes__row { flex: 1; }
+.home-popular-route { height: auto; min-height: 4rem; }
 .home-banner-copy, .home-banner-media { animation: mg-fade var(--mg-dur-slow) var(--mg-ease-standard) both; }
 .home-marshpass-slot { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) both; }
 .home-action-grid > .home-action-card { animation: mg-rise var(--mg-dur-slow) var(--mg-ease-entrance) both; animation-delay: calc(90ms + var(--mg-stagger-i, 0) * var(--mg-stagger-step)); }
