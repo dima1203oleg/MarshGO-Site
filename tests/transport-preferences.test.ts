@@ -157,7 +157,7 @@ describe('transport types and providers', () => {
     const preferences = toJourneyPreferences({ ...defaultSelection, active: ['marshrutka'] }, marshrutkaGroups);
     assert.deepEqual(preferences.allowedTransportTypes, ['marshrutka']);
     assert.equal(preferences.allowMinibus, true);
-    assert.deepEqual(preferences.allowedTransitProvidersByType, { marshrutka: ['geo', 'json'] });
+    assert.deepEqual(preferences.allowedTransitProvidersByType, {});
   });
 
   it('"Усі провайдери" uses every connected provider and returns when the last specific one is cleared', () => {
@@ -182,34 +182,64 @@ describe('transport types and providers', () => {
     assert.deepEqual(choiceFor(selection, 'train'), { all: false, ids: ['train:Укрзалізниця'] });
   });
 
-  it('maps only route-engine modes onto Journey Engine flags and filters unavailable providers', () => {
+  it('preserves selected route modes and lets the planner resolve available providers', () => {
     const carpoolOnly = { ...defaultSelection, active: ['carpool' as const] };
     assert.equal(toJourneyPreferences(carpoolOnly, groups).allowCommunity, true);
     assert.equal(toJourneyPreferences(carpoolOnly, groups).allowTaxi, false);
     const taxiOnly = { ...defaultSelection, active: ['taxi' as const] };
-    assert.equal(toJourneyPreferences(taxiOnly, groups).allowTaxi, false);
+    assert.equal(toJourneyPreferences(taxiOnly, groups).allowTaxi, true);
     assert.equal(toJourneyPreferences(taxiOnly, groups).allowCommunity, false);
-    assert.deepEqual(toJourneyPreferences(taxiOnly, groups).allowedTransportTypes, []);
+    assert.deepEqual(toJourneyPreferences(taxiOnly, groups).allowedTransportTypes, ['taxi']);
     const bikeOnly = toJourneyPreferences({ ...defaultSelection, active: ['bike' as const] }, groups);
     assert.deepEqual(bikeOnly.allowedTransportTypes, ['bike']);
+    assert.equal(bikeOnly.allowBicycle, true);
     assert.equal(bikeOnly.allowPublicTransport, false);
-    assert.deepEqual(bikeOnly.allowedProviderIds, ['nextbike']);
+    assert.deepEqual(bikeOnly.allowedProviderIds, []);
+    assert.deepEqual(bikeOnly.allowedProviderIdsByType, {});
     const scooterOnly = toJourneyPreferences({ ...defaultSelection, active: ['scooter' as const] }, groups);
     assert.deepEqual(scooterOnly.allowedTransportTypes, ['scooter']);
+    assert.equal(scooterOnly.allowScooter, true);
     assert.equal(scooterOnly.allowPublicTransport, false);
-    assert.deepEqual(scooterOnly.allowedProviderIds, ['zelectra']);
+    assert.deepEqual(scooterOnly.allowedProviderIds, []);
+    assert.deepEqual(scooterOnly.allowedProviderIdsByType, {});
     const mixedMicromobility = toJourneyPreferences({ ...defaultSelection, active: ['bike' as const, 'scooter' as const] }, groups);
     assert.deepEqual(mixedMicromobility.allowedTransportTypes, ['bike', 'scooter']);
-    assert.deepEqual(mixedMicromobility.allowedProviderIds, ['nextbike', 'zelectra']);
+    assert.deepEqual(mixedMicromobility.allowedProviderIds, []);
+    assert.deepEqual(mixedMicromobility.allowedProviderIdsByType, {});
     const metroWithRentals = toJourneyPreferences({ ...defaultSelection, active: ['metro' as const, 'bike' as const, 'scooter' as const] }, groups);
     assert.deepEqual(metroWithRentals.allowedTransportTypes, ['metro', 'bike', 'scooter']);
     assert.equal(metroWithRentals.allowPublicTransport, true);
-    assert.deepEqual(metroWithRentals.allowedProviderIds, ['nextbike', 'zelectra']);
-    assert.deepEqual(metroWithRentals.allowedTransitProvidersByType, { metro: ['Київ'] });
+    assert.deepEqual(metroWithRentals.allowedProviderIds, []);
+    assert.deepEqual(metroWithRentals.allowedProviderIdsByType, {});
+    assert.deepEqual(metroWithRentals.allowedTransitProvidersByType, {});
     const busOnly = toJourneyPreferences({ ...defaultSelection, active: ['bus' as const] }, groups);
     assert.equal(busOnly.allowBus && busOnly.allowPublicTransport, true);
     assert.equal(busOnly.allowRail || busOnly.allowMinibus || busOnly.allowCommunity, false);
     assert.deepEqual(busOnly.allowedTransportTypes, ['bus']);
+  });
+
+  it('does not turn endpoint coverage into a route-feed allowlist', () => {
+    const endpointOnlyGroups = [{
+      transportType: 'bus',
+      providers: [{ id: 'bus:OriginCity', name: 'OriginCity', available: true, cities: ['Львів'], sources: ['gtfs'], services: ['bus'] }],
+    }];
+    const preferences = toJourneyPreferences(defaultSelection, endpointOnlyGroups);
+    assert.deepEqual(preferences.allowedTransportTypes, [...supportedJourneySearchTypes]);
+    assert.deepEqual(preferences.allowedProviderIds, []);
+    assert.deepEqual(preferences.allowedTransitProviders, []);
+    assert.deepEqual(preferences.allowedTransitProvidersByType, {});
+
+    const explicitlyRestricted = toggleProvider({ ...defaultSelection, active: ['train'] }, 'train', 'train:Rail Operator');
+    assert.deepEqual(toJourneyPreferences(explicitlyRestricted, null).allowedTransitProvidersByType, { train: ['Rail Operator'] });
+  });
+
+  it('keeps rental provider filters isolated by transport category', () => {
+    const selection: TransportSelection = { ...defaultSelection, active: ['bike', 'scooter'] };
+    const filtered = toggleProvider(selection, 'scooter', 'scooter:zelectra');
+    const preferences = toJourneyPreferences(filtered, groups);
+
+    assert.deepEqual(preferences.allowedProviderIds, []);
+    assert.deepEqual(preferences.allowedProviderIdsByType, { scooter: ['zelectra'] });
   });
 
   it('preserves supported route modes while provider availability is loading', () => {
@@ -222,9 +252,10 @@ describe('transport types and providers', () => {
     assert.deepEqual(preferences.allowedTransitProvidersByType, {});
   });
 
-  it('does not treat realtime-only vehicle positions as a routable GTFS schedule', () => {
+  it('keeps an explicitly selected mode in the request without inventing a routable feed', () => {
     const preferences = toJourneyPreferences({ ...defaultSelection, active: ['tram'] }, groups);
-    assert.equal(preferences.allowPublicTransport, false);
-    assert.deepEqual(preferences.allowedTransportTypes, []);
+    assert.equal(preferences.allowPublicTransport, true);
+    assert.deepEqual(preferences.allowedTransportTypes, ['tram']);
+    assert.deepEqual(providersForJourneySearch('tram', groups), []);
   });
 });
