@@ -17,8 +17,9 @@ test('search provider dialog does not repeat transport type controls', async () 
   assert.match(marketplace, /<TransportTypesPanel providersOnly selection=\{transportSelection\}/, 'the search Providers action must open a provider-only dialog');
   assert.match(marketplace, /<h2 id="transport-picker-title" className="font-extrabold">Провайдери<\/h2>/, 'the dialog title must match its action');
   assert.match(panel, /!providersOnly && <div className="mb-1 flex items-center justify-between gap-2"/, 'transport controls must stay out of the provider dialog');
-  assert.match(panel, /availableTypes\.length < supportedJourneySearchTypes\.length/, 'partial provider coverage must remain visible to users');
-  assert.match(panel, /У цій зоні маршрутний пошук має провайдерів для/, 'the coverage disclosure must not be removed as a design-only change');
+  assert.match(panel, /localProviderTypes\.length < supportedJourneySearchTypes\.length - 1/, 'partial local provider coverage must remain visible to users');
+  assert.match(panel, /Провайдери біля вибраних точок знайдені для/, 'local discovery must be described as endpoint coverage');
+  assert.match(panel, /«Усі види» додасть решту/, 'coverage gaps must not prevent searching selected modes along the full corridor');
   assert.match(panel, /!compact && !providersOnly && <button type="button" onClick=\{\(\) => setProvidersOpen/, 'the provider dialog must not show a second Configure Providers toggle');
   assert.match(panel, /providersOnly && selection\.active\.length === 0/, 'an empty provider selection must have a clear status message');
   assert.doesNotMatch(marketplace, /Обрати на мапі: \\{\(routePlaceField/, 'the duplicated wide map picker must be absent');
