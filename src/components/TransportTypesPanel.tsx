@@ -15,7 +15,7 @@ const routeSearchOrder: readonly TransportTypeId[] = [
 function Tile({ label, visualLabel = label, selected, disabled, disabledReason, compact, type, onClick }: { label: string; visualLabel?: string; selected: boolean; disabled: boolean; disabledReason?: string; compact?: boolean; type: TransportTypeId; onClick: () => void }) {
   const description = disabled && disabledReason ? `${label}. ${disabledReason}` : label;
   const visual = getTransportModeVisual(type);
-  return <button type="button" aria-pressed={disabled ? false : selected} aria-label={description} disabled={disabled} title={disabledReason}
+  return <button type="button" aria-pressed={disabled ? false : selected} aria-label={description} disabled={disabled} title={disabled ? disabledReason : undefined}
     onClick={onClick} className={`mg-press-subtle relative flex min-h-[5.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 py-2.5 text-center font-semibold leading-tight transition-[background-color,border-color,color,box-shadow] duration-[var(--mg-dur-fast)] motion-reduce:transition-none ${compact ? `min-h-[3.75rem] gap-0.5 rounded-xl py-1 ${type === 'carpool' ? 'transport-mode-tile--carpool ring-1 ring-[var(--mg-action)] shadow-md' : ''}` : ''} text-xs ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-[var(--mg-surface-secondary)] dark:text-slate-500' : selected ? 'border-[var(--mg-action)] bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)] shadow-[inset_0_0_0_1px_var(--mg-action)] dark:border-[var(--mg-blue)]' : 'border-[var(--mg-border-subtle)] bg-white text-[var(--mg-ink-secondary)] shadow-sm dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:text-[var(--mg-ink-secondary)]'}`}>
     <span className={`grid place-items-center ${compact ? 'h-6 w-6 rounded-md' : 'h-8 w-8 rounded-xl'} ${disabled || !selected ? 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500' : ''}`} style={selected && !disabled ? visual.badgeStyle : undefined}><TransportIcon mode={type} size={compact ? 15 : 18}/></span>
     {/* A bare text node becomes a max-content flex item, so long Ukrainian labels overflow narrow tiles; w-full lets them wrap instead. */}
@@ -29,10 +29,14 @@ function Tile({ label, visualLabel = label, selected, disabled, disabledReason, 
 export function TransportTypesPanel({ selection, groups, onChange, compact = false, providersInitiallyOpen = false, providersOnly = false, onManageProviders }: { selection: TransportSelection; groups: ApiTransportProviders[] | null; onChange: (selection: TransportSelection) => void; compact?: boolean; providersInitiallyOpen?: boolean; providersOnly?: boolean; onManageProviders?: () => void }) {
   const [providersOpen, setProvidersOpen] = useState(providersInitiallyOpen);
   const availableTypes = transportTypes.filter((type) => isJourneySearchSupported(type.id) && (groups === null || hasJourneySearchProvider(type.id, groups))).map((type) => type.id);
-  const allActive = allAvailableTypesSelected(selection, availableTypes);
+  const localProviderTypes = availableTypes.filter((type) => type !== 'carpool');
+  const selectableTypes = routeSearchOrder.filter(isJourneySearchSupported);
+  const allActive = allAvailableTypesSelected(selection, selectableTypes);
   const showProviders = providersOnly || (selection.active.length > 0 && providersOpen);
-  const isConnected = (type: TransportTypeId) => isJourneySearchSupported(type)
-    && (groups === null || hasJourneySearchProvider(type, groups));
+  // Endpoint-local coverage is not the full search corridor. Keep every
+  // supported category selectable so a feed covering an intermediate city is
+  // not silently excluded from the journey request.
+  const isSelectable = (type: TransportTypeId) => isJourneySearchSupported(type);
   const disabledReason = (type: TransportTypeId) => transportUnavailableMessage(type, groups);
   const providersOf = (type: TransportTypeId) => providersForJourneySearch(type, groups);
 
@@ -41,24 +45,24 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
     {!providersOnly && <div className="mb-1 flex items-center justify-between gap-2"><h2 className="text-sm font-extrabold text-[var(--mg-ink-primary)] dark:text-[var(--mg-ink-primary)]">Види транспорту</h2>
       <span className="flex shrink-0 items-center gap-1.5">
       {compact && onManageProviders && <button type="button" onClick={onManageProviders} className="mg-press-subtle min-h-11 rounded-full border border-[var(--mg-border-subtle)] bg-white px-3 text-xs font-bold text-[var(--mg-blue)] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:text-[var(--mg-blue-ink)]">Провайдери</button>}
-      <button type="button" aria-pressed={allActive} aria-label={allActive ? 'Вимкнути доступні види транспорту' : 'Увімкнути всі доступні види транспорту'} onClick={() => onChange(toggleAvailableTypes(selection, availableTypes))} className={`mg-pill-switch mg-press-subtle min-h-11 rounded-full border px-3 py-1.5 text-xs font-bold ${allActive ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white dark:border-[var(--mg-action)] dark:bg-[var(--mg-action)]' : 'border-slate-200 bg-white text-[var(--mg-blue)] dark:border-slate-700 dark:bg-[var(--mg-surface-tint)] dark:text-[var(--mg-blue-ink)]'}`}>Усі види</button>
+      <button type="button" aria-pressed={allActive} aria-label={allActive ? 'Вимкнути всі види транспорту' : 'Увімкнути всі види транспорту'} onClick={() => onChange(toggleAvailableTypes(selection, selectableTypes))} className={`mg-pill-switch mg-press-subtle min-h-11 rounded-full border px-3 py-1.5 text-xs font-bold ${allActive ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white dark:border-[var(--mg-action)] dark:bg-[var(--mg-action)]' : 'border-slate-200 bg-white text-[var(--mg-blue)] dark:border-slate-700 dark:bg-[var(--mg-surface-tint)] dark:text-[var(--mg-blue-ink)]'}`}>Усі види</button>
       </span>
     </div>}
-    {groups === null && <p role="status" className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-4 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-      Покриття маршрутів ще не перевірено; наявність провайдерів не підтверджена.
+    {groups === null && <p role="status" className="mb-2 rounded-xl bg-[var(--mg-surface-tint)] px-3 py-2 text-xs leading-4 text-[var(--mg-ink-muted)]">
+      Покриття провайдерів ще завантажується. Обрані види залишаться у запиті.
     </p>}
-    {!providersOnly && groups !== null && availableTypes.length < supportedJourneySearchTypes.length && <p role="status" className="mb-2 rounded-xl bg-[var(--mg-surface-tint)] px-3 py-2 text-xs leading-4 text-[var(--mg-ink-muted)]">
-      У цій зоні маршрутний пошук має провайдерів для {availableTypes.length} із {supportedJourneySearchTypes.length} видів. «Усі види» вибирає доступні категорії; для інших ще не підключені джерела.
+    {!providersOnly && groups !== null && localProviderTypes.length < supportedJourneySearchTypes.length - 1 && <p role="status" className="mb-2 rounded-xl bg-[var(--mg-surface-tint)] px-3 py-2 text-xs leading-4 text-[var(--mg-ink-muted)]">
+      Провайдери біля вибраних точок знайдені для {localProviderTypes.length} із {supportedJourneySearchTypes.length - 1} інших видів. «Усі види» додасть решту; маршрут покажемо лише за наявності даних по всьому шляху.
     </p>}
     {!compact && !providersOnly && <p className="mb-3 text-xs leading-5 text-slate-500">Оберіть види транспорту, які вам підходять для поїздки.</p>}
-    {!providersOnly && <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isConnected(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>}
+    {!providersOnly && <div className={`transport-mode-grid grid ${compact ? 'grid-cols-4 gap-1.5' : 'grid-cols-3 gap-2.5'}`}>{visibleTypes.map((type) => <Tile key={type.id} type={type.id} label={type.label} visualLabel={compact ? getTransportModeVisual(type.id).label : type.label} selected={selection.active.includes(type.id)} disabled={!isSelectable(type.id)} disabledReason={disabledReason(type.id)} compact={compact} onClick={() => onChange(toggleType(selection, type.id))}/>)}</div>}
     {!compact && !providersOnly && <button type="button" onClick={() => setProvidersOpen((value) => !value)} aria-expanded={providersOpen} className="mg-press-subtle mt-3 min-h-11 rounded-full border border-[var(--mg-border-subtle)] bg-white px-4 text-xs font-bold text-[var(--mg-blue)] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:text-[var(--mg-blue-ink)]">{providersOpen ? 'Сховати провайдерів' : 'Налаштувати провайдерів'}</button>}
     {!compact && showProviders && <div className="mt-3 space-y-3" aria-label="Провайдери">
       {!providersOnly && <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Провайдери</h3>}
       {providersOnly && selection.active.length === 0 && <p role="status" className="text-sm text-[var(--mg-ink-muted)]">Спочатку оберіть хоча б один вид транспорту.</p>}
-      {transportTypes.filter((type) => selection.active.includes(type.id) && isConnected(type.id)).map((type) => { const providers = providersOf(type.id); const choice = choiceFor(selection, type.id);
+      {transportTypes.filter((type) => selection.active.includes(type.id) && isSelectable(type.id)).map((type) => { const providers = providersOf(type.id); const choice = choiceFor(selection, type.id);
         return <div key={type.id} className="rounded-2xl bg-[var(--mg-surface-tint)] p-3 dark:bg-[var(--mg-surface-tint)]"><p className="mb-2 text-xs font-extrabold text-[var(--mg-ink-primary)] dark:text-white">{type.label}</p>
-          {providers.length === 0 ? <p className="text-xs text-slate-500">Провайдери недоступні у цьому районі.</p>
+          {providers.length === 0 ? <p className="text-xs text-slate-500">Біля вибраних точок джерело не знайдено. Цей вид лишається у запиті; маршрут з’явиться лише за наявності даних по всьому шляху.</p>
             : <div className="flex flex-wrap gap-2">
               <button type="button" aria-pressed={choice.all} onClick={() => onChange(toggleProvider(selection, type.id, 'all'))} className={`mg-pill-switch mg-press-subtle inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-xs font-bold ${choice.all ? 'border-[var(--mg-action)] bg-[var(--mg-blue-tint)] text-[var(--mg-blue)]' : 'border-[var(--mg-border-subtle)] bg-white text-slate-500'}`}>{choice.all && <Check aria-hidden="true" size={13} strokeWidth={3}/>}Усі провайдери</button>
               {providers.map((provider) => { const checked = choice.all || choice.ids.includes(provider.id); const onlyOne = providers.length === 1;
