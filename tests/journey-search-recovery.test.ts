@@ -46,7 +46,7 @@ describe('journey search failure classification', () => {
 
   it('keeps the entered-search promise in the unavailable copy', () => {
     assert.match(JOURNEY_SEARCH_UNAVAILABLE_COPY, /збережено/);
-    assert.match(JOURNEY_SEARCH_UNAVAILABLE_COPY, /повторіть/i);
+    assert.match(JOURNEY_SEARCH_UNAVAILABLE_COPY, /спробуйте ще раз/i);
   });
 });
 

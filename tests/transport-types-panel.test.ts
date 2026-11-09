@@ -27,7 +27,7 @@ describe('TransportTypesPanel corridor-aware selection', () => {
       assert.match(button, /aria-pressed="true"/, `${mode.label} stays selected by default`);
     }
 
-    assert.match(html, /провайдери біля вибраних точок знайдені для 1 із 11 інших видів/i);
-    assert.match(html, /«усі види» додасть решту/i);
+    assert.doesNotMatch(html, /провайдери біля вибраних точок знайдені|усі види.*додасть решту/i,
+      'endpoint coverage stays out of the passenger-facing transport picker');
   });
 });

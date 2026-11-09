@@ -7,6 +7,7 @@ import { MapLayersControl } from '../components/MapLayersControl';
 import { buildJourneyRouteMapModel, formatTransferCount, journeyModeColor } from '../map/journeyRouteModel';
 import { corridorFitPoints } from '../map/routeContextCorridor';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
+import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
 import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
@@ -957,7 +958,12 @@ export function JourneyRouteMapScreen({
           </div>
           {mapUnavailable && (
             <p role="status" className="mx-auto w-fit max-w-full truncate rounded-full bg-[var(--route-card)] px-2.5 py-1 text-xs font-semibold text-[var(--route-muted)]">
-              Карта тимчасово недоступна
+              {mapStatusNote(mapStatus)}
+            </p>
+          )}
+          {showDiagnostics && mapStatus !== 'available' && (
+            <p data-testid="map-status-details" className="mx-auto mt-1 w-fit max-w-full text-center text-xs text-[var(--route-muted)]">
+              {mapStatusDetail(mapStatus, 'journey')}
             </p>
           )}
         </header>
