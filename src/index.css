@@ -519,7 +519,6 @@ html.dark .journey-results .journey-result-card {
  */
 .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mg-blue) 30%, transparent), 0 5px 16px rgba(11, 45, 82, .075) !important; }
 html.dark .journey-results .journey-result-card[data-chosen="true"] { border-color: var(--mg-blue) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--mg-blue) 45%, transparent) !important; }
-.journey-result-window { overflow-wrap: anywhere; }
 html.dark .journey-results .journey-result-duration {
   color: var(--mg-ink-primary);
 }
@@ -717,7 +716,6 @@ html.dark .journey-segment-scroll-cue > span { border-color: var(--mg-border-med
 .journey-result-card-content .journey-segment-ribbon { height: 6px; box-shadow: 0 1px 6px color-mix(in srgb, var(--mg-blue) 28%, transparent); }
 /* Fares and their payment basis stay in route details; the compact chain shows one duration. */
 .journey-result-card-content .journey-segment-tile-meta { white-space: nowrap; overflow-wrap: normal; -webkit-line-clamp: 1; }
-.journey-result-card-content .journey-result-window { margin-top: .125rem; }
 /* The route-number pill is the tallest part of a tile; tighter block padding trims 3 px per
    card without touching the 12 px label or its mode tint. */
 .journey-result-card-content .journey-segment-tile-badge { padding-block: .05rem; line-height: 1.1; }
