@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { TransportIcon } from '../transport/TransportIcon';
 
@@ -33,6 +33,8 @@ export function JourneySegmentStrip({
   const scroller = useRef<HTMLDivElement>(null);
   const scrollerId = useId();
   const [scrollState, setScrollState] = useState({ overflow: false, atEnd: false });
+  const pointerDrag = useRef<{ pointerId: number; startX: number; startScrollLeft: number; moved: boolean } | null>(null);
+  const suppressClickUntil = useRef(0);
   const usesHorizontalTiles = items.length > 4;
 
   useEffect(() => {
@@ -69,6 +71,50 @@ export function JourneySegmentStrip({
       left: scrollState.atEnd ? 0 : element.scrollWidth,
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     });
+  };
+
+  // Overflow rows scroll naturally on touch and trackpads, but desktop browsers do not
+  // translate a left-button drag into horizontal scrolling. Add that gesture only for
+  // genuinely overflowing rows; buttons such as the scroll cue keep their normal click.
+  const startPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (!usesHorizontalTiles || event.pointerType !== 'mouse' || event.button !== 0) return;
+    if (event.target instanceof Element && event.target.closest('button')) return;
+    pointerDrag.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: event.currentTarget.scrollLeft,
+      moved: false,
+    };
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* The browser may end the pointer before capture. */ }
+  };
+
+  const movePointerDrag = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = pointerDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - drag.startX;
+    if (!drag.moved && Math.abs(deltaX) < 4) return;
+    drag.moved = true;
+    event.preventDefault();
+    event.currentTarget.scrollLeft = drag.startScrollLeft - deltaX;
+    event.currentTarget.dataset.pointerDragging = 'true';
+  };
+
+  const finishPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = pointerDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (drag.moved) suppressClickUntil.current = Date.now() + 250;
+    pointerDrag.current = null;
+    delete event.currentTarget.dataset.pointerDragging;
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch { /* Capture may already have been released by the browser. */ }
+  };
+
+  const suppressDragClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (Date.now() >= suppressClickUntil.current) return;
+    suppressClickUntil.current = 0;
+    event.preventDefault();
+    event.stopPropagation();
   };
 
   const renderContent = (item: JourneySegmentStripItem) => {
@@ -110,7 +156,18 @@ export function JourneySegmentStrip({
       />)}
     </div>
     <div className="journey-segment-tiles-viewport" data-cue-at-end={scrollState.atEnd ? 'true' : 'false'}>
-      <div ref={scroller} id={scrollerId} className="journey-segment-tiles journey-result-segments no-scrollbar" role="list" aria-label={ariaLabel}>
+      <div
+        ref={scroller}
+        id={scrollerId}
+        className={`journey-segment-tiles journey-result-segments no-scrollbar${usesHorizontalTiles ? ' journey-segment-tiles--draggable' : ''}`}
+        role="list"
+        aria-label={ariaLabel}
+        onPointerDown={startPointerDrag}
+        onPointerMove={movePointerDrag}
+        onPointerUp={finishPointerDrag}
+        onPointerCancel={finishPointerDrag}
+        onClickCapture={suppressDragClick}
+      >
         {items.map(item => {
           const selected = activeItemId === item.id;
           const tileClass = 'journey-segment-tile' + (usesHorizontalTiles ? ' journey-segment-tile--scroll' : '');

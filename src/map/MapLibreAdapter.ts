@@ -281,7 +281,9 @@ export class MapLibreAdapter implements MapAdapter {
     // Phones with dpr 2.5–3 shade 6–9× the pixels of a dpr-2 frame; the extra
     // sharpness is invisible under a map, the GPU cost is not.
     const pixelRatio = Math.min(typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1, 2);
-    this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', attributionControl: { compact: true }, center: [30.5234, 50.4501], zoom: 5, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false, pixelRatio });
+    // Keep pointer panning explicit: this is the primary map interaction on desktop,
+    // and must remain available alongside route focus and sheet gestures.
+    this.map = new maplibregl.Map({ container, style, interactive: true, dragPan: true, logoPosition: 'bottom-left', attributionControl: { compact: true }, center: [30.5234, 50.4501], zoom: 5, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false, pixelRatio });
     // MapLibre opens the compact attribution until the first drag, and the credit
     // only appears once the style/sources arrive. Collapse it as soon as those
     // land (idempotent); tapping the ⓘ still reveals the full attribution.

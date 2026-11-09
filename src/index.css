@@ -558,6 +558,8 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
 }
+.journey-segment-tiles--draggable { cursor: grab; }
+.journey-segment-tiles--draggable[data-pointer-dragging="true"] { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 .journey-segment-tile {
   min-width: 0;
   flex: 1 0 0;
@@ -711,6 +713,9 @@ html.dark .journey-segment-scroll-cue > span { border-color: var(--mg-border-med
  */
 .journey-result-segments .journey-segment-tile-content { min-height: 1.875rem; gap: 0; padding-block: 0; }
 .journey-result-card-content > .journey-segment-strip { margin-top: 0; }
+/* The compact card's full-surface click layer is inert underneath its content. Re-enable
+   just the horizontal viewport so mouse drags and touch swipes can reach the segment row. */
+.journey-result-card-content > .journey-segment-strip .journey-segment-tiles-viewport { pointer-events: auto; }
 /* On a card the proportion bar is read, not tapped: 6 px still shows the leg ratio, while the
    route sheet keeps the taller 11 px bar of its own scope. The soft glow lifts it off the card. */
 .journey-result-card-content .journey-segment-ribbon { height: 6px; box-shadow: 0 1px 6px color-mix(in srgb, var(--mg-blue) 28%, transparent); }
