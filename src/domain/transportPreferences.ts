@@ -198,43 +198,52 @@ export function effectiveProviders(selection: TransportSelection, type: Transpor
 }
 
 /** Send approved user categories; feed-specific transport aliases stay an internal server concern. */
-export function toJourneyPreferences(selection: TransportSelection, groups: ApiTransportProviders[] | null): Record<string, boolean | string[] | Record<string, string[]>> {
-  const active = supportedJourneySearchTypes.filter((type) => selection.active.includes(type));
-  const categoryHasProviders = (type: TransportTypeId) => type === 'carpool' || groups === null || effectiveProviders(selection, type, groups).length > 0;
-  const withProviders = active.filter(categoryHasProviders);
-  const allowedTransportTypes = [...withProviders];
+export function toJourneyPreferences(selection: TransportSelection, _groups: ApiTransportProviders[] | null): Record<string, boolean | string[] | Record<string, string[]>> {
+  // Endpoint coverage is useful for the provider picker, but it is not a route
+  // corridor. A feed can serve an intermediate city even when it covers neither
+  // selected endpoint, so never silently remove a user-selected transport mode
+  // or turn “all providers” into an endpoint-only provider allowlist.
+  const active = activeTypesForSearch(selection);
+  const allowedTransportTypes = [...active];
   const transitTypes = new Set<TransportTypeId>(['bus', 'marshrutka', 'trolleybus', 'tram', 'metro', 'train']);
-  const transit = withProviders.filter((type) => transitTypes.has(type));
-  const rentalTypes = withProviders.filter((type) => type === 'bike' || type === 'scooter');
-  const allowedProviderIds = rentalTypes.flatMap((type) => effectiveProviders(selection, type, groups)
-    .map((providerId) => providerId.slice(providerId.indexOf(':') + 1)));
+  const transit = active.filter((type) => transitTypes.has(type));
+  const rentalTypes = active.filter((type) => type === 'bike' || type === 'scooter');
+  const explicitlySelectedProviderIds = (type: TransportTypeId) => {
+    const choice = choiceFor(selection, type);
+    if (choice.all) return [];
+    return choice.ids.map((providerId) => {
+      const separator = providerId.indexOf(':');
+      return separator === -1 ? providerId : providerId.slice(separator + 1);
+    });
+  };
+  const allowedProviderIdsByType: Record<string, string[]> = {};
+  for (const type of rentalTypes) {
+    if (!choiceFor(selection, type).all) allowedProviderIdsByType[type] = explicitlySelectedProviderIds(type);
+  }
   const allowedTransitProvidersByType: Record<string, string[]> = {};
-  const selectedTransitProviders: string[] = [];
-  if (groups !== null) for (const category of transit) {
-    const selectedIds = new Set(effectiveProviders(selection, category, groups));
-    for (const group of groupsForCategory(category, groups)) {
-      const ids = group.providers.filter((provider) => provider.available && providerCanRoute(category, provider) && selectedIds.has(provider.id))
-        .map((provider) => provider.id.slice(provider.id.indexOf(':') + 1));
-      if (ids.length) {
-        allowedTransitProvidersByType[category] = [...new Set([...(allowedTransitProvidersByType[category] ?? []), ...ids])];
-        selectedTransitProviders.push(...ids);
-      }
-    }
+  for (const category of transit) {
+    const choice = choiceFor(selection, category);
+    if (!choice.all) allowedTransitProvidersByType[category] = explicitlySelectedProviderIds(category);
   }
   return {
-    allowCommunity: withProviders.includes('carpool'),
-    allowTaxi: withProviders.includes('taxi'),
-    allowCarsharing: withProviders.includes('carsharing'),
-    allowTransfer: withProviders.includes('transfer'),
-    allowBicycle: withProviders.includes('bike'),
-    allowScooter: withProviders.includes('scooter'),
-    allowBus: withProviders.some((type) => type === 'bus' || type === 'trolleybus' || type === 'tram' || type === 'metro'),
-    allowMinibus: withProviders.includes('marshrutka'),
-    allowRail: withProviders.includes('train'),
+    allowCommunity: active.includes('carpool'),
+    allowTaxi: active.includes('taxi'),
+    allowCarsharing: active.includes('carsharing'),
+    allowTransfer: active.includes('transfer'),
+    allowBicycle: active.includes('bike'),
+    allowScooter: active.includes('scooter'),
+    allowBus: active.some((type) => type === 'bus' || type === 'trolleybus' || type === 'tram' || type === 'metro'),
+    allowMinibus: active.includes('marshrutka'),
+    allowRail: active.includes('train'),
     allowPublicTransport: transit.length > 0,
-    allowedProviderIds: [...new Set(allowedProviderIds)],
+    // The legacy flat filter spans both rental modes. Keep it empty and send
+    // explicit provider choices by category so a scooter choice cannot filter bikes.
+    allowedProviderIds: [],
+    allowedProviderIdsByType,
     allowedTransportTypes,
-    allowedTransitProviders: [...new Set(selectedTransitProviders)],
+    // Empty preserves the legacy field without imposing a cross-category filter.
+    // Explicit provider choices are expressed only in the per-category map.
+    allowedTransitProviders: [],
     allowedTransitProvidersByType,
   };
 }
