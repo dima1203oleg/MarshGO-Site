@@ -7,7 +7,7 @@ const MAX_DURATION_SECONDS = 7 * 24 * 60 * 60;
 export const MAX_JOURNEY_BUDGET_UAH = 1_000_000;
 const MAX_PRICE_MINOR = MAX_JOURNEY_BUDGET_UAH * 100;
 
-export type JourneySearchBounds = { maxTotalDurationSeconds?: number; maxPriceMinor?: number };
+export type JourneySearchBounds = { maxTotalDurationSeconds?: number; maxPriceMinor?: number; maxTransfers?: number };
 
 export function parseJourneyBudgetUah(value: string): number | null {
   if (!/^\d+$/.test(value)) return null;
@@ -20,7 +20,7 @@ export function isAppliedJourneyBudgetDraft(value: string, appliedBudgetUah: num
   return draftBudget !== null && draftBudget === appliedBudgetUah;
 }
 
-export function journeySearchBounds(departure: string, arrivalBy: string | null, budgetUah: number | null): JourneySearchBounds {
+export function journeySearchBounds(departure: string, arrivalBy: string | null, budgetUah: number | null, directOnly = false): JourneySearchBounds {
   const bounds: JourneySearchBounds = {};
   const from = kyivDateTimeInputToDate(departure);
   const until = arrivalBy ? kyivDateTimeInputToDate(arrivalBy) : null;
@@ -31,6 +31,9 @@ export function journeySearchBounds(departure: string, arrivalBy: string | null,
   if (budgetUah !== null && Number.isFinite(budgetUah) && budgetUah > 0) {
     bounds.maxPriceMinor = Math.min(Math.round(budgetUah * 100), MAX_PRICE_MINOR);
   }
+  // «Без пересадок»: the engine reads maxTransfers=0 as exactly one transit leg
+  // (gtfsTimetable maxTransitLegs = maximumTransfers + 1); walking access/egress stays allowed.
+  if (directOnly) bounds.maxTransfers = 0;
   return bounds;
 }
 

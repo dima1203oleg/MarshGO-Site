@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { budgetLabel, isAppliedJourneyBudgetDraft, journeySearchBounds, MAX_JOURNEY_BUDGET_UAH, parseJourneyBudgetUah } from '../src/domain/journeySearchBounds';
 import { areAllProvidersSelected, countSelectedProviders, toggleProvider, useAllProviders, type TransportSelection } from '../src/domain/transportPreferences';
@@ -94,5 +95,28 @@ describe('provider choice summary', () => {
 
   it('reports none selected when the coverage probe has not answered yet', () => {
     assert.equal(countSelectedProviders(selection, ['bus', 'trolleybus'], null), 0);
+  });
+});
+
+describe('«Без пересадок» direct-only control', () => {
+  it('direct-only sends maxTransfers=0 so the engine keeps exactly one transit leg', () => {
+    assert.deepEqual(journeySearchBounds('2026-05-15T08:00', null, null, true), { maxTransfers: 0 });
+  });
+
+  it('direct-only combines with duration and budget bounds without dropping them', () => {
+    assert.deepEqual(journeySearchBounds('2026-05-15T08:00', '2026-05-15T09:30', 200, true), { maxTotalDurationSeconds: 5400, maxPriceMinor: 20000, maxTransfers: 0 });
+  });
+
+  it('leaves transfers unconstrained when the checkbox is off', () => {
+    assert.deepEqual(journeySearchBounds('2026-05-15T08:00', null, null, false), {});
+    assert.deepEqual(journeySearchBounds('2026-05-15T08:00', null, null), {});
+  });
+
+  it('the search form offers the checkbox and wires it into the request', () => {
+    const marketplace = readFileSync('src/views/ProductionMarketplace.tsx', 'utf8');
+    assert.match(marketplace, /const \[journeyDirectOnly, setJourneyDirectOnly\] = useState\(false\)/, 'the control starts unchecked');
+    assert.match(marketplace, /type="checkbox" checked=\{journeyDirectOnly\} onChange=\{\(event\) => setJourneyDirectOnly\(event\.target\.checked\)\}/, 'the checkbox owns the state');
+    assert.match(marketplace, /Без пересадок/, 'the passenger sees the direct-only wording');
+    assert.match(marketplace, /journeySearchBounds\(journeyDeparture, journeyArrivalBy, journeyBudgetUah, journeyDirectOnly\)/, 'the request must carry the control, or it does nothing');
   });
 });
