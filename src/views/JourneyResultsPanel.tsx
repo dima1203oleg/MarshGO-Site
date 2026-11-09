@@ -8,8 +8,8 @@ import type { JourneySegmentStripItem } from '../design-system/journey/JourneySe
 import { journeyLegCaveat } from './journeyLegLabel';
 import { formatTransferCount } from '../map/journeyRouteModel';
 import {
-  buildJourneyResultSegments, formatJourneyClock, formatJourneyDuration,
-  formatJourneyDurationTile, journeyArrivalDayNote,
+  buildJourneyResultSegments, formatJourneyDuration,
+  formatJourneyDurationTile,
   journeyRouteBadge, providerErrorNotices, searchPendingCopy, unavailableTransportNotices,
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay, type JourneyPriceDisplay } from './cashFare';
@@ -98,11 +98,7 @@ function RouteResultCard({ journey, alternatives, chosen, recommendation, onOpen
       color: segment.color,
     };
   });
-  // Show the actual first leg's departure, not the search's requested time; these can differ
-  // when a route includes an access walk or a scheduled wait before boarding.
-  const startAt = firstLeg.departureAt;
-  const arrivalDay = journeyArrivalDayNote(lastLeg.arrivalAt, startAt);
-  const openLabel = `Відкрити деталі маршруту: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${formatJourneyClock(startAt)} — ${formatJourneyClock(lastLeg.arrivalAt)}${arrivalDay ? `, ${arrivalDay}` : ''}, ${spokenJourneyPrice(journeyPrice)}`;
+  const openLabel = `Відкрити деталі маршруту: ${firstLeg.origin.name} — ${lastLeg.destination.name}, ${formatJourneyDuration(journey.totalDurationSeconds)}, ${spokenJourneyPrice(journeyPrice)}`;
 
   const toggleSaved = () => {
     let ids: string[] = [];
@@ -155,10 +151,6 @@ function RouteResultCard({ journey, alternatives, chosen, recommendation, onOpen
         className="pointer-events-none"
         stripClassName="mt-0.5 pointer-events-none"
       />
-      <p data-testid="journey-result-window" aria-label={`Відправлення ${formatJourneyClock(startAt)}, прибуття ${formatJourneyClock(lastLeg.arrivalAt)}${arrivalDay ? `, ${arrivalDay}` : ''}`} className="journey-result-window mt-0.5 flex min-w-0 items-center gap-1.5 text-xs font-bold leading-4 tabular-nums text-slate-700 dark:text-slate-200">
-        <span className="truncate">{formatJourneyClock(startAt)} <span aria-hidden="true" className="text-[var(--mg-ink-secondary)]">→</span> {formatJourneyClock(lastLeg.arrivalAt)}</span>
-        {arrivalDay && <span className="shrink-0 text-[var(--mg-ink-secondary)]">· {arrivalDay}</span>}
-      </p>
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
     </div>
   </article>;

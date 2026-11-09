@@ -358,9 +358,8 @@ test('the journey screens read one accent token set and the sort tabs stay AA-sa
   assert.doesNotMatch(results, /bg-gradient-to-b from-\[#1687FF\]/, 'the sort-tab gradient put half of its white label under AA');
 });
 
-// The compact board uses an unlabeled time range, retains route identity in the stage chain and
-// moves alternate departures into the route detail sheet.
-test('compact result cards show time and transport chain with details and favorite actions', async () => {
+// Compact result cards omit repeated time rows; exact leg times remain in the route detail sheet.
+test('compact result cards keep time in route details with transport chain and favorite actions', async () => {
   const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
   const [css, panel, strip, mapScreen, marketplace] = await Promise.all([
     read('../src/index.css'),
@@ -369,16 +368,20 @@ test('compact result cards show time and transport chain with details and favori
     read('../src/views/JourneyRouteMapScreen.tsx'),
     read('../src/views/ProductionMarketplace.tsx'),
   ]);
-  assert.match(panel, /const startAt = firstLeg\.departureAt;/,
-    'the visible time range must describe the actual itinerary, not a requested search time before access walking or waiting');
-  assert.match(panel, /data-testid="journey-result-window"[\s\S]{0,500}formatJourneyClock\(startAt\)\}\s*<span aria-hidden="true"[\s\S]{0,180}formatJourneyClock\(lastLeg\.arrivalAt\)/,
-    'the card must show the requested compact departure → arrival window');
+  assert.doesNotMatch(panel, /journey-result-window|formatJourneyClock|journeyArrivalDayNote/,
+    'repeated start/end times must not add height or detail text to compact result cards');
+  assert.doesNotMatch(css, /\.journey-result-window/,
+    'the removed time row must not leave unused card styling behind');
   assert.doesNotMatch(panel, /Відправлення:|Прибуття:|Рекомендований|У дорозі|Пішки \{formatJourneyDuration/,
     'the result card must not repeat labels or secondary travel summaries');
   assert.match(panel, /data-testid="journey-result-details-button"/, 'each compact card needs a visible route-details action');
   assert.match(panel, /journey-result-save-button/, 'each compact card keeps its favorite action');
   assert.match(mapScreen, /data-testid="journey-alternative-departures"/, 'grouped departures remain reachable in route details');
   assert.match(mapScreen, /journey-route-recommendation/, 'strategy ranking remains in route details');
+  assert.match(mapScreen, /function legTimeLabel\(leg: JourneyLeg, durationSeconds: number\)[\s\S]{0,220}formatTime\(leg\.departureAt\)[\s\S]{0,120}formatTime\(leg\.arrivalAt\)/,
+    'exact start and end times remain in the route details timeline');
+  assert.match(mapScreen, /\{legTimeLabel\(leg, item\.durationSeconds\)\}/,
+    'each route detail segment still renders its own exact times');
   assert.match(mapScreen, /const alternativeDepartureAt = altFirst\.departureAt;/, 'alternative departure rows must use the itinerary departure, not the requested search time');
   assert.match(mapScreen, /journeyArrivalDayNote\(altLast\.arrivalAt, alternativeDepartureAt\)/, 'overnight labels must compare arrival to the actual first leg departure');
   assert.doesNotMatch(mapScreen, /formatTime\(alternative\.requestedDepartureAt \?\? altFirst\.departureAt\)/, 'alternative rows must not show the search time as the departure');
