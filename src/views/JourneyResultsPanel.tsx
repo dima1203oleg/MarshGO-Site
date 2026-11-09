@@ -295,12 +295,12 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
       })}
     </div>
 
-    {blockingHeadline && <p role="alert" className={`search-headline-note mb-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-xs font-bold leading-4 ${noticeTone.rose.softBg} ${noticeTone.rose.text}`}><Info size={13} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{blockingHeadline.text}</span></p>}
-    {groups.length > 0 && unavailable.length > 0 && <p role="status" data-testid="journey-unavailable-summary" className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold leading-4 text-slate-600 dark:text-slate-300">
+    {showDiagnostics && blockingHeadline && <p role="alert" className={`search-headline-note mb-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-xs font-bold leading-4 ${noticeTone.rose.softBg} ${noticeTone.rose.text}`}><Info size={13} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{blockingHeadline.text}</span></p>}
+    {showDiagnostics && groups.length > 0 && unavailable.length > 0 && <p role="status" data-testid="journey-unavailable-summary" className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold leading-4 text-slate-600 dark:text-slate-300">
       <Info size={13} className="shrink-0" aria-hidden="true"/>
       Недоступні види транспорту в цьому пошуку · {unavailable.length}. Деталі — нижче.
     </p>}
-    {(detailNotices.length > 0 || gtfsLimits.length > 0 || dominantCaveats.length > 0) && <details data-testid="journey-search-limits" className="search-truncation mb-1.5 rounded-xl border border-[var(--mg-line)] bg-[var(--mg-surface-tint)]">
+    {showDiagnostics && (detailNotices.length > 0 || gtfsLimits.length > 0 || dominantCaveats.length > 0) && <details data-testid="journey-search-limits" className="search-truncation mb-1.5 rounded-xl border border-[var(--mg-line)] bg-[var(--mg-surface-tint)]">
       <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1.5 px-2.5 text-xs font-bold leading-4 text-[var(--mg-ink-secondary)]">
         <Info size={13} className="shrink-0" aria-hidden="true"/>
         <span className="min-w-0 flex-1">Джерела й умови пошуку{detailNotices.length + gtfsLimits.length + dominantCaveats.length ? ` · ${detailNotices.length + gtfsLimits.length + dominantCaveats.length}` : ''}</span>
@@ -344,12 +344,12 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
           <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{JOURNEY_EMPTY_PROVIDER_FAILURE_COPY}</p>
           {onRetry && <button type="button" onClick={onRetry} className="mg-press-subtle mx-auto mt-3 inline-flex min-h-11 items-center rounded-xl border border-[var(--mg-line)] bg-[var(--mg-surface-tint)] px-4 text-xs font-bold text-[var(--mg-blue-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]">Повторити пошук</button>}
         </> : <>
-          <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі немає маршрутів із достатніми даними' : 'Актуальних маршрутів поки немає'}</p>
+          <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі маршрутів немає' : 'За цими умовами маршрутів не знайдено'}</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{result.journeys.length
             ? 'Спробуйте інший режим або змініть умови пошуку.'
-            : 'Змініть час або види транспорту й повторіть пошук. Ми не показуємо вигадані пропозиції.'}</p>
+            : 'Змініть час чи види транспорту та спробуйте ще раз.'}</p>
         </>}
-        {unavailable.length > 0 && <ul className="mx-auto mt-3 max-w-sm space-y-1.5 text-left">
+        {showDiagnostics && unavailable.length > 0 && <ul className="mx-auto mt-3 max-w-sm space-y-1.5 text-left">
           {unavailable.map(notice => <li key={notice.mode} className="flex gap-2 text-xs leading-4 text-slate-500 dark:text-slate-400">
             <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400"/>
             <span>{notice.text}</span>

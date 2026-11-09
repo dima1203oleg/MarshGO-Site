@@ -10,10 +10,10 @@ export type ActiveLegStatus = 'LIVE' | 'PREDICTED' | 'FREQUENCY' | 'SCHEDULED' |
 export const ACTIVE_LEG_STATUS_LABEL: Record<Exclude<ActiveLegStatus, null>, string> = {
   LIVE: 'ЗА РУХОМ',
   PREDICTED: 'ПРОГНОЗ',
-  FREQUENCY: 'ІНТЕРВАЛ · ОЦІНКА',
+  FREQUENCY: 'ІНТЕРВАЛ',
   SCHEDULED: 'ЗА РОЗКЛАДОМ',
-  UNAVAILABLE: 'НЕДОСТУПНИЙ',
-  UNCONFIRMED: 'ДАНІ НЕ ПІДТВЕРДЖЕНІ',
+  UNAVAILABLE: 'НЕДОСТУПНО',
+  UNCONFIRMED: 'ОРІЄНТОВНО',
 };
 
 const timeFormat = new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' });

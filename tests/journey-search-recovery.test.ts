@@ -54,7 +54,8 @@ describe('empty-results classification', () => {
   it('a failed transit search is provider-failure, never "no routes"', () => {
     assert.equal(journeyEmptyStateKind(emptyResult(completeness(true))), 'provider-failure');
     assert.doesNotMatch(JOURNEY_EMPTY_PROVIDER_FAILURE_COPY, /Актуальних маршрутів поки немає/);
-    assert.match(JOURNEY_EMPTY_PROVIDER_FAILURE_COPY, /не працював/);
+    assert.match(JOURNEY_EMPTY_PROVIDER_FAILURE_COPY, /точки й умови збережено/);
+    assert.doesNotMatch(JOURNEY_EMPTY_PROVIDER_FAILURE_COPY, /розклад|провайдер|сервіс маршрутів/i);
   });
 
   it('a healthy empty corridor stays a legitimate zero-result state', () => {

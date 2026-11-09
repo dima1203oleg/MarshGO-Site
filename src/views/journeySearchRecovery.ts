@@ -30,9 +30,9 @@ export function journeyEmptyStateKind(result: ApiJourneySearchResult): JourneyEm
 }
 
 export const JOURNEY_SEARCH_UNAVAILABLE_COPY =
-  'Сервіс маршрутів тимчасово недоступний. Ваші точки й умови пошуку збережено — повторіть запит за мить.';
+  'Пошук тимчасово недоступний. Ваші точки збережено — спробуйте ще раз.';
 
-export const JOURNEY_EMPTY_PROVIDER_FAILURE_TITLE = 'Розклади тимчасово не вдалося перевірити';
+export const JOURNEY_EMPTY_PROVIDER_FAILURE_TITLE = 'Не вдалося скласти маршрут';
 
 export const JOURNEY_EMPTY_PROVIDER_FAILURE_COPY =
-  'Пошук розкладів тимчасово не працював — це не означає, що маршрутів немає. Ваші точки й умови збережено; повторіть запит за мить.';
+  'Ваші точки й умови збережено. Змініть час або повторіть спробу трохи пізніше.';
