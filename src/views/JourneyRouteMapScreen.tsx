@@ -211,7 +211,6 @@ export function JourneyRouteMapScreen({
 
   const [mapSegmentChoices, setMapSegmentChoices] = useState<{ ids: string[]; x: number; y: number } | null>(null);
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
-  const [liveJourneyRequestState, setLiveJourneyRequestState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
 
   const [stopsLegId, setStopsLegId] = useState<string | null>(null);
@@ -277,19 +276,16 @@ export function JourneyRouteMapScreen({
   useEffect(() => {
     if (!liveLegId) {
       setLiveJourney(null);
-      setLiveJourneyRequestState('idle');
       return;
     }
     if (!hasApiSession()) {
       setLiveJourney(null);
-      setLiveJourneyRequestState('idle');
       return;
     }
     let stopped = false;
     let timer: number | undefined;
     let controller: AbortController | undefined;
     let reschedule = true;
-    setLiveJourneyRequestState('loading');
     const poll = async () => {
       controller = new AbortController();
       reschedule = true;
@@ -297,12 +293,10 @@ export function JourneyRouteMapScreen({
         const live = await productionApi.journeyLive(journey.id, liveLegId, controller.signal);
         if (!stopped) {
           setLiveJourney(live);
-          setLiveJourneyRequestState('ready');
         }
       } catch (error) {
         if (!stopped) {
           setLiveJourney(null);
-          setLiveJourneyRequestState('failed');
           if (error instanceof ProductionApiError && error.status === 401) reschedule = false;
         }
       }
