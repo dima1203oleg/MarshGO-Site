@@ -24,6 +24,14 @@ export function isBottomNavigationRevealEdge(clientY: number, viewportHeight: nu
     && viewportHeight - clientY <= MAP_NAVIGATION_EDGE_PX;
 }
 
+export function shouldRemeasureAfterNavigationTransition(
+  eventTarget: EventTarget | null,
+  navigation: EventTarget,
+  propertyName: string,
+): boolean {
+  return eventTarget === navigation && propertyName === 'transform';
+}
+
 /** Briefly presents the shared dock on map entry, then tucks it away until the user needs it. */
 export function useMapAwareBottomNavigation(isMapContext: boolean) {
   const [visible, setVisible] = useState(true);
@@ -72,6 +80,18 @@ export function useMapAwareBottomNavigation(isMapContext: boolean) {
     // Map and sheet layout already measure the dock on resize; notify them after its inset changes.
     window.dispatchEvent(new Event('resize'));
   }, [isMapContext, visible]);
+
+  useEffect(() => {
+    const navigation = document.querySelector<HTMLElement>('[data-testid="global-bottom-navigation"]');
+    if (!navigation) return;
+    const remeasureAfterTransition = (event: TransitionEvent) => {
+      if (shouldRemeasureAfterNavigationTransition(event.target, navigation, event.propertyName)) {
+        window.dispatchEvent(new Event('resize'));
+      }
+    };
+    navigation.addEventListener('transitionend', remeasureAfterTransition);
+    return () => navigation.removeEventListener('transitionend', remeasureAfterTransition);
+  }, []);
 
   const onMapEdgePointerDown = useCallback((event: { clientY: number }) => {
     if (isMapContext && isBottomNavigationRevealEdge(event.clientY, window.innerHeight)) {

@@ -6,6 +6,7 @@ import {
   MAP_NAVIGATION_AUTO_HIDE_MS,
   MAP_NAVIGATION_EDGE_PX,
   MAP_NAVIGATION_REVEAL_MS,
+  shouldRemeasureAfterNavigationTransition,
 } from '../src/views/mapAwareBottomNavigation';
 
 test('map contexts tuck away the shared bottom navigation', () => {
@@ -28,4 +29,11 @@ test('the bottom-edge reveal target stays inside the 64px touch strip', () => {
 test('map dock timing remains brief and predictable', () => {
   assert.equal(MAP_NAVIGATION_AUTO_HIDE_MS, 1650);
   assert.equal(MAP_NAVIGATION_REVEAL_MS, 2800);
+});
+
+test('map and sheet remeasure only after the dock transform finishes', () => {
+  const navigation = {};
+  assert.equal(shouldRemeasureAfterNavigationTransition(navigation, navigation, 'transform'), true);
+  assert.equal(shouldRemeasureAfterNavigationTransition(navigation, navigation, 'opacity'), false);
+  assert.equal(shouldRemeasureAfterNavigationTransition({}, navigation, 'transform'), false);
 });
