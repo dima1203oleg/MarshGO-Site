@@ -64,6 +64,7 @@ At 320 px, the five-step ribbon measured 374 px of content in a 318 px scroller;
 
 ## Git record
 
-- Previous source implementation commit: `fedf6e580ee7198a8d5f2df6268f8dd3de29b4a6`. The current density follow-up is uncommitted in the isolated Site worktree until its exact-head CI finishes.
+- Previous source implementation commit: `fedf6e580ee7198a8d5f2df6268f8dd3de29b4a6`.
+- Current compactness and callout-placement source commit: `37bbad15d94217ba818b7906a91fd1e33422c478` on `codex/bottom-sheet-density-20261110`; exact-head CI is pending.
 - Draft pull request: [#129 — Compact shared journey bottom sheets](https://github.com/dima1203oleg/MarshGO-Site/pull/129).
 - Exact-head GitHub CI was still running when this report was updated; no merge or deployment is authorized by this report.

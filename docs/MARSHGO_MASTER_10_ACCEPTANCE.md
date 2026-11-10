@@ -6,7 +6,7 @@ This is an interim, evidence-based checkpoint for the first Master 10 implementa
 
 ## Worktree and browser targets
 
-- Work is isolated in `/Users/dima1203/.codex/worktrees/marshgo-bottom-sheet-density-20261110`, branch `codex/bottom-sheet-density-20261110`, based on the current draft Site PR #129 line. The base worktree and shared canonical Site checkout remain untouched.
+- Work is isolated in `/Users/dima1203/.codex/worktrees/marshgo-bottom-sheet-density-20261110`, branch `codex/bottom-sheet-density-20261110`, source commit `37bbad15d94217ba818b7906a91fd1e33422c478`, based on the current draft Site PR #129 line. The base worktree and shared canonical Site checkout remain untouched.
 - Local preview: `http://127.0.0.1:4178/bottom-sheet-visual.html?viewport=375x667`; it uses the real route-map screen with a synthetic itinerary fixture.
 - Current shared zrok URL: `https://marshgo-dima.shares.zrok.io`. It forwards to `127.0.0.1:7777`, PID 59193, from Qoder's `/Users/dima1203/.qoder/worktrees/app/330dd3/MarshGO-Site` worktree, branch `qoder/site-mobile-touch-gestures-20261110`, SHA `d8e813d08446c851604a9f229172fa9979dc4cdd`. It is not serving this candidate and was not altered.
 - The candidate preview's local Vite process is PID 30897 on port 4178. This is not a public tunnel and no new tunnel was created.
@@ -26,7 +26,7 @@ This is an interim, evidence-based checkpoint for the first Master 10 implementa
 - `git diff --check`: passed.
 - Chromium preview was visually observed at four CSS viewports. On the 375×667 view, a selected synthetic bus stage framed its geometry and its floating card no longer covered the map-control rail. The route is synthetic; browser safe area was 0 px. A physical iPhone, iOS Safari touch gestures, authenticated live API, full-route camera animation and the current change's exact-head CI remain unverified.
 - Console review found missing test-style assets (`circle-11`, `wood-pattern`), a fixture bounds warning, and an unscoped `MutationObserver.observe` error at Vite reconnect. The candidate fixture no longer uses a MutationObserver, but the remaining error's source is unidentified; console cleanliness is not verified.
-- Prior Site candidate commit `1646937859edd7d67c530e78713c7dda26d76784` passed CI run `42816504324` (667 tests and production build checks); report-only head `8632eb66746d508139c6ad8e54db4e04097af536` passed run `42817587235`. These runs predate the current source changes and do not verify them.
+- Prior Site candidate commit `1646937859edd7d67c530e78713c7dda26d76784` passed CI run `42816504324` (667 tests and production build checks); report-only head `8632eb66746d508139c6ad8e54db4e04097af536` passed run `42817587235`. These runs predate `37bbad15d94217ba818b7906a91fd1e33422c478` and do not verify it; the current exact-head CI is pending.
 
 ## Gate snapshot
 
