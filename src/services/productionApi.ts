@@ -298,6 +298,8 @@ export type ApiJourney = {
     coordinates?: [number, number][];
     /** Provider/feed geometry in [longitude, latitude] order; absent means no verified path. */
     routeGeometry?: [number, number][] | null;
+    /** Provenance of displayed geometry; estimates are rendered with a dashed line. */
+    routeAccuracy?: string;
     geometrySource?: 'gtfs-shape' | 'gtfs-stop-sequence' | 'walking-estimate';
     stops?: Array<{ id: string; name: string; coordinates?: [number, number]; arrivalAt?: string; departureAt?: string; skipped?: boolean }>;
     currency?: string;

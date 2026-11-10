@@ -45,23 +45,29 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
   approximateWalkCount: number;
   approximateMicromobilityCount: number;
 } {
-  const isEstimatedMicromobility = (leg: ApiJourney['legs'][number]) =>
-    (leg.mode === 'BIKE' || leg.mode === 'BICYCLE' || leg.mode === 'SCOOTER'
-      || leg.transportType === 'bike' || leg.transportType === 'scooter')
-    && (leg.source === 'static-bike-network-estimate' || leg.source === 'gbfs-geofence-scooter-estimate');
+  const isEstimatedMicromobility = (leg: ApiJourney['legs'][number]) => {
+    const isMicromobility = leg.mode === 'BIKE' || leg.mode === 'BICYCLE' || leg.mode === 'SCOOTER'
+      || leg.transportType === 'bike' || leg.transportType === 'scooter';
+    const source = leg.source?.toLowerCase() ?? '';
+    const accuracy = leg.routeAccuracy?.toUpperCase();
+    if (!isMicromobility || accuracy === 'SOURCE_GEOMETRY' || accuracy === 'VERIFIED') return false;
+    return accuracy === 'STRAIGHT_LINE_ESTIMATE' || accuracy === 'ESTIMATED'
+      || source.includes('estimate') || source.startsWith('gbfs-') || source === 'micromobility';
+  };
   const mappedLegs = legs.flatMap(leg => {
-    // End-to-end rental estimates contain only pickup/drop-off coordinates.
-    // Treating those two points as a road line invents a route shape, so keep
-    // the endpoints as waypoints and let the details card carry the estimate.
-    if (isEstimatedMicromobility(leg)) return [];
+    const estimatedMicromobility = isEstimatedMicromobility(leg);
     let coordinates = validGeometry(leg.routeGeometry);
     // Only an explicit routing provider/feed proves street geometry. Legacy `walking` and
     // `transfer-walk` legs come from a synthetic city grid, not a pedestrian graph.
     // Keep them visible as dashed estimates, never as exact street trajectories.
     const approximateSource = /estimate|straight-line|^(walking|transfer-walk)$/i.test(leg.source ?? '');
-    let approximate = leg.mode === 'WALK' && approximateSource;
-    if (coordinates.length < 2 && leg.mode === 'WALK'
-      && approximateSource
+    let approximate = (leg.mode === 'WALK' && approximateSource) || estimatedMicromobility;
+    // Inventory feeds and static rental networks provide endpoints, not a rideable
+    // street route. Keep that estimate visible as a dashed chord rather than hiding
+    // the segment or implying a verified cycling path.
+    // The fallback also keeps walking legs visible when the API omits an unverified
+    // synthetic street-grid shape; routed geometry from a provider remains untouched.
+    if (coordinates.length < 2 && (leg.mode === 'WALK' || estimatedMicromobility)
       && validCoordinate(leg.origin?.coordinates) && validCoordinate(leg.destination?.coordinates)
       && (leg.origin.coordinates[0] !== leg.destination.coordinates[0] || leg.origin.coordinates[1] !== leg.destination.coordinates[1])) {
       coordinates = [leg.origin.coordinates, leg.destination.coordinates];
