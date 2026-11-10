@@ -67,19 +67,24 @@ test('keeps every public-transit stop coordinate available to the route map acro
   assert.deepEqual(model.routeSegments.map(segment => segment.modeColor), modes.map(item => journeyModeColor(item.mode, item.transportType)));
 });
 
-test('does not manufacture straight lines for legs without source geometry', () => {
+test('keeps transit legs without a shape hidden and shows missing walk geometry as a dashed estimate', () => {
   const model = buildJourneyRouteMapModel(legs([
     { id: 'bus', mode: 'BUS', origin: { coordinates: [24, 49.8] }, destination: { coordinates: [25, 50] } },
     { id: 'walk', mode: 'WALK', origin: { coordinates: [25, 50] }, destination: { coordinates: [25.1, 50.1] } },
   ]));
 
-  assert.deepEqual(model.routeSegments, []);
+  assert.deepEqual(model.routeSegments, [{
+    id: 'walk', modeColor: '#91A6BB', approximate: true,
+    coordinates: [[25, 50], [25.1, 50.1]],
+  }]);
   assert.deepEqual(model.routeWaypoints, [
     { coordinate: [24, 49.8], kind: 'PICKUP', segmentIds: ['bus'] },
     { coordinate: [25, 50], kind: 'TRANSFER', segmentIds: ['bus', 'walk'] },
     { coordinate: [25.1, 50.1], kind: 'DROPOFF', segmentIds: ['walk'] },
   ]);
   assert.equal(model.missingShapeCount, 1);
+  assert.equal(model.missingWalkingShapeCount, 0);
+  assert.equal(model.approximateWalkCount, 1);
 });
 
 test('renders estimated walking connectors as explicitly approximate dashed segments', () => {
@@ -107,16 +112,19 @@ test('keeps a server-fabricated straight walking line dashed, not solid', () => 
   assert.equal(model.routeSegments[0]?.approximate, true);
 });
 
-test('reports a walking leg without verified geometry and never draws a substitute line', () => {
+test('shows a walking leg without provider geometry as a dashed endpoint estimate', () => {
   const model = buildJourneyRouteMapModel(legs([{
     id: 'missing-walk-shape', mode: 'WALK', source: 'osrm-foot-route',
     origin: { coordinates: [24.0323, 49.8397] }, destination: { coordinates: [24.0245, 49.8410] },
   }]));
 
-  assert.deepEqual(model.routeSegments, []);
-  assert.equal(model.missingWalkingShapeCount, 1);
+  assert.deepEqual(model.routeSegments, [{
+    id: 'missing-walk-shape', modeColor: '#91A6BB', approximate: true,
+    coordinates: [[24.0323, 49.8397], [24.0245, 49.841]],
+  }]);
+  assert.equal(model.missingWalkingShapeCount, 0);
   assert.equal(model.missingShapeCount, 0);
-  assert.equal(model.approximateWalkCount, 0);
+  assert.equal(model.approximateWalkCount, 1);
 });
 
 test('keeps a routed walking leg solid', () => {
@@ -154,32 +162,67 @@ test('uses a dashed estimate for legacy synthetic walk legs when the API omitted
   assert.equal(model.routeSegments[0]?.approximate, true);
 });
 
-test('does not draw estimated bike rental endpoint pairs as road geometry', () => {
+test('draws estimated bike rental geometry as a dashed estimate, not a confirmed road route', () => {
   const model = buildJourneyRouteMapModel(legs([
     { id: 'bike-estimate', mode: 'BICYCLE', transportType: 'bike', source: 'static-bike-network-estimate',
       origin: { coordinates: [30.5229, 50.4471] }, destination: { coordinates: [30.4818, 50.4623] },
       routeGeometry: [[30.5229, 50.4471], [30.4818, 50.4623]] },
   ]));
 
-  assert.deepEqual(model.routeSegments, []);
+  assert.equal(model.routeSegments.length, 1);
+  assert.deepEqual(model.routeSegments[0]?.coordinates, [[30.5229, 50.4471], [30.4818, 50.4623]]);
+  assert.equal(model.routeSegments[0]?.approximate, true);
   assert.deepEqual(model.routeWaypoints, [
     { coordinate: [30.5229, 50.4471], kind: 'PICKUP', segmentIds: ['bike-estimate'] },
     { coordinate: [30.4818, 50.4623], kind: 'DROPOFF', segmentIds: ['bike-estimate'] },
   ]);
-  assert.equal(model.missingShapeCount, 1);
+  assert.equal(model.missingShapeCount, 0);
   assert.equal(model.approximateMicromobilityCount, 1);
 });
 
-test('does not draw estimated geofenced scooter endpoint pairs as road geometry', () => {
+test('keeps provider-routed bicycle geometry solid', () => {
+  const routeGeometry: [number, number][] = [[24, 49.8], [24.004, 49.804], [24.01, 49.81]];
+  const model = buildJourneyRouteMapModel(legs([
+    { id: 'bike-routed', mode: 'BICYCLE', transportType: 'bike', source: 'osrm-bike-route', routeAccuracy: 'SOURCE_GEOMETRY',
+      origin: { coordinates: routeGeometry[0] }, destination: { coordinates: routeGeometry[2] }, routeGeometry },
+  ]));
+
+  assert.deepEqual(model.routeSegments[0]?.coordinates, routeGeometry);
+  assert.equal(model.routeSegments[0]?.approximate, undefined);
+  assert.equal(model.approximateMicromobilityCount, 0);
+});
+
+test('draws a dashed estimated route when bike and walking geometry are absent from the API', () => {
+  const model = buildJourneyRouteMapModel(legs([
+    { id: 'bike-estimate', mode: 'BICYCLE', transportType: 'bike', source: 'gbfs-zelectra',
+      origin: { coordinates: [24, 49.8] }, destination: { coordinates: [24.01, 49.81] } },
+    { id: 'walk-estimate', mode: 'WALK', source: 'walking-grid-estimate',
+      origin: { coordinates: [24.01, 49.81] }, destination: { coordinates: [24.012, 49.812] } },
+  ]));
+
+  assert.equal(model.routeSegments.length, 2);
+  assert.deepEqual(model.routeSegments.map(segment => segment.coordinates), [
+    [[24, 49.8], [24.01, 49.81]],
+    [[24.01, 49.81], [24.012, 49.812]],
+  ]);
+  assert.ok(model.routeSegments.every(segment => segment.approximate === true));
+  assert.equal(model.missingShapeCount, 0);
+  assert.equal(model.missingWalkingShapeCount, 0);
+  assert.equal(model.approximateMicromobilityCount, 1);
+  assert.equal(model.approximateWalkCount, 2);
+});
+
+test('draws estimated geofenced scooter endpoint pairs as a dashed estimate', () => {
   const model = buildJourneyRouteMapModel(legs([
     { id: 'scooter-estimate', mode: 'SCOOTER', transportType: 'scooter', source: 'gbfs-geofence-scooter-estimate',
       origin: { coordinates: [30.5229, 50.4471] }, destination: { coordinates: [30.4818, 50.4623] },
       routeGeometry: [[30.5229, 50.4471], [30.4818, 50.4623]] },
   ]));
 
-  assert.deepEqual(model.routeSegments, []);
+  assert.equal(model.routeSegments.length, 1);
+  assert.equal(model.routeSegments[0]?.approximate, true);
   assert.equal(model.routeWaypoints.length, 2);
-  assert.equal(model.missingShapeCount, 1);
+  assert.equal(model.missingShapeCount, 0);
   assert.equal(model.approximateMicromobilityCount, 1);
 });
 
