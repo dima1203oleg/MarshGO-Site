@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   ROUTE_ARROW_TOKENS,
   ROUTE_EMPHASIS_TOKENS,
+  ROUTE_RENDER_TOKENS,
   ROUTE_STROKE_TOKENS,
   ROUTE_ZOOM_STOPS,
   SEGMENT_REVEAL_TOKENS,
@@ -46,6 +47,22 @@ test('the route stroke scale grows with zoom and keeps halo > casing > core at e
     assert.ok(ROUTE_STROKE_TOKENS.casing.normal[i]! > ROUTE_STROKE_TOKENS.core.normal[i]!);
   }
   assert.ok(ROUTE_EMPHASIS_TOKENS.dimmedOpacity > 0 && ROUTE_EMPHASIS_TOKENS.dimmedOpacity < 1);
+});
+
+test('focused route geometry stays crisp at street zoom instead of becoming a broad glowing ribbon', () => {
+  const lastStop = ROUTE_ZOOM_STOPS.length - 1;
+  assert.ok(ROUTE_STROKE_TOKENS.core.selected[lastStop]! <= 8);
+  assert.ok(ROUTE_STROKE_TOKENS.casing.selected[lastStop]! <= 10);
+  assert.ok(ROUTE_STROKE_TOKENS.halo.selected[lastStop]! <= 18);
+  assert.ok(ROUTE_EMPHASIS_TOKENS.haloOpacity.selected <= 0.3);
+  assert.ok(ROUTE_RENDER_TOKENS.haloBlur <= 3);
+  for (const theme of ['LIGHT', 'DARK'] as const) {
+    assert.ok(WALK_GEOMETRY_TOKENS[theme].width[lastStop]! <= 5.5);
+    assert.ok(WALK_GEOMETRY_TOKENS[theme].haloWidth[lastStop]! <= 8);
+    assert.ok(WALK_GEOMETRY_TOKENS[theme].estimateWidth[lastStop]! <= 4);
+  }
+  assert.ok(ROUTE_RENDER_TOKENS.revealGlowWidth[1] <= 15);
+  assert.ok(ROUTE_RENDER_TOKENS.revealGlowBlur <= 3);
 });
 
 test('stroke expressions interpolate the shared scale with a selected case at every stop', () => {
@@ -92,14 +109,20 @@ test('walking geometry keeps contrast on both basemaps and a proportional dash',
 
 test('direction chevrons tighten spacing and grow as the camera zooms in', () => {
   for (let i = 1; i < ROUTE_ZOOM_STOPS.length; i += 1) {
-    assert.ok(ROUTE_ARROW_TOKENS.spacing[i * 2 + 1]! < ROUTE_ARROW_TOKENS.spacing[(i - 1) * 2 + 1]!);
-    assert.ok(ROUTE_ARROW_TOKENS.size[i * 2 + 1]! > ROUTE_ARROW_TOKENS.size[(i - 1) * 2 + 1]!);
+    assert.ok(ROUTE_ARROW_TOKENS.spacing[i]! < ROUTE_ARROW_TOKENS.spacing[i - 1]!);
+    assert.ok(ROUTE_ARROW_TOKENS.size[i]! > ROUTE_ARROW_TOKENS.size[i - 1]!);
   }
+  assert.ok(ROUTE_ARROW_TOKENS.spacing.every(value => value >= 120), 'direction marks must not crowd the selected geometry');
+  assert.ok(ROUTE_ARROW_TOKENS.size.every(value => value <= 0.8), 'direction marks must remain subordinate to the route');
   assert.ok(ROUTE_ARROW_TOKENS.opacity > 0 && ROUTE_ARROW_TOKENS.opacity <= 1);
   for (const kind of ['spacing', 'size'] as const) {
     const expression = routeArrowExpression(kind) as unknown[];
     assert.equal(expression[0], 'interpolate');
     assert.equal(expression.length, 3 + ROUTE_ZOOM_STOPS.length * 2);
+    for (let i = 0; i < ROUTE_ZOOM_STOPS.length; i += 1) {
+      assert.equal(expression[3 + i * 2], ROUTE_ZOOM_STOPS[i]);
+      assert.equal(expression[4 + i * 2], ROUTE_ARROW_TOKENS[kind][i]);
+    }
   }
 });
 
@@ -130,6 +153,13 @@ test('route and walk layers consume the geometry tokens, not inline literals', (
   assert.match(adapter, /routeStrokeWidthExpression\('core'\)/);
   assert.match(adapter, /walkGeometryTokens\(this\.theme\)/);
   assert.match(adapter, /walkWidthExpression\('width'\)/);
+  assert.match(adapter, /isWalk: segment\.isWalk/);
+  assert.doesNotMatch(adapter, /isWalk: segment\.modeColor ===/,
+    'walking style must follow explicit segment semantics, not a palette color');
+  assert.match(adapter, /ROUTE_RENDER_TOKENS\.haloBlur/);
+  assert.match(adapter, /ROUTE_RENDER_TOKENS\.revealGlowWidth/);
+  assert.match(adapter, /setPaintProperty\('marshgo-route-reveal-glow', 'line-opacity', ROUTE_RENDER_TOKENS\.revealGlowOpacity\)/);
+  assert.match(adapter, /ROUTE_RENDER_TOKENS\.walkHaloBlur/);
   assert.doesNotMatch(adapter, /'#38BDF8'|'#0EA5E9'|'#0284C7'|'#0369A1'/,
     'walk colors must come from the theme tokens, not hardcoded hex');
 });

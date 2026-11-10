@@ -16,15 +16,30 @@ export const ROUTE_STROKE_TOKENS: {
   casing: { normal: ZoomStops; selected: ZoomStops };
   core: { normal: ZoomStops; selected: ZoomStops };
 } = {
-  halo: { normal: [11, 17, 24, 28], selected: [20, 29, 36, 42] },
-  casing: { normal: [6, 9.5, 14, 16], selected: [9, 13.5, 18, 21] },
-  core: { normal: [3.5, 6, 9, 10.5], selected: [6, 9.5, 13, 15] },
+  // Keep the selected leg legible without turning it into a wide ribbon that
+  // hides parallel streets. At z17 the visible core is 8 px and its casing is
+  // 10 px; the halo is restrained and painted separately below.
+  halo: { normal: [6, 9, 13, 15], selected: [9, 13, 16, 18] },
+  casing: { normal: [3.5, 5.5, 7.5, 9], selected: [4.5, 6.5, 8.5, 10] },
+  core: { normal: [2, 3, 4, 5], selected: [3, 4, 5.5, 8] },
 };
 
 export const ROUTE_EMPHASIS_TOKENS = {
   dimmedOpacity: 0.4,
-  haloOpacity: { normal: 0.25, selected: 0.85, dimmed: 0.04 },
+  haloOpacity: { normal: 0.12, selected: 0.3, dimmed: 0.025 },
   casingOpacity: { normal: 0.98, dimmed: 0.35 },
+} as const;
+
+export const ROUTE_RENDER_TOKENS = {
+  haloBlur: 3,
+  revealGlowWidth: [9, 15] as const,
+  revealGlowOpacity: 0.48,
+  revealGlowBlur: 3,
+  revealCoreWidth: [2.5, 4.5] as const,
+  revealHeadHaloRadius: [5, 12] as const,
+  revealHeadCoreRadius: [3.5, 6] as const,
+  revealHeadStrokeWidth: 1.5,
+  walkHaloBlur: 2.5,
 } as const;
 
 /** Selected-aware width expression built from the shared scale — no magic numbers in layers. */
@@ -57,12 +72,12 @@ export const WALK_GEOMETRY_TOKENS: Record<'LIGHT' | 'DARK', {
   LIGHT: {
     core: '#0284C7', coreSelected: '#0369A1', halo: '#075985', haloSelected: '#0C4A6E', estimate: '#0284C7',
     dash: [0.8, 1.05], estimateDash: [1.15, 1.8],
-    width: [6, 8, 10, 11.5], haloWidth: [9, 12.5, 16, 18], estimateWidth: [3.5, 5.2, 7, 8],
+    width: [2.5, 3.5, 4.5, 5.5], haloWidth: [4.5, 5.5, 6.5, 8], estimateWidth: [2, 2.5, 3, 3.5],
   },
   DARK: {
     core: '#38BDF8', coreSelected: '#7DD3FC', halo: '#0EA5E9', haloSelected: '#38BDF8', estimate: '#38BDF8',
     dash: [0.8, 1.05], estimateDash: [1.15, 1.8],
-    width: [6, 8, 10, 11.5], haloWidth: [9, 12.5, 16, 18], estimateWidth: [3.5, 5.2, 7, 8],
+    width: [2.5, 3.5, 4.5, 5.5], haloWidth: [4.5, 5.5, 6.5, 8], estimateWidth: [2, 2.5, 3, 3.5],
   },
 };
 
@@ -83,9 +98,11 @@ export function walkWidthExpression(kind: 'width' | 'haloWidth' | 'estimateWidth
  * Spacing tightens as the camera zooms in so the rhythm stays even on screen.
  */
 export const ROUTE_ARROW_TOKENS = {
-  spacing: [5, 260, 12, 170, 15, 120, 17, 92] as const,
-  size: [5, 0.4, 12, 0.58, 15, 0.78, 17, 0.92] as const,
-  opacity: 0.92,
+  // These values align one-to-one with ROUTE_ZOOM_STOPS. Keeping only the
+  // style values here prevents the zoom stops from being mistaken for sizes.
+  spacing: [280, 220, 170, 145] as const,
+  size: [0.38, 0.5, 0.62, 0.72] as const,
+  opacity: 0.82,
 } as const;
 
 export function routeArrowExpression(kind: 'spacing' | 'size'): ExpressionSpecification {

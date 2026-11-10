@@ -32,6 +32,15 @@ test('keeps real route shapes separate and uses each transport mode color', () =
   assert.equal(model.missingShapeCount, 1);
 });
 
+test('preserves the walking mode explicitly for map styling', () => {
+  const model = buildJourneyRouteMapModel(legs([
+    { id: 'bus', mode: 'BUS', routeGeometry: [[24, 49], [24.01, 49.01]] },
+    { id: 'walk', mode: 'WALK', routeGeometry: [[24.01, 49.01], [24.02, 49.02]] },
+  ]));
+
+  assert.deepEqual(model.routeSegments.map(segment => segment.isWalk), [false, true]);
+});
+
 test('keeps every public-transit stop coordinate available to the route map across modes', () => {
   const modes = [
     { id: 'bus', mode: 'BUS', transportType: 'bus' },
@@ -65,6 +74,7 @@ test('keeps every public-transit stop coordinate available to the route map acro
   }
   assert.equal(model.routeSegments.length, modes.length);
   assert.deepEqual(model.routeSegments.map(segment => segment.modeColor), modes.map(item => journeyModeColor(item.mode, item.transportType)));
+  assert.deepEqual(model.routeSegments.map(segment => segment.isWalk), modes.map(item => item.mode === 'WALK'));
 });
 
 test('keeps transit legs without a shape hidden and shows missing walk geometry as a dashed estimate', () => {
@@ -74,7 +84,7 @@ test('keeps transit legs without a shape hidden and shows missing walk geometry 
   ]));
 
   assert.deepEqual(model.routeSegments, [{
-    id: 'walk', modeColor: '#91A6BB', approximate: true,
+    id: 'walk', modeColor: '#91A6BB', isWalk: true, approximate: true,
     coordinates: [[25, 50], [25.1, 50.1]],
   }]);
   assert.deepEqual(model.routeWaypoints, [
@@ -95,7 +105,7 @@ test('renders estimated walking connectors as explicitly approximate dashed segm
 
   assert.equal(model.approximateWalkCount, 1);
   assert.deepEqual(model.routeSegments, [{
-    id: 'estimated-walk', modeColor: '#91A6BB', approximate: true,
+    id: 'estimated-walk', modeColor: '#91A6BB', isWalk: true, approximate: true,
     coordinates: [[24, 49.8], [24.01, 49.81]],
   }]);
   assert.equal(model.missingShapeCount, 0);
@@ -119,7 +129,7 @@ test('shows a walking leg without provider geometry as a dashed endpoint estimat
   }]));
 
   assert.deepEqual(model.routeSegments, [{
-    id: 'missing-walk-shape', modeColor: '#91A6BB', approximate: true,
+    id: 'missing-walk-shape', modeColor: '#91A6BB', isWalk: true, approximate: true,
     coordinates: [[24.0323, 49.8397], [24.0245, 49.841]],
   }]);
   assert.equal(model.missingWalkingShapeCount, 0);

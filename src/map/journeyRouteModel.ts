@@ -14,6 +14,21 @@ export function formatTransferCount(value: number): string {
   return `${count} ${noun}`;
 }
 
+/**
+ * Adjacent confirmed legs meet at the same physical stop, but providers round
+ * coordinates differently, leaving a sub-metre notch between two round caps at
+ * street zoom. Snap only that rounding noise so the join reads as one continuous
+ * ribbon. A real gap or a dashed estimate is never bridged (§12.2: no fake roads).
+ */
+export const ROUTE_JOIN_SNAP_TOLERANCE_M = 1.5;
+
+function metersBetween(a: Coordinate, b: Coordinate): number {
+  const meanLat = ((a[1] + b[1]) / 2) * Math.PI / 180;
+  const dx = (a[0] - b[0]) * Math.cos(meanLat);
+  const dy = a[1] - b[1];
+  return Math.hypot(dx, dy) * 111_320;
+}
+
 function validGeometry(points: Array<[number, number]> | null | undefined): Coordinate[] {
   if (!Array.isArray(points)) return [];
   const valid = points.every(point => Array.isArray(point) && point.length === 2
@@ -77,10 +92,23 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
       id: leg.id,
       label: `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`,
       color: journeyModeColor(leg.mode, leg.transportType),
+      isWalk: leg.mode === 'WALK',
       coordinates,
       ...(approximate ? { approximate: true } : {}),
     }] : [];
   });
+  for (let index = 0; index < mappedLegs.length - 1; index++) {
+    const earlier = mappedLegs[index]!;
+    const later = mappedLegs[index + 1]!;
+    if (earlier.approximate || later.approximate) continue;
+    if (earlier.coordinates.length < 2 || later.coordinates.length < 2) continue;
+    const tail = earlier.coordinates.at(-1)!;
+    const head = later.coordinates[0]!;
+    const gap = metersBetween(tail, head);
+    if (gap > 0 && gap <= ROUTE_JOIN_SNAP_TOLERANCE_M) {
+      earlier.coordinates = [...earlier.coordinates.slice(0, -1), head];
+    }
+  }
   const validPoint = validCoordinate;
   const firstPoint = legs[0]?.origin?.coordinates;
   const lastPoint = legs.at(-1)?.destination?.coordinates;
@@ -113,10 +141,11 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
   const mappedLegIds = new Set(mappedLegs.map(leg => leg.id));
   return {
     legs: mappedLegs,
-    routeSegments: mappedLegs.map(({ id, coordinates, color, approximate }) => ({
+    routeSegments: mappedLegs.map(({ id, coordinates, color, isWalk, approximate }) => ({
       id,
       coordinates,
       modeColor: color,
+      isWalk,
       ...(approximate ? { approximate: true } : {}),
     })),
     routeWaypoints,

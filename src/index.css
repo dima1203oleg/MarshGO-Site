@@ -1979,6 +1979,139 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   white-space: nowrap;
 }
 
+/* Route details use one compact, swipeable row; active navigation keeps the full ribbon. */
+.mg-route-ribbon--compact {
+  box-sizing: border-box;
+  align-items: center;
+  height: 48px;
+  min-height: 48px;
+  padding-block: 2px;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__item {
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 0;
+  max-width: 12rem;
+  flex-direction: row;
+  gap: 0;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__pill {
+  position: relative;
+  width: max-content;
+  max-width: 12rem;
+  height: 44px;
+  min-height: 44px;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: .45rem;
+  padding-inline: .55rem;
+  border-radius: 12px;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__pill::before {
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__label {
+  max-width: 7.5rem;
+  font-size: 11px;
+  line-height: 1.1;
+  text-align: left;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__detail {
+  max-width: 7.5rem;
+  font-size: 10px;
+  line-height: 1.1;
+  text-align: left;
+}
+
+/* PEEK keeps the complete stage chain in a compact, native horizontal strip. */
+.route-peek-ribbon {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 3px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+.route-peek-ribbon__item {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: calc(100vw - 5rem);
+  transition: opacity var(--mg-dur-base) var(--mg-ease-standard);
+}
+.route-peek-ribbon__item.is-muted { opacity: .48; }
+.route-peek-ribbon__stage {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid var(--route-border);
+  border-radius: 13px;
+  background: var(--route-card-alt);
+  color: var(--route-ink);
+  text-align: left;
+  scroll-snap-align: start;
+}
+.route-peek-ribbon__stage.is-active {
+  border-color: color-mix(in srgb, var(--mg-blue) 60%, var(--route-border));
+  background: var(--route-card);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mg-blue) 28%, transparent);
+}
+.route-peek-ribbon__stage:focus-visible {
+  outline: 2px solid var(--mg-blue);
+  outline-offset: -2px;
+}
+.route-peek-ribbon__icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+}
+.route-peek-ribbon__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+.route-peek-ribbon__label {
+  max-width: 7.5rem;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.route-peek-ribbon__detail {
+  color: var(--route-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
 .mg-route-cta {
   min-height: 52px;
   border-radius: 16px;
@@ -2000,6 +2133,102 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   touch-action: manipulation;
 }
 .route-sheet-peek-cta { min-height: 48px; }
+.route-sheet-endpoints {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px 3px;
+  color: var(--route-ink);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+.route-sheet-endpoints__name,
+.mg-route-endpoints__name {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.route-sheet-endpoints__name--end,
+.mg-route-endpoints__name--end { text-align: right; }
+.route-sheet-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  padding: 2px 12px 4px;
+}
+.route-sheet-summary__metrics {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.route-sheet-summary__times {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+}
+.route-sheet-summary__detail {
+  flex: 0 0 auto;
+  color: var(--route-muted);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.route-sheet-summary__transfers {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.route-sheet-summary__transfer-short { display: none; }
+.route-sheet-summary__fare {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 3px;
+  line-height: 1.15;
+}
+.route-sheet-summary__caption {
+  max-width: 4.5rem;
+  overflow: hidden;
+  color: var(--route-muted);
+  font-size: 10px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-route-endpoints {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+}
+@media (max-width: 360px) {
+  .route-sheet-summary { gap: 5px; padding-right: 10px; padding-left: 10px; }
+  .route-sheet-summary__metrics { gap: 4px; }
+  .route-sheet-summary__times { gap: 2px; font-size: 14px; }
+  .route-sheet-summary__detail { font-size: 9px; }
+  .route-sheet-summary__transfer-full { display: none; }
+  .route-sheet-summary__transfer-short { display: inline; }
+  .route-sheet-summary__caption { max-width: 3rem; }
+  .route-sheet-endpoints { padding-right: 10px; padding-left: 10px; }
+}
 .mg-route-cta:active { transform: scale(.985); filter: brightness(1.06); }
 .mg-route-cta:disabled { opacity: .5; box-shadow: none; }
 .mg-route-cta:focus-visible { outline: 3px solid color-mix(in srgb, var(--mg-blue) 68%, transparent); outline-offset: 3px; }

@@ -30,10 +30,12 @@ export type VehiclePriority = {
  * three zones keep their proportions at every scale instead of only at one zoom.
  */
 export const ZONE_LINE_TOKENS: Record<TransitZone, { width: [number, number]; opacity: number }> = {
-  A: { width: [2.5, 3.5], opacity: 0.45 },
-  B: { width: [6, 9], opacity: 1 },
-  C: { width: [2, 2.5], opacity: 0.25 },
+  A: { width: [1.5, 2.5], opacity: 0.4 },
+  B: { width: [5.5, 7.5], opacity: 1 },
+  C: { width: [1.25, 2], opacity: 0.2 },
 };
+
+export const ZONE_GLOW_TOKENS = { width: [8.5, 11.5] as [number, number], opacity: 0.2, blur: 3 } as const;
 
 /** L4 is at the stop, L3 arrives within three minutes, L2 approaches, L1 is the same line but irrelevant, L0 is background. */
 export const VEHICLE_PRIORITY_TOKENS: Record<VehiclePriorityLevel, { radius: number; haloRadius: number; opacity: number; haloOpacity: number; iconSize: number }> = {

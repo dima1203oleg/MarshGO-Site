@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  ArrowLeft, ArrowRight, ChevronDown, Clock3, Footprints, Heart, Map as MapIcon, Navigation, Play, Share2, Shuffle, X,
+  ArrowLeft, ArrowRight, ChevronDown, Clock3, Heart, Map as MapIcon, Navigation, Play, Share2, Shuffle, X,
 } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
@@ -554,13 +554,7 @@ export function JourneyRouteMapScreen({
     if (item.kind !== 'LEG' || !item.leg) return [];
     const leg = item.leg;
     const isWalk = leg.mode === 'WALK';
-    const stopCount = leg.stops?.length ?? 0;
-    const price = legPriceDisplay(leg);
-    const placedStop = stopCount > 0 ? formatStopCount(stopCount) : '';
-    const isNonMotorized = leg.mode === 'WALK' || leg.mode === 'BICYCLE' || leg.mode === 'SCOOTER';
-    const detail = isWalk
-      ? formatJourneyDurationTile(item.durationSeconds)
-      : `${formatJourneyDurationTile(item.durationSeconds)} · ${price.value !== '—' ? price.value : placedStop || (isNonMotorized ? '0 ₴' : 'За тарифом')}`;
+    const detail = formatJourneyDurationTile(item.durationSeconds);
     return [{
       id: leg.id,
       label: leg.mode === 'COMMUNITY' ? 'Попутка' : journeyLegLabel(leg.mode, leg.transportType),
@@ -707,7 +701,7 @@ export function JourneyRouteMapScreen({
   const renderSegmentCards = () => timeline.flatMap((item, index) => {
     if (item.kind === 'WAIT') {
       return [(
-        <li key={item.id} className="rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2 text-xs text-[var(--route-muted)]">
+        <li key={item.id} className="rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-1.5 text-xs text-[var(--route-muted)]">
           <span className="inline-flex items-center gap-2"><Clock3 size={14} className="text-[var(--route-subtle)]"/>Очікування · {formatDuration(item.durationSeconds)}</span>
         </li>
       )];
@@ -725,6 +719,8 @@ export function JourneyRouteMapScreen({
     const legIndex = journey.legs.findIndex(entry => entry.id === leg.id);
     const walkHint = walkHintFor(journey.legs, legIndex);
     const transferHint = transferHints.get(leg.id);
+    const originLabel = cleanStopName(leg.origin.name) || 'Початок';
+    const destinationLabel = cleanStopName(leg.destination.name) || 'Кінець';
 
     return [
       (
@@ -743,13 +739,13 @@ export function JourneyRouteMapScreen({
           ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}),
         }}
       >
-        <div className="flex items-start gap-2 p-1.5">
+        <div className="flex items-start gap-1.5 px-1.5 py-1">
           <button
             type="button"
             onClick={() => chooseSegment(leg.id)}
             aria-pressed={selected}
-            aria-label={`Вибрати сегмент: ${legLabel(leg)}`}
-            className="mg-press-subtle flex min-w-0 flex-1 items-start gap-2 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
+            aria-label={`Вибрати сегмент: ${legLabel(leg)}; ${originLabel} до ${destinationLabel}${walkHint ? `; ${walkHint.title}${walkHint.detail ? `, ${walkHint.detail}` : ''}` : ''}`}
+            className="mg-press-subtle flex min-w-0 flex-1 items-start gap-1.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
           >
             <span
               className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white shadow-[0_2px_8px_color-mix(in_srgb,var(--segment-color)_42%,transparent)]"
@@ -767,24 +763,20 @@ export function JourneyRouteMapScreen({
                   </span>
                 )}
               </span>
-              <span className="mt-0.5 block text-xs font-semibold tabular-nums text-[var(--route-muted)]">
+              <span className="mt-0.5 block text-xs font-semibold leading-4 tabular-nums text-[var(--route-muted)]">
                 {legTimeLabel(leg, item.durationSeconds)}
                 {typeof leg.distanceMeters === 'number' && Number.isFinite(leg.distanceMeters) ? ` · ${formatJourneyDistance(leg.distanceMeters)}` : ''}
                 {scheduled && stops.length ? ` · ${formatStopCount(stops.length)}` : ''}
               </span>
-              <span className="mt-0.5 block truncate text-xs font-medium leading-4 text-[var(--route-subtle)]">
-                {leg.mode === 'COMMUNITY' ? `Посадка: ${cleanStopName(leg.origin.name)} · висадка: ${cleanStopName(leg.destination.name)}` : `${cleanStopName(leg.origin.name)} → ${cleanStopName(leg.destination.name)}`}
+              <span
+                className="mg-route-endpoints mt-0.5 text-xs font-medium leading-4 text-[var(--route-subtle)]"
+                aria-label={leg.mode === 'COMMUNITY' ? `Посадка: ${originLabel}; висадка: ${destinationLabel}` : `${originLabel} до ${destinationLabel}`}
+              >
+                <span className="mg-route-endpoints__name" title={originLabel}>{originLabel}</span>
+                <ArrowRight size={12} aria-hidden="true" className="shrink-0 text-[var(--route-muted)]"/>
+                <span className="mg-route-endpoints__name mg-route-endpoints__name--end" title={destinationLabel}>{destinationLabel}</span>
               </span>
               {showDiagnostics && <span data-testid="journey-route-segment-source" title={leg.source} className="mt-0.5 block truncate text-xs leading-4 text-[var(--route-muted)]">Джерело: {leg.providerName || leg.source}</span>}
-              {walkHint && (
-                <span
-                  data-testid="route-walk-hint"
-                  className="mt-1 flex items-center gap-1.5 rounded-lg bg-[var(--route-hover)] px-2 py-1 text-xs font-bold text-[var(--mg-blue-ink)]"
-                >
-                  <Footprints size={13} className="shrink-0" aria-hidden="true"/>
-                  <span className="truncate">{walkHint.title}{walkHint.detail ? ` · ${walkHint.detail}` : ''}</span>
-                </span>
-              )}
               {showDiagnostics && dataCaveat && <span data-testid="journey-route-segment-caveat" className="mt-1 block text-xs leading-4 text-[var(--route-muted)]">{dataCaveat}</span>}
             </span>
           </button>
@@ -1122,20 +1114,25 @@ export function JourneyRouteMapScreen({
                 <span data-testid="route-peek-summary-divider" aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-[var(--route-border)]"/>
                 <strong data-testid="route-total-fare" aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : `${totalPriceLabel}${priceDisplay.caption ? ` ${priceDisplay.caption}` : ''}`}`} className={`text-[16px] font-black tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
               </div>
-              <p data-testid="route-peek-chain" className="truncate text-xs font-bold tabular-nums text-[var(--route-muted)]">
-                {ribbonItems.map(item => `${item.label}${item.badge ? ` ${item.badge}` : ''} ${formatJourneyDurationTile(item.durationSeconds)}`).join(' → ')}
-              </p>
-              <div data-testid="route-peek-scale" className="flex h-1.5 w-full overflow-hidden rounded-full bg-[var(--route-card-alt)] gap-1">
-                {ribbonItems.map(item => (
-                  <span
-                    key={item.id}
-                    className="h-full rounded-full"
-                    style={{
-                      flexGrow: Math.max(1, Math.round(item.durationSeconds / 60)),
-                      backgroundColor: item.leg.mode === 'WALK' ? 'var(--route-ribbon-walk)' : item.color,
-                    }}
-                  />
-                ))}
+              <div className="route-peek-ribbon no-scrollbar" data-testid="route-peek-ribbon" role="list" aria-label="Етапи маршруту — гортайте вбік">
+                {ribbonItems.map(item => {
+                  const selected = activeSegmentId === item.id;
+                  const walk = item.leg.mode === 'WALK';
+                  const stageLabel = `${item.label}${item.badge ? ` ${item.badge}` : ''}`;
+                  return (
+                    <div key={item.id} role="listitem" className={`route-peek-ribbon__item${activeSegmentId && !selected ? ' is-muted' : ''}`}>
+                      <button type="button" onClick={() => chooseSegment(item.id)} aria-pressed={selected} aria-label={`Вибрати етап: ${stageLabel}, ${formatJourneyDurationTile(item.durationSeconds)}`} className={`route-peek-ribbon__stage mg-press-subtle${selected ? ' is-active' : ''}`}>
+                        <span className="route-peek-ribbon__icon" style={{ backgroundColor: walk ? 'var(--route-ribbon-walk)' : item.color }} aria-hidden="true">
+                          <TransportIcon mode={item.leg.mode} transportType={item.leg.transportType} size={14} strokeWidth={2.4}/>
+                        </span>
+                        <span className="route-peek-ribbon__copy">
+                          <span className="route-peek-ribbon__label">{stageLabel}</span>
+                          <span className="route-peek-ribbon__detail">{formatJourneyDurationTile(item.durationSeconds)}</span>
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : (
@@ -1155,32 +1152,54 @@ export function JourneyRouteMapScreen({
                 </div>
               )}
               {sheetSnap === 'expanded' && (
-                <p className="shrink-0 truncate px-4 pb-1 text-xs font-bold text-[var(--route-ink)]">
-                  {cleanStopName(firstLeg?.origin.name) || 'Початок'} <span aria-hidden="true" className="mx-0.5 text-[var(--route-muted)]">→</span> {cleanStopName(lastLeg?.destination.name) || 'Кінець'}
-                </p>
+                <div
+                  className="route-sheet-endpoints shrink-0"
+                  data-testid="route-sheet-endpoints"
+                  role="group"
+                  aria-label={`Маршрут: ${cleanStopName(firstLeg?.origin.name) || 'Початок'} до ${cleanStopName(lastLeg?.destination.name) || 'Кінець'}`}
+                >
+                  <span className="route-sheet-endpoints__name" title={cleanStopName(firstLeg?.origin.name) || 'Початок'}>{cleanStopName(firstLeg?.origin.name) || 'Початок'}</span>
+                  <ArrowRight size={13} aria-hidden="true" className="shrink-0 text-[var(--route-muted)]"/>
+                  <span className="route-sheet-endpoints__name route-sheet-endpoints__name--end" title={cleanStopName(lastLeg?.destination.name) || 'Кінець'}>{cleanStopName(lastLeg?.destination.name) || 'Кінець'}</span>
+                </div>
               )}
-              <div className="route-sheet-summary flex shrink-0 items-center justify-between gap-3 px-4 py-0.5">
-                <span className="flex min-w-0 flex-1 flex-col justify-center leading-tight">
-                  <strong className="text-[20px] font-black leading-tight tracking-tight tabular-nums">{firstLeg ? formatTime(firstLeg.departureAt) : '—'} <span aria-hidden="true" className="text-[var(--route-muted)]">→</span> {lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}</strong>
-                  <span data-testid="canonical-route-duration" className="mt-0.5 truncate text-xs font-bold tabular-nums text-[var(--route-muted)]">{formatDuration(allDuration)} · {formatSegmentCount(journey.legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</span>
+              <div
+                className="route-sheet-summary shrink-0"
+                data-testid="route-sheet-summary"
+                role="group"
+                aria-label={`${firstLeg ? formatTime(firstLeg.departureAt) : 'Час невідомий'} — ${lastLeg ? formatTime(lastLeg.arrivalAt) : 'час невідомий'}, ${formatDuration(allDuration)}, ${formatSegmentCount(journey.legs.length)}, ${journey.transfers > 0 ? formatTransferCount(journey.transfers) : 'без пересадок'}, ціна ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`}
+              >
+                <span className="route-sheet-summary__metrics">
+                  <strong className="route-sheet-summary__times tabular-nums">
+                    <span>{firstLeg ? formatTime(firstLeg.departureAt) : '—'}</span>
+                    <ArrowRight size={12} aria-hidden="true" className="shrink-0 text-[var(--route-muted)]"/>
+                    <span>{lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}</span>
+                  </strong>
+                  <span data-testid="canonical-route-duration" className="route-sheet-summary__detail">{formatDuration(allDuration)}</span>
+                  <span className="route-sheet-summary__detail route-sheet-summary__transfers">
+                    <span className="route-sheet-summary__transfer-full">{journey.transfers > 0 ? formatTransferCount(journey.transfers) : 'Без пересадок'}</span>
+                    <span className="route-sheet-summary__transfer-short" aria-hidden="true">{journey.transfers > 0 ? `${journey.transfers} пер.` : '0 пер.'}</span>
+                  </span>
                 </span>
-                <span data-testid="route-total-fare" className="flex shrink-0 flex-col items-end leading-tight">
-                  <strong aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : `${totalPriceLabel}${priceDisplay.caption ? ` ${priceDisplay.caption}` : ''}`}`} className={`text-[17px] font-black tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
-                  {priceDisplay.caption && totalPriceLabel !== '—' && <span data-testid="route-total-fare-caption" className="mt-0.5 rounded-md bg-[var(--route-card-alt)] px-1.5 py-0.5 text-xs font-semibold text-[var(--route-muted)]">{priceDisplay.caption}</span>}
+                <span data-testid="route-total-fare" className="route-sheet-summary__fare">
+                  <strong aria-label={`Загальна вартість: ${totalPriceLabel === '—' ? 'невідома' : `${totalPriceLabel}${priceDisplay.caption ? ` ${priceDisplay.caption}` : ''}`}`} className={`text-[16px] font-black tabular-nums ${totalPriceLabel === '—' ? 'text-[var(--route-muted)]' : ''}`}>{priceSummary}</strong>
+                  {priceDisplay.caption && totalPriceLabel !== '—' && <span data-testid="route-total-fare-caption" className="route-sheet-summary__caption">{priceDisplay.caption}</span>}
                 </span>
               </div>
 
-              <div className="mg-route-ribbon no-scrollbar shrink-0 px-4 pb-1" role="list" aria-label="Етапи маршруту">
+              <div className="mg-route-ribbon mg-route-ribbon--compact no-scrollbar shrink-0 px-4" role="list" aria-label="Етапи маршруту">
                 {ribbonItems.map(item => {
                   const selected = activeSegmentId === item.id;
                   const walk = item.leg.mode === 'WALK';
                   return (
-                    <div key={item.id} role="listitem" className={`mg-route-ribbon__item${activeSegmentId && !selected ? ' is-muted' : ''}`} style={{ flexGrow: Math.max(1, Math.round(item.durationSeconds / 60)) }}>
+                    <div key={item.id} role="listitem" className={`mg-route-ribbon__item${activeSegmentId && !selected ? ' is-muted' : ''}`}>
                       <button type="button" onClick={() => chooseSegment(item.id)} aria-pressed={selected} aria-label={`Вибрати етап: ${item.label}, ${item.detail}`} className={`mg-route-ribbon__pill mg-press-subtle${selected ? ' is-active' : ''}`} style={{ backgroundColor: walk ? 'var(--route-ribbon-walk)' : item.color }}>
                         <TransportIcon mode={item.leg.mode} transportType={item.leg.transportType} size={16} strokeWidth={2.4}/>
+                        <span className="mg-route-ribbon__copy">
+                          <span className="mg-route-ribbon__label">{item.label}</span>
+                          <span className="mg-route-ribbon__detail">{item.detail}</span>
+                        </span>
                       </button>
-                      <span className="mg-route-ribbon__label">{item.label}</span>
-                      <span className="mg-route-ribbon__detail">{item.detail}</span>
                     </div>
                   );
                 })}
@@ -1221,7 +1240,7 @@ export function JourneyRouteMapScreen({
           )}
 
           {/* Pinned CTA in all four snap states */}
-          <div className={`mt-auto shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-1 pt-0.5' : 'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-0.5 mb-0.5'}`}>
+          <div className={`shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-0.5' : 'mt-auto pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-0.5 mb-0.5'}`}>
             {sheetSnap !== 'peek' && communityLeg?.offerId && onBookOffer && (() => {
               const communityPrice = legPriceDisplay(communityLeg).value;
               return (

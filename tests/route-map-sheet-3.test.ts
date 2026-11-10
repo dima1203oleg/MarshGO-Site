@@ -21,7 +21,39 @@ const adapter = read('src/map/MapLibreAdapter.ts');
 
 test('peek sheet separates duration and fare while retaining a compact action', () => {
   assert.match(routeScreen, /data-testid="route-peek-summary-divider"/);
+  assert.match(routeScreen, /data-testid="route-peek-ribbon"/);
+  assert.match(routeScreen, /aria-label="Етапи маршруту — гортайте вбік"/);
+  assert.doesNotMatch(routeScreen, /data-testid="route-peek-chain"|data-testid="route-peek-scale"/);
   assert.match(routeScreen, /route-sheet-peek-cta/);
+});
+
+test('route streets and summary metrics keep compact side-by-side layouts', () => {
+  assert.match(routeScreen, /data-testid="route-sheet-endpoints"/);
+  assert.match(routeScreen, /data-testid="route-sheet-summary"[\s\S]*?route-sheet-summary__metrics/);
+  assert.match(routeScreen, /mg-route-endpoints__name--end/);
+  assert.match(css, /\.route-sheet-endpoints\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+13px\s+minmax\(0,\s*1fr\)/s);
+  assert.match(css, /\.route-sheet-summary\s*\{[^}]*display:\s*flex;/s);
+  assert.match(css, /\.mg-route-endpoints\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+12px\s+minmax\(0,\s*1fr\)/s);
+  assert.match(css, /route-sheet-summary__transfer-short/);
+  assert.match(routeScreen, /aria-label=\{`Вибрати сегмент: \$\{legLabel\(leg\)\}; \$\{originLabel\} до \$\{destinationLabel\}.*walkHint\.title/);
+});
+
+test('expanded route details use a 44px swipeable stage ribbon instead of a tall vertical ribbon', () => {
+  assert.match(routeScreen, /mg-route-ribbon mg-route-ribbon--compact[^>]*role="list"/);
+  assert.match(routeScreen, /mg-route-ribbon__copy[\s\S]*?mg-route-ribbon__label[\s\S]*?mg-route-ribbon__detail/);
+  assert.match(css, /\.mg-route-ribbon--compact\s*\{[^}]*height:\s*48px;[^}]*min-height:\s*48px;/s);
+  assert.match(css, /\.mg-route-ribbon--compact \.mg-route-ribbon__pill\s*\{[^}]*height:\s*44px;[^}]*min-height:\s*44px;/s);
+});
+
+test('small mobile route-sheet detents expose details without a tall empty half state', () => {
+  for (const height of [568, 844, 932]) {
+    const snaps = routeSheetHeights(height);
+    assert.ok(snaps.peek < snaps.collapsed && snaps.collapsed < snaps.half && snaps.half < snaps.expanded);
+    assert.ok(snaps.half <= Math.round(height * 0.5), `${height}px half detent should stay compact`);
+    assert.ok(height - snaps.expanded >= 96, `${height}px expanded state keeps a map strip`);
+  }
+  assert.equal(routeSheetHeights(568).collapsed, 220);
+  assert.equal(routeSheetHeights(568).half, 260);
 });
 
 const route: Coordinate[] = [[30.5, 50.4], [30.52, 50.45], [30.55, 50.5]];
@@ -191,7 +223,8 @@ test('transfer and walk hints live inside the sheet, not in floating map callout
   assert.doesNotMatch(routeScreen, /buildCalloutsForLeg|updateCalloutScreenPositions|setCallouts/,
     'the callout builders were the source of the overlapping ПЕРЕСАДКА/ПОЧАТОК ПІШКИ cards');
   assert.match(routeScreen, /data-testid="route-inline-transfer"/, 'a transfer needs a row between its two segment cards');
-  assert.match(routeScreen, /data-testid="route-walk-hint"/, 'a walk leg must say how it starts or transfers inside its own card');
+  assert.doesNotMatch(routeScreen, /data-testid="route-walk-hint"/, 'the redundant pill should not add a full row to every walk segment');
+  assert.match(routeScreen, /walkHint\.title/, 'the same route guidance remains in the segment accessible name');
   assert.match(routeScreen, /function inlineTransferHints\(/);
   assert.match(routeScreen, /function walkHintFor\(/);
   const cardsAt = routeScreen.indexOf('const renderSegmentCards');
