@@ -479,7 +479,7 @@ export function JourneyActiveNavigation({
           {notice && <p role="status" data-testid="active-nav-notice" className="mt-2 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2.5 text-[12px] font-bold leading-[16px] text-[var(--route-ink)]">{notice}</p>}
         </div>
 
-        {showRibbon && <div className="mg-route-ribbon mt-3 shrink-0 px-5" role="list" aria-label="Етапи навігації">
+        {showRibbon && <div className="mg-route-ribbon no-scrollbar mt-3 shrink-0 px-5" role="list" aria-label="Етапи навігації">
           {legs.map((item, index) => {
             const selected = index === legIndex;
             return <div key={item.id} role="listitem" className={`mg-route-ribbon__item${index < legIndex ? ' is-muted' : ''}`} style={{ flexGrow: Math.max(1, Math.round(item.durationSeconds / 60)) }}>

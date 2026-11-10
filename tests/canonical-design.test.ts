@@ -231,8 +231,7 @@ test('compact result strips prices and keeps unknown-fare detail and segment scr
     read('../src/views/cashFare.ts'),
     read('../src/views/JourneyRouteMapScreen.tsx'),
   ]);
-  assert.match(strip, /hidden >= 24/, 'the cue needs a floor a real stage chip can actually cross');
-  assert.doesNotMatch(strip, /clientWidth \+ 2/, 'the cue threshold drifted back to 2 px, where rounding alone triggers it');
+  assert.match(strip, /const scrolls = hidden > 10;/, 'the edge fade needs a floor a real stage chip can actually cross');
   assert.match(lip, /priceCaption\?: ReactNode;/, 'the shared lip needs one caption slot for unavailable prices');
   assert.match(fare, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
   assert.match(panel, /priceLabel: ''/, 'per-leg fares must not repeat under every segment on compact cards');
@@ -293,9 +292,9 @@ test('segment ribbon fades only while chips are actually sliced', async () => {
     readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/design-system/journey/JourneySegmentStrip.tsx'), 'utf8'),
     readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8'),
   ]);
-  assert.match(strip, /data-cue-at-end=\{scrollState\.atEnd \? 'true' : 'false'\}/,
-    'the viewport must expose whether the row is scrolled to its end');
-  assert.match(css, /\.journey-segment-tiles-viewport:not\(\[data-cue-at-end="true"\]\)[\s\S]{0,120}mask-image: linear-gradient\(to right/,
+  assert.match(strip, /element\.dataset\.fadeEnd = /,
+    'the scroller itself must expose whether the row is scrolled to its end');
+  assert.match(css, /\.journey-segment-tiles\[data-fade-end="true"\] \{ --mg-fade-x-end/,
     'the slice fade is CSS-driven and must lift at the end of the row');
 });
 

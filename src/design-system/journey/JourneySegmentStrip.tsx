@@ -1,5 +1,4 @@
-import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { TransportIcon } from '../transport/TransportIcon';
 
 export type JourneySegmentStripItem = {
@@ -31,45 +30,33 @@ export function JourneySegmentStrip({
   className?: string;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
-  const scrollerId = useId();
-  const [scrollState, setScrollState] = useState({ overflow: false, atEnd: false });
   const usesHorizontalTiles = items.length > 4;
 
   useEffect(() => {
     const element = scroller.current;
     if (!element) return;
-    const syncScrollState = () => {
+    const syncEdgeFade = () => {
       const hidden = element.scrollWidth - element.clientWidth;
-      const next = {
-        // Sub-pixel flex rounding leaves a couple of stray units behind; a 44 px button must not
-        // cover the last stage of the route because of them.
-        overflow: hidden >= 24,
-        atEnd: element.scrollLeft + element.clientWidth >= element.scrollWidth - 10,
-      };
-      setScrollState(current => current.overflow === next.overflow && current.atEnd === next.atEnd ? current : next);
+      // Sub-pixel flex rounding leaves a couple of stray units behind; fading for those would slice
+      // a row that is actually whole.
+      const scrolls = hidden > 10;
+      // Written to the DOM rather than React state: a fling changes scrollLeft every frame and a
+      // state update would re-render the card, and with it the route sheet, 60 times a second.
+      element.dataset.fadeStart = String(scrolls && element.scrollLeft > 2);
+      element.dataset.fadeEnd = String(scrolls && element.scrollLeft + element.clientWidth < element.scrollWidth - 2);
     };
-    syncScrollState();
-    element.addEventListener('scroll', syncScrollState, { passive: true });
-    window.addEventListener('resize', syncScrollState, { passive: true });
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncScrollState);
+    syncEdgeFade();
+    element.addEventListener('scroll', syncEdgeFade, { passive: true });
+    window.addEventListener('resize', syncEdgeFade, { passive: true });
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncEdgeFade);
     observer?.observe(element);
     for (const child of element.children) observer?.observe(child);
     return () => {
-      element.removeEventListener('scroll', syncScrollState);
-      window.removeEventListener('resize', syncScrollState);
+      element.removeEventListener('scroll', syncEdgeFade);
+      window.removeEventListener('resize', syncEdgeFade);
       observer?.disconnect();
     };
   }, [items.length]);
-
-  const scrollTiles = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    const element = scroller.current;
-    if (!element) return;
-    element.scrollTo({
-      left: scrollState.atEnd ? 0 : element.scrollWidth,
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-    });
-  };
 
   const renderContent = (item: JourneySegmentStripItem) => {
     const showPrice = Boolean(item.priceLabel) && item.mode !== 'WALK';
@@ -109,8 +96,8 @@ export function JourneySegmentStrip({
         }}
       />)}
     </div>
-    <div className="journey-segment-tiles-viewport" data-cue-at-end={scrollState.atEnd ? 'true' : 'false'}>
-      <div ref={scroller} id={scrollerId} className="journey-segment-tiles journey-result-segments no-scrollbar" role="list" aria-label={ariaLabel}>
+    <div className="journey-segment-tiles-viewport">
+      <div ref={scroller} className="journey-segment-tiles journey-result-segments no-scrollbar" role="list" aria-label={ariaLabel}>
         {items.map(item => {
           const selected = activeItemId === item.id;
           const tileClass = 'journey-segment-tile' + (usesHorizontalTiles ? ' journey-segment-tile--scroll' : '');
@@ -130,15 +117,6 @@ export function JourneySegmentStrip({
           </div>;
         })}
       </div>
-      {scrollState.overflow && <button
-        type="button"
-        aria-label={scrollState.atEnd ? 'Повернутися до початку етапів маршруту' : 'Прокрутити до наступних етапів маршруту'}
-        aria-controls={scrollerId}
-        onClick={scrollTiles}
-        className="journey-segment-scroll-cue"
-      >
-        <span data-testid="segment-scroll-cue-surface"><ChevronRight size={16} className={scrollState.atEnd ? 'rotate-180' : ''} aria-hidden="true"/></span>
-      </button>}
     </div>
   </div>;
 }

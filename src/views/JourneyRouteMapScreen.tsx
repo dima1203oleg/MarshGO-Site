@@ -1170,7 +1170,7 @@ export function JourneyRouteMapScreen({
                 </span>
               </div>
 
-              <div className="mg-route-ribbon shrink-0 px-4 pb-1 pt-0.5" role="list" aria-label="Етапи маршруту">
+              <div className="mg-route-ribbon no-scrollbar shrink-0 px-4 pb-1" role="list" aria-label="Етапи маршруту">
                 {ribbonItems.map(item => {
                   const selected = activeSegmentId === item.id;
                   const walk = item.leg.mode === 'WALK';

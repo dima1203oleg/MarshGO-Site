@@ -558,10 +558,22 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   display: flex;
   min-width: 0;
   overflow-x: auto;
+  /* Kinetic scrolling on iOS Safari; a chain flick has to coast and stay interruptible. */
+  -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
+  /* Mandatory snapping fights a momentum fling: the browser drags the row back to a tile boundary
+     while the rider is still mid-swipe, and it re-snap-hops when the last tile cannot line up. */
+  scroll-snap-type: x proximity;
   overscroll-behavior-x: contain;
+  /* A stage sliced in half by the edge of the row reads as a rendering bug, so the cut edge fades —
+     but only while content is genuinely hidden there, which the component publishes as flags. */
+  --mg-fade-x-start: 0px;
+  --mg-fade-x-end: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--mg-fade-x-start), #000 calc(100% - var(--mg-fade-x-end)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--mg-fade-x-start), #000 calc(100% - var(--mg-fade-x-end)), transparent 100%);
 }
+.journey-segment-tiles[data-fade-start="true"] { --mg-fade-x-start: 1.5rem; }
+.journey-segment-tiles[data-fade-end="true"] { --mg-fade-x-end: 1.5rem; }
 .journey-segment-tile {
   min-width: 0;
   flex: 1 0 0;
@@ -569,7 +581,12 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   scroll-snap-align: start;
 }
 .journey-segment-tile:last-child { border-right: 0; }
-.journey-segment-tile--scroll { flex: 0 0 7.25rem; }
+/*
+ * A scrolled row has no reason to squeeze its stages: 7.25rem is the floor, not the width, so a
+ * name like «Трамвай №3» is never cut into «Трамвай …». max-content keeps the row honest and the
+ * 11rem ceiling stops one long feed label from pushing the rest of the chain off-screen.
+ */
+.journey-segment-tile--scroll { flex: 0 0 auto; min-width: 7.25rem; width: max-content; max-width: 11rem; }
 .journey-segment-tile-content,
 .journey-segment-tile-button {
   display: flex;
@@ -644,50 +661,13 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
 }
 .journey-segment-tile-meta-value { font-weight: 700; }
 /*
- * The scroll cue is a floating 44 px button over the row's right edge. Padding the scroller only
- * added empty space *after the last tile*, so mid-scroll the button still covered a stage's time
- * and price («Пішки 2 хв» in a saved route). Reserve the gutter on the viewport instead: the
- * scrollport ends before the button, so no tile can ever paint underneath it.
+ * No floating control sits over this row. An overlay on the swipe lane both swallows the first
+ * fingers of a horizontal pan and steals the tap a rider meant for the stage underneath it.
  */
-.journey-segment-tiles-viewport:has(> .journey-segment-scroll-cue) { padding-right: 2.9rem; }
-/*
- * A stage chip sliced in half by the viewport edge reads as a rendering bug. The fade says the row
- * continues; it lifts at the end of the row, where nothing is sliced anymore.
- */
-.journey-segment-tiles-viewport:not([data-cue-at-end="true"]) .journey-segment-tiles:has(+ .journey-segment-scroll-cue) {
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.4rem), transparent 100%);
-  mask-image: linear-gradient(to right, #000 calc(100% - 2.4rem), transparent 100%);
-}
-.journey-segment-scroll-cue {
-  position: absolute;
-  z-index: var(--mg-z-raised);
-  top: 50%;
-  right: -.25rem;
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  transform: translateY(-50%);
-  place-items: center;
-  border-radius: var(--mg-radius-pill);
-  color: #526174;
-  pointer-events: auto;
-}
-.journey-segment-scroll-cue > span {
-  display: grid;
-  width: 1.65rem;
-  height: 1.65rem;
-  place-items: center;
-  border: 1px solid #d9e2ec;
-  border-radius: var(--mg-radius-pill);
-  background: rgba(255,255,255,.97);
-  box-shadow: 0 2px 8px rgba(20,49,87,.12);
-}
 html.dark .journey-segment-tile { border-color: var(--mg-border-subtle); }
 html.dark .journey-segment-tile-heading { color: var(--mg-ink-primary); }
 html.dark .journey-segment-tile-icon[data-icon-mode="WALK"] { color: var(--mg-ink-primary) !important; }
 html.dark .journey-segment-tile-meta { color: var(--mg-ink-secondary); }
-html.dark .journey-segment-scroll-cue { color: var(--mg-ink-secondary); }
-html.dark .journey-segment-scroll-cue > span { border-color: var(--mg-border-medium); background: var(--mg-surface-primary); }
 /*
  * At 320 px five section labels cannot share one row, so the strip scrolls. A label cut
  * mid-word at either edge («ивні») reads as a clipped render; fade the scrolled edges
@@ -738,7 +718,6 @@ html.dark .journey-result-transfer-badge,
 html.dark .journey-result-save-visual { border-color: #223C52; }
 html.dark .journey-result-save-button { background-color: transparent; }
 .journey-result-action-badge[data-strategy] { background-color: var(--mg-blue-tint); color: var(--mg-blue-ink); }
-.journey-result-card-content > .journey-segment-strip .journey-segment-scroll-cue { right: -.3rem; }
 .journey-result-card-content .journey-result-duration {
   max-width: 100%;
   overflow: hidden;
@@ -1907,20 +1886,40 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 .route-mode-chip__icon { color: #fff; }
 .route-mode-chip:active { transform: scale(.99); }
 
+/*
+ * Seven stages cannot share 358 px, so the ribbon is its own horizontal scroller: native
+ * overflow, no wrap, and the platform's own momentum — a hand-rolled drag would have to re-learn
+ * velocity, rubber-banding and interruptibility that the browser already does. Top padding keeps
+ * the pill's 44 px hit bleed inside the clip box; anything clipped there is not tappable.
+ */
 .mg-route-ribbon {
   display: flex;
   align-items: flex-start;
   gap: .5rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+  padding-block-start: 9px;
+  overflow-x: auto;
+  /* Kinetic scrolling on iOS Safari; a chain flick has to coast and stay interruptible. */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .mg-route-ribbon__item {
   display: flex;
-  flex: 1 1 0%;
+  /*
+   * Proportional widths used to be `1 1 0%`, which squeezed every stage into its share of the
+   * scrollport and cut «Тролейбус» into «Тролей…». In a scroller the row can carry the width
+   * instead: basis auto keeps each name whole, grow still spreads a short chain across the full
+   * row so the canonical ribbon reads as one bar, and the ceiling stops one long feed label from
+   * eating the whole scrollport. min-width is the floor under a 40-second walk.
+   */
+  flex: 1 0 auto;
+  width: max-content;
   flex-direction: column;
   align-items: stretch;
   gap: .2rem;
-  /* Proportional widths must still leave room for the segment name under the
-     bar; without a floor a 40-second walk collapses to "П…". */
   min-width: 62px;
+  max-width: 11rem;
 }
 .mg-route-ribbon__pill {
   display: flex;
@@ -1939,6 +1938,12 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   transform: scale(1.02);
 }
 .mg-route-ribbon__pill:active { transform: scale(.97); }
+/*
+ * The default focus ring sits 2 px outside the box, which the scroll clip cuts in half at either
+ * end of the row. An inset ring is always fully painted, and keyboard focus auto-scrolls the
+ * stage into view because this is a real scroller.
+ */
+.mg-route-ribbon__pill:focus-visible { outline: 2px solid var(--mg-blue); outline-offset: -2px; }
 /*
  * The bar stays 26 px tall — that is the canonical ribbon — but a stage is a tap
  * action and the ergonomic floor is 44 px. Extend the button's hit area over its
