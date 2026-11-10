@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowLeft, ArrowUp, ChevronUp, CornerUpLeft, CornerUpRight, Eye, Flag, Layers, Map, MapPin, MoreHorizontal, Navigation, RotateCcw, RefreshCw, Search, Share2, Square, TriangleAlert, Volume2, VolumeX, X, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ChevronUp, CornerUpLeft, CornerUpRight, Eye, Flag, Map, MapPin, MoreHorizontal, Navigation, RotateCcw, RefreshCw, Search, Share2, Square, TriangleAlert, Volume2, VolumeX, X, type LucideIcon } from 'lucide-react';
 import { dueAnnouncement, formatGuidanceDistance, instructionText, nextGuidance, prepareGuidance, voiceLine } from '../navigation/guidance';
 import type { Maneuver } from '../../shared/navigation/contracts';
 import { ApiNavigationMatch, ApiNavigationSession, ApiPlace, ProductionApiError, productionApi } from '../services/productionApi';
@@ -7,7 +7,6 @@ import type { LocationFix } from '../../shared/navigation/contracts';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
 import { MapBasemapControl, MapControlRail, MapPerspectiveControl, MapVoiceControl, MapZoomControls } from '../components/MapInteractionControls';
-import { schemePreviewAttribution, schemePreviewTiles } from '../map/mapConfig';
 import { mapStatusDetail } from '../map/mapStatusCopy';
 import type { MapAdapter, MapStatus } from '../map/MapAdapter';
 import { setVoiceGuidancePreference, useVoiceGuidancePreference } from '../services/voiceGuidancePreference';
@@ -22,7 +21,6 @@ import { OffRouteGuard } from '../navigation/OffRouteGuard';
 import { snapNavigationSheet, type NavigationSheetLevel } from '../navigation/navigationSheet';
 import { createNavigationShareUrl } from '../routing/navigationShare';
 import { navigationDestinationName } from '../navigation/destinationName';
-import { getMapLayer, mapLayers, satelliteAttribution, satelliteTiles, setMapLayer, subscribeMapLayer, type MapLayer } from '../map/mapMode';
 
 function navigationErrorMessage(error: unknown, fallback: string) {
   if (!(error instanceof Error)) return fallback;
@@ -47,8 +45,8 @@ function navigationErrorMessage(error: unknown, fallback: string) {
   };
   const code = error instanceof ProductionApiError ? error.code : undefined;
   if (code && apiCodes[code]) return apiCodes[code];
-  if (/^[A-Z][A-Z0-9_]+$/.test(error.message)) return fallback;
-  return error.message;
+  if (error instanceof ProductionApiError || /^[A-Z][A-Z0-9_]+$/.test(error.message)) return fallback;
+  return /[\u0400-\u04FF]/.test(error.message) ? error.message : fallback;
 }
 
 const hasRoute = (session: ApiNavigationSession) => (session.route?.length ?? 0) >= 2 && session.route_distance_m !== null && session.route_duration_s !== null;
@@ -66,34 +64,6 @@ function speak(text: string) {
   synth.speak(utterance);
 }
 
-function previewTileUrl(layer: MapLayer, center: [number, number] | null) {
-  const source = layer === 'satellite' ? satelliteTiles : schemePreviewTiles;
-  const attribution = layer === 'satellite' ? satelliteAttribution : schemePreviewAttribution;
-  if (!center || !source || !attribution) return null;
-  const zoom = 14;
-  const count = 2 ** zoom;
-  const x = Math.max(0, Math.min(count - 1, Math.floor(((center[0] + 180) / 360) * count)));
-  const latitude = Math.max(-85.0511, Math.min(85.0511, center[1]));
-  const radians = latitude * Math.PI / 180;
-  const y = Math.max(0, Math.min(count - 1, Math.floor((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2 * count)));
-  const template = source;
-  if (!['{z}', '{x}'].every((key) => template.includes(key)) || (!template.includes('{y}') && !template.includes('{-y}'))) return null;
-  return template.replaceAll('{z}', String(zoom)).replaceAll('{x}', String(x)).replaceAll('{y}', String(y)).replaceAll('{-y}', String(count - 1 - y));
-}
-
-function NavigationBasemapPreview({ center, aboveSummary = false }: { center: [number, number] | null; aboveSummary?: boolean }) {
-  const [layer, setLayer] = useState<MapLayer>(getMapLayer());
-  useEffect(() => subscribeMapLayer(setLayer), []);
-  const next: MapLayer = layer === 'simple' ? 'satellite' : 'simple';
-  const tile = previewTileUrl(next, center);
-  return <button type="button" data-testid="navigation-basemap-preview" aria-label={`Перемкнути карту на ${mapLayers[next].label}`} title={`Перемкнути карту на ${mapLayers[next].label}`} onClick={() => setMapLayer(next)} className="absolute right-3 z-[var(--mg-z-nav-chrome)] h-[4.7rem] w-[4.7rem] overflow-hidden rounded-xl border border-slate-200 bg-white text-[#0B1730] shadow-xl dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:text-[var(--mg-ink-primary)]" style={{ bottom: aboveSummary ? 'calc(10.2rem + env(safe-area-inset-bottom))' : 'calc(8rem + env(safe-area-inset-bottom))' }}>
-    <span className="absolute inset-0 block overflow-hidden">
-      {tile ? <img src={tile} alt="" loading="lazy" className="h-full w-full object-cover"/> : <span aria-hidden="true" className="grid h-full w-full place-items-center bg-slate-100 dark:bg-[var(--mg-surface-secondary)]"><Layers size={23} className="text-slate-500 dark:text-slate-300"/></span>}
-    </span>
-    <span className="absolute inset-x-0 bottom-0 bg-black/70 px-1 py-1 text-xs font-semibold leading-tight text-white">{mapLayers[next].label}{!tile ? ' · без preview' : ''}</span>
-  </button>;
-}
-
 function maneuverIcon(maneuver: Maneuver): LucideIcon {
   if (maneuver.type === 'ARRIVE') return Flag;
   if (maneuver.type === 'ROUNDABOUT') return RefreshCw;
@@ -104,7 +74,7 @@ function maneuverIcon(maneuver: Maneuver): LucideIcon {
 }
 
 type Props = { onBack: () => void; onOpenDemand?: (demandId: string, candidateId: string) => void; onSessionActiveChange?: (active: boolean) => void; isPresented?: boolean; autoStart?: boolean; initialDestination?: ApiPlace | null; onAddVehicle?: () => void };
-export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChange, isPresented = true, autoStart: _autoStart = false, initialDestination = null, onAddVehicle }: Props) {
+export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChange, isPresented = true, autoStart = false, initialDestination = null, onAddVehicle }: Props) {
   const [destination, setDestination] = useState<ApiPlace | null>(initialDestination);
   const [session, setSession] = useState<ApiNavigationSession | null>(null);
   const [restoring, setRestoring] = useState(true);
@@ -157,7 +127,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
         setGpsMessage('Маршрут оновлено від останньої підтвердженої GPS-позиції. Пошук попутників призупинено до повторної згоди.');
       }).catch((error: unknown) => {
         navigationStore.dispatch({ type: 'REROUTE_FAILED', error: navigationError('REROUTE_FAILED', 'osrm') });
-        setGpsMessage(error instanceof Error ? error.message : 'Не вдалося оновити маршрут.');
+        setGpsMessage(navigationErrorMessage(error, 'Не вдалося оновити маршрут. Спробуйте ще раз.'));
       });
     }
     if (effect.type === 'EMIT_TELEMETRY') window.dispatchEvent(new CustomEvent('marshgo:telemetry', { detail: { name: effect.name, sessionId: state.sessionId } }));
@@ -280,7 +250,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
           if (!active || active.id !== session.id) return;
           setSession(active); setMatchingEnabled(false); setMatches([]);
           setGpsMessage('Пасажира підтверджено. Дорожній маршрут оновлено через точки посадки й висадки.');
-        }).catch((error: unknown) => setGpsMessage(error instanceof Error ? error.message : 'Не вдалося оновити дорожній маршрут.'));
+        }).catch((error: unknown) => setGpsMessage(navigationErrorMessage(error, 'Не вдалося оновити дорожній маршрут.')));
         return;
       }
       if (event.type !== 'navigation.match.passenger-confirmed') return;
@@ -289,7 +259,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
         if (current.some((match) => match.id === event.data.candidate_id)) {
           setGpsMessage('Пасажир підтвердив взаємний інтерес. Зупиніться безпечно, щоб погодити ціну. Бронювання ще немає.');
         }
-      }).catch((error: unknown) => setGpsMessage(error instanceof Error ? error.message : 'Не вдалося оновити стан попутника.'));
+      }).catch((error: unknown) => setGpsMessage(navigationErrorMessage(error, 'Не вдалося оновити стан попутника.')));
     }, () => undefined);
   }, [session?.id, visible]);
 
@@ -298,7 +268,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     let current = true;
     const refresh = () => productionApi.refreshNavigationMatches(session.id)
       .then((next) => { if (current) setMatches(next); })
-      .catch((error: unknown) => { if (current) setGpsMessage(error instanceof Error ? error.message : 'Підбір попутників недоступний.'); });
+      .catch((error: unknown) => { if (current) setGpsMessage(navigationErrorMessage(error, 'Підбір попутників тимчасово недоступний.')); });
     void refresh();
     const timer = window.setInterval(() => void refresh(), 60_000);
     return () => { current = false; window.clearInterval(timer); };
@@ -359,7 +329,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
         }).catch(() => undefined);
       }).catch((error: unknown) => {
         if (!navigator.onLine) navigationStore.dispatch({ type: 'CONNECTIVITY_LOST' });
-        setGpsMessage(error instanceof Error ? error.message : 'Не вдалося синхронізувати GPS.');
+        setGpsMessage(navigationErrorMessage(error, 'Не вдалося синхронізувати GPS. Чекаємо наступну точку.'));
       }).finally(() => { busySending = false; });
     });
     void locationProvider.current.start({ enableHighAccuracy: true, maximumAgeMs: 5_000, timeoutMs: 20_000 }).catch((error: unknown) => {
@@ -461,13 +431,13 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   // Immediate start without intermediate page: start navigation as soon as presented.
   // If destination is provided, calculate route; if not, enter free drive mode immediately.
   useEffect(() => {
-    if (!isPresented || restoring || session || busy || autoStartTried.current) return;
+    if (!isPresented || !autoStart || restoring || session || busy || autoStartTried.current) return;
     autoStartTried.current = true;
     if (initialDestination) {
       setDestination(initialDestination);
     }
     void start(initialDestination);
-  }, [isPresented, restoring, session, busy, initialDestination]);
+  }, [autoStart, isPresented, restoring, session, busy, initialDestination]);
 
   useEffect(() => {
     if (!isPresented) {
@@ -500,7 +470,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       const found = await productionApi.suggestPlaces(topQuery.trim(), liveFix ? { latitude: liveFix[1], longitude: liveFix[0] } : await currentPlaceBias());
       setTopSuggestions(found);
       if (!found.length) setGpsMessage('Такого місця не знайшли. Уточніть назву й оберіть варіант зі списку.');
-    } catch (error) { setGpsMessage(error instanceof Error ? error.message : 'Пошук місця недоступний.'); }
+    } catch (error) { setGpsMessage(navigationErrorMessage(error, 'Пошук місця тимчасово недоступний.')); }
     finally { setBusy(false); }
   };
 
@@ -532,7 +502,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
         setGpsMessage(`Не знайдено адресу для «${query}».`);
       }
     } catch (error) {
-      setGpsMessage(error instanceof Error ? error.message : 'Помилка пошуку місця.');
+      setGpsMessage(navigationErrorMessage(error, 'Не вдалося знайти це місце.'));
     } finally {
       setBusy(false);
     }
@@ -542,7 +512,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     if (!session) return;
     setBusy(true);
     try { await productionApi.endNavigation(session.id); navigationStore.dispatch({ type: 'NAVIGATION_ENDED' }); setSession(null); setMatchingEnabled(false); setMatches([]); setOnRoute(null); lastSentRef.current = null; setGpsMessage('Навігацію завершено. Точну геолокацію видалено із сервера.'); }
-    catch (error) { setGpsMessage(error instanceof Error ? error.message : 'Не вдалося завершити навігацію.'); }
+    catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося завершити навігацію. Спробуйте ще раз.')); }
     finally { setBusy(false); }
   };
 
@@ -555,7 +525,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       setMatchingEnabled(next); setSession({ ...session, opt_in: next });
       if (!next) setMatches([]);
       setGpsMessage(next ? 'Пошук уздовж маршруту увімкнено за вашою згодою.' : 'Автоматичний пошук вимкнено.');
-    } catch (error) { setGpsMessage(error instanceof Error ? error.message : 'Не вдалося змінити налаштування підбору.'); }
+    } catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося змінити налаштування підбору.')); }
     finally { setMatchingBusy(false); }
   };
 
@@ -563,7 +533,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     if (!session) return;
     setBusy(true);
     try { await productionApi.pauseNavigation(session.id); navigationStore.dispatch({ type: 'NAVIGATION_PAUSED' }); setSession({ ...session, state: 'paused' }); setGpsMessage('Навігацію призупинено. Підтверджуйте інтерес лише коли авто безпечно зупинене.'); }
-    catch (error) { setGpsMessage(error instanceof Error ? error.message : 'Не вдалося призупинити навігацію.'); }
+    catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося призупинити навігацію. Спробуйте ще раз.')); }
     finally { setBusy(false); }
   };
 
@@ -571,7 +541,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     if (!session) return;
     setBusy(true);
     try { await productionApi.resumeNavigation(session.id); navigationStore.dispatch({ type: 'NAVIGATION_RESUMED' }); setSession({ ...session, state: 'active' }); setGpsMessage('Навігацію відновлено. Чекаємо свіжу GPS-точку.'); }
-    catch (error) { setGpsMessage(error instanceof Error ? error.message : 'Не вдалося відновити навігацію.'); }
+    catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося відновити навігацію. Спробуйте ще раз.')); }
     finally { setBusy(false); }
   };
 
@@ -582,7 +552,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       await productionApi.expressNavigationInterest(session.id, candidateId);
       setMatches((current) => current.map((match) => match.id === candidateId ? { ...match, status: 'driver_interested' } : match));
       setGpsMessage('Водійський інтерес надіслано. Бронювання не створено — потрібне підтвердження пасажира та погодження ціни.');
-    } catch (error) { setGpsMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити інтерес.'); }
+    } catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося підтвердити інтерес. Спробуйте ще раз.')); }
     finally { setMatchingBusy(false); }
   };
 
@@ -618,10 +588,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     ? new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(new Date(navigationState.eta.arrivalAt))
     : null;
   const fixAge = session?.current_location_at ? Math.max(0, Math.floor((clock - new Date(session.current_location_at).getTime()) / 1000)) : null;
-  const previewCenter = navigationState.currentLocation
-    ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number]
-    : liveFix ?? session?.current_location ?? session?.route?.[0] ?? null;
-  return <main aria-hidden={!isPresented} className={`fixed inset-0 z-20 overflow-hidden bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] dark:text-[var(--mg-ink-primary)] dark:bg-[var(--mg-canvas)] ${isPresented ? '' : 'invisible pointer-events-none'}`}>
+  return <section aria-label="Навігація" aria-hidden={!isPresented} className={`fixed inset-0 z-20 overflow-hidden bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] dark:text-[var(--mg-ink-primary)] dark:bg-[var(--mg-canvas)] ${isPresented ? '' : 'invisible pointer-events-none'}`}>
+    {!routed && <h1 className="sr-only">Побудова маршруту</h1>}
     <MarshGoMap route={session?.route ?? []} vehicle={navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] : liveFix ?? session?.current_location} heading={liveHeading} overlays focusMode={focusMode} onStatus={setMapStatus} onAdapter={(adapter) => { mapRef.current = adapter; if (adapter) adapter.onCameraModeChange = (mode) => setFollowing(mode === 'FOLLOW' || mode === 'FOLLOW_HEADING'); }} />
     {routed && !focusMode && <div aria-label="MARSHGO" className="absolute left-4 z-[var(--mg-z-nav-backdrop)] select-none text-[1.3rem] font-black tracking-[-.06em] text-[#0B1730] drop-shadow-sm dark:text-white" style={{ top: 'max(.6rem, env(safe-area-inset-top))' }}>MARSH<span className="text-[#0878F9]">GO</span></div>}
     {!routed && <>
@@ -699,17 +667,16 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
         <header className="mb-2 flex items-center justify-between"><div><h2 id="navigation-actions-title" className="text-lg font-extrabold">Дії маршруту</h2><p className="text-xs text-slate-500 dark:text-slate-400">{session?.destination_name ?? 'Активна навігація'}</p></div><button type="button" onClick={() => setActionsOpen(false)} aria-label="Закрити дії маршруту" className="grid h-11 w-11 place-items-center rounded-full hover:bg-slate-100 dark:hover:bg-white/10"><X size={19}/></button></header>
         <div className="divide-y divide-slate-200 dark:divide-slate-700">
           <button type="button" disabled={!session || !hasRoute(session)} onClick={() => { mapRef.current?.fitRoute({ top: 150, bottom: sheetHeight || 240 }); setActionsOpen(false); }} className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Map size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Огляд маршруту</b><small className="text-xs text-slate-500 dark:text-slate-400">Показати весь маршрут на карті</small></span><ChevronUp size={17} className="rotate-90 text-slate-400"/></button>
-          <button type="button" disabled title="Серверний API ще не підтримує проміжні зупинки" className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><MapPin size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Додати зупинку</b><small className="text-xs text-slate-500 dark:text-slate-400">Потрібна підтримка проміжних точок маршруту</small></span><small className="text-xs">недоступно</small></button>
-          <button type="button" disabled title="Пошук POI уздовж маршруту ще не підключений" className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Search size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Пошук уздовж маршруту</b><small className="text-xs text-slate-500 dark:text-slate-400">Пошук місць і detour-оцінка ще не підключені</small></span><small className="text-xs">недоступно</small></button>
+          <button type="button" disabled className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><MapPin size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Додати зупинку</b><small className="text-xs text-slate-500 dark:text-slate-400">Наразі недоступно</small></span></button>
+          <button type="button" disabled className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Search size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Пошук уздовж маршруту</b><small className="text-xs text-slate-500 dark:text-slate-400">Наразі недоступно</small></span></button>
           <button type="button" disabled={!session?.route?.length} onClick={() => void shareRoute()} className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><Share2 size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Поділитися маршрутом</b><small className="text-xs text-slate-500 dark:text-slate-400">Одержувач побудує маршрут до цієї точки зі свого місця</small></span><ChevronUp size={17} className="rotate-90 text-slate-400"/></button>
-          <button type="button" disabled title="Серверне джерело дорожніх подій ще не підключене" className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><TriangleAlert size={21} className="shrink-0 text-amber-600"/><span className="flex-1"><b className="block text-sm">Повідомити про подію</b><small className="text-xs text-slate-500 dark:text-slate-400">Надсилання дорожніх подій ще не підключене</small></span><small className="text-xs">недоступно</small></button>
+          <button type="button" disabled className="flex min-h-14 w-full items-center gap-3 py-2 text-left disabled:opacity-45"><TriangleAlert size={21} className="shrink-0 text-amber-600"/><span className="flex-1"><b className="block text-sm">Повідомити про подію</b><small className="text-xs text-slate-500 dark:text-slate-400">Наразі недоступно</small></span></button>
           <button type="button" aria-pressed={focusMode} onClick={() => { setFocusMode((value) => !value); setActionsOpen(false); }} className="flex min-h-14 w-full items-center gap-3 py-2 text-left"><Eye size={21} className="shrink-0 text-blue-600"/><span className="flex-1"><b className="block text-sm">Фокус-режим карти</b><small className="text-xs text-slate-500 dark:text-slate-400">Приховати другорядні транспортні шари й мініатюру карти</small></span><span className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform ${focusMode ? 'bg-[var(--mg-action)] after:translate-x-4' : 'bg-slate-300 dark:bg-slate-600'}`}/></button>
           <button type="button" aria-pressed={voiceOn} onClick={() => toggleVoice()} className="flex min-h-14 w-full items-center gap-3 py-2 text-left"><span className={`grid h-9 w-9 place-items-center rounded-full ${voiceOn ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300'}`}>{voiceOn ? <Volume2 size={19}/> : <VolumeX size={19}/>}</span><span className="flex-1"><b className="block text-sm">Голосові підказки</b><small className="text-xs text-slate-500 dark:text-slate-400">Українське озвучення маневрів</small></span><span className={`relative h-5 w-9 rounded-full transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform ${voiceOn ? 'bg-[var(--mg-action)] after:translate-x-4' : 'bg-slate-300 dark:bg-slate-600'}`}/></button>
           <button type="button" disabled={busy} onClick={() => { setActionsOpen(false); void end(); }} className="flex min-h-14 w-full items-center gap-3 py-2 text-left text-rose-600 disabled:opacity-45"><span className="grid h-9 w-9 place-items-center rounded-full bg-rose-100 dark:bg-rose-500/15"><Square size={17} fill="currentColor"/></span><span className="flex-1"><b className="block text-sm">Завершити навігацію</b><small className="text-xs text-slate-500 dark:text-slate-400">Зупинити ведення маршрутом</small></span></button>
         </div>
       </section>
     </div>}
-    {!focusMode && sheetLevel !== 'expanded' && <NavigationBasemapPreview center={previewCenter} aboveSummary={!sheetOpen}/>}
     <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `calc(${sheetHeight}px + 4.6rem + env(safe-area-inset-bottom))` } : !sheetOpen ? { bottom: 'calc(10.2rem + env(safe-area-inset-bottom))' } : undefined} className={`absolute left-4 z-[var(--mg-z-nav-chrome)] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-[var(--mg-dur-base)] dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen && !sheetHeight ? 'bottom-[20rem]' : ''}`}>
       <span><b data-testid="navigation-speed" className="block text-2xl font-extrabold leading-none">{liveSpeed === null ? '0' : Math.round(liveSpeed * 3.6)}</b><small className="text-xs font-bold text-slate-600 dark:text-slate-300">км/год</small></span>
     </div>
@@ -764,5 +731,5 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       {session?.state === 'paused' && <button onClick={() => void resumeNavigation()} disabled={busy} className="mt-3 w-full rounded-2xl bg-blue-100 py-3 text-sm font-bold text-blue-800 disabled:opacity-50">{busy ? 'Відновлюємо…' : 'Відновити навігацію'}</button>}
       {sheetLevel === 'expanded' && <button onClick={() => { if (session) { void end(); } else { onBack(); } }} disabled={busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 py-3 font-bold text-white disabled:opacity-50"><Square size={16} fill="currentColor"/>{busy ? 'Завершуємо…' : 'Завершити навігацію'}</button>}
     </section>}
-  </main>;
+  </section>;
 }

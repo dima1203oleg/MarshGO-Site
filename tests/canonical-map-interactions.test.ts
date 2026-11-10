@@ -28,6 +28,12 @@ test('all primary interactive maps share the same vertical zoom and sound contro
   assert.match(controls, /aria-pressed=\{voiceOn\}/);
 });
 
+test('active navigation uses the shared globe for basemaps without a second square switch', () => {
+  const navigation = read('src/views/ProductionNavigation.tsx');
+  assert.match(navigation, /<MapBasemapControl\s*\/>/);
+  assert.doesNotMatch(navigation, /NavigationBasemapPreview|navigation-basemap-preview|previewTileUrl/);
+});
+
 test('MapLibre explicitly keeps one-finger pan and pinch zoom enabled', () => {
   const adapter = read('src/map/MapLibreAdapter.ts');
   assert.match(adapter, /dragPan:\s*true/);

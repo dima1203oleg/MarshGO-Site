@@ -850,13 +850,14 @@ export function JourneyRouteMapScreen({
   });
 
   return (
-    <main
+    <section
       className="route-map-screen fixed inset-0 z-[var(--mg-z-map-chip)] overflow-hidden text-[var(--route-ink)]"
       data-theme={isDark ? 'dark' : 'light'}
       data-sheet-snap={sheetSnap}
       style={{ ['--route-map-inset' as string]: `${sheetHeight + (sheetSnap === 'expanded' ? 10 : 58)}px` }}
-      aria-label="Побудований маршрут"
+      aria-labelledby="journey-route-map-title"
     >
+      <h1 id="journey-route-map-title" className="sr-only">{cleanStopName(firstLeg?.origin.name) || 'Початок'} — {cleanStopName(lastLeg?.destination.name) || 'Кінець'}</h1>
       <div className="absolute inset-0" data-testid="journey-route-map">
         <MarshGoMap
           route={[]}
@@ -1249,6 +1250,6 @@ export function JourneyRouteMapScreen({
       <div aria-live="polite" className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-6" style={{ bottom: 'calc(var(--route-map-inset) + 10px)', transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}>
         {feedback && <p key={feedback} role="status" className="route-toast max-w-full truncate rounded-full px-4 py-2.5 text-xs font-extrabold">{feedback}</p>}
       </div>
-    </main>
+    </section>
   );
 }

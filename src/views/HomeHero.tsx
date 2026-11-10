@@ -94,7 +94,8 @@ export function HomeHero({
     if (action === 'publish') onPublishTrip();
   };
 
-  return <main ref={root} className="home-hero home-hero--canonical mx-auto flex w-full max-w-xl flex-col px-4 pb-1 pt-2" style={availableHeight ? { height: availableHeight, overflowY: 'auto', overscrollBehaviorY: 'contain' } : undefined}>
+  return <section aria-label="Головна MARSHGO" ref={root} className="home-hero home-hero--canonical mx-auto flex w-full max-w-xl flex-col px-4 pb-1 pt-2" style={availableHeight ? { height: availableHeight, overflowY: 'auto', overscrollBehaviorY: 'contain' } : undefined}>
+    <h1 className="sr-only">Головна MARSHGO</h1>
     {activePass ? <section className={`home-marshpass-slot mb-3 ${marshPasses.length > 1 ? 'home-marshpass-slot--multiple' : ''}`} aria-label="Активні MarshPass">
       <button type="button" onClick={activePass.onOpen} aria-label={`Відкрити MarshPass: ${activePass.origin.split(',')[0]} — ${activePass.destination.split(',')[0]}`} onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => {
         const endX = event.changedTouches[0]?.clientX;
@@ -142,5 +143,5 @@ export function HomeHero({
         </button>)}
       </div>
     </section>
-  </main>;
+  </section>;
 }

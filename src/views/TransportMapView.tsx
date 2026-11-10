@@ -94,7 +94,7 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
     const city = cities.find((entry) => entry.id === nextId);
     if (city) onCitySelected(city.name);
   };
-  return <main className="relative h-[100svh] overflow-hidden bg-[#dbeafe] text-[#17243a] dark:bg-[var(--mg-canvas)] dark:text-[var(--mg-ink-primary)]">
+  return <section aria-label="Карта транспорту" className="relative h-[100svh] overflow-hidden bg-[#dbeafe] text-[#17243a] dark:bg-[var(--mg-canvas)] dark:text-[var(--mg-ink-primary)]">
     <MarshGoMap route={[]} overlays onStatus={setStatus} onTransportHint={setHint} onAdapter={onAdapter}/>
     <div className="pointer-events-none absolute inset-x-4 top-[max(.8rem,env(safe-area-inset-top))] z-[500] flex flex-col gap-2">
       <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white p-2 shadow-xl dark:bg-[var(--mg-surface-primary)]">
@@ -132,5 +132,5 @@ export function TransportMapView({ onBack, cityName, onCitySelected }: { onBack:
       <MapBasemapControl />
       <MapLayersControl overlays />
     </MapControlRail>
-  </main>;
+  </section>;
 }

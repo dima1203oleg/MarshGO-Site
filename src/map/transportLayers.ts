@@ -3,7 +3,7 @@ import * as maplibregl from 'maplibre-gl';
 import { productionApi, type GeoJsonCollection, type TransportLayerResponse } from '../services/productionApi';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
 import { lineTypesFor, microTypesFor, transportLayerList, type TransportLayerId } from './transportLayerConfig';
-import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
+import { getMapDisplayPreferences, getTransportLayerVisibility, type MapDisplayPreferences } from './mapLayerPreferences';
 import { layerProvenanceNotice, publishVehicleQuality, summarizeVehicleQuality, tagVehicleQuality, vehicleQualityWord } from './transportQuality';
 export { cityTransportLayerIds, lineTypesFor, microTypesFor, transportLayerList } from './transportLayerConfig';
 export type { TransportLayerId } from './transportLayerConfig';
@@ -174,16 +174,8 @@ export class TransportLayerController {
   }
 
   private applyDisplayPreferences() {
-    const visibility: Array<[string, boolean]> = [
-      ['mg-t-routes', this.display.routeLines],
-      ['mg-t-route-label', this.display.routeLines && this.display.routeNumbers],
-      ['mg-t-stops', this.enabled.has('STOPS')],
-      ['mg-t-stop-label', this.enabled.has('STOPS')],
-      ['mg-t-vehicle-halo', this.display.liveVehicles],
-      ['mg-t-vehicles', this.display.liveVehicles],
-      ['mg-t-vehicle-label', this.display.liveVehicles && this.display.routeNumbers],
-    ];
-    for (const [id, enabled] of visibility) if (this.map.getLayer(id)) this.map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none');
+    const visibility = getTransportLayerVisibility(this.display, this.enabled);
+    for (const [id, enabled] of Object.entries(visibility)) if (this.map.getLayer(id)) this.map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none');
   }
 
   /** A basemap or theme change drops custom sources; rebuild them from cached data without refetching. */

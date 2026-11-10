@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Accessibility, ArrowLeftRight, Bike, BusFront, CableCar, CarFront, Clock3, Eye, Layers, MapPin, MapPinned, ParkingCircle, Route, TrafficCone, TrainFront, TramFront, TriangleAlert, X, type LucideIcon } from 'lucide-react';
 import { getTransportLayers, setTransportLayers, subscribeTransportLayers, type TransportLayerId, transportLayerList } from '../map/transportLayers';
 import { getLayerAvailabilityState, loadLayerAvailability, retryLayerAvailability, subscribeLayerAvailability } from '../map/layerAvailability';
-import { layerUnavailableNote } from '../map/transportLayerConfig';
+import { hasMapLayerRenderer, isLayerSelectable, layerUnavailableNote } from '../map/transportLayerConfig';
 import { getMapDisplayPreferences, setMapDisplayPreference, subscribeMapDisplayPreferences, type MapDisplayPreferenceId } from '../map/mapLayerPreferences';
 
 const canonicalLayerOrder: TransportLayerId[] = ['BUS', 'MINIBUS', 'TROLLEYBUS', 'TRAIN', 'TRAM', 'BICYCLE', 'METRO', 'SCOOTER', 'CARPOOL', 'CARSHARING', 'TAXI', 'TRANSFER'];
@@ -27,7 +27,7 @@ function LayerRow({
   unavailableNote: string;
   onToggle: (ids: TransportLayerId[], enabled: boolean) => void;
 }) {
-  const readyIds = available === null ? [] : ids.filter((id) => available[id] === true);
+  const readyIds = ids.filter((id) => isLayerSelectable(available, id));
   const ready = readyIds.length > 0;
   const checked = readyIds.some((id) => selected.has(id));
   return <label className={`flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl px-1 py-0.5 text-xs ${ready ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5' : 'cursor-not-allowed text-slate-400 dark:text-slate-500'}`}>
@@ -46,10 +46,10 @@ function PreferenceRow({ label, id, checked, icon: Icon, onChange }: { label: st
   </label>;
 }
 
-function UnavailableRow({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
-  return <div aria-disabled="true" className="flex min-h-11 min-w-0 cursor-not-allowed items-center gap-1.5 rounded-xl px-1 py-0.5 text-xs text-slate-400 dark:text-slate-500">
-    <Icon size={18} className="shrink-0 text-slate-400" aria-hidden="true"/><span className="min-w-0 flex-1 font-semibold leading-tight"><span className="block">{label}</span><small className="mt-0.5 block text-xs font-normal">дані недоступні</small></span>
-    <span aria-hidden="true" className="relative h-5 w-9 shrink-0 rounded-full bg-slate-200 dark:bg-slate-800"/>
+function UnavailableRow({ label, icon: Icon, status = 'Недоступно' }: { label: string; icon: LucideIcon; status?: string }) {
+  return <div title={`${label}: ${status.toLocaleLowerCase('uk-UA')}`} className="flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl px-1 py-0.5 text-xs text-slate-400 dark:text-slate-500">
+    <Icon size={18} className="shrink-0 text-slate-400" aria-hidden="true"/><span className="min-w-0 flex-1 font-semibold leading-tight">{label}</span>
+    <span className="shrink-0 rounded-full bg-slate-200 px-2 py-1 text-xs font-semibold dark:bg-slate-800">{status}</span>
   </div>;
 }
 
@@ -86,13 +86,15 @@ export function MapLayersControl({ overlays = false, visible = true }: { overlay
         <button type="button" onClick={() => setOpen(false)} aria-label="Закрити шари карти" className="grid h-11 w-11 place-items-center rounded-full hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:hover:bg-white/10"><X size={18}/></button>
       </header>
       {showLayers ? <>
-        {layerState.probeFailed && <p role="status" className="mb-2 rounded-xl bg-amber-50 p-2 text-xs leading-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Не вдалося перевірити джерела шарів. Вони тимчасово вимкнені.<button type="button" className="ml-1 font-bold underline" onClick={() => { void retryLayerAvailability(); }}>Повторити</button></p>}
+        {layerState.probeFailed && <p role="status" className="mb-2 rounded-xl bg-amber-50 p-2 text-xs leading-4 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Не вдалося перевірити джерела шарів.<button type="button" className="ml-1 font-bold underline" onClick={() => { void retryLayerAvailability(); }}>Повторити</button></p>}
         <section className="mb-0 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-[var(--mg-surface-secondary)]">
           <h3 className="mb-1 flex items-center gap-2 px-1 text-[12px] font-bold text-slate-600 dark:text-slate-300"><BusFront size={17} className="text-blue-500" aria-hidden="true"/>Транспорт<span className="ml-auto text-slate-400" aria-hidden="true">⌃</span></h3>
             <div className="grid grid-cols-2 gap-x-1">{canonicalLayerOrder.map((id) => transportLayerList.find(item => item.id === id)).filter((item): item is (typeof transportLayerList)[number] => Boolean(item)).map((item) => {
               const iconById: Record<TransportLayerId, LucideIcon> = { PUBLIC_TRANSPORT: BusFront, METRO: TrainFront, TRAM: TramFront, TROLLEYBUS: BusFront, BUS: BusFront, MINIBUS: BusFront, TRAIN: TrainFront, CARPOOL: CarFront, TAXI: CarFront, TRANSFER: CarFront, CITY_TRAIN: TrainFront, FUNICULAR: CableCar, STOPS: MapPin, BICYCLE: Bike, SCOOTER: Bike, CARSHARING: CarFront, RENTAL_POINTS: MapPinned };
               const toneById: Record<TransportLayerId, string> = { PUBLIC_TRANSPORT: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300', METRO: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300', TRAM: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300', TROLLEYBUS: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300', BUS: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300', MINIBUS: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300', TRAIN: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300', CARPOOL: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950 dark:text-fuchsia-300', TAXI: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300', TRANSFER: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300', CITY_TRAIN: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300', FUNICULAR: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300', STOPS: 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300', BICYCLE: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300', SCOOTER: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300', CARSHARING: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300', RENTAL_POINTS: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' };
-              return <LayerRow key={item.id} label={item.label} icon={iconById[item.id]} tone={toneById[item.id]} ids={[item.id]} selected={selected} available={available} unavailableNote={unavailableNote} onToggle={toggleGroup}/>;
+              return hasMapLayerRenderer(item.id)
+                ? <LayerRow key={item.id} label={item.label} icon={iconById[item.id]} tone={toneById[item.id]} ids={[item.id]} selected={selected} available={available} unavailableNote={unavailableNote} onToggle={toggleGroup}/>
+                : <UnavailableRow key={item.id} label={item.label} icon={iconById[item.id]} status="У маршрутах"/>;
             })}</div>
         </section>
         <section className="mb-0 rounded-2xl border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-[var(--mg-surface-secondary)]">

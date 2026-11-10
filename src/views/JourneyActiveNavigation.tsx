@@ -334,12 +334,13 @@ export function JourneyActiveNavigation({
   }, []);
 
   if (!leg) {
-    return <main className="route-map-screen fixed inset-0 z-[80] grid place-items-center p-6 text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'}>
+    return <section aria-label="Активна навігація" className="route-map-screen fixed inset-0 z-[80] grid place-items-center p-6 text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'}>
+      <h1 className="sr-only">Активна навігація</h1>
       <div className="text-center">
         <p className="text-[15px] font-extrabold">У цьому маршруті немає етапів.</p>
         <button type="button" onClick={onExit} className="mg-route-cta mt-4 px-6">До маршруту</button>
       </div>
-    </main>;
+    </section>;
   }
 
   const phase = activeLegPhase(leg, nowMs);
@@ -359,7 +360,7 @@ export function JourneyActiveNavigation({
     setLegIndex(index => Math.min(legs.length - 1, index + 1));
   };
 
-  return <main
+  return <section
     className="route-map-screen fixed inset-0 z-[80] overflow-hidden text-[var(--route-ink)]"
     data-theme={isDark ? 'dark' : 'light'}
     data-sheet-snap={sheetSnap}
@@ -568,5 +569,5 @@ export function JourneyActiveNavigation({
         </button>
       </div>
     </section>
-  </main>;
+  </section>;
 }

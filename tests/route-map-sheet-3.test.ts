@@ -196,8 +196,8 @@ test('transfer and walk hints live inside the sheet, not in floating map callout
   assert.match(routeScreen, /function walkHintFor\(/);
   const cardsAt = routeScreen.indexOf('const renderSegmentCards');
   const transferAt = routeScreen.indexOf('data-testid="route-inline-transfer"');
-  const mainAt = routeScreen.indexOf('return (\n    <main');
-  assert.ok(cardsAt > 0 && transferAt > cardsAt && transferAt < mainAt,
+  const screenRootAt = routeScreen.search(/return\s*\(\s*<(?:main|section)\b/);
+  assert.ok(cardsAt > 0 && transferAt > cardsAt && transferAt < screenRootAt,
     'the transfer row has to be produced by renderSegmentCards');
   const listAt = routeScreen.indexOf('data-testid="route-segment-list"');
   assert.ok(listAt > 0 && routeScreen.slice(listAt, listAt + 300).includes('{renderSegmentCards()}'),

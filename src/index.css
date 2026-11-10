@@ -1617,7 +1617,12 @@ html.dark .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] 
 html.dark .app-tabbar { border-color: var(--mg-line); }
 .production-app button:disabled { cursor: not-allowed; }
 .production-app :is(button, a) {
-  transition: background-color .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+  transition:
+    background-color var(--mg-dur-fast) var(--mg-ease-standard),
+    color var(--mg-dur-fast) var(--mg-ease-standard),
+    border-color var(--mg-dur-fast) var(--mg-ease-standard),
+    box-shadow var(--mg-dur-fast) var(--mg-ease-standard),
+    transform var(--mg-dur-fast) var(--mg-ease-standard);
 }
 @media (hover: hover) and (pointer: fine) {
   .production-app .app-tabbar-inner button:not(.app-create-button):hover {
@@ -2338,4 +2343,43 @@ html {
 :is(.text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[0\.72rem\], .text-\[0\.68rem\]) {
   font-size: 0.75rem !important;
   line-height: 1rem !important;
+}
+
+/* Shared app chrome: header actions and primary navigation use the same calm,
+   token-driven surfaces in light and navy themes. */
+.production-app .app-header-icon-button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--mg-border-subtle);
+  background: var(--mg-surface-secondary);
+  color: var(--mg-ink-primary);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mg-ink-primary) 5%, transparent);
+}
+.production-app .app-header-icon-button:hover {
+  border-color: var(--mg-border-medium);
+  background: var(--mg-surface-elevated);
+}
+.production-app .app-tabbar-inner button:not(.app-create-button) {
+  color: var(--mg-ink-secondary);
+  transition:
+    background-color var(--mg-dur-fast) var(--mg-ease-standard),
+    color var(--mg-dur-fast) var(--mg-ease-standard),
+    transform var(--mg-dur-fast) var(--mg-ease-standard);
+}
+.production-app .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
+  background: var(--mg-blue-tint);
+  color: var(--mg-blue-ink);
+}
+.production-app .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg {
+  color: var(--mg-blue-ink);
+}
+.production-app .app-tabbar-inner button:not(.app-create-button):active,
+.production-app .app-header-icon-button:active {
+  transform: scale(.96);
+}
+@media (hover: hover) and (pointer: fine) {
+  .production-app .app-tabbar-inner button:not(.app-create-button):hover {
+    background: color-mix(in srgb, var(--mg-blue) 9%, var(--mg-surface-card));
+    color: var(--mg-blue-ink);
+  }
 }
