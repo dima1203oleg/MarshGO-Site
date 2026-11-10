@@ -3,8 +3,9 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import type { CameraMode, ColoredRouteSegment, FocusedTransitMapOverlay, LiveTransitPosition, MapAdapter, MapAnnotation, MapStatus, MapTheme, RouteFitPadding, RoutePreviewFlightOptions, RouteWaypoint, ScreenPoint } from './MapAdapter';
+import type { CameraMode, ColoredRouteSegment, FloatingMapInfo, FloatingMapInfoOptions, FocusedTransitMapOverlay, LiveTransitPosition, MapAdapter, MapAnnotation, MapStatus, MapTheme, RouteFitPadding, RoutePreviewFlightOptions, RouteWaypoint, ScreenPoint } from './MapAdapter';
 import { transitDirectionOffsetPx } from './MapAdapter';
+import { FloatingInfoLifecycle, type FloatingInfoPhase } from './floatingInfoLifecycle';
 import { nearestRoutePreviewDistance, routePreviewEasedProgress, sampleRoutePreviewPath, sliceRoutePreviewPath, type PreparedRoutePreviewPath } from './routePreviewPath';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
@@ -262,6 +263,8 @@ export class MapLibreAdapter implements MapAdapter {
   private liveTransitElement: HTMLDivElement | null = null;
   private liveTransitPrev: { coordinates: Coordinate; updatedAt: string } | null = null;
   private liveTransitGlideRaf: number | null = null;
+  private floatingInfoMarker: maplibregl.Marker | null = null;
+  private floatingInfoLifecycle: FloatingInfoLifecycle | null = null;
   private journeyLabelMarkers = new Map<string, { marker: maplibregl.Marker; key: string }>();
   /** Last label feed; placement is recomputed from it whenever the camera settles. */
   private journeyLabelInput: MapAnnotation[] = [];
@@ -1254,6 +1257,76 @@ export class MapLibreAdapter implements MapAdapter {
     this.applyJourneyLabels();
   }
 
+  /** A single stage callout follows its real route coordinate, then clears itself. */
+  showFloatingInfo(info: FloatingMapInfo, options: FloatingMapInfoOptions = {}) {
+    this.clearFloatingInfo();
+    if (info.coordinates.length !== 2 || !info.coordinates.every(Number.isFinite)) return;
+
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = 'mg-floating-map-info';
+    element.dataset.floatingInfoId = info.id;
+    element.dataset.floatingInfoKind = info.kind;
+    element.dataset.floatingPhase = 'ENTERING';
+    element.setAttribute('aria-label', [info.title, info.detail].filter(Boolean).join(', '));
+
+    const accent = document.createElement('span');
+    accent.className = 'mg-floating-map-info__accent';
+    accent.setAttribute('aria-hidden', 'true');
+    const content = document.createElement('span');
+    content.className = 'mg-floating-map-info__content';
+    const title = document.createElement('span');
+    title.className = 'mg-floating-map-info__title';
+    title.textContent = info.title;
+    content.append(title);
+    if (info.detail) {
+      const detail = document.createElement('span');
+      detail.className = 'mg-floating-map-info__detail';
+      detail.textContent = info.detail;
+      content.append(detail);
+    }
+    element.append(accent, content);
+
+    const marker = new maplibregl.Marker({
+      element,
+      anchor: 'bottom',
+      offset: [0, -28],
+      pitchAlignment: 'viewport',
+      rotationAlignment: 'viewport',
+    }).setLngLat(info.coordinates).addTo(this.map);
+    const lifecycle = new FloatingInfoLifecycle((phase: FloatingInfoPhase) => {
+      element.dataset.floatingPhase = phase;
+      options.onPhase?.(phase);
+      if (phase !== 'HIDDEN') return;
+      marker.remove();
+      if (this.floatingInfoLifecycle === lifecycle) {
+        this.floatingInfoLifecycle = null;
+        this.floatingInfoMarker = null;
+      }
+    }, options.reducedMotion ?? false);
+    const stopMapEvent = (event: Event) => event.stopPropagation();
+    element.addEventListener('pointerdown', stopMapEvent);
+    element.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      lifecycle.dismiss();
+    });
+
+    this.floatingInfoMarker = marker;
+    this.floatingInfoLifecycle = lifecycle;
+    lifecycle.show(options.delayMs ?? 0);
+  }
+
+  clearFloatingInfo() {
+    const lifecycle = this.floatingInfoLifecycle;
+    const marker = this.floatingInfoMarker;
+    // Clear the references first so the lifecycle's HIDDEN callback can't act on a replacement.
+    this.floatingInfoLifecycle = null;
+    this.floatingInfoMarker = null;
+    lifecycle?.cancel();
+    marker?.remove();
+  }
+
   private applyJourneyLabels() {
     const entries = this.journeyLabelInput;
     const container = this.map.getContainer();
@@ -1690,6 +1763,7 @@ export class MapLibreAdapter implements MapAdapter {
   destroy() {
     this.cancelRoutePreviewFlight('programmatic', false);
     this.cancelLiveTransitGlide();
+    this.clearFloatingInfo();
     this.marker?.remove();
     this.liveTransitMarker?.remove();
     for (const { marker } of this.journeyLabelMarkers.values()) marker.remove();

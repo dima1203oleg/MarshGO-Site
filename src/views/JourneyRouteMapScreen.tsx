@@ -39,6 +39,8 @@ import { priorityLevelOf } from '../map/transportVisualZones';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
 import { nextStopsLegId, sheetNeedsRaiseForStops, stopsDetent } from './journeyStopsPanel';
 import { calculateAdaptiveMapPadding } from '../map/mapViewportCoordinator';
+import { floatingInfoForLeg, floatingInfoForStop, floatingInfoForTransfer } from '../map/floatingMapInfo';
+import { useFloatingMapInfo } from '../map/useFloatingMapInfo';
 import {
   RouteCameraController,
   calculateSegmentFocusTarget,
@@ -239,6 +241,7 @@ export function JourneyRouteMapScreen({
   const dragStart = useRef<{ y: number; height: number; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
   const suppressHandleClick = useRef(false);
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  const floatingMapInfo = useFloatingMapInfo(mapAdapter, reducedMotion);
   const dragWriter = useRef<ReturnType<typeof createFrameWriter> | null>(null);
   if (dragWriter.current === null) {
     dragWriter.current = createFrameWriter((height) => {
@@ -503,6 +506,7 @@ export function JourneyRouteMapScreen({
 
   const showWholeRoute = useCallback(() => {
     haptic(6);
+    floatingMapInfo.clear();
     if (revealAnimRef.current) {
       cancelAnimationFrame(revealAnimRef.current);
       revealAnimRef.current = null;
@@ -511,7 +515,7 @@ export function JourneyRouteMapScreen({
     revealTimersRef.current = [];
     mapAdapter.current?.clearSegmentReveal?.();
     cameraController.current?.showOverview(routeLinePoints);
-  }, [routeLinePoints]);
+  }, [floatingMapInfo.clear, routeLinePoints]);
 
   const chooseSegment = useCallback((id: string) => {
     setMapSegmentChoices(null);
@@ -525,6 +529,8 @@ export function JourneyRouteMapScreen({
       cameraController.current?.focusSegment(id, target, routeLinePoints);
 
       if (leg) {
+        const info = floatingInfoForLeg(leg);
+        if (info) floatingMapInfo.show(info);
         if (revealAnimRef.current) {
           cancelAnimationFrame(revealAnimRef.current);
           revealAnimRef.current = null;
@@ -571,7 +577,7 @@ export function JourneyRouteMapScreen({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       block: 'nearest',
     }));
-  }, [activeSegmentId, journey.legs, liveJourney?.segments, model.routeSegments, reducedMotion, routeLinePoints, showWholeRoute, visibleMapArea]);
+  }, [activeSegmentId, floatingMapInfo.show, journey.legs, liveJourney?.segments, model.routeSegments, reducedMotion, routeLinePoints, showWholeRoute, visibleMapArea]);
 
   const chooseTransfer = useCallback((hint: InlineTransferHint) => {
     haptic(8);
@@ -579,8 +585,10 @@ export function JourneyRouteMapScreen({
       showWholeRoute();
       return;
     }
+    const info = floatingInfoForTransfer(hint.id, hint.coordinate, hint.waitSeconds);
+    if (info) floatingMapInfo.show(info);
     cameraController.current?.focusTransfer(hint.id, hint.coordinate, hint.contextPoints);
-  }, [activeTransferId, showWholeRoute]);
+  }, [activeTransferId, floatingMapInfo.show, showWholeRoute]);
 
   useEffect(() => {
     return () => {
@@ -596,9 +604,17 @@ export function JourneyRouteMapScreen({
     const coords = coordinate ?? stop.coordinates;
     if (coords && coords.length === 2) {
       haptic(6);
+      const focusedLeg = activeSegmentId ? journey.legs.find(item => item.id === activeSegmentId) : undefined;
+      const matchesEndpoint = (endpoint: JourneyLeg['origin'] | JourneyLeg['destination']) =>
+        cleanStopName(endpoint.name) === cleanStopName(stop.name)
+        && Math.hypot((endpoint.coordinates[0] - coords[0]) * Math.cos(coords[1] * Math.PI / 180), endpoint.coordinates[1] - coords[1]) < 0.0008;
+      const stopKind = focusedLeg && matchesEndpoint(focusedLeg.origin) ? 'Посадка'
+        : focusedLeg && matchesEndpoint(focusedLeg.destination) ? 'Висадка' : 'Зупинка';
+      const info = floatingInfoForStop(stop.id, stopKind, stop.name, coords);
+      if (info) floatingMapInfo.show(info, 120);
       cameraController.current?.focusStop(stop.id, coords);
     }
-  }, []);
+  }, [activeSegmentId, floatingMapInfo.show, journey.legs]);
 
   const allDuration = journey.totalDurationSeconds;
   const priceDisplay = journeyPriceDisplay(journey);
@@ -1331,6 +1347,7 @@ export function JourneyRouteMapScreen({
       <div aria-live="polite" className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-6" style={{ bottom: 'calc(var(--route-map-inset) + 10px)', transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}>
         {feedback && <p key={feedback} role="status" className="route-toast max-w-full truncate rounded-full px-4 py-2.5 text-xs font-extrabold">{feedback}</p>}
       </div>
+      {floatingMapInfo.accessibility}
     </section>
   );
 }

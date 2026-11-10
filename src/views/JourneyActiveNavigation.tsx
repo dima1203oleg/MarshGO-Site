@@ -29,6 +29,8 @@ import {
 } from './routeSheet';
 import { themeService } from '../services/theme';
 import { priorityLevelOf } from '../map/transportVisualZones';
+import { floatingInfoForLeg } from '../map/floatingMapInfo';
+import { useFloatingMapInfo } from '../map/useFloatingMapInfo';
 import { formatJourneyDurationTile } from './journeyResultPresentation';
 import { legPriceDisplay } from './cashFare';
 import { WebGeolocationProvider } from '../platform/LocationProvider';
@@ -136,6 +138,7 @@ export function JourneyActiveNavigation({
   const dragStart = useRef<{ y: number; height: number; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
   const suppressHandleClick = useRef(false);
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  const floatingMapInfo = useFloatingMapInfo(mapAdapter, reducedMotion);
   const dragWriter = useRef<ReturnType<typeof createFrameWriter> | null>(null);
   if (dragWriter.current === null) {
     dragWriter.current = createFrameWriter((height) => {
@@ -241,6 +244,13 @@ export function JourneyActiveNavigation({
     () => buildRouteMapAnnotations({ journey, live: liveJourney, preferredLegId: liveLegId }),
     [journey, liveJourney, liveLegId],
   );
+
+  useEffect(() => {
+    if (!mapAdapterReady || !leg) return;
+    const info = floatingInfoForLeg(leg);
+    if (info) floatingMapInfo.show(info);
+    return () => floatingMapInfo.clear();
+  }, [floatingMapInfo.clear, floatingMapInfo.show, leg, mapAdapterReady]);
 
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
   const mapPadding = useMemo<RouteFitPadding>(() => {
@@ -861,5 +871,6 @@ export function JourneyActiveNavigation({
         </div>
       </div>
     </section>
+    {floatingMapInfo.accessibility}
   </section>;
 }

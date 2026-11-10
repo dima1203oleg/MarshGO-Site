@@ -21,6 +21,19 @@ export type MapAnnotation = {
   detail?: string;
   tone?: MapAnnotationTone;
 };
+export type FloatingMapInfo = {
+  id: string;
+  coordinates: Coordinate;
+  title: string;
+  detail?: string;
+  kind: 'stage' | 'boarding' | 'alighting' | 'stop' | 'transfer';
+};
+export type FloatingMapInfoOptions = {
+  reducedMotion?: boolean;
+  /** Small delay lets the marker settle into the same camera move as its stage. */
+  delayMs?: number;
+  onPhase?: (phase: 'ENTERING' | 'VISIBLE' | 'DISSOLVING' | 'HIDDEN') => void;
+};
 export type FocusedTransitMapOverlay = {
   color: string;
   transportType: string;
@@ -70,6 +83,8 @@ export interface MapAdapter {
   setLiveTransitPosition?(position: LiveTransitPosition | null): void;
   setFocusedTransitOverlay?(overlay: FocusedTransitMapOverlay | null): void;
   setJourneyLabels?(labels: MapAnnotation[] | null): void;
+  showFloatingInfo?(info: FloatingMapInfo, options?: FloatingMapInfoOptions): void;
+  clearFloatingInfo?(): void;
   getScaleLabel?(maxPixels?: number): { label: string; widthPx: number } | null;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
   focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;
