@@ -4,9 +4,9 @@ Status: **PARTIAL** · Release: **NOT_RELEASED**
 
 ## Candidate
 
-- Site base/`HEAD`: `895f51e0e1f728c5b3ba0458b2d98e74ad5fb62f` (`origin/main`)
-- Branch: `codex/intelligent-navigation-premium-20261110`
-- All candidate changes are currently uncommitted in the isolated worktree.
+- Site base `origin/main`: `895f51e0e1f728c5b3ba0458b2d98e74ad5fb62f`
+- Candidate commit: `8c5d4953b31832e255a2a87cd6179168fb9621c7` on `codex/intelligent-navigation-premium-20261110`
+- Draft PR [#128](https://github.com/dima1203oleg/MarshGO-Site/pull/128) is open; no merge or deployment has occurred.
 
 ## Changes made
 
@@ -34,6 +34,6 @@ Status: **PARTIAL** · Release: **NOT_RELEASED**
 - Focused ESLint: **passed**.
 - TypeScript: **passed** (`tsc --noEmit`).
 - `git diff --check`: **passed**.
-- No full production build, browser run, screenshot, video, physical-device test, commit, push, merge, or deployment.
+- No full production build, browser run, screenshot, video, physical-device test, merge, or deployment.
 
 The canonical Site checkout and existing `:7777` service were left untouched. `:7777` points to another Qoder worktree, so it cannot be used as visual evidence for this candidate. Production remains `NOT_RELEASED` until the visual/device and live API gates are completed.

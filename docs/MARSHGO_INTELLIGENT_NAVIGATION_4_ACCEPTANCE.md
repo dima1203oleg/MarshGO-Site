@@ -5,8 +5,9 @@ Status: **PARTIAL** · Release: **NOT_RELEASED**
 ## Candidate and scope
 
 - Site branch: `codex/intelligent-navigation-premium-20261110`
-- Base and current `HEAD`: `895f51e0e1f728c5b3ba0458b2d98e74ad5fb62f` (`origin/main`)
-- The work below is an uncommitted working-tree diff on that exact base; it has not been committed, pushed, merged, or deployed.
+- Base `origin/main`: `895f51e0e1f728c5b3ba0458b2d98e74ad5fb62f`.
+- Candidate commit: `8c5d4953b31832e255a2a87cd6179168fb9621c7` on `codex/intelligent-navigation-premium-20261110`; draft PR [#128](https://github.com/dima1203oleg/MarshGO-Site/pull/128) is open.
+- No merge or deployment has occurred.
 - Scope is limited to the Site map presentation. Server files and API behavior were inspected read-only and were not changed.
 
 ## Implemented
