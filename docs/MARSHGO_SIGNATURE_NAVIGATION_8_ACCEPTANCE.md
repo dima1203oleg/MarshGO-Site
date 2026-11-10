@@ -41,7 +41,7 @@ Release status: `NOT_RELEASED`
 | Candidate visual review | VERIFIED | The Codex in-app browser opened `http://127.0.0.1:4178/bottom-sheet-visual.html`; bus and walking callouts appeared over their selected fixture geometry with the compact sheet visible. |
 | Accessible replacement and keyboard dismissal | VERIFIED | Selecting Bus then Walk updated the live-region text to `Пішки, 4 хв · 330 м`. Tab focused a visible close button; Enter removed the callout while the bus route stage remained selected. |
 | Pointer dismissal | VERIFIED by focused test / prior visual check | The lifecycle test covers tap dismissal; a prior visual interaction confirmed that dismissing the callout kept the bus stage selected. |
-| Candidate build and exact-head CI | PENDING | The GitHub check is tracked on draft PR #129; a documentation-only follow-up will trigger a fresh exact-head run. No local production build was run while the visual preview was active. |
+| Candidate build and exact-head CI | VERIFIED | GitHub run `42816504324` passed lint, typecheck, 667 tests, token check, production build, bundle/React checks, Chromium installation, and browser boot smoke for candidate head `1646937859edd7d67c530e78713c7dda26d76784`. |
 | Authenticated live route / public zrok | NOT_TESTED | The fixture is synthetic. The existing user-owned :7777 and zrok session were not changed. |
 | Physical iPhone Safari and real touch hardware | NOT_TESTED | A phone-sized visual preview does not constitute a physical-device gesture test. |
 | FPS, long tasks, memory, and video evidence | NOT_TESTED | No performance profile or recording was captured. |
@@ -61,4 +61,4 @@ The local preview process is kept running for visual review. It is separate from
 - Implementation commit: `a941c5d862cd9df78cc03ed798de64014cf30f2b`.
 - Keyboard-accessibility follow-up: `fe7dc1883e824082bf88f7a8585da81c10497eb2`.
 - Draft pull request: [#129 — Compact shared journey bottom sheets](https://github.com/dima1203oleg/MarshGO-Site/pull/129).
-- Exact-head GitHub run `42816287670` was `in_progress` for `fe7dc188…` when this report-only follow-up was prepared. The report-only commit must pass its own exact-head check. No merge or deployment is part of this work.
+- Exact-head GitHub run `42816504324` passed for candidate head `1646937859edd7d67c530e78713c7dda26d76784`. No merge or deployment is part of this work.
