@@ -38,6 +38,12 @@ export function microTypesFor(layers: ReadonlySet<TransportLayerId>): string[] {
   return [layers.has('BICYCLE') ? 'bike' : '', layers.has('SCOOTER') ? 'scooter' : '', layers.has('CARSHARING') ? 'carsharing' : '', layers.has('RENTAL_POINTS') ? 'stations' : ''].filter(Boolean);
 }
 
+/** True only for categories with an actual line, stop or micromobility overlay renderer. */
+export function hasMapLayerRenderer(id: TransportLayerId): boolean {
+  const selection = new Set<TransportLayerId>([id]);
+  return id === 'STOPS' || lineTypesFor(selection).length > 0 || microTypesFor(selection).length > 0;
+}
+
 /** A city preset enables only available public transport feeds, never private mobility or commercial modes. */
 export function cityTransportLayerIds(availability: Readonly<Record<string, boolean>> | null): TransportLayerId[] {
   if (!availability) return [];
@@ -51,15 +57,15 @@ export function cityTransportLayerIds(availability: Readonly<Record<string, bool
 export const allTransportLayerIds: TransportLayerId[] = [...transportLayerList.map((item) => item.id), 'PUBLIC_TRANSPORT', 'CITY_TRAIN', 'FUNICULAR', 'STOPS', 'RENTAL_POINTS'];
 
 /**
- * Only a confirmed `true` retires a control. `null` means the availability probe has not answered, and
- * greying out a layer that would have worked is its own kind of false statement.
+ * A failed availability check is unknown, not a provider outage. A control is enabled only when this
+ * client can render the layer and the server has not confirmed that its source is unavailable.
  */
 export const isLayerSelectable = (availability: Readonly<Record<string, boolean>> | null, id: TransportLayerId): boolean =>
-  availability === null || availability[id] === true;
+  hasMapLayerRenderer(id) && (availability === null || availability[id] === true);
 
-/** Layers the server confirmed it cannot serve; leaving one switched on paints an empty map with no reason. */
+/** Layers that cannot paint a map overlay, either because this client has no renderer or the source is unavailable. */
 export const unavailableLayerIds = (availability: Readonly<Record<string, boolean>>): TransportLayerId[] =>
-  allTransportLayerIds.filter((id) => availability[id] !== true);
+  allTransportLayerIds.filter((id) => !isLayerSelectable(availability, id));
 
 /** A failed probe only proves we could not check, so the wording must not claim the data is missing. */
 export const layerUnavailableNote = (probeFailed: boolean): string => probeFailed ? 'перевірка не вдалася' : 'немає даних';

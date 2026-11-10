@@ -1,6 +1,6 @@
 import { productionApi } from '../services/productionApi';
 import { setTransportLayers } from './transportLayers';
-import { unavailableLayerIds, type TransportLayerId } from './transportLayerConfig';
+import { unavailableLayerIds } from './transportLayerConfig';
 
 export type LayerAvailability = Readonly<Record<string, boolean>>;
 export type LayerAvailabilityState = { availability: LayerAvailability | null; probeFailed: boolean };
@@ -42,8 +42,10 @@ export function loadLayerAvailability(): Promise<LayerAvailability | null> {
       .catch(() => {
         inFlight = null;
         probeFailed = true;
-        availability = Object.fromEntries(unavailableLayerIds({}).map((id) => [id, false] as [TransportLayerId, boolean]));
-        setTransportLayers(unavailableLayerIds(availability), false);
+        // A failed check is not proof that every provider is unavailable. Keep the
+        // state unknown so the map controls remain selectable and can show the
+        // real layer request result instead of silently disabling everything.
+        availability = null;
         publish();
         return null;
       });

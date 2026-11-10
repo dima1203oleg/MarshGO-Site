@@ -21,6 +21,15 @@ describe('layer availability gating', () => {
     assert.equal(isLayerSelectable(kyivLike, 'BICYCLE'), false);
   });
 
+  it('does not expose transport modes as map switches when no overlay renderer exists', () => {
+    const allAvailable = Object.fromEntries(allTransportLayerIds.map((id) => [id, true]));
+    assert.equal(isLayerSelectable(null, 'BUS'), true);
+    assert.equal(isLayerSelectable(allAvailable, 'CARPOOL'), false);
+    assert.equal(isLayerSelectable(allAvailable, 'TAXI'), false);
+    assert.equal(isLayerSelectable(allAvailable, 'TRANSFER'), false);
+    assert.deepEqual(unavailableLayerIds(allAvailable).sort(), ['CARPOOL', 'TAXI', 'TRANSFER']);
+  });
+
   it('reports exactly the layers that must be switched off and shown as no data', () => {
     assert.deepEqual(unavailableLayerIds(kyivLike).sort(), ['BICYCLE', 'CARPOOL', 'CARSHARING', 'CITY_TRAIN', 'FUNICULAR', 'RENTAL_POINTS', 'SCOOTER', 'TAXI', 'TRANSFER'].sort());
   });
