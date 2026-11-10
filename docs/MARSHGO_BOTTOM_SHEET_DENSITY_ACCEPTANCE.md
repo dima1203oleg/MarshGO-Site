@@ -68,3 +68,12 @@ At 320 px, the five-step ribbon measured 374 px of content in a 318 px scroller;
 - Current compactness and callout-placement source commit: `37bbad15d94217ba818b7906a91fd1e33422c478` on `codex/bottom-sheet-density-20261110`; exact-head CI is pending.
 - Draft pull request: [#129 — Compact shared journey bottom sheets](https://github.com/dima1203oleg/MarshGO-Site/pull/129).
 - Exact-head GitHub CI was still running when this report was updated; no merge or deployment is authorized by this report.
+
+## Follow-up — Master 10 active-navigation visual pass
+
+- On source commit `8b1ca056459dc976a67fbdd9eac50422926b0cb0`, the collapsed active-navigation sheet measured 178 px high at 390×844; its primary action measured 44 px. The same 178 px target had been observed at 320×568. This is a local CSS viewport measurement, not physical iPhone safe-area validation.
+- `JourneyActiveNavigation` now waits for MapLibre's ready status before fitting the initial route, uses one stable empty route reference to avoid resetting the preview flight on React rerenders, and does not duplicate floating distance/duration information on WALK stages.
+- Browser review exposed selected direction chevrons visually merging into a white stripe in a wide, pitched map view. The new token set increases spacing, reduces icon size and lowers opacity. The retest at 1280×720 showed a clean route body without the stripe; 390×844 stage focus remained legible.
+- At 320×568, the fixture's demo disclaimer was first moved away from the bottom stop label, then shortened to one line when it covered the tram info chip. The final preview keeps both labels clear and the document width at 320 px.
+- Active-navigation source commit `8b1ca056459dc976a67fbdd9eac50422926b0cb0` passed exact-head CI run `42828227538` (676 tests, lint, typecheck, token checks, production build, bundle checks and Chromium boot smoke). Fixture-only follow-up commit `209f1aaec595622aa4c3667190aeb3a7c93ce545` was pushed afterward; exact-head CI runs `42829138608` and `42829130477` are in progress.
+- This follow-up does not change the earlier route-detail before/after measurements. The underlying demo route remains synthetic and physical-device acceptance remains NOT_TESTED.
