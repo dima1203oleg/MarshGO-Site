@@ -25,9 +25,11 @@ import {
   createFrameWriter,
   prefersReducedMotion,
   routeSheetExpandedFitHeight,
+  routeSheetAvailableViewportHeight,
   ROUTE_SHEET_LOGICAL_LABELS,
-  routeSheetHeights,
+  routeSheetViewportHeights,
   routeSheetSafeAreaInset,
+  routeTabbarInset,
   routeSheetTransition,
   settleRouteSheetSnap,
   subscribeReducedMotion,
@@ -167,6 +169,7 @@ export function JourneyRouteMapScreen({
   onBack,
   onBookOffer,
   onStartJourney,
+  reserveBottomNavigation = false,
 }: {
   journey: ApiJourney;
   /** Same-shape departures grouped under the result card, available from the detail sheet. */
@@ -177,6 +180,8 @@ export function JourneyRouteMapScreen({
   onBookOffer?: (offerId: string, journeyId: string, journeyLegId: string) => void;
   /** Opens the active stage map for this itinerary; the route is never re-entered. */
   onStartJourney?: () => Promise<JourneyNavigationStartResult> | JourneyNavigationStartResult;
+  /** Reserve the persistent app navigation when this screen is mounted in the production shell. */
+  reserveBottomNavigation?: boolean;
 }) {
   const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
     window.location.search,
@@ -191,7 +196,7 @@ export function JourneyRouteMapScreen({
   const [isDark, setIsDark] = useState(themeService.isDark());
 
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('collapsed');
-  const [sheetHeight, setSheetHeight] = useState(() => routeSheetHeights(typeof window === 'undefined' ? 844 : window.innerHeight, routeSheetSafeAreaInset()).collapsed);
+  const [sheetHeight, setSheetHeight] = useState(() => routeSheetViewportHeights(typeof window === 'undefined' ? 844 : window.innerHeight, routeSheetSafeAreaInset(), reserveBottomNavigation).collapsed);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
   const [viewportWidth, setViewportWidth] = useState(() => typeof window === 'undefined' ? 390 : window.innerWidth);
   const draggingRef = useRef(false);
@@ -346,7 +351,7 @@ export function JourneyRouteMapScreen({
     });
   }, [liveSegment, liveLeg, mapAdapterReady]);
 
-  const snapHeight = useCallback((snap: RouteSheetSnap, viewport = viewportHeight) => routeSheetHeights(viewport, routeSheetSafeAreaInset())[snap], [viewportHeight]);
+  const snapHeight = useCallback((snap: RouteSheetSnap, viewport = viewportHeight) => routeSheetViewportHeights(viewport, routeSheetSafeAreaInset(), reserveBottomNavigation)[snap], [reserveBottomNavigation, viewportHeight]);
 
   const fitExpandedSheetToContent = useCallback(() => {
     const sheet = sheetElement.current;
@@ -377,11 +382,12 @@ export function JourneyRouteMapScreen({
       + (Number.parseFloat(outerStyle.borderTopWidth) || 0)
       + (Number.parseFloat(outerStyle.borderBottomWidth) || 0);
     const requiredHeight = handle.getBoundingClientRect().height + outerExtras + fixedContentHeight + naturalListHeight;
-    const nextHeight = routeSheetExpandedFitHeight(viewportHeight, routeSheetSafeAreaInset(), requiredHeight);
+    const availableHeight = routeSheetAvailableViewportHeight(viewportHeight, routeSheetSafeAreaInset(), reserveBottomNavigation);
+    const nextHeight = routeSheetExpandedFitHeight(availableHeight, 0, requiredHeight);
     if (Math.abs(sheetHeightRef.current - nextHeight) <= 1) return;
     sheetHeightRef.current = nextHeight;
     setSheetHeight(nextHeight);
-  }, [viewportHeight]);
+  }, [reserveBottomNavigation, viewportHeight]);
 
   useLayoutEffect(() => {
     if (sheetSnap !== 'expanded') return;
@@ -415,6 +421,7 @@ export function JourneyRouteMapScreen({
   const mapUnavailable = mapStatus === 'failed';
 
   const isDesktop = viewportWidth >= 1024;
+  const bottomNavigationInset = reserveBottomNavigation ? routeTabbarInset(routeSheetSafeAreaInset()) : 0;
   const settledHeight = sheetSnap === 'expanded' ? sheetHeight : snapHeight(sheetSnap);
   // The live chip floats just above the sheet in MEDIUM/COMPACT, inside the
   // band a camera fit would otherwise use for the last focus point.
@@ -430,8 +437,8 @@ export function JourneyRouteMapScreen({
     topBarHeight: 100,
     isDesktop,
     hasWarningNote: mapUnavailable,
-    extraBottomInset: floatingChipVisible ? 58 : 0,
-  }), [floatingChipVisible, isDesktop, mapUnavailable, settledHeight, sheetHeight, sheetSnap, viewportHeight, viewportWidth]);
+    extraBottomInset: bottomNavigationInset + (floatingChipVisible ? 58 : 0),
+  }), [bottomNavigationInset, floatingChipVisible, isDesktop, mapUnavailable, settledHeight, sheetHeight, sheetSnap, viewportHeight, viewportWidth]);
 
   // Segment orientation follows the real camera band after route and sheet insets.
   const visibleMapArea = useMemo(() => ({
@@ -692,7 +699,7 @@ export function JourneyRouteMapScreen({
     start.velocity = (start.lastY - event.clientY) / elapsed;
     start.lastY = event.clientY;
     start.lastAt = now;
-    const heights = routeSheetHeights(viewportHeight, routeSheetSafeAreaInset());
+    const heights = routeSheetViewportHeights(viewportHeight, routeSheetSafeAreaInset(), reserveBottomNavigation);
     const nextHeight = Math.min(heights.expanded, Math.max(heights.peek, start.height + delta));
     sheetHeightRef.current = nextHeight;
     dragWriter.current?.schedule(nextHeight);
@@ -703,7 +710,7 @@ export function JourneyRouteMapScreen({
     if (!start || start.pointerId !== event.pointerId) return;
     dragWriter.current?.flush();
     if (start.moved) {
-      const heights = routeSheetHeights(viewportHeight, routeSheetSafeAreaInset());
+      const heights = routeSheetViewportHeights(viewportHeight, routeSheetSafeAreaInset(), reserveBottomNavigation);
       const next = settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height);
       moveToSnap(next);
     }
@@ -942,7 +949,8 @@ export function JourneyRouteMapScreen({
       className="route-map-screen fixed inset-0 z-[var(--mg-z-map-chip)] overflow-hidden text-[var(--route-ink)]"
       data-theme={isDark ? 'dark' : 'light'}
       data-sheet-snap={sheetSnap}
-      style={{ ['--route-map-inset' as string]: `${sheetHeight + (sheetSnap === 'expanded' ? 10 : 58)}px` }}
+      data-bottom-navigation-reserved={reserveBottomNavigation ? 'true' : 'false'}
+      style={{ ['--route-map-inset' as string]: `${sheetHeight + bottomNavigationInset + (sheetSnap === 'expanded' ? 10 : 58)}px` }}
       aria-labelledby="journey-route-map-title"
     >
       <h1 id="journey-route-map-title" className="sr-only">{cleanStopName(firstLeg?.origin.name) || 'Початок'} — {cleanStopName(lastLeg?.destination.name) || 'Кінець'}</h1>
@@ -1116,7 +1124,7 @@ export function JourneyRouteMapScreen({
       )}
 
       {showChrome && scale && (
-        <div className="route-map-scale" style={{ left: 16, bottom: sheetHeight + (sheetSnap === 'peek' ? 14 : 64) }} aria-hidden="true">
+        <div className="route-map-scale" style={{ left: 16, bottom: bottomNavigationInset + sheetHeight + (sheetSnap === 'peek' ? 14 : 64) }} aria-hidden="true">
           <span>{scale.label}</span>
           <i style={{ width: scale.widthPx }}/>
         </div>
@@ -1125,7 +1133,7 @@ export function JourneyRouteMapScreen({
       {showChrome && sheetSnap !== 'peek' && liveLeg && (
         <div
           className="pointer-events-none absolute inset-x-0 z-10 mx-auto flex max-w-3xl justify-center px-4"
-          style={{ bottom: sheetHeight + 8, transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}
+          style={{ bottom: bottomNavigationInset + sheetHeight + 8, transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}
         >
           <button
             type="button"
@@ -1161,7 +1169,7 @@ export function JourneyRouteMapScreen({
         style={{
           height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`,
           transition: routeSheetTransition(draggingRef.current, reducedMotion),
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingBottom: 0,
           background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))',
         }}
       >

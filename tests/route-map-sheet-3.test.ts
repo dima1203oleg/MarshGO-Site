@@ -25,10 +25,11 @@ test('peek sheet separates duration and fare while retaining a compact action', 
   assert.match(routeScreen, /route-sheet-compact-cta/);
 });
 
-test('compact sheet keeps duration, fare and transfer count together without reserving a second safe area', () => {
+test('compact sheet keeps duration, fare and transfer count together without duplicating the bottom navigation inset', () => {
   assert.match(routeScreen, /route-sheet-summary--dense/);
   assert.match(routeScreen, /Без пересадок/);
-  assert.match(routeScreen, /paddingBottom: 'env\(safe-area-inset-bottom\)'/);
+  assert.match(routeScreen, /paddingBottom: 0/);
+  assert.match(routeScreen, /reserveBottomNavigation/);
   assert.doesNotMatch(routeScreen, /pb-\[max\(0\.75rem,env\(safe-area-inset-bottom\)\)\]/);
   assert.match(css, /route-sheet-summary--dense/);
   assert.match(css, /overflow-x: auto/);
@@ -248,8 +249,8 @@ test('the duplicated stage narration is gone and the sheet breathes without it',
     'the FULL-state pill lives in the strip padding instead of covering the fitted geometry');
   assert.match(routeScreen, /topBarHeight: 100/,
     'the measured 102 px compact header must be reserved, not a nominal 84 px');
-  assert.match(routeScreen, /extraBottomInset: floatingChipVisible \? 58 : 0/,
-    'the camera must reserve the live chip above the sheet');
+  assert.match(routeScreen, /extraBottomInset: bottomNavigationInset \+ \(floatingChipVisible \? 58 : 0\)/,
+    'the camera must reserve the global navigation and the live chip above the sheet');
 });
 
 test('the primary action uses the canonical blue–graphite ramp, never purple', () => {

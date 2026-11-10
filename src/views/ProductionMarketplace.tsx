@@ -2361,6 +2361,7 @@ export function ProductionMarketplace() {
   const routeMapScreen = (journey: ApiJourney, onClose: () => void, alternatives: ApiJourney[] = [], recommendation?: string) => <JourneyRouteMapScreen
     key={journey.id}
     journey={journey}
+    reserveBottomNavigation
     alternativeDepartures={alternatives.filter(alternative => alternative.id !== journey.id)}
     onSelectAlternative={alternative => { setSelectedRouteMap(alternative); setSelectedRouteRecommendation(undefined); }}
     recommendation={recommendation}
@@ -2374,6 +2375,7 @@ export function ProductionMarketplace() {
 
   const screen = activeJourneyNavigation ? <JourneyActiveNavigation
     journey={activeJourneyNavigation}
+    reserveBottomNavigation
     initialLocationFix={activeJourneyStartFix}
     notice={journeyNotice}
     onFinish={() => finishJourneyNavigation(activeJourneyNavigation.id)}
@@ -2406,11 +2408,11 @@ export function ProductionMarketplace() {
     {navigationOverlay}
     {navigationActive && tab !== 'navigation' && <button type="button" onClick={() => setTab('navigation')} aria-label="Повернутися до активної навігації" className="fixed right-3 z-[var(--mg-z-overlay)] flex items-center gap-2 rounded-full border border-blue-200 bg-white/95 px-3 py-2 text-xs font-bold text-blue-700 shadow-lg backdrop-blur" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}><Navigation size={16}/>Навігація · Повернутися</button>}
     {pointPicker}
-    {!immersiveRouteView && <nav data-testid="global-bottom-navigation" aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
+    <nav data-testid="global-bottom-navigation" aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
       {tabItems.slice(0, 2).map(renderBottomTab)}
       <button onClick={() => setShowCreateMenu(true)} aria-label="Створити поїздку або запит" aria-haspopup="dialog" aria-expanded={showCreateMenu} className="app-create-button mg-press col-start-3 row-start-1 -mt-5 grid h-14 w-14 place-items-center justify-self-center rounded-full bg-[var(--mg-action)] text-white shadow-lg shadow-[#0B63D6]/30 transition-transform motion-safe:duration-[var(--mg-dur-fast)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><Plus size={25}/><span className="desktop-create-label">Створити</span></button>
       {tabItems.slice(2).map(renderBottomTab)}
-    </div></nav>}
+    </div></nav>
     {createMenu}
     <DepartureDateTimePicker open={departurePickerOpen} title="Виїзд" caption="Виберіть дату й час виїзду" timeLabel="Виїзд" value={journeyDeparture} onChange={(value) => { setJourneyDeparture(value); setDate(value.slice(0, 10)); if (journeyArrivalBy && value >= journeyArrivalBy) setJourneyArrivalBy(null); }} onClose={() => setDeparturePickerOpen(false)}/>
     <DepartureDateTimePicker open={arrivalPickerOpen} title="Прибути до" caption="Повернемо лише маршрути, що прибувають не пізніше цього часу" timeLabel="Прибути до" minDate={journeyDeparture.slice(0, 10)} value={journeyArrivalBy ?? journeyDeparture} onChange={(value) => setJourneyArrivalBy(value)} onClose={() => setArrivalPickerOpen(false)}/>

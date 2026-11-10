@@ -2538,3 +2538,24 @@ html {
     color: var(--mg-blue-ink);
   }
 }
+
+/* Keep the canonical five-item navigation reachable over both route details
+   and active navigation. The map sheet and its controls reserve this exact
+   chrome height, including the device safe area. */
+.route-immersive-shell {
+  --mg-route-tabbar-inset: calc(57px + max(.45rem, env(safe-area-inset-bottom, 0px)));
+}
+.route-immersive-shell > .app-tabbar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: calc(var(--mg-z-map-chip) + 1);
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--mg-line);
+  border-radius: 0;
+}
+.route-immersive-shell .route-map-screen[data-bottom-navigation-reserved="true"] [data-testid="route-bottom-sheet"],
+.route-immersive-shell .route-map-screen[data-bottom-navigation-reserved="true"] [data-testid="active-navigation-sheet"] {
+  bottom: var(--mg-route-tabbar-inset);
+}

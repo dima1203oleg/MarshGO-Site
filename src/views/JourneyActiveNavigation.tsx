@@ -20,8 +20,9 @@ import { diagnosticsRequested } from './resultsDiagnostics';
 import {
   createFrameWriter,
   prefersReducedMotion,
-  routeSheetHeights,
+  routeSheetViewportHeights,
   routeSheetSafeAreaInset,
+  routeTabbarInset,
   routeSheetTransition,
   settleRouteSheetSnap,
   subscribeReducedMotion,
@@ -67,6 +68,7 @@ export function JourneyActiveNavigation({
   initialPreviewLegIndex = null,
   initialLocationFix = null,
   onPreviewStageChange,
+  reserveBottomNavigation = false,
 }: {
   journey: ApiJourney;
   notice?: string | null;
@@ -76,6 +78,8 @@ export function JourneyActiveNavigation({
   initialLocationFix?: LocationFix | null;
   initialPreviewLegIndex?: number | null;
   onPreviewStageChange?: (legIndex: number) => void;
+  /** Reserve the persistent app navigation when mounted inside the production shell. */
+  reserveBottomNavigation?: boolean;
 }) {
   const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
     window.location.search,
@@ -110,7 +114,7 @@ export function JourneyActiveNavigation({
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('collapsed');
-  const [sheetHeight, setSheetHeight] = useState(() => routeSheetHeights(typeof window === 'undefined' ? 844 : window.innerHeight, routeSheetSafeAreaInset()).collapsed);
+  const [sheetHeight, setSheetHeight] = useState(() => routeSheetViewportHeights(typeof window === 'undefined' ? 844 : window.innerHeight, routeSheetSafeAreaInset(), reserveBottomNavigation).collapsed);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
   const draggingRef = useRef(false);
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
@@ -259,9 +263,10 @@ export function JourneyActiveNavigation({
 
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
   const mapPadding = useMemo<RouteFitPadding>(() => {
-    if (isDesktop) return { top: 100, left: 500, right: 40, bottom: 40 };
-    return { top: 118, left: 26, right: 26, bottom: sheetHeight + 24 };
-  }, [isDesktop, sheetHeight]);
+    const bottomNavigationInset = reserveBottomNavigation ? routeTabbarInset(routeSheetSafeAreaInset()) : 0;
+    if (isDesktop) return { top: 100, left: 500, right: 40, bottom: bottomNavigationInset + 40 };
+    return { top: 118, left: 26, right: 26, bottom: sheetHeight + bottomNavigationInset + 24 };
+  }, [isDesktop, reserveBottomNavigation, sheetHeight]);
 
   const legSegment = useMemo(
     () => (leg ? model.routeSegments.find(segment => segment.id === leg.id) : undefined),
@@ -413,17 +418,17 @@ export function JourneyActiveNavigation({
     const updateViewport = () => {
       const next = window.innerHeight;
       setViewportHeight(next);
-      const nextHeight = routeSheetHeights(next, routeSheetSafeAreaInset())[sheetSnap];
+      const nextHeight = routeSheetViewportHeights(next, routeSheetSafeAreaInset(), reserveBottomNavigation)[sheetSnap];
       sheetHeightRef.current = nextHeight;
       setSheetHeight(nextHeight);
     };
     window.addEventListener('resize', updateViewport);
     return () => window.removeEventListener('resize', updateViewport);
-  }, [sheetSnap]);
+  }, [reserveBottomNavigation, sheetSnap]);
 
   const moveToSnap = (next: RouteSheetSnap) => {
     if (previewFlightCancel.current) cancelPreviewFlight('user');
-    const nextHeight = routeSheetHeights(viewportHeight, routeSheetSafeAreaInset())[next];
+    const nextHeight = routeSheetViewportHeights(viewportHeight, routeSheetSafeAreaInset(), reserveBottomNavigation)[next];
     sheetHeightRef.current = nextHeight;
     setSheetSnap(next);
     setSheetHeight(nextHeight);
@@ -459,7 +464,7 @@ export function JourneyActiveNavigation({
     start.velocity = (start.lastY - event.clientY) / elapsed;
     start.lastY = event.clientY;
     start.lastAt = now;
-    const heights = routeSheetHeights(viewportHeight, routeSheetSafeAreaInset());
+    const heights = routeSheetViewportHeights(viewportHeight, routeSheetSafeAreaInset(), reserveBottomNavigation);
     const nextHeight = Math.min(heights.expanded, Math.max(heights.collapsed, start.height + delta));
     sheetHeightRef.current = nextHeight;
     dragWriter.current?.schedule(nextHeight);
@@ -469,7 +474,7 @@ export function JourneyActiveNavigation({
     if (!start || start.pointerId !== event.pointerId) return;
     dragWriter.current?.flush();
     if (start.moved) {
-      const heights = routeSheetHeights(viewportHeight, routeSheetSafeAreaInset());
+      const heights = routeSheetViewportHeights(viewportHeight, routeSheetSafeAreaInset(), reserveBottomNavigation);
       moveToSnap(settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height));
     }
     dragStart.current = null;
@@ -640,10 +645,11 @@ export function JourneyActiveNavigation({
     className="route-map-screen fixed inset-0 z-[80] overflow-hidden text-[var(--route-ink)]"
     data-theme={isDark ? 'dark' : 'light'}
     data-sheet-snap={sheetSnap}
+    data-bottom-navigation-reserved={reserveBottomNavigation ? 'true' : 'false'}
     data-preview-flight-state={isPreviewFlying ? 'running' : 'idle'}
     data-preview-leg-index={legIndex}
     data-testid="active-journey-navigation"
-    style={{ ['--route-map-inset' as string]: `${sheetHeight + 12}px` }}
+    style={{ ['--route-map-inset' as string]: `${sheetHeight + (reserveBottomNavigation ? routeTabbarInset(routeSheetSafeAreaInset()) : 0) + 12}px` }}
     aria-label={`Навігація до ${destination}`}
   >
     <div className="absolute inset-0">
@@ -724,7 +730,7 @@ export function JourneyActiveNavigation({
       data-testid="active-navigation-sheet"
       data-sheet-state={sheetSnap}
       data-dragging={draggingRef.current ? 'true' : 'false'}
-      style={{ height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`, transition: routeSheetTransition(draggingRef.current, reducedMotion), paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
+      style={{ height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`, transition: routeSheetTransition(draggingRef.current, reducedMotion), paddingBottom: 0, background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
     >
       <button
         type="button"

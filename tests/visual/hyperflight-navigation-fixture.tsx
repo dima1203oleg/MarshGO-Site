@@ -1,5 +1,6 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { CircleUserRound, Home, Plus, Search, Ticket } from 'lucide-react';
 import type { ApiJourney } from '../../src/services/productionApi';
 import { JourneyActiveNavigation } from '../../src/views/JourneyActiveNavigation';
 import '../../src/index.css';
@@ -68,12 +69,21 @@ function Fixture() {
     const disclosure = document.getElementById('fixture-disclosure');
     if (disclosure) disclosure.textContent = `ДЕМО · тестові дані · GPS вимкнено · ${previewLeg + 1}/5`;
   }, [previewLeg]);
-  return <>
+  return <main className="production-app route-immersive-shell min-h-[100svh]">
     <output aria-label="Стан тестового перегляду" data-testid="hyperflight-fixture-state" className="sr-only">
       Переглядається етап {previewLeg + 1} із 5. Геолокація не передається.
     </output>
-    <JourneyActiveNavigation journey={journey} onExit={() => undefined} onPreviewStageChange={setPreviewLeg}/>
-  </>;
+    <JourneyActiveNavigation journey={journey} reserveBottomNavigation onExit={() => undefined} onPreviewStageChange={setPreviewLeg}/>
+    <nav data-testid="global-bottom-navigation" aria-label="Основна навігація — візуальний макет" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl">
+      <div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
+        <div className="flex flex-col items-center gap-1 px-1 py-1 text-[var(--mg-blue-ink)]"><Home size={20}/><span className="text-xs font-semibold">Головна</span></div>
+        <div className="flex flex-col items-center gap-1 px-1 py-1 text-[var(--mg-ink-secondary)]"><Search size={20}/><span className="text-xs font-semibold">Пошук</span></div>
+        <div className="app-create-button -mt-5 grid h-14 w-14 place-items-center justify-self-center rounded-full bg-[var(--mg-action)] text-white shadow-lg shadow-[#0B63D6]/30"><Plus size={25}/></div>
+        <div className="flex flex-col items-center gap-1 px-1 py-1 text-[var(--mg-ink-secondary)]"><Ticket size={20}/><span className="text-xs font-semibold">Поїздки</span></div>
+        <div className="flex flex-col items-center gap-1 px-1 py-1 text-[var(--mg-ink-secondary)]"><CircleUserRound size={20}/><span className="text-xs font-semibold">Профіль</span></div>
+      </div>
+    </nav>
+  </main>;
 }
 
 const root = document.getElementById('root');

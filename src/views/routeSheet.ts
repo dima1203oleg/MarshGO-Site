@@ -4,6 +4,28 @@ export type RouteSheetHeights = Record<RouteSheetSnap, number>;
 
 export const ROUTE_SHEET_SNAPS: readonly RouteSheetSnap[] = ['peek', 'collapsed', 'half', 'expanded'];
 
+// The fixed app tab bar is 57 px of chrome plus its bottom safe-area padding:
+// 1 px border, 8 px top padding and a 48 px control row. Keep the route sheet
+// above it in immersive map states so the CTA and every tab remain reachable.
+export const ROUTE_TABBAR_CHROME_HEIGHT = 57;
+
+export function routeTabbarInset(safeAreaBottom = 0): number {
+  const safeArea = Number.isFinite(safeAreaBottom) ? Math.max(0, Math.min(64, safeAreaBottom)) : 0;
+  return ROUTE_TABBAR_CHROME_HEIGHT + Math.max(7.2, safeArea);
+}
+
+export function routeSheetAvailableViewportHeight(viewportHeight: number, safeAreaBottom = 0, reserveBottomNavigation = false): number {
+  const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
+  return Math.max(320, viewport - (reserveBottomNavigation ? routeTabbarInset(safeAreaBottom) : 0));
+}
+
+export function routeSheetViewportHeights(viewportHeight: number, safeAreaBottom = 0, reserveBottomNavigation = false): RouteSheetHeights {
+  const availableHeight = routeSheetAvailableViewportHeight(viewportHeight, safeAreaBottom, reserveBottomNavigation);
+  // When the sheet floats above the persistent tab bar, that bar already owns
+  // the device safe area. Adding it to the sheet detents would create a blank band.
+  return routeSheetHeights(availableHeight, reserveBottomNavigation ? 0 : safeAreaBottom);
+}
+
 export const ROUTE_SHEET_LOGICAL_LABELS: Readonly<Record<RouteSheetSnap, RouteSheetLogicalState>> = {
   peek: 'PEEK',
   collapsed: 'COMPACT',

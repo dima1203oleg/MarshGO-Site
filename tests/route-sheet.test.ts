@@ -6,8 +6,11 @@ import {
   nearestRouteSheetSnap,
   ROUTE_SHEET_LOGICAL_LABELS,
   ROUTE_SHEET_SNAPS,
+  routeSheetAvailableViewportHeight,
   routeSheetExpandedFitHeight,
   routeSheetHeights,
+  routeSheetViewportHeights,
+  routeTabbarInset,
   routeSheetTransition,
   settleRouteSheetSnap,
 } from '../src/views/routeSheet';
@@ -43,6 +46,17 @@ test('route sheet keeps four ordered detents (PEEK -> COMPACT -> MEDIUM -> FULL)
   assert.equal(routeSheetHeights(844, 34).expanded, routeSheetHeights(844, 0).expanded);
   assert.equal(routeSheetHeights(568, 34).half, 318);
   assert.ok(routeSheetHeights(844, 34).expanded - routeSheetHeights(844, 34).half >= 220);
+});
+
+test('immersive route sheets reserve the global tab bar and its safe area', () => {
+  assert.equal(routeTabbarInset(0), 64.2);
+  assert.equal(routeTabbarInset(34), 91);
+  assert.equal(routeSheetAvailableViewportHeight(844, 34), 844, 'isolated sheet previews do not reserve app chrome that is not mounted');
+  assert.equal(routeSheetAvailableViewportHeight(844, 34, true), 753);
+  assert.equal(routeSheetAvailableViewportHeight(568, 34, true), 477);
+  const available = routeSheetViewportHeights(568, 34, true);
+  assert.equal(available.collapsed, routeSheetHeights(477, 0).collapsed, 'the safe area belongs to the fixed tab bar, not to the lifted sheet');
+  assert.ok(568 - 91 - available.expanded >= 172, 'expanded sheet leaves a visible map band above the reserved navigation');
 });
 
 test('compact route sheet meets the measured 25–35% height reduction target on common phone viewports', () => {
