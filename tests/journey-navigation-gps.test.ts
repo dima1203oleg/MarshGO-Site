@@ -75,6 +75,24 @@ test('HyperFlight is a cancellable preview between confirmed adjacent route geom
   assert.match(source, /aria-label="Попередній етап маршруту"/);
 });
 
+test('active navigation keeps the map route prop stable so parent renders cannot cancel HyperFlight', () => {
+  const source = readFileSync(path.resolve(import.meta.dirname, '../src/views/JourneyActiveNavigation.tsx'), 'utf8');
+  assert.match(source, /const EMPTY_MAP_ROUTE: Coordinate\[\] = \[\]/);
+  assert.match(source, /route=\{EMPTY_MAP_ROUTE\}/);
+  assert.doesNotMatch(source, /route=\{\[\]\}/);
+});
+
+test('active navigation waits for the map style status before its initial route framing', () => {
+  const source = readFileSync(path.resolve(import.meta.dirname, '../src/views/JourneyActiveNavigation.tsx'), 'utf8');
+  assert.match(source, /mapAdapterReady \|\| mapStatus === 'loading' \|\| !leg/);
+  assert.match(source, /mapAdapterReady, mapPadding, mapStatus, sheetSnap/);
+});
+
+test('active walking stages do not show a duplicate floating card over their route label', () => {
+  const source = readFileSync(path.resolve(import.meta.dirname, '../src/views/JourneyActiveNavigation.tsx'), 'utf8');
+  assert.match(source, /leg\.mode === 'WALK' \? null : floatingInfoForLeg\(leg\)/);
+});
+
 test('the virtual camera and Scout never write a fake GPS position or route lifecycle state', () => {
   const adapter = readFileSync(path.resolve(import.meta.dirname, '../src/map/MapLibreAdapter.ts'), 'utf8');
   const flight = adapter.slice(adapter.indexOf('playRoutePreviewFlight('), adapter.indexOf("cancelRoutePreviewFlight(reason:"));

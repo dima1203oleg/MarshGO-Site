@@ -83,9 +83,11 @@ export function walkWidthExpression(kind: 'width' | 'haloWidth' | 'estimateWidth
  * Spacing tightens as the camera zooms in so the rhythm stays even on screen.
  */
 export const ROUTE_ARROW_TOKENS = {
-  spacing: [5, 260, 12, 170, 15, 120, 17, 92] as const,
-  size: [5, 0.4, 12, 0.58, 15, 0.78, 17, 0.92] as const,
-  opacity: 0.92,
+  // Keep arrows subordinate to the route body. At close pitched views, a
+  // dense 44px glyph rhythm foreshortens into a bright continuous stripe.
+  spacing: [5, 480, 12, 420, 15, 360, 17, 320] as const,
+  size: [5, 0.24, 12, 0.28, 15, 0.32, 17, 0.36] as const,
+  opacity: 0.64,
 } as const;
 
 export function routeArrowExpression(kind: 'spacing' | 'size'): ExpressionSpecification {

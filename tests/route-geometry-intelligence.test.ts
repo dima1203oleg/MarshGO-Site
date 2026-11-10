@@ -90,12 +90,18 @@ test('walking geometry keeps contrast on both basemaps and a proportional dash',
   assert.equal(walkGeometryTokens('MARSHGO_DARK'), WALK_GEOMETRY_TOKENS.DARK);
 });
 
-test('direction chevrons tighten spacing and grow as the camera zooms in', () => {
+test('direction chevrons remain sparse and secondary to the route at close zoom', () => {
   for (let i = 1; i < ROUTE_ZOOM_STOPS.length; i += 1) {
     assert.ok(ROUTE_ARROW_TOKENS.spacing[i * 2 + 1]! < ROUTE_ARROW_TOKENS.spacing[(i - 1) * 2 + 1]!);
     assert.ok(ROUTE_ARROW_TOKENS.size[i * 2 + 1]! > ROUTE_ARROW_TOKENS.size[(i - 1) * 2 + 1]!);
   }
   assert.ok(ROUTE_ARROW_TOKENS.opacity > 0 && ROUTE_ARROW_TOKENS.opacity <= 1);
+  assert.ok(ROUTE_ARROW_TOKENS.spacing.at(-1)! >= 300,
+    'street-level arrows should stay far enough apart to read as individual direction marks');
+  assert.ok(ROUTE_ARROW_TOKENS.size.at(-1)! <= 0.4,
+    'street-level arrows should not dominate the selected route');
+  assert.ok(ROUTE_ARROW_TOKENS.opacity <= 0.65,
+    'white direction marks should remain secondary to the route body');
   for (const kind of ['spacing', 'size'] as const) {
     const expression = routeArrowExpression(kind) as unknown[];
     assert.equal(expression[0], 'interpolate');

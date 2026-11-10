@@ -34,7 +34,7 @@ import { useFloatingMapInfo } from '../map/useFloatingMapInfo';
 import { formatJourneyDurationTile } from './journeyResultPresentation';
 import { legPriceDisplay } from './cashFare';
 import { WebGeolocationProvider } from '../platform/LocationProvider';
-import type { LocationFix } from '../../shared/navigation/contracts';
+import type { Coordinate, LocationFix } from '../../shared/navigation/contracts';
 import { passengerLocationStartMessage, validatePassengerLocationUpdate, validatePassengerStartFix } from '../navigation/passengerLocation';
 import {
   ACTIVE_LEG_STATUS_LABEL,
@@ -51,6 +51,8 @@ import {
   formatStageCount,
   shortPlace,
 } from './journeyStageNavigation';
+
+const EMPTY_MAP_ROUTE: Coordinate[] = [];
 
 /**
  * Passenger itinerary navigation. The selected leg is only a stage preview;
@@ -247,8 +249,11 @@ export function JourneyActiveNavigation({
 
   useEffect(() => {
     if (!mapAdapterReady || !leg) return;
-    const info = floatingInfoForLeg(leg);
+    // Walking stages already have a persistent route label with the same
+    // duration and distance; a second floating card only duplicates it.
+    const info = leg.mode === 'WALK' ? null : floatingInfoForLeg(leg);
     if (info) floatingMapInfo.show(info);
+    else floatingMapInfo.clear();
     return () => floatingMapInfo.clear();
   }, [floatingMapInfo.clear, floatingMapInfo.show, leg, mapAdapterReady]);
 
@@ -283,7 +288,7 @@ export function JourneyActiveNavigation({
   }, [cameraFocusMode, leg?.id, legSegment, liveSegment, model.routeSegments]);
 
   useEffect(() => {
-    if (draggingRef.current || isPreviewFlying || !mapAdapterReady || !leg) return;
+    if (draggingRef.current || isPreviewFlying || !mapAdapterReady || mapStatus === 'loading' || !leg) return;
     const adapter = mapAdapter.current;
     if (!adapter) return;
     adapter.setActiveRouteSegment?.(leg.id);
@@ -304,7 +309,7 @@ export function JourneyActiveNavigation({
       return;
     }
     adapter.fitRoute(mapPadding);
-  }, [cameraFocusMode, focusData.bearing, focusData.key, focusData.points, isPreviewFlying, leg, mapAdapterReady, mapPadding, sheetSnap]);
+  }, [cameraFocusMode, focusData.bearing, focusData.key, focusData.points, isPreviewFlying, leg, mapAdapterReady, mapPadding, mapStatus, sheetSnap]);
 
   const receiveLocationFix = useCallback((fix: LocationFix) => {
     const previous = latestLocationFix.current;
@@ -635,13 +640,15 @@ export function JourneyActiveNavigation({
     className="route-map-screen fixed inset-0 z-[80] overflow-hidden text-[var(--route-ink)]"
     data-theme={isDark ? 'dark' : 'light'}
     data-sheet-snap={sheetSnap}
+    data-preview-flight-state={isPreviewFlying ? 'running' : 'idle'}
+    data-preview-leg-index={legIndex}
     data-testid="active-journey-navigation"
     style={{ ['--route-map-inset' as string]: `${sheetHeight + 12}px` }}
     aria-label={`Навігація до ${destination}`}
   >
     <div className="absolute inset-0">
       <MarshGoMap
-        route={[]}
+        route={EMPTY_MAP_ROUTE}
         routeSegments={model.routeSegments}
         routeWaypoints={model.routeWaypoints}
         routeLabels={routeLabels}
