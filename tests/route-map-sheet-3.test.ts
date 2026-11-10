@@ -22,7 +22,7 @@ const adapter = read('src/map/MapLibreAdapter.ts');
 
 test('peek sheet separates duration and fare while retaining a compact action', () => {
   assert.match(routeScreen, /data-testid="route-peek-summary-divider"/);
-  assert.match(routeScreen, /route-sheet-peek-cta/);
+  assert.match(routeScreen, /route-sheet-compact-cta/);
 });
 
 test('compact sheet keeps duration, fare and transfer count together without reserving a second safe area', () => {
@@ -52,7 +52,7 @@ test('active navigation uses the same compact stage rhythm and preserves full de
   assert.match(activeNavigation, /data-testid="active-nav-instruction" className="mx-4 mt-1/);
   assert.match(activeNavigation, /\{sheetSnap !== 'collapsed' && <div className="flex items-center gap-2">/);
   assert.match(activeNavigation, /\{sheetSnap !== 'collapsed' && <p className="mt-0\.5 text-xs font-semibold tabular-nums/);
-  assert.match(activeNavigation, /sheetSnap === 'collapsed' \? ' route-sheet-peek-cta'/);
+  assert.match(activeNavigation, /sheetSnap === 'collapsed' \? ' route-sheet-compact-cta'/);
   assert.match(activeNavigation, /grid h-11 w-11 shrink-0 place-items-center/);
   assert.match(stops, /min-h-11 w-full grid-cols-\[44px_minmax\(0,1fr\)\]/);
 });

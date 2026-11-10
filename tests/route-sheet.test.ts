@@ -34,15 +34,25 @@ test('route sheet keeps four ordered detents (PEEK -> COMPACT -> MEDIUM -> FULL)
   assert.ok(compactLandscape.collapsed < compactLandscape.half);
   assert.ok(compactLandscape.half < compactLandscape.expanded);
   assert.equal(routeSheetHeights(844, 34).peek, 186);
-  assert.equal(routeSheetHeights(844, 34).collapsed, 224);
+  assert.equal(routeSheetHeights(844, 34).collapsed, 212);
   assert.equal(routeSheetHeights(844, 34).half, 414);
   assert.equal(routeSheetHeights(844, 34).expanded, 672);
   assert.equal(routeSheetHeights(568, 34).peek, 180);
-  assert.equal(routeSheetHeights(568, 34).collapsed, 220);
+  assert.equal(routeSheetHeights(568, 34).collapsed, 212);
   assert.equal(routeSheetHeights(844, 34).collapsed - routeSheetHeights(844, 0).collapsed, 34);
   assert.equal(routeSheetHeights(844, 34).expanded, routeSheetHeights(844, 0).expanded);
   assert.equal(routeSheetHeights(568, 34).half, 318);
   assert.ok(routeSheetHeights(844, 34).expanded - routeSheetHeights(844, 34).half >= 220);
+});
+
+test('compact route sheet meets the measured 25–35% height reduction target on common phone viewports', () => {
+  const baselineHeights: Record<number, number> = { 568: 240, 812: 240, 844: 245, 932: 270 };
+  for (const [viewportValue, baseline] of Object.entries(baselineHeights)) {
+    const viewport = Number(viewportValue);
+    const candidate = routeSheetHeights(viewport, 0).collapsed;
+    const reduction = (baseline - candidate) / baseline;
+    assert.ok(reduction >= 0.25 && reduction <= 0.35, `${viewport}px compact sheet reduction ${Math.round(reduction * 1000) / 10}% must be 25–35%`);
+  }
 });
 
 test('expanded route sheet fits measured details while keeping a usable map strip and scroll cap', () => {

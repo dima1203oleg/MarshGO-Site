@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, useLayoutEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { ApiJourney } from '../../src/services/productionApi';
 import { JourneyRouteMapScreen } from '../../src/views/JourneyRouteMapScreen';
@@ -63,4 +63,51 @@ const journey = {
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing preview root');
-createRoot(root).render(<StrictMode><JourneyRouteMapScreen journey={journey} onBack={() => undefined} /></StrictMode>);
+
+function PreviewLayoutMeasurement() {
+  useLayoutEffect(() => {
+    const sheet = document.querySelector<HTMLElement>('[data-testid="route-bottom-sheet"]');
+    if (!sheet) return;
+    const originalTitle = document.title;
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const sheetBounds = sheet.getBoundingClientRect();
+        const ribbonItems = Array.from(sheet.querySelectorAll<HTMLElement>('.mg-route-ribbon__item'));
+        const visibleSegments = ribbonItems.filter((item) => {
+          const bounds = item.getBoundingClientRect();
+          return bounds.top >= sheetBounds.top && bounds.bottom <= Math.min(sheetBounds.bottom, window.innerHeight);
+        }).length;
+        const scrollContent = sheet.querySelector<HTMLElement>('#route-sheet-content');
+        const summary = sheet.querySelector<HTMLElement>('[data-testid="route-peek-summary"], .route-sheet-summary');
+        const ribbon = sheet.querySelector<HTMLElement>('.mg-route-ribbon');
+        const cta = sheet.querySelector<HTMLElement>('.mg-route-cta');
+        const height = (element?: HTMLElement | null) => Math.round(element?.getBoundingClientRect().height ?? 0);
+        document.title = `${originalTitle} · губа ${Math.round(sheetBounds.height)} px · вміст ${scrollContent?.scrollHeight ?? 0} px · summary ${height(summary)} px · смуга ${height(ribbon)} px · CTA ${height(cta)} px · етапи ${visibleSegments}/${ribbonItems.length}`;
+      });
+    };
+    const onTransitionEnd = (event: TransitionEvent) => {
+      if (event.target === sheet) measure();
+    };
+    const layoutObserver = new ResizeObserver(measure);
+    layoutObserver.observe(sheet);
+    const scrollContent = sheet.querySelector<HTMLElement>('#route-sheet-content');
+    if (scrollContent) layoutObserver.observe(scrollContent);
+    sheet.addEventListener('transitionend', onTransitionEnd);
+    window.addEventListener('resize', measure);
+    measure();
+    return () => {
+      cancelAnimationFrame(frame);
+      layoutObserver.disconnect();
+      sheet.removeEventListener('transitionend', onTransitionEnd);
+      window.removeEventListener('resize', measure);
+      document.title = originalTitle;
+    };
+  }, []);
+  return null;
+}
+
+const previewWindow = window as Window & { __marshgoVisualRoot?: ReturnType<typeof createRoot> };
+const previewRoot = previewWindow.__marshgoVisualRoot ??= createRoot(root);
+previewRoot.render(<StrictMode><><JourneyRouteMapScreen journey={journey} onBack={() => undefined} /><PreviewLayoutMeasurement /></></StrictMode>);

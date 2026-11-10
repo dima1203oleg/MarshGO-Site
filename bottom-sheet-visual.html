@@ -19,5 +19,14 @@
     <main class="device-preview" aria-label="Попередній перегляд MARSHGO на телефоні">
       <iframe src="/tests/visual/signature-navigation.html" title="MARSHGO — тестовий перегляд маршруту"></iframe>
     </main>
+    <script>
+      const viewport = new URLSearchParams(location.search).get('viewport')?.match(/^(320|375|390|430)x(568|667|812|844|932)$/);
+      if (viewport) {
+        const frame = document.querySelector('.device-preview');
+        frame.style.width = `${viewport[1]}px`;
+        frame.style.height = `${viewport[2]}px`;
+        frame.style.minHeight = '0px';
+      }
+    </script>
   </body>
 </html>

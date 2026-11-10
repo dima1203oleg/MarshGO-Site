@@ -18,6 +18,7 @@ import { configuredMapDarkStyleUrl, configuredMapStyleUrl } from './mapConfig';
 import { journeySegmentsForFocus, visibleJourneyWaypoints } from './focusMode';
 import { nearestRouteHitIds } from './routeHitTesting';
 import { placeJourneyLabels } from './routeLabelPlacement';
+import { resolveFloatingInfoPlacement } from './floatingInfoPlacement';
 import { cameraEasing, cameraMotionDuration, adaptiveCameraDuration, CAMERA_FOCUS_DURATION_MS, CAMERA_ZOOM_STEP_DURATION_MS, interruptCameraForUserGesture } from './cameraMotion';
 import { ROUTE_EMPHASIS_TOKENS, SEGMENT_REVEAL_TOKENS, routeArrowExpression, routeStrokeWidthExpression, walkGeometryTokens, walkWidthExpression, ROUTE_ARROW_TOKENS } from './routeGeometryTokens';
 import { measureProjectedFocus } from './routeFocusMeasurement';
@@ -1287,13 +1288,44 @@ export class MapLibreAdapter implements MapAdapter {
     }
     element.append(accent, content);
 
-    const marker = new maplibregl.Marker({
+    let marker = new maplibregl.Marker({
       element,
       anchor: 'bottom',
       offset: [0, -28],
       pitchAlignment: 'viewport',
       rotationAlignment: 'viewport',
     }).setLngLat(info.coordinates).addTo(this.map);
+    const mapContainer = this.map.getContainer();
+    const mapBounds = mapContainer.getBoundingClientRect();
+    const markerBounds = element.getBoundingClientRect();
+    const overlayRoot = mapContainer.closest('.route-map-screen') ?? mapContainer.parentElement;
+    const obstacles = Array.from(overlayRoot?.querySelectorAll<HTMLElement>(
+      '.route-map-control, [data-testid="route-bottom-sheet"], .route-map-screen header, .route-mode-chip, .route-map-scale, [data-testid="route-show-on-map"]',
+    ) ?? []).map(obstacle => {
+      const bounds = obstacle.getBoundingClientRect();
+      return {
+        left: bounds.left - mapBounds.left,
+        top: bounds.top - mapBounds.top,
+        right: bounds.right - mapBounds.left,
+        bottom: bounds.bottom - mapBounds.top,
+      };
+    });
+    const placement = resolveFloatingInfoPlacement(
+      this.map.project(info.coordinates),
+      { width: markerBounds.width, height: markerBounds.height },
+      { width: mapContainer.clientWidth, height: mapContainer.clientHeight },
+      obstacles,
+    );
+    if (placement.anchor !== 'bottom' || placement.offset[0] !== 0 || placement.offset[1] !== -28) {
+      marker.remove();
+      marker = new maplibregl.Marker({
+        element,
+        anchor: placement.anchor,
+        offset: placement.offset,
+        pitchAlignment: 'viewport',
+        rotationAlignment: 'viewport',
+      }).setLngLat(info.coordinates).addTo(this.map);
+    }
     const lifecycle = new FloatingInfoLifecycle((phase: FloatingInfoPhase) => {
       element.dataset.floatingPhase = phase;
       options.onPhase?.(phase);

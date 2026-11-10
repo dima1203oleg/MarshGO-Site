@@ -864,7 +864,7 @@ export function JourneyActiveNavigation({
           <button type="button" onClick={goBack} disabled={legIndex === 0} aria-label="Попередній етап маршруту" title="Назад" className="map-interaction-control mg-press-subtle grid h-11 w-11 shrink-0 place-items-center rounded-xl disabled:opacity-40">
             <ArrowLeft size={18} aria-hidden="true"/>
           </button>
-          <button type="button" onClick={advance} className={`mg-route-cta flex min-w-0 flex-1 items-center justify-center gap-3${sheetSnap === 'collapsed' ? ' route-sheet-peek-cta' : ''}`}>
+          <button type="button" onClick={advance} className={`mg-route-cta flex min-w-0 flex-1 items-center justify-center gap-3${sheetSnap === 'collapsed' ? ' route-sheet-compact-cta' : ''}`}>
             {isLast ? <Flag size={19} aria-hidden="true"/> : <ArrowRight size={20} aria-hidden="true"/>}
             <span>{isLast ? 'Завершити' : 'Далі'}</span>
           </button>

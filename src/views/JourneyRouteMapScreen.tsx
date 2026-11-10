@@ -1335,7 +1335,7 @@ export function JourneyRouteMapScreen({
               disabled={!canStartNavigation || startingNavigation}
               aria-busy={startingNavigation}
               onClick={() => void startNavigation()}
-              className={`mg-route-cta mg-press-subtle flex w-full items-center justify-center gap-2.5${sheetSnap === 'peek' ? ' route-sheet-peek-cta' : ''}`}
+              className={`mg-route-cta mg-press-subtle flex w-full items-center justify-center gap-2.5${sheetSnap === 'peek' || sheetSnap === 'collapsed' ? ' route-sheet-compact-cta' : ''}`}
             >
               <Play size={18} fill="currentColor" aria-hidden="true"/>
               <span className="font-black tracking-tight">{startingNavigation ? 'Визначаємо місце…' : journey.legs.some(leg => leg.mode === 'COMMUNITY') ? 'Розпочати поїздку' : 'Розпочати'}</span>

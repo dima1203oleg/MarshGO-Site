@@ -2026,7 +2026,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   transition: transform .16s var(--mg-ease-entrance), filter .16s ease, box-shadow .16s ease;
   touch-action: manipulation;
 }
-.route-sheet-peek-cta { min-height: 48px; }
+.route-sheet-compact-cta { min-height: 44px; }
 .route-sheet-summary--dense { min-height: 28px; }
 .route-sheet-summary--dense > span:last-child { max-width: 5.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .route-map-screen [data-testid="route-bottom-sheet"] .mg-route-ribbon__detail { display: none; }
