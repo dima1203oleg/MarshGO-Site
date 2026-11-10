@@ -324,7 +324,7 @@ export type ApiJourneyLive = {
     status: 'LIVE' | 'SCHEDULED' | 'UNVERIFIED';
     reason?: 'provider_unavailable' | 'no_fresh_matching_vehicle';
     lineRoutes?: Array<{ id: string; providerId: string; routeId: string; name: string; direction: string; directionId: string | null; geometrySource: 'gtfs_shape' | 'official_geojson'; coordinates: [number, number][]; geometryScope?: 'full_route' | 'leg_only'; zones?: TransitZoneGeometry | null }>;
-    vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean; etaSeconds?: number | null; priority?: VehiclePriority | null; etaConfidence?: 'OBSERVED' | 'PREDICTED' | 'NONE' }>;
+    vehicles?: Array<{ id: string; providerId: string; coordinates: [number, number]; bearing: number | null; speed: number | null; updatedAt: string; tripId: string | null; routeId: string | null; directionId: string | null; approachingBoarding: boolean; remainingStops: number | null; emphasized: boolean; approachEvidence?: null | { source: 'OBSERVED_PROGRESS' | 'TRIP_UPDATE_PREDICTION'; predictedArrivalAt?: string; realtimeUpdatedAt?: string; remainingStops?: number; currentStopSequence?: number; currentStopId?: string }; etaSeconds?: number | null; priority?: VehiclePriority | null; etaConfidence?: 'OBSERVED' | 'PREDICTED' | 'NONE' }>;
   }>;
 };
 export type ApiJourneyLifecycle = { id: string; state: string; currentLegId?: string | null; startedAt?: string | null; completedAt?: string | null };

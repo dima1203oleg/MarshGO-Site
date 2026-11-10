@@ -37,7 +37,7 @@ const journey = {
   ],
 } as unknown as ApiJourney;
 
-function liveWith(options: { scope?: 'full_route' | 'leg_only'; etaSeconds?: number | null; confidence?: 'OBSERVED' | 'PREDICTED' | 'NONE'; emphasized?: boolean; level?: 'L1' | 'L2' | 'L3' } = {}): ApiJourneyLive {
+function liveWith(options: { scope?: 'full_route' | 'leg_only'; etaSeconds?: number | null; confidence?: 'OBSERVED' | 'PREDICTED' | 'NONE'; predictedArrivalAt?: string; emphasized?: boolean; level?: 'L1' | 'L2' | 'L3' } = {}): ApiJourneyLive {
   return {
     journeyId: 'journey-1',
     checkedAt: '2026-11-02T10:00:00Z',
@@ -64,6 +64,10 @@ function liveWith(options: { scope?: 'full_route' | 'leg_only'; etaSeconds?: num
         bearing: 30, speed: 6, updatedAt: '2026-11-02T09:59:40Z', tripId: 'trip-1',
         routeId: '1', directionId: '0', approachingBoarding: true, remainingStops: 2,
         emphasized: options.emphasized ?? true,
+        approachEvidence: {
+          source: 'OBSERVED_PROGRESS', remainingStops: 2,
+          ...(options.predictedArrivalAt ? { predictedArrivalAt: options.predictedArrivalAt } : {}),
+        },
         etaSeconds: options.etaSeconds === undefined ? 240 : options.etaSeconds,
         etaConfidence: options.confidence ?? 'PREDICTED',
         priority: options.level === 'L1'
@@ -90,33 +94,42 @@ test('marks boarding, alighting and both walks from confirmed itinerary fields',
   assert.equal(alighting?.detail, 'Залізничний вокзал');
 });
 
-test('draws the whole published tram line with both termini and approach ETAs', () => {
-  const labels = buildRouteMapAnnotations({ journey, live: liveWith() });
+test('focused ride hides route continuations and shows only its verified approach vehicle', () => {
+  const labels = buildRouteMapAnnotations({ journey, live: liveWith(), now: Date.parse('2026-11-02T10:00:00Z') });
   const termini = labels.filter(label => label.kind === 'TERMINUS');
   const routeBadges = labels.filter(label => label.kind === 'ROUTE');
   const vehicles = labels.filter(label => label.kind === 'VEHICLE');
 
-  assert.equal(termini.length, 2);
-  assert.deepEqual(termini.map(label => label.detail), ['Сихів', 'Залізничний вокзал']);
-  assert.equal(routeBadges.length, 2);
-  assert.ok(routeBadges.every(label => label.tone === 'purple'));
+  assert.equal(termini.length, 0);
+  assert.equal(routeBadges.length, 0);
   assert.equal(vehicles.length, 1);
   assert.equal(vehicles[0]?.detail, '≈ 4 хв');
-  assert.equal(vehicles[0]?.tone, 'purple');
+  assert.equal(vehicles[0]?.tone, 'blue');
 });
 
 test('leg-only geometry hides the continuation instead of inventing it', () => {
-  const labels = buildRouteMapAnnotations({ journey, live: liveWith({ scope: 'leg_only' }) });
+  const labels = buildRouteMapAnnotations({ journey, live: liveWith({ scope: 'leg_only' }), now: Date.parse('2026-11-02T10:00:00Z') });
   assert.equal(labels.some(label => label.kind === 'TERMINUS'), false);
   assert.equal(labels.some(label => label.kind === 'ROUTE'), false);
 });
 
-test('does not print an ETA that the live feed did not confirm', () => {
-  const unconfirmed = buildRouteMapAnnotations({ journey, live: liveWith({ etaSeconds: 240, confidence: 'NONE', emphasized: false, level: 'L1' }) });
-  assert.equal(unconfirmed.some(label => label.kind === 'VEHICLE'), false);
+test('keeps a confirmed approaching vehicle but omits its unconfirmed ETA', () => {
+  const now = Date.parse('2026-11-02T10:00:00Z');
+  const unconfirmed = buildRouteMapAnnotations({ journey, live: liveWith({ etaSeconds: 240, confidence: 'NONE', emphasized: false, level: 'L1' }), now });
+  assert.equal(unconfirmed.find(label => label.kind === 'VEHICLE')?.detail, 'наближається');
+  assert.equal(unconfirmed.some(label => label.kind === 'VEHICLE' && label.detail?.includes('хв')), false);
 
-  const approaching = buildRouteMapAnnotations({ journey, live: liveWith({ etaSeconds: null, confidence: 'NONE', emphasized: true }) });
+  const approaching = buildRouteMapAnnotations({ journey, live: liveWith({ etaSeconds: null, confidence: 'NONE', emphasized: true }), now });
   assert.equal(approaching.find(label => label.kind === 'VEHICLE')?.detail, 'наближається');
+});
+
+test('uses the server predicted-arrival evidence when the API omits etaConfidence', () => {
+  const labels = buildRouteMapAnnotations({
+    journey,
+    live: liveWith({ confidence: 'NONE', predictedArrivalAt: '2026-11-02T10:04:00Z' }),
+    now: Date.parse('2026-11-02T10:00:00Z'),
+  });
+  assert.equal(labels.find(label => label.kind === 'VEHICLE')?.detail, '≈ 4 хв');
 });
 
 test('picks the transit leg that owns the journey and uses Ukrainian plurals', () => {

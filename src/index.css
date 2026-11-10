@@ -2169,13 +2169,13 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   margin-top: .18rem;
   padding: 2px 8px;
   border-radius: 7px;
-  background: #7B1BE0;
+  background: var(--mg-action);
   color: #fff;
   font-size: 12px;
   font-weight: 900;
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 4px 12px rgba(123, 27, 224, .5);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--mg-action) 48%, transparent);
 }
 
 /* Keep map attribution above the sheet instead of behind it. */

@@ -1223,17 +1223,21 @@ export class MapLibreAdapter implements MapAdapter {
     const overlay = this.focusedTransitOverlay;
     const modeColor = overlay?.color ?? '#327FC3';
     const routes = (overlay?.lineRoutes ?? []).filter(route => route.coordinates.length >= 2);
-    const zonesForRoute = routes.map(route => zoneFeaturesFor(route.zones, route.geometryScope));
-    lineSource?.setData({ type: 'FeatureCollection', features: routes.map((route, index) => ({
+    const zonesForRoute = routes.map(route => zoneFeaturesFor(route.zones, route.geometryScope, true));
+    // The selected itinerary already renders its own confirmed leg geometry. In this
+    // passenger-focused overlay, only zone B is trusted; retain an unzoned line only
+    // when the provider explicitly says its coordinates are leg-only.
+    const contextFeatures = routes.flatMap((route, index) => route.geometryScope === 'leg_only' && zonesForRoute[index]!.length === 0 ? [{
       type: 'Feature' as const,
       properties: {
         modeColor, direction: route.direction, routeId: route.id,
         directionId: route.directionId ?? null,
         directionOffsetPx: transitDirectionOffsetPx(route.directionId, index),
-        hasZones: zonesForRoute[index]!.length > 0,
+        hasZones: false,
       },
       geometry: { type: 'LineString' as const, coordinates: route.coordinates },
-    })) });
+    }] : []);
+    lineSource?.setData({ type: 'FeatureCollection', features: contextFeatures });
     const zoneFeatures = routes.flatMap((route, index) => {
       const directionOffsetPx = transitDirectionOffsetPx(route.directionId, index);
       return zonesForRoute[index]!.map(zone => ({

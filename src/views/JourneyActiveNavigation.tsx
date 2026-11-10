@@ -26,7 +26,7 @@ import {
   type RouteSheetSnap,
 } from './routeSheet';
 import { themeService } from '../services/theme';
-import { priorityLevelOf } from '../map/transportVisualZones';
+import { etaConfidenceForDisplay, focusedApproachVehiclesFor, isFreshVehicleForDisplay, priorityLevelOf } from '../map/transportVisualZones';
 import { formatJourneyDurationTile } from './journeyResultPresentation';
 import { legPriceDisplay } from './cashFare';
 import {
@@ -181,6 +181,8 @@ export function JourneyActiveNavigation({
       return;
     }
     mapAdapter.current?.setLiveTransitPosition?.(null);
+    const vehicles = liveSegment.vehicles ?? [];
+    const focusedApproachIds = new Set(focusedApproachVehiclesFor(vehicles).map(vehicle => vehicle.id));
     mapAdapter.current?.setFocusedTransitOverlay?.({
       color: journeyModeColor(liveLeg.mode, liveLeg.transportType),
       transportType: liveLeg.transportType ?? liveLeg.mode,
@@ -192,16 +194,19 @@ export function JourneyActiveNavigation({
         geometryScope: route.geometryScope,
         zones: route.zones ?? null,
       })),
-      vehicles: (liveSegment.vehicles ?? []).map(vehicle => ({
-        id: vehicle.id,
-        coordinates: vehicle.coordinates,
-        updatedAt: vehicle.updatedAt,
-        routeLabel: liveLeg.routeName ?? activeLegTitle(liveLeg),
-        emphasized: vehicle.emphasized,
-        priorityLevel: priorityLevelOf(vehicle),
-        etaSeconds: vehicle.etaSeconds ?? null,
-        etaConfidence: vehicle.etaConfidence ?? 'NONE',
-      })),
+      vehicles: vehicles.filter(vehicle => vehicle.priority?.reason !== 'stale_position' && isFreshVehicleForDisplay(vehicle)).map(vehicle => {
+        const selectedApproach = focusedApproachIds.has(vehicle.id);
+        return {
+          id: vehicle.id,
+          coordinates: vehicle.coordinates,
+          updatedAt: vehicle.updatedAt,
+          routeLabel: liveLeg.routeName ?? activeLegTitle(liveLeg),
+          emphasized: selectedApproach,
+          priorityLevel: selectedApproach ? priorityLevelOf(vehicle) : vehicle.priority?.reason === 'stale_position' ? 'L0' : 'L1',
+          etaSeconds: vehicle.etaSeconds ?? null,
+          etaConfidence: etaConfidenceForDisplay(vehicle),
+        };
+      }),
     });
   }, [liveSegment, liveLeg, mapAdapterReady]);
 
