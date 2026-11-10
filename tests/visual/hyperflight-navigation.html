@@ -6,11 +6,11 @@
     <meta name="color-scheme" content="dark light" />
     <title>MARSHGO — HyperFlight preview</title>
     <style>
-      #fixture-disclosure { position: fixed; z-index: 1000; bottom: calc(178px + 8px); left: 12px; width: max-content; max-width: calc(100vw - 24px); border: 1px solid #64748b; border-radius: 12px; padding: 4px 8px; background: #111c2aee; color: #fff; font: 600 10px/1.2 system-ui, sans-serif; text-align: center; pointer-events: none; }
+      #fixture-disclosure { position: fixed; z-index: 1000; top: calc(env(safe-area-inset-top) + 96px); left: 12px; width: max-content; max-width: calc(100vw - 100px); border: 1px solid #64748b; border-radius: 12px; padding: 3px 7px; background: #111c2aee; color: #fff; font: 600 8px/1.2 system-ui, sans-serif; text-align: center; white-space: nowrap; pointer-events: none; }
     </style>
   </head>
   <body>
-    <div id="fixture-disclosure" role="note">ДЕМО · не дані Львова · GPS не передається · 1/5</div>
+    <div id="fixture-disclosure" role="note">ДЕМО · тестові дані · GPS вимкнено · 1/5</div>
     <div id="root"></div>
     <script type="module" src="./hyperflight-navigation-fixture.tsx"></script>
   </body>

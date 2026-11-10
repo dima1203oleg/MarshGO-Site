@@ -66,7 +66,7 @@ function Fixture() {
   useEffect(() => {
     document.title = `MARSHGO — HyperFlight preview · етап ${previewLeg + 1}/5 · GPS без змін`;
     const disclosure = document.getElementById('fixture-disclosure');
-    if (disclosure) disclosure.textContent = `ДЕМО · не дані Львова · GPS не передається · ${previewLeg + 1}/5`;
+    if (disclosure) disclosure.textContent = `ДЕМО · тестові дані · GPS вимкнено · ${previewLeg + 1}/5`;
   }, [previewLeg]);
   return <>
     <output aria-label="Стан тестового перегляду" data-testid="hyperflight-fixture-state" className="sr-only">
