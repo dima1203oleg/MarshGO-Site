@@ -61,3 +61,9 @@ At 320 px, the five-step ribbon measured 374 px of content in a 318 px scroller;
 - **NOT_TESTED:** authenticated `/journeys/search` and `/journeys/:id` against live API data. The current `:7777` process was intentionally left untouched.
 - Screenshot proof was captured from the local visual fixture during browser review; no screenshot file was added to the repository.
 - Production release remains **NOT_RELEASED** pending real-device and live-runtime acceptance.
+
+## Git record
+
+- Source implementation commit: `fedf6e580ee7198a8d5f2df6268f8dd3de29b4a6`.
+- Draft pull request: [#129 — Compact shared journey bottom sheets](https://github.com/dima1203oleg/MarshGO-Site/pull/129).
+- Exact-head GitHub CI was still running when this report was updated; no merge or deployment is authorized by this report.
