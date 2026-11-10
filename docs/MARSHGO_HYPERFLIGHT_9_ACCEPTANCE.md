@@ -23,13 +23,13 @@ Release status: `NOT_RELEASED`
 | Gate | Status | Evidence |
 |---|---|---|
 | Route geometry and timing | VERIFIED | `npx tsx --test tests/journey-navigation-gps.test.ts tests/route-preview-path.test.ts`: 17 passed, 0 failed, 0 skipped. Covers path sampling, turns, reverse travel, anchors, antimeridian, invalid jumps, and reduced motion. |
-| Full Site test suite | VERIFIED | `npm test`: 662 passed, 0 failed, 0 skipped. Run before the final CSS-only motion-token adjustment. |
-| TypeScript | VERIFIED | `npm run typecheck` passed before the final CSS-only motion-token adjustment. |
-| ESLint | VERIFIED | `npm run lint -- --no-warn-ignored` exited 0. npm printed an unknown-option warning; ESLint itself passed. |
+| Full Site test suite | VERIFIED | Final `npm test`: 662 passed, 0 failed, 0 skipped. |
+| TypeScript | VERIFIED | Final `npm run typecheck` passed. |
+| ESLint | VERIFIED | Final `npm run lint` passed. |
 | Production build | VERIFIED | `npm run build` passed after the final CSS adjustment; Vite transformed 1,916 modules. |
 | Design token check | VERIFIED | `npm run check-tokens`: 153 declared, 124 referenced; all referenced CSS properties defined. |
 | Bundle and React runtime checks | VERIFIED | `npm run check:bundle`: 16 JavaScript chunks each at or below 350 KB gzip. `npm run check-single-react`: one React runtime. |
-| Browser boot smoke | BLOCKED | The candidate worktree does not resolve the declared `playwright` package (`ERR_MODULE_NOT_FOUND`). It was not installed during this task. |
+| Browser boot smoke | VERIFIED in CI / BLOCKED locally | Exact-head CI run `42810336926` passed `npx playwright install --with-deps chromium` and `npm run boot-smoke`. Local worktree boot-smoke remains unavailable because its declared `playwright` dependency does not resolve; no local dependency install was performed. |
 | Visual review through current zrok | BLOCKED | The open zrok route displayed “Сервіс MARSHGO тимчасово недоступний” and an existing route-details screen; it did not serve this candidate or show active navigation. The shared tunnel and port 7777 were left unchanged. |
 | Physical iPhone / iOS Safari | NOT_TESTED | No physical-device touch acceptance was performed. |
 | Frame rate, long tasks, memory | NOT_TESTED | No runtime performance profile was collected. |
@@ -48,3 +48,9 @@ Release status: `NOT_RELEASED`
 ## Remaining acceptance work
 
 The code-level and build checks pass, but this candidate is **PARTIAL** overall until it is opened in a candidate-served browser session and verified on touch hardware. Do not infer live route behavior, smooth 60 FPS, iOS Safari gesture behavior, or production readiness from the fixture tests and build. Keep production `NOT_RELEASED`.
+
+## Git record
+
+- Implementation commit: `d4aba1dadc182747806950ca321bb7a99806de20`.
+- Draft pull request: [#129 — Compact shared journey bottom sheets](https://github.com/dima1203oleg/MarshGO-Site/pull/129).
+- Exact-head CI run `42810336926` completed successfully, including install, lint, typecheck, full tests, token check, build, bundle check, single-React check and browser boot smoke.
