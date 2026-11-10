@@ -51,7 +51,8 @@ describe('home banner geometry and profile trust ink', () => {
 
   it('distributes tall-phone hero slack instead of leaving dead space above the tab bar', () => {
     const sheet = css();
-    assert.match(sheet, /\.home-marshpass-promo \{[^}]*flex-grow: 1;[^}]*max-height: 14rem;/, 'the promo must absorb slack but stay capped');
+    assert.match(sheet, /\.home-marshpass-promo \{[^}]*flex-grow: 1;[^}]*max-height: clamp\(11\.25rem, 21svh, 12\.25rem\);/, 'the promo must absorb slack while matching the reference height on tall iPhones');
+    assert.match(sheet, /\.home-action-grid \{ grid-template-rows: repeat\(2, clamp\(6\.5rem, 12\.5svh, 7\.25rem\)\); \}/, 'the 15 Pro Max action tiles must keep the reference proportions');
     assert.match(sheet, /\.home-popular-routes \{[^}]*flex-grow: 1;/, 'popular routes share the slack');
     assert.match(sheet, /\.home-popular-routes__row \{ flex: 1; \}/, 'the card row stretches inside the section');
     assert.match(sheet, /\.home-popular-route \{ height: auto; min-height: 4rem; \}/, 'cards stretch from a floor, not a fixed height');

@@ -694,7 +694,7 @@ export function JourneyRouteMapScreen({
   const renderSegmentCards = () => timeline.flatMap((item, index) => {
     if (item.kind === 'WAIT') {
       return [(
-        <li key={item.id} className="rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-1.5 text-xs text-[var(--route-muted)]">
+        <li key={item.id} className="rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-1 text-xs text-[var(--route-muted)]">
           <span className="inline-flex items-center gap-2"><Clock3 size={14} className="text-[var(--route-subtle)]"/>Очікування · {formatDuration(item.durationSeconds)}</span>
         </li>
       )];
@@ -732,7 +732,7 @@ export function JourneyRouteMapScreen({
           ...(leg.mode === 'COMMUNITY' ? { backgroundColor: 'var(--route-community-surface)' } : {}),
         }}
       >
-        <div className="flex items-start gap-1.5 px-1.5 py-1">
+        <div className="mg-route-segment__body flex items-start gap-1.5">
           <button
             type="button"
             onClick={() => chooseSegment(leg.id)}
@@ -1204,7 +1204,7 @@ export function JourneyRouteMapScreen({
           {/* Independent scrolling for details in medium and expanded modes */}
           {(sheetSnap === 'half' || sheetSnap === 'expanded') && (
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-1.5" data-testid="route-segment-list">
-              <ol className="space-y-1 pt-0.5">
+              <ol className="mg-route-segment-list">
                 {renderSegmentCards()}
               </ol>
               {recommendation && <p data-testid="journey-route-recommendation" className="mb-1 text-xs font-semibold leading-4 text-[var(--route-muted)]">Рекомендація: {recommendation}</p>}
@@ -1234,7 +1234,7 @@ export function JourneyRouteMapScreen({
           )}
 
           {/* Pinned CTA in all four snap states */}
-          <div className={`shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-0.5' : 'mt-auto pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-0.5 mb-0.5'}`}>
+          <div className={`shrink-0 px-4 ${sheetSnap === 'peek' ? 'pb-0.5' : 'mt-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-0.5'}`}>
             {sheetSnap !== 'peek' && communityLeg?.offerId && onBookOffer && (() => {
               const communityPrice = legPriceDisplay(communityLeg).value;
               return (

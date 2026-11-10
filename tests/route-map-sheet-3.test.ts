@@ -41,7 +41,7 @@ test('route streets and summary metrics keep compact side-by-side layouts', () =
 test('expanded route details use a 44px swipeable stage ribbon instead of a tall vertical ribbon', () => {
   assert.match(routeScreen, /mg-route-ribbon mg-route-ribbon--compact[^>]*role="list"/);
   assert.match(routeScreen, /mg-route-ribbon__copy[\s\S]*?mg-route-ribbon__label[\s\S]*?mg-route-ribbon__detail/);
-  assert.match(css, /\.mg-route-ribbon--compact\s*\{[^}]*height:\s*48px;[^}]*min-height:\s*48px;/s);
+  assert.match(css, /\.mg-route-ribbon--compact\s*\{[^}]*height:\s*var\(--mg-sheet-ribbon-height\);[^}]*min-height:\s*var\(--mg-sheet-ribbon-height\);/s);
   assert.match(css, /\.mg-route-ribbon--compact \.mg-route-ribbon__pill\s*\{[^}]*height:\s*44px;[^}]*min-height:\s*44px;/s);
 });
 
@@ -241,7 +241,7 @@ test('the duplicated stage narration is gone and the sheet breathes without it',
   assert.doesNotMatch(routeScreen, /smart-step-guidance/, 'the pinned smart-step aside repeated what the active card already says');
   assert.doesNotMatch(routeScreen, /route-medium-stages/, 'the MEDIUM line repeated the ribbon labels and durations');
   assert.match(routeScreen, /data-testid="route-show-on-map"/, 'FULL must offer one tap back to the map');
-  assert.match(routeScreen, /className="space-y-1 pt-0\.5"/, 'segment cards must use the compact one-step rhythm');
+  assert.match(routeScreen, /className="mg-route-segment-list"/, 'segment cards must use the token-driven compact one-step rhythm');
   const pillAt = routeScreen.indexOf('data-testid="route-show-on-map"');
   const pillBlock = routeScreen.slice(pillAt - 600, pillAt + 120);
   assert.match(pillBlock, /top: 'max\(\.5rem, env\(safe-area-inset-top\)\)'/,
@@ -258,7 +258,7 @@ test('the primary action uses the canonical blue–graphite ramp, never purple',
   assert.match(block, /var\(--mg-action\)/, 'the CTA must be built from the action token');
   assert.match(block, /var\(--mg-navy\)/, 'the graphite stop of the ramp must be the navy token');
   assert.doesNotMatch(block, /#A21CFF|#7C1BE3|#A855F7|#8845E8/i, 'the purple route CTA palette must not come back');
-  assert.match(block, /min-height: 52px;/, 'the compact CTA keeps a 44 px+ touch target');
+  assert.match(block, /min-height: var\(--mg-sheet-cta-min-height\);/, 'the compact CTA keeps a 44 px+ touch target');
   assert.match(block, /color-mix\(in srgb, var\(--mg-blue\) 68%, transparent\)/, 'the focus ring follows the accent token');
 
   // The app-wide touch-target floor is (0,2,1) and a single-class rule is (0,1,0):

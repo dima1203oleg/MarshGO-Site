@@ -115,6 +115,18 @@ html.dark {
   --mg-callout-bg: rgba(255, 255, 255, .96);
   --mg-callout-ink: #10263D;
   --mg-callout-border: rgba(20, 36, 59, .16);
+  /* Compact density contract for the route-details sheet: one source for the
+     vertical rhythm so summary, ribbon, cards and CTA tighten together.
+     Geometry only — both themes inherit the same values. */
+  --mg-sheet-stack-gap: 4px;
+  --mg-sheet-card-pad-y: 4px;
+  --mg-sheet-card-pad-x: 6px;
+  --mg-sheet-summary-pad-top: 2px;
+  --mg-sheet-summary-pad-bottom: 4px;
+  --mg-sheet-endpoints-pad-bottom: 3px;
+  --mg-sheet-ribbon-height: 48px;
+  --mg-sheet-label-leading: 1.2;
+  --mg-sheet-cta-min-height: 52px;
   background-color: var(--route-canvas);
   color-scheme: light;
 }
@@ -1498,6 +1510,15 @@ html.dark .coverage-details[open] { border-color: var(--mg-border-medium); }
 .app-tabbar-inner button { transition: background-color var(--mg-dur-fast) var(--mg-ease-standard), color var(--mg-dur-fast) var(--mg-ease-standard); }
 .app-tabbar-inner button svg { transition: transform var(--mg-dur-base) var(--mg-ease-entrance); }
 .app-tabbar-inner button[aria-current="page"] svg { transform: translateY(-1px) scale(1.08); }
+@keyframes mg-tab-icon-dock-pop {
+  0% { transform: translateY(0) scale(.9); }
+  42% { transform: translateY(-.18rem) scale(1.22); }
+  72% { transform: translateY(.04rem) scale(.98); }
+  100% { transform: translateY(-1px) scale(1.08); }
+}
+.app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg {
+  animation: mg-tab-icon-dock-pop var(--mg-dur-slow) var(--mg-ease-entrance) both;
+}
 .app-tabbar-inner button:active svg { transform: scale(.9); }
 
 /* Small print carries real information, so it must not fall below AA in either theme. */
@@ -1960,7 +1981,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   color: var(--route-ink);
   font-size: 12.5px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: var(--mg-sheet-label-leading);
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1971,7 +1992,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   font-size: 12px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  line-height: var(--mg-sheet-label-leading);
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1981,8 +2002,8 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 .mg-route-ribbon--compact {
   box-sizing: border-box;
   align-items: center;
-  height: 48px;
-  min-height: 48px;
+  height: var(--mg-sheet-ribbon-height);
+  min-height: var(--mg-sheet-ribbon-height);
   padding-block: 2px;
 }
 .mg-route-ribbon--compact .mg-route-ribbon__item {
@@ -2111,7 +2132,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 }
 
 .mg-route-cta {
-  min-height: 52px;
+  min-height: var(--mg-sheet-cta-min-height);
   border-radius: 16px;
   /* Canonical action ramp: action blue fading into the graphite navy it sits on.
      No second brand hue — the primary action must read as MARSHGO, not as a
@@ -2136,7 +2157,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   grid-template-columns: minmax(0, 1fr) 13px minmax(0, 1fr);
   align-items: center;
   gap: 5px;
-  padding: 0 12px 3px;
+  padding: 0 12px var(--mg-sheet-endpoints-pad-bottom);
   color: var(--route-ink);
   font-size: 11px;
   font-weight: 750;
@@ -2157,7 +2178,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   align-items: center;
   justify-content: space-between;
   gap: 7px;
-  padding: 2px 12px 4px;
+  padding: var(--mg-sheet-summary-pad-top) 12px var(--mg-sheet-summary-pad-bottom);
 }
 .route-sheet-summary__metrics {
   display: flex;
@@ -2486,6 +2507,10 @@ html {
 
 /* The focused segment card keeps a slow halo; the rest recede via opacity. */
 .mg-route-segment { position: relative; }
+/* Dense list rhythm and card padding come from the sheet density tokens so the
+   whole details column tightens as one unit, not per-component literals. */
+.mg-route-segment-list { display: grid; gap: var(--mg-sheet-stack-gap); padding-block-start: 2px; }
+.mg-route-segment__body { padding: var(--mg-sheet-card-pad-y) var(--mg-sheet-card-pad-x); }
 .mg-route-segment[data-active="true"]::after {
   content: '';
   position: absolute;
@@ -2548,6 +2573,7 @@ html {
   .route-map-scale,
   .mg-route-ribbon__pill,
   .mg-route-cta,
+  .app-tabbar-inner button[aria-current="page"] svg,
   .route-header-back,
   .route-header-icon,
   .route-map-control {
@@ -2555,6 +2581,7 @@ html {
   }
   .route-map-screen > header,
   .route-map-screen > section[data-testid="route-bottom-sheet"],
+  .app-tabbar-inner button[aria-current="page"] svg,
   .route-details-head,
   .route-sheet-grabber__handle,
   .route-toast,

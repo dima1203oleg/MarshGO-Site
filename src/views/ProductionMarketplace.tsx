@@ -2364,7 +2364,7 @@ export function ProductionMarketplace() {
   const hideSharedHeader = tab === 'navigation' || Boolean(activeJourneyNavigation || selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
 
   const immersiveRouteView = Boolean(activeJourneyNavigation || selectedRouteMap);
-  return <main className={`production-app min-h-[100svh] bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[calc(5.3rem+env(safe-area-inset-bottom))]'}`}>
+  return <main className={`production-app min-h-[100svh] bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[var(--mg-global-nav-clearance)]'}`}>
     {!hideSharedHeader && header}
     {isOffline && !hideSharedHeader && <div className="mx-auto w-full max-w-xl px-5"><p role="status" aria-live="polite" data-testid="offline-notice" className="mg-fade flex items-start gap-2 rounded-2xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-tint)] px-3 py-2.5 text-xs font-semibold leading-snug text-[var(--mg-ink-secondary)]">
       <WifiOff size={15} aria-hidden="true" className="mt-px shrink-0"/>
