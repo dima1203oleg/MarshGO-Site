@@ -16,7 +16,7 @@ import { configuredMapDarkStyleUrl, configuredMapStyleUrl } from './mapConfig';
 import { journeySegmentsForFocus, visibleJourneyWaypoints } from './focusMode';
 import { nearestRouteHitIds } from './routeHitTesting';
 import { placeJourneyLabels } from './routeLabelPlacement';
-import { cameraEasing, cameraMotionDuration, adaptiveCameraDuration, CAMERA_FOCUS_DURATION_MS, CAMERA_ZOOM_STEP_DURATION_MS, interruptCameraForUserGesture } from './cameraMotion';
+import { cameraEasing, cameraMotionDuration, adaptiveCameraDuration, CAMERA_FOCUS_DURATION_MS, CAMERA_ZOOM_STEP_DURATION_MS, claimCameraForUserGesture } from './cameraMotion';
 import { ROUTE_EMPHASIS_TOKENS, SEGMENT_REVEAL_TOKENS, routeArrowExpression, routeStrokeWidthExpression, walkGeometryTokens, walkWidthExpression, ROUTE_ARROW_TOKENS } from './routeGeometryTokens';
 import { measureProjectedFocus } from './routeFocusMeasurement';
 import { cameraForRotatedPoints, cameraMoveEffort } from './routeCameraFocus';
@@ -267,6 +267,8 @@ export class MapLibreAdapter implements MapAdapter {
   private lastFitPadding: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 };
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
+  /** Trackpad and mouse-wheel input never arrives with an originalEvent on a camera event. */
+  private readonly wheelGestureListener = () => { this.setCameraModeInternal('FREE'); };
   onRouteSegmentSelect: (id: string) => void = () => undefined;
   onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void;
   onCameraMove?: () => void;
@@ -351,18 +353,17 @@ export class MapLibreAdapter implements MapAdapter {
     });
     // Only the user's own gestures leave follow mode; our camera animations (zoom, bearing) must not.
     const userGesture = (event: { originalEvent?: unknown }) => {
-      // Explicit user input must win over an in-flight focus/follow animation.
-      interruptCameraForUserGesture(
-        event.originalEvent,
-        this.cameraMode,
-        () => this.map.stop(),
-        () => this.setCameraModeInternal('FREE'),
-      );
+      // Ownership only: MapLibre cancels an in-flight focus glide itself the moment a handler becomes
+      // active, and a map.stop() here would reset the pinch and delete the flick's momentum.
+      claimCameraForUserGesture(event.originalEvent, () => this.setCameraModeInternal('FREE'));
     };
     this.map.on('dragstart', userGesture);
     this.map.on('zoomstart', userGesture);
     this.map.on('rotatestart', userGesture);
     this.map.on('pitchstart', userGesture);
+    // Scroll zoom fires its camera events without an originalEvent, so a trackpad would read as one
+    // of our own animations. The DOM wheel is unambiguously the rider's input.
+    container.addEventListener('wheel', this.wheelGestureListener, { passive: true });
   }
 
   private markCameraRequest() {
@@ -1506,6 +1507,7 @@ export class MapLibreAdapter implements MapAdapter {
   }
   retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
   destroy() {
+    this.map.getContainer().removeEventListener('wheel', this.wheelGestureListener);
     this.cancelLiveTransitGlide();
     this.marker?.remove();
     this.liveTransitMarker?.remove();

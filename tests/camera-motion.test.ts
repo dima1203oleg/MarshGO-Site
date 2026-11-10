@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cameraEasing, cameraMotionDuration, adaptiveCameraDuration, CAMERA_FOCUS_DURATION_MS, interruptCameraForUserGesture } from '../src/map/cameraMotion';
+import { cameraEasing, cameraMotionDuration, adaptiveCameraDuration, CAMERA_FOCUS_DURATION_MS, claimCameraForUserGesture } from '../src/map/cameraMotion';
 
 test('the camera easing is the entrance token: it starts fast and settles softly', () => {
   const easing = cameraEasing();
@@ -33,29 +33,35 @@ test('camera animations retain their configured duration otherwise', () => {
   assert.equal(cameraMotionDuration(520, false), 520);
 });
 
-test('programmatic camera events do not interrupt motion or enter manual mode', () => {
-  let stopped = 0;
+test('programmatic camera events do not enter manual mode', () => {
   let manual = 0;
-  assert.equal(interruptCameraForUserGesture(undefined, 'FOLLOW', () => stopped++, () => manual++), false);
-  assert.equal(interruptCameraForUserGesture(null, 'FOLLOW', () => stopped++, () => manual++), false);
-  assert.equal(stopped, 0);
+  assert.equal(claimCameraForUserGesture(undefined, () => manual++), false);
+  assert.equal(claimCameraForUserGesture(null, () => manual++), false);
   assert.equal(manual, 0);
 });
 
-test('user gestures stop in-flight motion and leave follow mode', () => {
-  let stopped = 0;
+/**
+ * A stop() asked for by the gesture handler is the defect that killed pinch, rotate and flick on a
+ * touch screen: MapLibre reaches it while the gesture is mid-frame, so it resets the two-finger
+ * handler and clears the recorded momentum. The API takes no stop callback, so a gesture can only
+ * ever publish ownership.
+ */
+test('a user gesture claims the camera and stops nothing', () => {
   let manual = 0;
-  assert.equal(interruptCameraForUserGesture({ type: 'pointerdown' }, 'FOLLOW', () => stopped++, () => manual++), true);
-  assert.equal(stopped, 1);
+  assert.equal(claimCameraForUserGesture({ type: 'pointerdown' }, () => manual++), true);
   assert.equal(manual, 1);
+  assert.equal(claimCameraForUserGesture.length, 2);
 });
 
-test('user gestures stop animation without redundant mode transitions when already manual', () => {
-  let stopped = 0;
+/**
+ * A focus animation already parks the camera in FREE, so suppressing the notification there left
+ * the screen auto-refitting over the rider's pan: ownership has to be republished on every input.
+ */
+test('ownership is republished for a gesture that arrives while the camera already sits in FREE', () => {
   let manual = 0;
-  interruptCameraForUserGesture({ type: 'wheel' }, 'FREE', () => stopped++, () => manual++);
-  assert.equal(stopped, 1);
-  assert.equal(manual, 0);
+  assert.equal(claimCameraForUserGesture({ type: 'touchmove' }, () => manual++), true);
+  assert.equal(claimCameraForUserGesture({ type: 'touchmove' }, () => manual++), true);
+  assert.equal(manual, 2);
 });
 
 test('a near-static refit snaps faster than the base duration', () => {
