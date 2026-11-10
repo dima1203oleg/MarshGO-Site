@@ -3,7 +3,8 @@ import { z } from 'zod';
 /**
  * Passenger navigation across a reload or a cold PWA relaunch.
  *
- * The record is deliberately tiny: which journey, which stage of it, which
+ * The record is deliberately tiny: which journey, which stage the passenger
+ * was previewing, which
  * account started it, and when. It holds no token, no coordinate and no GPS
  * history — prices, live status, geometry and stops all come back from
  * `GET /journeys/:id`, which the server only answers for the owner. A record
@@ -89,7 +90,8 @@ export class ActiveJourneyNavigationStore {
   }
 
   /**
-   * Keeps the stage pointer in step with the passenger. A stage change that
+   * Keeps the preview-stage pointer in step with the passenger. It does not
+   * represent actual journey progress or confirm boarding/alighting. A preview change that
    * arrives after the journey was exited or replaced is ignored, so a late
    * callback can never resurrect a record the user already left.
    */

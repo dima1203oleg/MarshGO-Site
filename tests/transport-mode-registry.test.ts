@@ -5,6 +5,8 @@ import { getTransportModeVisual, normalizeTransportMode, transportModeRegistry }
 
 test('visual registry covers exactly the twelve canonical user-facing transport modes', () => {
   assert.deepEqual(Object.keys(transportModeRegistry), transportModes.map(({ id }) => id));
+  assert.equal(new Set(transportModes.map(({ id }) => getTransportModeVisual(id).icon)).size, transportModes.length,
+    'each public transport category must use its own silhouette component');
   for (const mode of transportModes) {
     const visual = getTransportModeVisual(mode.id);
     assert.equal(visual.group, mode.group, `${mode.id} group`);
@@ -16,6 +18,17 @@ test('visual registry covers exactly the twelve canonical user-facing transport 
     assert.equal(visual.mapLineStyle.cap, 'round');
     assert.equal(visual.accessibilityLabel, visual.label);
   }
+});
+
+test('minibus and transfer have vehicle silhouettes instead of a shared tram or direction glyph', () => {
+  const minibus = getTransportModeVisual('MINIBUS');
+  const tram = getTransportModeVisual('TRAM');
+  const transfer = getTransportModeVisual('TRANSFER');
+  assert.notEqual(minibus.icon, tram.icon);
+  assert.notEqual(transfer.icon, tram.icon);
+  assert.notEqual(transfer.icon, getTransportModeVisual('carsharing').icon);
+  assert.equal(minibus.englishLabel, 'Minibus');
+  assert.equal(transfer.englishLabel, 'Transfer shuttle');
 });
 
 test('normalizes journey API/feed aliases to the same canonical visual mode', () => {

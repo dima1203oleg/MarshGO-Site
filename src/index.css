@@ -1695,6 +1695,32 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
 @keyframes marshgo-puck-pulse { 0% { transform: scale(.5); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .marshgo-puck__halo { animation: none; } }
 
+/* HyperFlight's temporary preview cursor is visually distinct from the live GPS puck. */
+.marshgo-hyperlight-scout { position: relative; display: grid; width: 30px; height: 30px; place-items: center; pointer-events: none; filter: drop-shadow(0 0 7px color-mix(in srgb, var(--mg-blue) 62%, transparent)); }
+.marshgo-hyperlight-scout__trail { position: absolute; top: 16px; left: 12px; width: 6px; height: 16px; border-radius: 999px; transform: scaleY(1); transform-origin: 50% 0; background: linear-gradient(to bottom, color-mix(in srgb, var(--route-brand-ink, var(--mg-ink-primary)) 88%, transparent), color-mix(in srgb, var(--mg-blue) 8%, transparent)); opacity: .72; transition: transform var(--mg-dur-fast) var(--mg-ease-standard), opacity var(--mg-dur-fast) var(--mg-ease-standard); }
+.marshgo-hyperlight-scout__halo { position: absolute; inset: 1px; border: 1px solid color-mix(in srgb, var(--route-brand-ink, var(--mg-ink-primary)) 82%, transparent); border-radius: 50%; background: color-mix(in srgb, var(--mg-blue) 18%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--mg-blue) 50%, transparent), inset 0 0 7px color-mix(in srgb, var(--route-brand-ink, var(--mg-ink-primary)) 35%, transparent); }
+.marshgo-hyperlight-scout__core { position: relative; display: grid; width: 10px; height: 10px; place-items: center; border: 1px solid var(--route-sheet, var(--mg-canvas)); border-radius: 50%; background: var(--mg-blue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--route-sheet, var(--mg-canvas)) 58%, transparent), 0 0 10px color-mix(in srgb, var(--mg-blue) 95%, transparent); transition: transform var(--mg-dur-fast) var(--mg-ease-standard); }
+.marshgo-hyperlight-scout__core i { width: 3px; height: 3px; border-radius: 50%; background: var(--route-sheet, var(--mg-canvas)); }
+.marshgo-hyperlight-scout[data-phase='igniting'] .marshgo-hyperlight-scout__halo { animation: marshgo-hyperlight-ignite var(--mg-dur-fast) var(--mg-ease-exit) both; }
+.marshgo-hyperlight-scout[data-phase='accelerating'] .marshgo-hyperlight-scout__trail,
+.marshgo-hyperlight-scout[data-phase='cruising'] .marshgo-hyperlight-scout__trail { transform: scaleY(1.3); opacity: .86; }
+.marshgo-hyperlight-scout[data-phase='approaching'] .marshgo-hyperlight-scout__trail,
+.marshgo-hyperlight-scout[data-phase='docking'] .marshgo-hyperlight-scout__trail { transform: scaleY(.56); opacity: .45; }
+.marshgo-hyperlight-scout[data-phase='accelerating'] .marshgo-hyperlight-scout__core { transform: scale(1.12); }
+.marshgo-hyperlight-scout[data-phase='cornering'] .marshgo-hyperlight-scout__trail { transform: scaleY(1); opacity: .62; }
+.marshgo-hyperlight-scout[data-phase='dissolving'] .marshgo-hyperlight-scout__trail,
+.marshgo-hyperlight-scout[data-phase='dissolving'] .marshgo-hyperlight-scout__halo,
+.marshgo-hyperlight-scout[data-phase='dissolving'] .marshgo-hyperlight-scout__core { opacity: 0; transform: scale(.72); transition: opacity var(--mg-dur-fast) var(--mg-ease-exit), transform var(--mg-dur-fast) var(--mg-ease-exit); }
+@keyframes marshgo-hyperlight-ignite { from { transform: scale(.65); opacity: .2; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .marshgo-hyperlight-scout__trail,
+  .marshgo-hyperlight-scout__core,
+  .marshgo-hyperlight-scout[data-phase='dissolving'] .marshgo-hyperlight-scout__trail,
+  .marshgo-hyperlight-scout[data-phase='dissolving'] .marshgo-hyperlight-scout__halo,
+  .marshgo-hyperlight-scout[data-phase='dissolving'] .marshgo-hyperlight-scout__core { transition: none; }
+  .marshgo-hyperlight-scout[data-phase='igniting'] .marshgo-hyperlight-scout__halo { animation: none; }
+}
+
 /* Canonical MARSHGO navy theme and square Home composition. */
 html.dark body,
 html.dark .production-app {

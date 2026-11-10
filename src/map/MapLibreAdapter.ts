@@ -3,8 +3,9 @@ import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Coordinate } from '../../shared/navigation/contracts';
-import type { CameraMode, ColoredRouteSegment, FocusedTransitMapOverlay, LiveTransitPosition, MapAdapter, MapAnnotation, MapStatus, MapTheme, RouteFitPadding, RouteWaypoint, ScreenPoint } from './MapAdapter';
+import type { CameraMode, ColoredRouteSegment, FocusedTransitMapOverlay, LiveTransitPosition, MapAdapter, MapAnnotation, MapStatus, MapTheme, RouteFitPadding, RoutePreviewFlightOptions, RouteWaypoint, ScreenPoint } from './MapAdapter';
 import { transitDirectionOffsetPx } from './MapAdapter';
+import { nearestRoutePreviewDistance, routePreviewEasedProgress, sampleRoutePreviewPath, sliceRoutePreviewPath, type PreparedRoutePreviewPath } from './routePreviewPath';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
 import type { ExpressionSpecification, FillLayerSpecification, LineLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
@@ -253,6 +254,10 @@ export class MapLibreAdapter implements MapAdapter {
   private transportDisplayPreferences: MapDisplayPreferences = getMapDisplayPreferences();
   private heading: number | null = null;
   private marker: maplibregl.Marker | null = null;
+  private previewScoutMarker: maplibregl.Marker | null = null;
+  private previewFlightFrame: number | null = null;
+  private previewScoutDissolveTimer: number | null = null;
+  private previewFlightCancelCallback: ((reason: 'user' | 'programmatic') => void) | null = null;
   private liveTransitMarker: maplibregl.Marker | null = null;
   private liveTransitElement: HTMLDivElement | null = null;
   private liveTransitPrev: { coordinates: Coordinate; updatedAt: string } | null = null;
@@ -351,6 +356,7 @@ export class MapLibreAdapter implements MapAdapter {
     });
     // Only the user's own gestures leave follow mode; our camera animations (zoom, bearing) must not.
     const userGesture = (event: { originalEvent?: unknown }) => {
+      if (event.originalEvent) this.cancelRoutePreviewFlight('user');
       // Explicit user input must win over an in-flight focus/follow animation.
       interruptCameraForUserGesture(
         event.originalEvent,
@@ -829,6 +835,7 @@ export class MapLibreAdapter implements MapAdapter {
   }
 
   setRoute(points: Coordinate[]) {
+    this.cancelRoutePreviewFlight();
     this.route = points;
     this.routeSegments = null;
     this.clearRouteSegmentDiagnostics();
@@ -837,6 +844,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.updateRouteSource();
   }
   setRouteSegments(segments: ColoredRouteSegment[]) {
+    this.cancelRoutePreviewFlight();
     this.routeSegments = segments.filter(segment => segment.coordinates.length >= 2);
     this.route = this.routeSegments.flatMap(segment => segment.coordinates);
     this.updateRouteSegmentDiagnostics();
@@ -848,6 +856,9 @@ export class MapLibreAdapter implements MapAdapter {
     this.updateRouteSource();
   }
   setActiveRouteSegment(id: string | null) {
+    // A completed flight is already handing the Scout to its short dissolve; the
+    // destination leg becoming active must not cut that handoff off mid-frame.
+    if (id !== this.activeRouteSegmentId && this.previewFlightFrame !== null) this.cancelRoutePreviewFlight();
     this.activeRouteSegmentId = id;
     const container = this.map.getContainer();
     const activeSegment = this.routeSegments?.find(segment => segment.id === id);
@@ -959,9 +970,177 @@ export class MapLibreAdapter implements MapAdapter {
       this.revealFaded = false;
     }
   }
+
+  /** A virtual preview cursor follows only the supplied confirmed route geometry. */
+  playRoutePreviewFlight(path: PreparedRoutePreviewPath, options: RoutePreviewFlightOptions): (reason?: 'user' | 'programmatic') => void {
+    this.cancelRoutePreviewFlight('programmatic', false);
+    if (path.coordinates.length < 2 || !Number.isFinite(options.durationMs) || options.durationMs <= 0) {
+      options.onCancel?.('programmatic');
+      return () => undefined;
+    }
+
+    this.map.stop();
+    this.setCameraModeInternal('FREE');
+    this.lastFitPoints = path.coordinates;
+    const padding = {
+      top: Math.max(0, options.padding?.top ?? 0),
+      right: Math.max(0, options.padding?.right ?? 0),
+      bottom: Math.max(0, options.padding?.bottom ?? 0),
+      left: Math.max(0, options.padding?.left ?? 0),
+    };
+    this.lastFitPadding = padding;
+    this.markCameraRequest();
+
+    const startedAt = performance.now();
+    const duration = Math.max(450, Math.min(2_800, options.durationMs));
+    const measuredStartZoom = this.map.getZoom();
+    const startZoom = Number.isFinite(measuredStartZoom) ? measuredStartZoom : 15.5;
+    const remainingStartDistance = options.startFromNearestVisiblePoint
+      ? nearestRoutePreviewDistance(path, [this.map.getCenter().lng, this.map.getCenter().lat])
+      : 0;
+    const remainingMeters = Math.max(0, path.totalMeters - remainingStartDistance);
+    if (remainingMeters < 15) {
+      const finishView = options.finishView;
+      this.map.jumpTo({
+        center: finishView?.center ?? path.coordinates.at(-1)!,
+        zoom: finishView?.zoom ?? this.map.getZoom(),
+        bearing: this.perspective === '3d' ? (finishView?.bearing ?? this.map.getBearing()) : this.map.getBearing(),
+        pitch: this.perspective === '3d' ? (finishView?.pitch ?? this.map.getPitch()) : 0,
+        padding,
+      });
+      options.onComplete?.();
+      return () => undefined;
+    }
+    const element = document.createElement('div');
+    element.className = 'marshgo-hyperlight-scout';
+    element.setAttribute('role', 'img');
+    element.setAttribute('aria-label', 'Віртуальний перегляд маршруту');
+    element.innerHTML = '<span class="marshgo-hyperlight-scout__trail"></span><span class="marshgo-hyperlight-scout__halo"></span><span class="marshgo-hyperlight-scout__core"><i></i></span>';
+    this.previewScoutMarker = new maplibregl.Marker({ element, anchor: 'center', rotationAlignment: 'map', pitchAlignment: 'map' })
+      .setLngLat(sampleRoutePreviewPath(path, remainingStartDistance).coordinate)
+      .setRotation(sampleRoutePreviewPath(path, remainingStartDistance).bearing)
+      .addTo(this.map);
+    const targetZoom = remainingMeters < 180 ? 16.9
+      : remainingMeters < 700 ? 16.6
+        : remainingMeters < 2_500 ? 16.1
+          : remainingMeters < 8_000 ? 15.7
+            : 15.2;
+    const startPitch = this.map.getPitch();
+    const targetPitch = this.perspective === '3d' ? Math.min(52, PERSPECTIVE_PITCH) : 0;
+    const startBearing = this.map.getBearing();
+    const rotateCamera = this.perspective === '3d';
+    const finishBearing = options.finishView?.bearing ?? path.bearings.at(-1)!;
+    const finishZoom = options.finishView?.zoom ?? targetZoom;
+    const finishPitch = options.finishView?.pitch ?? targetPitch;
+    let smoothBearing = startBearing;
+    let smoothScoutBearing = sampleRoutePreviewPath(path, remainingStartDistance).bearing;
+    let lastFrameAt = startedAt;
+    let lastRevealAt = 0;
+    const lookAheadMeters = Math.max(90, Math.min(280, remainingMeters * 0.12));
+    const container = this.map.getContainer();
+    container.dataset.marshgoPreviewFlight = 'running';
+    container.dataset.marshgoPreviewFlightDurationMs = String(Math.round(duration));
+
+    const finish = (completed: boolean) => {
+      if (this.previewFlightFrame !== null) cancelAnimationFrame(this.previewFlightFrame);
+      this.previewFlightFrame = null;
+      if (completed && this.previewScoutMarker) {
+        this.previewScoutMarker.getElement().setAttribute('data-phase', 'dissolving');
+        this.previewScoutDissolveTimer = window.setTimeout(() => {
+          this.previewScoutMarker?.remove();
+          this.previewScoutMarker = null;
+          this.previewScoutDissolveTimer = null;
+        }, 190);
+      } else {
+        this.previewScoutMarker?.remove();
+        this.previewScoutMarker = null;
+      }
+      this.clearSegmentReveal();
+      delete container.dataset.marshgoPreviewFlight;
+      delete container.dataset.marshgoPreviewFlightDurationMs;
+      const callback = this.previewFlightCancelCallback;
+      this.previewFlightCancelCallback = null;
+      if (completed) options.onComplete?.();
+      else callback?.('programmatic');
+    };
+    this.previewFlightCancelCallback = options.onCancel ?? null;
+
+    const animate = (now: number) => {
+      const rawProgress = Math.max(0, Math.min(1, (now - startedAt) / duration));
+      const elapsedSeconds = Math.min(0.05, Math.max(0, (now - lastFrameAt) / 1_000));
+      lastFrameAt = now;
+      const bearingEase = 1 - Math.exp(-elapsedSeconds / 0.14);
+      const progress = routePreviewEasedProgress(rawProgress);
+      const distance = remainingStartDistance + remainingMeters * progress;
+      const scout = sampleRoutePreviewPath(path, distance);
+      const lookAhead = sampleRoutePreviewPath(path, Math.min(path.totalMeters, distance + lookAheadMeters));
+      const bearingDelta = ((lookAhead.bearing - smoothBearing + 540) % 360) - 180;
+      smoothBearing = (smoothBearing + bearingDelta * bearingEase + 360) % 360;
+      const scoutBearingDelta = ((scout.bearing - smoothScoutBearing + 540) % 360) - 180;
+      smoothScoutBearing = (smoothScoutBearing + scoutBearingDelta * bearingEase + 360) % 360;
+      const zoomProgress = Math.max(0, Math.min(1, progress * 1.8));
+      const baseZoom = startZoom + (targetZoom - startZoom) * (zoomProgress * zoomProgress * (3 - 2 * zoomProgress));
+      const dockProgress = Math.max(0, Math.min(1, (progress - 0.78) / 0.22));
+      const dockEase = dockProgress * dockProgress * (3 - 2 * dockProgress);
+      const cameraZoom = baseZoom + (finishZoom - baseZoom) * dockEase;
+      const pitchProgress = Math.max(0, Math.min(1, progress * 2));
+      const basePitch = startPitch + (targetPitch - startPitch) * (pitchProgress * pitchProgress * (3 - 2 * pitchProgress));
+      const cameraPitch = basePitch + (finishPitch - basePitch) * dockEase;
+
+      this.previewScoutMarker?.setLngLat(scout.coordinate).setRotation(smoothScoutBearing);
+      const upcomingTurn = Math.abs(((lookAhead.bearing - scout.bearing + 540) % 360) - 180);
+      this.previewScoutMarker?.getElement().setAttribute('data-phase', rawProgress < 0.12 ? 'igniting'
+        : rawProgress < 0.28 ? 'accelerating'
+          : upcomingTurn >= 35 && rawProgress < 0.82 ? 'cornering'
+          : rawProgress < 0.78 ? 'cruising'
+            : rawProgress < 0.96 ? 'approaching' : 'docking');
+      if (now - lastRevealAt >= 40 || rawProgress >= 1) {
+        this.revealSegmentProgress(sliceRoutePreviewPath(path, Math.max(remainingStartDistance, distance - Math.min(90, lookAheadMeters * 0.36)), distance), '#3299FF');
+        lastRevealAt = now;
+      }
+      const finishBearingDelta = ((finishBearing - smoothBearing + 540) % 360) - 180;
+      const cameraBearing = smoothBearing + finishBearingDelta * dockEase;
+      this.map.jumpTo({ center: lookAhead.coordinate, zoom: cameraZoom, bearing: rotateCamera ? cameraBearing : startBearing, pitch: cameraPitch, padding });
+
+      if (rawProgress >= 1) {
+        const finishView = options.finishView;
+        this.map.jumpTo({
+          center: finishView?.center ?? path.coordinates.at(-1)!,
+          zoom: finishZoom,
+          bearing: rotateCamera ? finishBearing : startBearing,
+          pitch: rotateCamera ? finishPitch : 0,
+          padding,
+        });
+        finish(true);
+        this.publishFocusMeasure();
+        return;
+      }
+      this.previewFlightFrame = requestAnimationFrame(animate);
+    };
+    this.previewFlightFrame = requestAnimationFrame(animate);
+    return (reason = 'programmatic') => this.cancelRoutePreviewFlight(reason);
+  }
+
+  cancelRoutePreviewFlight(reason: 'user' | 'programmatic' = 'programmatic', notify = true) {
+    const active = this.previewFlightFrame !== null || this.previewScoutMarker !== null;
+    if (this.previewFlightFrame !== null) cancelAnimationFrame(this.previewFlightFrame);
+    this.previewFlightFrame = null;
+    if (this.previewScoutDissolveTimer !== null) window.clearTimeout(this.previewScoutDissolveTimer);
+    this.previewScoutDissolveTimer = null;
+    this.previewScoutMarker?.remove();
+    this.previewScoutMarker = null;
+    this.clearSegmentReveal();
+    const container = this.map.getContainer();
+    delete container.dataset.marshgoPreviewFlight;
+    delete container.dataset.marshgoPreviewFlightDurationMs;
+    const callback = this.previewFlightCancelCallback;
+    this.previewFlightCancelCallback = null;
+    if (active && notify) callback?.(reason);
+  }
   /** Animated zoom step for the map chrome; MapLibre clamps at the style limits. */
   zoomBy(delta: number) {
     if (!Number.isFinite(delta) || delta === 0) return;
+    this.cancelRoutePreviewFlight('user');
     this.markCameraRequest();
     this.map.easeTo({
       zoom: this.map.getZoom() + delta,
@@ -1402,6 +1581,7 @@ export class MapLibreAdapter implements MapAdapter {
 
   setLayer(layer: MapLayer) {
     if (layer === this.layer) return;
+    this.cancelRoutePreviewFlight('user');
     this.layer = layer;
     this.theme = this.themeForLayer(layer);
     // Use the themed style corresponding to the active theme for both simple and satellite overlays.
@@ -1431,6 +1611,7 @@ export class MapLibreAdapter implements MapAdapter {
   }
   setPerspective(perspective: MapPerspective) {
     if (perspective === this.perspective) return;
+    this.cancelRoutePreviewFlight('user');
     this.perspective = perspective;
     if (perspective === '2d') this.remove3DBuildings();
     else this.install3DBuildings();
@@ -1471,6 +1652,7 @@ export class MapLibreAdapter implements MapAdapter {
   setTheme(theme: MapTheme) {
     const nextTheme = this.themeForLayer(this.layer, theme);
     const changed = this.theme !== nextTheme;
+    if (changed) this.cancelRoutePreviewFlight();
     this.theme = nextTheme;
     const themed = this.styleUrls?.[this.theme];
     const style = themed ?? (configuredMapStyleUrl ? styleForLayer(this.layer, configuredMapStyleUrl, this.theme.endsWith('_DARK'), configuredMapDarkStyleUrl) : null);
@@ -1506,6 +1688,7 @@ export class MapLibreAdapter implements MapAdapter {
   }
   retry() { this.seenTileError = false; this.publish(this.basemapConfigured() ? 'loading' : 'unconfigured'); if (this.basemapConfigured()) this.map.setStyle(this.map.getStyle(), { diff: false }); else this.map.triggerRepaint(); }
   destroy() {
+    this.cancelRoutePreviewFlight('programmatic', false);
     this.cancelLiveTransitGlide();
     this.marker?.remove();
     this.liveTransitMarker?.remove();

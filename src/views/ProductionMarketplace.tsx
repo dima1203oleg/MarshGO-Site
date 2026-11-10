@@ -47,7 +47,10 @@ import { navigationDestinationName } from '../navigation/destinationName';
 import { JourneyResultsPanel, JourneySearchPending } from './JourneyResultsPanel';
 import { JOURNEY_SEARCH_DEADLINE_MS, journeySearchAbortMessage } from './journeyResultPresentation';
 import { JOURNEY_SEARCH_UNAVAILABLE_COPY, journeySearchFailureKind } from './journeySearchRecovery';
-import { JourneyRouteMapScreen } from './JourneyRouteMapScreen';
+import { JourneyRouteMapScreen, type JourneyNavigationStartResult } from './JourneyRouteMapScreen';
+import { WebGeolocationProvider } from '../platform/LocationProvider';
+import type { LocationFix } from '../../shared/navigation/contracts';
+import { passengerLocationStartMessage, validatePassengerStartFix } from '../navigation/passengerLocation';
 import { JourneyActiveNavigation } from './JourneyActiveNavigation';
 const MobilityAdminPanel = lazy(() => import('./MobilityAdminPanel').then((module) => ({ default: module.MobilityAdminPanel })));
 const ProfileSections = lazy(() => import('./ProfileSections').then((module) => ({ default: module.ProfileSections })));
@@ -291,10 +294,12 @@ export function ProductionMarketplace() {
   const [selectedOffer, setSelectedOffer] = useState<ApiOffer | null>(null);
   const [selectedJourney, setSelectedJourney] = useState<ApiStoredJourney | null>(null);
   const [activeJourneyNavigation, setActiveJourneyNavigation] = useState<ApiJourney | null>(null);
+  const [activeJourneyStartFix, setActiveJourneyStartFix] = useState<LocationFix | null>(null);
   const [journeyNotice, setJourneyNotice] = useState('');
   const activeJourneyStore = useMemo(() => new ActiveJourneyNavigationStore(), []);
+  const startJourneyInFlight = useRef(false);
   const pendingNavigationRestore = useRef<{ journeyId: string; legIndex: number } | null>(null);
-  const restoredNavigationStage = useRef<number | null>(null);
+  const restoredNavigationPreview = useRef<number | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<ApiBooking | null>(null);
   const [visibleBookingTicket, setVisibleBookingTicket] = useState<{ bookingId: string; token: string } | null>(null);
   const [boardingTicketInput, setBoardingTicketInput] = useState<Record<string, string>>({});
@@ -406,6 +411,7 @@ export function ProductionMarketplace() {
   const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
   const finishJourneyNavigation = useCallback((journeyId: string) => {
     setActiveJourneyNavigation(null);
+    setActiveJourneyStartFix(null);
     setJourneyNotice('');
     void (async () => {
       const outcome = await completePassengerJourney(productionApi, journeyId);
@@ -542,26 +548,44 @@ export function ProductionMarketplace() {
     }).finally(() => setLoading(false));
   }, [refreshBlockedUsers, refreshBookings, refreshJourneys, refreshMyOffers, refreshPassengerNavigationMatches, refreshVehicles]);
 
-  // Starting navigation is one tap and one record. Nothing but the pointer is
-  // stored: no token, no coordinates, no GPS history, no price snapshot.
-  const startJourneyNavigation = (journey: ApiJourney) => {
-    restoredNavigationStage.current = null;
-    pendingNavigationRestore.current = null;
-    if (user) activeJourneyStore.write({ journeyId: journey.id, legIndex: 0, ownerUserId: user.id });
-    // The URL carries the journey so a reload or a relaunched PWA can ask the
-    // server for the same itinerary instead of sending the passenger back to
-    // an empty search box.
-    setRoutePath(pathForProductionEntity('journey', journey.id));
-    setActiveJourneyNavigation(journey);
+  // Start from a fresh device fix, ask the server to activate, then persist
+  // only a journey/preview pointer. Coordinates never leave this component.
+  const startJourneyNavigation = async (journey: ApiJourney): Promise<JourneyNavigationStartResult> => {
+    if (startJourneyInFlight.current) return { started: false, message: 'Навігація вже запускається.' };
+    startJourneyInFlight.current = true;
     setJourneyNotice('');
-    void activatePassengerJourney(productionApi, journey.id, journey.legs[0]?.id).then(async (outcome) => {
-      if (!outcome.confirmed) {
-        activeJourneyStore.clear();
-        setJourneyNotice(outcome.message);
-        return;
+    try {
+      const locationProvider = new WebGeolocationProvider();
+      let rawFix: LocationFix;
+      try {
+        rawFix = await locationProvider.getCurrentFix({ enableHighAccuracy: true, maximumAgeMs: 0, timeoutMs: 15_000 });
+      } catch (error) {
+        return { started: false, message: passengerLocationStartMessage(error instanceof Error ? error.message : '') };
       }
-      await refreshJourneys().catch(() => undefined);
-    });
+      const validation = validatePassengerStartFix(rawFix, Date.now());
+      if (!validation.accepted) return { started: false, message: passengerLocationStartMessage(validation.code) };
+
+      // The server is only told to activate after a fresh, accurate browser GPS
+      // fix exists. The coordinate itself stays on this device.
+      const outcome = await activatePassengerJourney(productionApi, journey.id, journey.legs[0]?.id);
+      if (!outcome.confirmed) return { started: false, message: outcome.message };
+
+      const serverLegIndex = outcome.currentLegId
+        ? journey.legs.findIndex(leg => leg.id === outcome.currentLegId)
+        : 0;
+      const initialPreviewIndex = serverLegIndex >= 0 ? serverLegIndex : 0;
+      restoredNavigationPreview.current = initialPreviewIndex;
+      pendingNavigationRestore.current = null;
+      if (user) activeJourneyStore.write({ journeyId: journey.id, legIndex: initialPreviewIndex, ownerUserId: user.id });
+      setActiveJourneyStartFix(validation.fix);
+      // The URL carries only the journey ID; GPS coordinates are never persisted.
+      setRoutePath(pathForProductionEntity('journey', journey.id));
+      setActiveJourneyNavigation(journey);
+      void refreshJourneys().catch(() => undefined);
+      return { started: true };
+    } finally {
+      startJourneyInFlight.current = false;
+    }
   };
 
   // Leaving navigation on purpose means the passenger is no longer riding it,
@@ -570,11 +594,12 @@ export function ProductionMarketplace() {
   const exitJourneyNavigation = () => {
     activeJourneyStore.clear();
     pendingNavigationRestore.current = null;
-    restoredNavigationStage.current = null;
+    restoredNavigationPreview.current = null;
+    setActiveJourneyStartFix(null);
     setActiveJourneyNavigation(null);
   };
 
-  const keepActiveJourneyStage = (journeyId: string, legIndex: number) => {
+  const keepActiveJourneyPreview = (journeyId: string, legIndex: number) => {
     activeJourneyStore.updateStage(journeyId, legIndex);
   };
 
@@ -591,7 +616,8 @@ export function ProductionMarketplace() {
       activeJourneyStore.clear();
       return;
     }
-    restoredNavigationStage.current = pending.legIndex;
+    restoredNavigationPreview.current = pending.legIndex;
+    setActiveJourneyStartFix(null);
     setActiveJourneyNavigation(storedJourneyToApiJourney(journey));
   }, [activeJourneyStore]);
 
@@ -2348,10 +2374,11 @@ export function ProductionMarketplace() {
 
   const screen = activeJourneyNavigation ? <JourneyActiveNavigation
     journey={activeJourneyNavigation}
+    initialLocationFix={activeJourneyStartFix}
     notice={journeyNotice}
     onFinish={() => finishJourneyNavigation(activeJourneyNavigation.id)}
-    initialLegIndex={restoredNavigationStage.current}
-    onStageChange={(legIndex) => keepActiveJourneyStage(activeJourneyNavigation.id, legIndex)}
+    initialPreviewLegIndex={restoredNavigationPreview.current}
+    onPreviewStageChange={(legIndex) => keepActiveJourneyPreview(activeJourneyNavigation.id, legIndex)}
     onExit={exitJourneyNavigation}
   />
     : selectedRouteMap ? routeMapScreen(selectedRouteMap, () => { setSelectedRouteMap(null); setSelectedRouteGroup([]); setSelectedRouteRecommendation(undefined); }, selectedRouteGroup, selectedRouteRecommendation)

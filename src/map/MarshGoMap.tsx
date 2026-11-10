@@ -9,18 +9,19 @@ import { visibleTransportLayers } from './focusMode';
 import { configuredMapDarkStyleUrl, configuredMapStyleUrl } from './mapConfig';
 import { themeService } from '../services/theme';
 
-type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: RouteWaypoint[]; routeLabels?: MapAnnotation[]; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; onRouteSegmentSelect?: (id: string) => void; onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; focusMode?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
+type Props = { route: Coordinate[]; routeSegments?: ColoredRouteSegment[]; routeWaypoints?: RouteWaypoint[]; routeLabels?: MapAnnotation[]; routeFitPadding?: RouteFitPadding; activeRouteSegmentId?: string | null; autoFocusRouteSegment?: boolean; onRouteSegmentSelect?: (id: string) => void; onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void; vehicle?: Coordinate | null; heading?: number | null; theme?: MapTheme; /** Information layers and camera perspective are independent from the two basemaps. */ overlays?: boolean; focusMode?: boolean; onTransportHint?: (message: string | null) => void; onStatus: (status: MapStatus) => void; onAdapter: (adapter: MapAdapter | null) => void };
 function themeForMapLayer(layer: MapLayer, dark: boolean): MapTheme {
   void layer;
   return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
 }
-export function MarshGoMap({ route, routeSegments, routeWaypoints, routeLabels, routeFitPadding, activeRouteSegmentId = null, onRouteSegmentSelect, onRouteSegmentAmbiguous, vehicle, heading = null, theme, overlays = false, focusMode = false, onTransportHint, onStatus, onAdapter }: Props) {
+export function MarshGoMap({ route, routeSegments, routeWaypoints, routeLabels, routeFitPadding, activeRouteSegmentId = null, autoFocusRouteSegment = true, onRouteSegmentSelect, onRouteSegmentAmbiguous, vehicle, heading = null, theme, overlays = false, focusMode = false, onTransportHint, onStatus, onAdapter }: Props) {
   const container = useRef<HTMLDivElement | null>(null);
   const adapter = useRef<MapAdapter | null>(null);
   const syncOverlays = useRef<() => void>(() => undefined);
   const routeSegmentSelect = useRef(onRouteSegmentSelect);
   const routeSegmentAmbiguous = useRef(onRouteSegmentAmbiguous);
   const activeSegment = useRef(activeRouteSegmentId);
+  const autoFocusSegment = useRef(autoFocusRouteSegment);
   const fitPadding = useRef(routeFitPadding);
   const routeRef = useRef(route);
   const routeSegmentsRef = useRef(routeSegments);
@@ -31,6 +32,7 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeLabels, 
   routeSegmentSelect.current = onRouteSegmentSelect;
   routeSegmentAmbiguous.current = onRouteSegmentAmbiguous;
   activeSegment.current = activeRouteSegmentId;
+  autoFocusSegment.current = autoFocusRouteSegment;
   fitPadding.current = routeFitPadding;
   routeRef.current = route;
   routeSegmentsRef.current = routeSegments;
@@ -70,7 +72,8 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeLabels, 
       if (vehicleRef.current) instance.setVehicle(vehicleRef.current, headingRef.current);
       const selectedSegmentId = activeSegment.current;
       instance.setActiveRouteSegment?.(selectedSegmentId);
-      if (!selectedSegmentId || !instance.focusRouteSegment?.(selectedSegmentId, fitPadding.current)) instance.fitRoute(fitPadding.current);
+      if (autoFocusSegment.current && selectedSegmentId) instance.focusRouteSegment?.(selectedSegmentId, fitPadding.current);
+      else if (!selectedSegmentId) instance.fitRoute(fitPadding.current);
     }).catch(() => onStatus('failed'));
     return () => { cancelled = true; adapter.current?.destroy(); adapter.current = null; onAdapter(null); };
   }, []);
@@ -80,9 +83,10 @@ export function MarshGoMap({ route, routeSegments, routeWaypoints, routeLabels, 
   useEffect(() => { adapter.current?.setJourneyLabels?.(routeLabels ?? null); }, [routeLabels]);
   useEffect(() => {
     if (!routeFitPadding) return;
+    if (!autoFocusRouteSegment) return;
     if (activeRouteSegmentId && adapter.current?.focusRouteSegment?.(activeRouteSegmentId, routeFitPadding)) return;
     adapter.current?.fitRoute(routeFitPadding);
-  }, [routeFitPadding, activeRouteSegmentId]);
+  }, [routeFitPadding, activeRouteSegmentId, autoFocusRouteSegment]);
   useEffect(() => { if (vehicle) adapter.current?.setVehicle(vehicle, heading); }, [vehicle?.[0], vehicle?.[1], heading]);
   useEffect(() => { adapter.current?.setTheme(activeTheme); }, [activeTheme]);
   useEffect(() => subscribeMapLayer((layer) => adapter.current?.setLayer(layer)), []);

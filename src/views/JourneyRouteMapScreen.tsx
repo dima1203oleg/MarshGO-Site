@@ -55,6 +55,7 @@ import { SEGMENT_REVEAL_TOKENS } from '../map/routeGeometryTokens';
 import type { Coordinate } from '../../shared/navigation/contracts';
 
 type JourneyLeg = ApiJourney['legs'][number];
+export type JourneyNavigationStartResult = { started: true } | { started: false; message: string };
 type TimelineItem = {
   id: string;
   targetLegId: string;
@@ -173,7 +174,7 @@ export function JourneyRouteMapScreen({
   onBack: () => void;
   onBookOffer?: (offerId: string, journeyId: string, journeyLegId: string) => void;
   /** Opens the active stage map for this itinerary; the route is never re-entered. */
-  onStartJourney?: () => void;
+  onStartJourney?: () => Promise<JourneyNavigationStartResult> | JourneyNavigationStartResult;
 }) {
   const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
     window.location.search,
@@ -229,6 +230,8 @@ export function JourneyRouteMapScreen({
     catch { return false; }
   });
   const [feedback, setFeedback] = useState('');
+  const [startingNavigation, setStartingNavigation] = useState(false);
+  const [startError, setStartError] = useState('');
   const sheetElement = useRef<HTMLElement | null>(null);
   const sheetHeightRef = useRef(sheetHeight);
   const mapAdapter = useRef<MapAdapter | null>(null);
@@ -741,6 +744,19 @@ export function JourneyRouteMapScreen({
   };
 
   const canStartNavigation = Boolean(lastLeg && onStartJourney);
+  const startNavigation = async () => {
+    if (!onStartJourney || startingNavigation) return;
+    setStartingNavigation(true);
+    setStartError('');
+    try {
+      const result = await onStartJourney();
+      if (!result.started) setStartError(result.message);
+    } catch {
+      setStartError('Не вдалося розпочати навігацію. Спробуйте ще раз.');
+    } finally {
+      setStartingNavigation(false);
+    }
+  };
   const showChrome = sheetSnap !== 'expanded';
   const showRecenter = shouldShowRecenterButton(cameraController.current?.getState() ?? {
     ...initialRouteCameraState(),
@@ -1297,14 +1313,16 @@ export function JourneyRouteMapScreen({
                 </button>
               );
             })()}
+            {startError && <p role="status" className="mb-2 rounded-xl border border-[var(--route-border)] bg-[var(--route-card)] px-3 py-2 text-center text-xs font-semibold leading-4 text-[var(--route-muted)]">{startError}</p>}
             <button
               type="button"
-              disabled={!canStartNavigation}
-              onClick={() => onStartJourney?.()}
+              disabled={!canStartNavigation || startingNavigation}
+              aria-busy={startingNavigation}
+              onClick={() => void startNavigation()}
               className={`mg-route-cta mg-press-subtle flex w-full items-center justify-center gap-2.5${sheetSnap === 'peek' ? ' route-sheet-peek-cta' : ''}`}
             >
               <Play size={18} fill="currentColor" aria-hidden="true"/>
-              <span className="font-black tracking-tight">{journey.legs.some(leg => leg.mode === 'COMMUNITY') ? 'Розпочати поїздку' : 'Розпочати'}</span>
+              <span className="font-black tracking-tight">{startingNavigation ? 'Визначаємо місце…' : journey.legs.some(leg => leg.mode === 'COMMUNITY') ? 'Розпочати поїздку' : 'Розпочати'}</span>
             </button>
           </div>
         </div>

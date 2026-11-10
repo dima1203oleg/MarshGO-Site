@@ -139,7 +139,7 @@ test('CP2: navigation is entered, exited and logged out through the store, not o
   const source = readFileSync(path.resolve(import.meta.dirname, '../src/views/ProductionMarketplace.tsx'), 'utf8');
   assert.match(source, /onStartJourney=\{\(\) => startJourneyNavigation\(journey\)\}/);
   assert.match(source, /const exitJourneyNavigation = \(\) => \{\s*activeJourneyStore\.clear\(\);/);
-  assert.match(source, /initialLegIndex=\{restoredNavigationStage\.current\}/);
+  assert.match(source, /initialPreviewLegIndex=\{restoredNavigationPreview\.current\}/);
   // Both logout paths drop the pointer; the next account on this device sees nothing.
   const logoutBodies = source.split('new OfflineNavigationStore().clear();').slice(1, 3);
   assert.equal(logoutBodies.length, 2);

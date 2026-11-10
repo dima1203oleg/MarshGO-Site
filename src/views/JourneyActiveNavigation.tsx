@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, ArrowRight, ChevronDown, Flag, Navigation } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, Flag, Map as MapIcon, Navigation } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
 import { MapBasemapControl, MapControlRail, MapPerspectiveControl, MapVoiceControl, MapZoomControls } from '../components/MapInteractionControls';
@@ -9,6 +9,7 @@ import {
 import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
 import type { MapAdapter, MapStatus, RouteFitPadding } from '../map/MapAdapter';
+import { distanceBetweenCoordinates, prepareRoutePreviewPath, reverseRoutePreviewPath, routePreviewAnchorsMatch, routePreviewDurationMs } from '../map/routePreviewPath';
 import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
@@ -30,6 +31,9 @@ import { themeService } from '../services/theme';
 import { priorityLevelOf } from '../map/transportVisualZones';
 import { formatJourneyDurationTile } from './journeyResultPresentation';
 import { legPriceDisplay } from './cashFare';
+import { WebGeolocationProvider } from '../platform/LocationProvider';
+import type { LocationFix } from '../../shared/navigation/contracts';
+import { passengerLocationStartMessage, validatePassengerLocationUpdate, validatePassengerStartFix } from '../navigation/passengerLocation';
 import {
   ACTIVE_LEG_STATUS_LABEL,
   activeLegInstruction,
@@ -47,25 +51,27 @@ import {
 } from './journeyStageNavigation';
 
 /**
- * The active stage of a selected itinerary. It is not the driver navigation
- * engine: a transit passenger follows the plan, so the camera, the stage card
- * and the «Далі» control all come from the itinerary's own legs and schedule.
- * No position is invented when the feed has no fresh vehicle.
+ * Passenger itinerary navigation. The selected leg is only a stage preview;
+ * the actual journey lifecycle stays server-owned. User position is shown and
+ * followed only from a fresh browser GPS fix.
  */
 export function JourneyActiveNavigation({
   journey,
   notice,
   onExit,
   onFinish,
-  initialLegIndex = null,
-  onStageChange,
+  initialPreviewLegIndex = null,
+  initialLocationFix = null,
+  onPreviewStageChange,
 }: {
   journey: ApiJourney;
   notice?: string | null;
   onExit: () => void;
   onFinish?: () => void;
-  initialLegIndex?: number | null;
-  onStageChange?: (legIndex: number) => void;
+  /** A fresh fix collected from the explicit Start button; never persisted. */
+  initialLocationFix?: LocationFix | null;
+  initialPreviewLegIndex?: number | null;
+  onPreviewStageChange?: (legIndex: number) => void;
 }) {
   const showDiagnostics = typeof window !== 'undefined' && diagnosticsRequested(
     window.location.search,
@@ -76,12 +82,18 @@ export function JourneyActiveNavigation({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [legIndex, setLegIndex] = useState(() => {
     const scheduledStart = activeNavigationStartIndex(legs, Date.now());
-    if (initialLegIndex === null || legs.length === 0 || !Number.isInteger(initialLegIndex)) return scheduledStart;
-    return Math.min(Math.max(initialLegIndex, 0), legs.length - 1);
+    if (initialPreviewLegIndex === null || legs.length === 0 || !Number.isInteger(initialPreviewLegIndex)) return scheduledStart;
+    return Math.min(Math.max(initialPreviewLegIndex, 0), legs.length - 1);
   });
-  const stageChange = useRef(onStageChange);
-  stageChange.current = onStageChange;
-  useEffect(() => { stageChange.current?.(legIndex); }, [legIndex]);
+  const legIndexRef = useRef(legIndex);
+  legIndexRef.current = legIndex;
+  const previewFlightCancel = useRef<((reason?: 'user' | 'programmatic') => void) | null>(null);
+  const previewTargetLegIndex = useRef<number | null>(null);
+  const skipFocusAfterPreviewDock = useRef(false);
+  const [isPreviewFlying, setIsPreviewFlying] = useState(false);
+  const previewStageChange = useRef(onPreviewStageChange);
+  previewStageChange.current = onPreviewStageChange;
+  useEffect(() => { previewStageChange.current?.(legIndex); }, [legIndex]);
 
   const leg = legs[Math.min(legIndex, Math.max(0, legs.length - 1))];
   const liveLeg = leg && isTransitLeg(leg) ? leg : undefined;
@@ -98,11 +110,27 @@ export function JourneyActiveNavigation({
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
   const draggingRef = useRef(false);
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
-  const [focusWhole, setFocusWhole] = useState(false);
+  const [cameraFocusMode, setCameraFocusMode] = useState<'gps' | 'preview' | 'overview' | 'free'>(() => initialLocationFix ? 'gps' : 'preview');
+  const [locationFix, setLocationFix] = useState<LocationFix | null>(initialLocationFix);
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'requesting' | 'active' | 'stale' | 'unavailable' | 'permission-denied'>(initialLocationFix ? 'active' : 'idle');
+  const [locationMessage, setLocationMessage] = useState('');
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
   const [liveJourneyRequestState, setLiveJourneyRequestState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const liveSegment = liveJourney?.segments.find(segment => segment.legId === liveLegId);
   const mapAdapter = useRef<MapAdapter | null>(null);
+  const cancelPreviewFlight = useCallback((reason: 'user' | 'programmatic' = 'programmatic') => {
+    const cancel = previewFlightCancel.current;
+    previewFlightCancel.current = null;
+    previewTargetLegIndex.current = null;
+    if (cancel) cancel(reason);
+    else mapAdapter.current?.cancelRoutePreviewFlight?.(reason);
+    setIsPreviewFlying(false);
+  }, []);
+  const locationProvider = useRef<WebGeolocationProvider | null>(null);
+  if (locationProvider.current === null) locationProvider.current = new WebGeolocationProvider();
+  const locationUnsubscribe = useRef<(() => void) | null>(null);
+  const latestLocationFix = useRef<LocationFix | null>(initialLocationFix);
+  const hasCenteredOnGps = useRef(false);
   const sheetElement = useRef<HTMLElement | null>(null);
   const sheetHeightRef = useRef(sheetHeight);
   const dragStart = useRef<{ y: number; height: number; pointerId: number; moved: boolean; lastY: number; lastAt: number; velocity: number } | null>(null);
@@ -120,6 +148,9 @@ export function JourneyActiveNavigation({
 
   useEffect(() => themeService.subscribe((_mode, dark) => setIsDark(dark)), []);
   useEffect(() => subscribeReducedMotion(setReducedMotion), []);
+  useEffect(() => {
+    if (reducedMotion && previewFlightCancel.current) cancelPreviewFlight('user');
+  }, [cancelPreviewFlight, reducedMotion]);
   useEffect(() => {
     const writer = dragWriter.current;
     return () => writer?.discard();
@@ -228,24 +259,29 @@ export function JourneyActiveNavigation({
       ...(route.zones?.beforeBoarding ? [route.zones.beforeBoarding] : []),
       ...(route.zones?.afterAlighting ? [route.zones.afterAlighting] : []),
     ]);
-    const points = focusWhole
+    const points = cameraFocusMode === 'overview'
       ? corridorFitPoints(model.routeSegments.flatMap(segment => segment.coordinates), contextLines)
-      : legSegment
+      : cameraFocusMode === 'preview' && legSegment
         ? corridorFitPoints(legSegment.coordinates, contextLines, 0.5)
         : [];
-    const bearing = !focusWhole && legSegment && extentMeters(legSegment.coordinates) > 120
+    const bearing = cameraFocusMode === 'preview' && legSegment && extentMeters(legSegment.coordinates) > 120
       ? principalBearing(legSegment.coordinates)
       : null;
     const bounds = boundsOf(points);
-    const key = `${focusWhole}:${leg?.id ?? 'none'}:${points.length}:${bearing === null ? 'flat' : bearing.toFixed(1)}:${bounds?.map(value => value.toFixed(5)).join(',') ?? ''}`;
+    const key = `${cameraFocusMode}:${leg?.id ?? 'none'}:${points.length}:${bearing === null ? 'flat' : bearing.toFixed(1)}:${bounds?.map(value => value.toFixed(5)).join(',') ?? ''}`;
     return { points, bearing, key };
-  }, [focusWhole, leg?.id, legSegment, liveSegment, model.routeSegments]);
+  }, [cameraFocusMode, leg?.id, legSegment, liveSegment, model.routeSegments]);
 
   useEffect(() => {
-    if (draggingRef.current || !mapAdapterReady || !leg) return;
+    if (draggingRef.current || isPreviewFlying || !mapAdapterReady || !leg) return;
     const adapter = mapAdapter.current;
     if (!adapter) return;
     adapter.setActiveRouteSegment?.(leg.id);
+    if (skipFocusAfterPreviewDock.current) {
+      skipFocusAfterPreviewDock.current = false;
+      return;
+    }
+    if (cameraFocusMode === 'gps' || cameraFocusMode === 'free') return;
     // The expanded detent leaves a thin strip: refitting there squeezes the
     // stage into a few pixels, so the camera stays on the last readable frame.
     if (sheetSnap === 'expanded') return;
@@ -253,12 +289,110 @@ export function JourneyActiveNavigation({
       adapter.focusCoordinates?.(
         focusData.points,
         focusData.bearing === null ? { ...mapPadding, bearing: 0 } : { ...mapPadding, bearing: focusData.bearing },
-        focusWhole ? 14.5 : 17,
+        cameraFocusMode === 'overview' ? 14.5 : 17,
       );
       return;
     }
     adapter.fitRoute(mapPadding);
-  }, [focusData.bearing, focusData.key, focusData.points, focusWhole, leg, mapAdapterReady, mapPadding, sheetSnap]);
+  }, [cameraFocusMode, focusData.bearing, focusData.key, focusData.points, isPreviewFlying, leg, mapAdapterReady, mapPadding, sheetSnap]);
+
+  const receiveLocationFix = useCallback((fix: LocationFix) => {
+    const previous = latestLocationFix.current;
+    const previousIsFresh = previous && Date.now() - Date.parse(previous.capturedAtClient) <= 60_000 ? previous : undefined;
+    const result = validatePassengerLocationUpdate(fix, Date.now(), previousIsFresh ?? undefined);
+    if ('duplicate' in result) return;
+    if (!result.accepted) {
+      setLocationStatus(result.code === 'GPS_PERMISSION_DENIED' ? 'permission-denied' : 'stale');
+      return;
+    }
+    latestLocationFix.current = result.fix;
+    setLocationFix(result.fix);
+    setLocationStatus('active');
+    setLocationMessage('');
+  }, []);
+
+  const startLocationWatch = useCallback(async () => {
+    const provider = locationProvider.current;
+    if (!provider) return false;
+    if (!locationUnsubscribe.current) locationUnsubscribe.current = provider.subscribe(receiveLocationFix);
+    try {
+      await provider.start({ enableHighAccuracy: true, maximumAgeMs: 5000, timeoutMs: 20_000 });
+      return true;
+    } catch {
+      setLocationStatus('unavailable');
+      setLocationMessage(passengerLocationStartMessage('GPS_UNAVAILABLE'));
+      return false;
+    }
+  }, [receiveLocationFix]);
+
+  const returnToGpsNavigation = useCallback(async () => {
+    cancelPreviewFlight();
+    const previous = latestLocationFix.current;
+    const ageMs = previous ? Date.now() - Date.parse(previous.capturedAtClient) : Infinity;
+    let fix = previous && ageMs >= 0 && ageMs <= 60_000 ? previous : null;
+    if (!fix) {
+      setLocationStatus('requesting');
+      setLocationMessage('');
+      const provider = locationProvider.current;
+      try {
+        const rawFix = await provider?.getCurrentFix({ enableHighAccuracy: true, maximumAgeMs: 0, timeoutMs: 15_000 });
+        if (!rawFix) throw new Error('GPS_UNAVAILABLE');
+        const validation = validatePassengerStartFix(rawFix, Date.now());
+        if (!validation.accepted) {
+          setLocationStatus(validation.code === 'GPS_PERMISSION_DENIED' ? 'permission-denied' : 'stale');
+          setLocationMessage(passengerLocationStartMessage(validation.code));
+          return;
+        }
+        fix = validation.fix;
+        receiveLocationFix(fix);
+        if (!await startLocationWatch()) return;
+      } catch (error) {
+        const code = error instanceof Error ? error.message : '';
+        setLocationStatus(code === 'GPS_PERMISSION_DENIED' ? 'permission-denied' : 'unavailable');
+        setLocationMessage(passengerLocationStartMessage(code));
+        return;
+      }
+    }
+    const coordinate: [number, number] = [fix.longitude, fix.latitude];
+    mapAdapter.current?.setVehicle(coordinate, fix.headingDegrees);
+    mapAdapter.current?.recenter(coordinate);
+    hasCenteredOnGps.current = true;
+    setCameraFocusMode('gps');
+    setLocationStatus('active');
+  }, [cancelPreviewFlight, receiveLocationFix, startLocationWatch]);
+
+  useEffect(() => {
+    if (!initialLocationFix) return;
+    latestLocationFix.current = initialLocationFix;
+    void startLocationWatch();
+  }, [initialLocationFix, startLocationWatch]);
+
+  useEffect(() => () => {
+    locationUnsubscribe.current?.();
+    locationUnsubscribe.current = null;
+    void locationProvider.current?.stop();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const providerState = locationProvider.current?.status();
+      if (providerState === 'PERMISSION_DENIED') { setLocationStatus('permission-denied'); return; }
+      if (providerState === 'UNAVAILABLE' && latestLocationFix.current) { setLocationStatus('unavailable'); return; }
+      const fix = latestLocationFix.current;
+      if (fix && Date.now() - Date.parse(fix.capturedAtClient) > 60_000) setLocationStatus('stale');
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!mapAdapterReady || !locationFix) return;
+    const coordinate: [number, number] = [locationFix.longitude, locationFix.latitude];
+    mapAdapter.current?.setVehicle(coordinate, locationFix.headingDegrees);
+    if (cameraFocusMode === 'gps' && !hasCenteredOnGps.current) {
+      mapAdapter.current?.recenter(coordinate);
+      hasCenteredOnGps.current = true;
+    }
+  }, [cameraFocusMode, locationFix, mapAdapterReady]);
 
   useEffect(() => {
     const updateViewport = () => {
@@ -273,6 +407,7 @@ export function JourneyActiveNavigation({
   }, [sheetSnap]);
 
   const moveToSnap = (next: RouteSheetSnap) => {
+    if (previewFlightCancel.current) cancelPreviewFlight('user');
     const nextHeight = routeSheetHeights(viewportHeight, routeSheetSafeAreaInset())[next];
     sheetHeightRef.current = nextHeight;
     setSheetSnap(next);
@@ -284,6 +419,7 @@ export function JourneyActiveNavigation({
     moveToSnap(sheetSnap === 'collapsed' ? 'half' : sheetSnap === 'half' ? 'expanded' : 'collapsed');
   };
   const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (previewFlightCancel.current) cancelPreviewFlight('user');
     const now = performance.now();
     const renderedHeight = sheetElement.current?.getBoundingClientRect().height ?? sheetHeightRef.current;
     sheetHeightRef.current = renderedHeight;
@@ -330,9 +466,111 @@ export function JourneyActiveNavigation({
   };
 
   const jumpToLeg = useCallback((index: number) => {
+    cancelPreviewFlight();
+    legIndexRef.current = index;
     setLegIndex(index);
+    setCameraFocusMode('preview');
     haptic(8);
-  }, []);
+  }, [cancelPreviewFlight]);
+
+  const moveToAdjacentLeg = useCallback((targetIndex: number, direction: 'forward' | 'backward') => {
+    const currentIndex = legIndexRef.current;
+    const wasFlying = previewFlightCancel.current !== null;
+    if (targetIndex < 0 || targetIndex >= legs.length || (!wasFlying && targetIndex === currentIndex)) return;
+    cancelPreviewFlight();
+    if (wasFlying || Math.abs(targetIndex - currentIndex) !== 1 || !mapAdapter.current) {
+      previewTargetLegIndex.current = null;
+      legIndexRef.current = targetIndex;
+      setLegIndex(targetIndex);
+      setCameraFocusMode('preview');
+      return;
+    }
+
+    const geometryLegIndex = direction === 'forward' ? currentIndex : targetIndex;
+    const geometryLeg = legs[geometryLegIndex];
+    const targetLeg = legs[targetIndex];
+    const mapGeometry = model.legs.find(item => item.id === geometryLeg?.id);
+    const sourcePath = mapGeometry && !mapGeometry.approximate ? prepareRoutePreviewPath(mapGeometry.coordinates) : null;
+    const coordinates = (point: unknown): point is [number, number] => Array.isArray(point)
+      && point.length === 2 && Number.isFinite(point[0]) && Number.isFinite(point[1]);
+    const sourceStart = geometryLeg?.origin.coordinates;
+    const sourceEnd = geometryLeg?.destination.coordinates;
+    const anchorsMatch = Boolean(sourcePath && coordinates(sourceStart) && coordinates(sourceEnd)
+      && routePreviewAnchorsMatch(sourcePath, sourceStart, sourceEnd));
+    const flightPath = direction === 'backward' && sourcePath ? reverseRoutePreviewPath(sourcePath) : sourcePath;
+    const dockingAnchor = direction === 'forward' ? targetLeg?.origin.coordinates : legs[currentIndex]?.origin.coordinates;
+    if (!flightPath || !anchorsMatch || !coordinates(dockingAnchor)
+      || distanceBetweenCoordinates(flightPath.coordinates.at(-1)!, dockingAnchor) > 15) {
+      legIndexRef.current = targetIndex;
+      setLegIndex(targetIndex);
+      setCameraFocusMode('preview');
+      return;
+    }
+
+    const targetGeometry = model.legs.find(item => item.id === targetLeg?.id);
+    const candidateTargetPath = targetGeometry && !targetGeometry.approximate ? prepareRoutePreviewPath(targetGeometry.coordinates) : null;
+    const targetPath = candidateTargetPath && targetLeg && routePreviewAnchorsMatch(candidateTargetPath, targetLeg.origin.coordinates, targetLeg.destination.coordinates)
+      ? candidateTargetPath
+      : null;
+    const finishZoom = !targetPath ? 16.1
+      : targetPath.totalMeters < 160 ? 16.8
+        : targetPath.totalMeters < 700 ? 16.5
+          : targetPath.totalMeters < 2_500 ? 16.1
+            : targetPath.totalMeters < 8_000 ? 15.6
+              : 15.1;
+    const durationMs = routePreviewDurationMs(flightPath, reducedMotion);
+    if (durationMs === 0) {
+      legIndexRef.current = targetIndex;
+      setLegIndex(targetIndex);
+      setCameraFocusMode('preview');
+      mapAdapter.current.focusRouteSegment?.(targetLeg!.id, mapPadding);
+      return;
+    }
+
+    setIsPreviewFlying(true);
+    let flightSettledSynchronously = false;
+    const complete = () => {
+      flightSettledSynchronously = true;
+      previewFlightCancel.current = null;
+      previewTargetLegIndex.current = null;
+      setIsPreviewFlying(false);
+      skipFocusAfterPreviewDock.current = true;
+      legIndexRef.current = targetIndex;
+      setLegIndex(targetIndex);
+      setCameraFocusMode('preview');
+    };
+    const cancelled = (reason: 'user' | 'programmatic') => {
+      flightSettledSynchronously = true;
+      previewFlightCancel.current = null;
+      previewTargetLegIndex.current = null;
+      setIsPreviewFlying(false);
+      // A direct touch/zoom/rotation wins over the automatic camera. Preserve its frame.
+      if (reason === 'user') setCameraFocusMode('free');
+    };
+    const cancel = mapAdapter.current.playRoutePreviewFlight?.(flightPath, {
+      durationMs,
+      padding: mapPadding,
+      startFromNearestVisiblePoint: true,
+      finishView: {
+        center: dockingAnchor,
+        ...(targetPath ? { bearing: targetPath.bearings[0] } : {}),
+        zoom: finishZoom,
+      },
+      onComplete: complete,
+      onCancel: cancelled,
+    });
+    if (cancel && !flightSettledSynchronously) {
+      previewFlightCancel.current = cancel;
+      previewTargetLegIndex.current = targetIndex;
+    }
+    else {
+      previewTargetLegIndex.current = null;
+      setIsPreviewFlying(false);
+      legIndexRef.current = targetIndex;
+      setLegIndex(targetIndex);
+      setCameraFocusMode('preview');
+    }
+  }, [cancelPreviewFlight, legs, mapPadding, model.legs, reducedMotion]);
 
   if (!leg) {
     return <section aria-label="Активна навігація" className="route-map-screen fixed inset-0 z-[80] grid place-items-center p-6 text-[var(--route-ink)]" data-theme={isDark ? 'dark' : 'light'}>
@@ -354,11 +592,33 @@ export function JourneyActiveNavigation({
   const destination = activeNavigationDestination(legs);
   const mapWarning = mapStatus === 'failed' ? mapStatusNote(mapStatus) : null;
   const liveLabel = liveJourneyRequestState === 'failed' ? 'За розкладом' : null;
+  const locationStatusLabel = locationStatus === 'active' && locationFix
+    ? `Місце визначено · ±${Math.round(locationFix.accuracyMeters)} м`
+    : locationStatus === 'requesting' ? 'Визначаємо місце…'
+      : locationStatus === 'stale' ? 'Місце не оновлюється'
+        : locationStatus === 'permission-denied' ? 'Дозвольте доступ до місцезнаходження'
+          : locationStatus === 'unavailable' ? 'Місцезнаходження недоступне'
+            : 'Навігація без визначеного місця';
 
   const advance = () => {
     haptic([8, 24, 8]);
-    if (isLast) { onFinish?.(); onExit(); return; }
-    setLegIndex(index => Math.min(legs.length - 1, index + 1));
+    if (isLast) { cancelPreviewFlight(); onFinish?.(); onExit(); return; }
+    const baseIndex = previewFlightCancel.current ? previewTargetLegIndex.current ?? legIndexRef.current : legIndexRef.current;
+    if (baseIndex >= legs.length - 1) {
+      cancelPreviewFlight();
+      legIndexRef.current = baseIndex;
+      setLegIndex(baseIndex);
+      setCameraFocusMode('preview');
+      return;
+    }
+    moveToAdjacentLeg(baseIndex + 1, 'forward');
+  };
+
+  const goBack = () => {
+    const baseIndex = previewFlightCancel.current ? previewTargetLegIndex.current ?? legIndexRef.current : legIndexRef.current;
+    if (baseIndex <= 0) return;
+    haptic(8);
+    moveToAdjacentLeg(baseIndex - 1, 'backward');
   };
 
   return <section
@@ -376,6 +636,9 @@ export function JourneyActiveNavigation({
         routeWaypoints={model.routeWaypoints}
         routeLabels={routeLabels}
         routeFitPadding={mapPadding}
+        autoFocusRouteSegment={false}
+        vehicle={locationFix ? [locationFix.longitude, locationFix.latitude] : null}
+        heading={locationFix?.headingDegrees ?? null}
         overlays
         theme={isDark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT'}
         onStatus={setMapStatus}
@@ -394,33 +657,44 @@ export function JourneyActiveNavigation({
           <ArrowLeft size={20}/>
         </button>
         <div data-testid="active-nav-header-pill" className="mx-auto flex min-w-0 max-w-full flex-col items-center rounded-full border border-[var(--route-border)] px-3 py-1 text-center shadow-[var(--route-sheet-shadow)] backdrop-blur-md" style={{ backgroundColor: 'color-mix(in srgb, var(--route-sheet) 88%, transparent)' }}>
-          <p className="text-xs font-extrabold uppercase tracking-[.14em] text-[var(--route-muted)]">Навігація</p>
+          <p className="text-xs font-extrabold uppercase tracking-[.14em] text-[var(--route-muted)]">{isPreviewFlying ? 'Перегляд маршруту' : 'Навігація'}</p>
           <p className="max-w-full truncate text-[16px] font-black leading-6 tracking-[-.02em] text-[var(--route-brand-ink)]">{destination}</p>
         </div>
       </div>
-      {(mapWarning || liveLabel) && <p role="status" className="mx-auto w-fit max-w-full truncate rounded-full bg-[var(--route-card)] px-3 py-1 text-xs font-semibold text-[var(--route-muted)]">{mapWarning || liveLabel}</p>}
+      {(mapWarning || liveLabel || locationStatus !== 'active' || cameraFocusMode !== 'gps' || Boolean(locationFix)) && <p role="status" data-testid="active-nav-location-status" className="mx-auto w-fit max-w-full truncate rounded-full bg-[var(--route-card)] px-3 py-1 text-xs font-semibold text-[var(--route-muted)]">{mapWarning || liveLabel || locationMessage || locationStatusLabel}</p>}
       {showDiagnostics && mapStatus !== 'available' && <p data-testid="active-map-status-details" className="mx-auto mt-1 w-fit max-w-full text-center text-xs text-[var(--route-muted)]">{mapStatusDetail(mapStatus, 'journey')}</p>}
     </header>
 
     <MapControlRail className={`absolute right-4 z-10${sheetSnap === 'expanded' ? ' opacity-45' : ''}`} label="Керування картою активної поїздки" inert={sheetSnap === 'expanded'} style={{ top: 'calc(max(.75rem, env(safe-area-inset-top)) + 5rem)' }}>
       <MapZoomControls map={mapAdapter.current} enabled={mapAdapterReady}/>
       <MapVoiceControl />
-      <button
-        type="button"
-        aria-label={focusWhole ? 'Наблизити поточний етап' : 'Показати весь маршрут'}
-        aria-pressed={focusWhole}
-        title={focusWhole ? 'Наблизити поточний етап' : 'Показати весь маршрут'}
-        onClick={() => {
-          // The expanded detent hides the map, so reveal the whole route by
-          // returning to the half sheet before the camera refits.
-          if (sheetSnap === 'expanded') moveToSnap('half');
-          setFocusWhole(value => !value);
-          haptic(8);
-        }}
-        className={`map-interaction-control mg-press-subtle grid h-12 w-12 place-items-center rounded-full${focusWhole ? ' is-reset' : ''}`}
-      >
-        <Navigation size={19}/>
-      </button>
+      <div className="flex items-center gap-1.5" role="group" aria-label="Режими огляду маршруту">
+        <button
+          type="button"
+          aria-label="Показати весь маршрут"
+          aria-pressed={cameraFocusMode === 'overview'}
+          title="Весь маршрут"
+          onClick={() => {
+            cancelPreviewFlight();
+            if (sheetSnap === 'expanded') moveToSnap('half');
+            setCameraFocusMode('overview');
+            haptic(8);
+          }}
+          className={`map-interaction-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full${cameraFocusMode === 'overview' ? ' is-reset' : ''}`}
+        >
+          <MapIcon size={18}/>
+        </button>
+        <button
+          type="button"
+          aria-label="До навігації"
+          aria-pressed={cameraFocusMode === 'gps'}
+          title="До навігації"
+          onClick={() => { void returnToGpsNavigation(); haptic(8); }}
+          className={`map-interaction-control mg-press-subtle grid h-11 w-11 place-items-center rounded-full${cameraFocusMode === 'gps' ? ' is-reset' : ''}`}
+        >
+          <Navigation size={18}/>
+        </button>
+      </div>
       <MapPerspectiveControl />
       <MapBasemapControl />
       <MapLayersControl overlays />
@@ -477,6 +751,7 @@ export function JourneyActiveNavigation({
             </div>
           </div>
           {sheetSnap !== 'collapsed' && <p className="mt-0.5 text-xs font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</p>}
+          {sheetSnap !== 'collapsed' && <p data-testid="active-nav-location-detail" className="mt-0.5 truncate text-xs font-semibold text-[var(--route-subtle)]">{locationMessage || locationStatusLabel}</p>}
           {notice && <p role="status" data-testid="active-nav-notice" className="mt-1.5 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-2.5 py-2 text-[12px] font-bold leading-[16px] text-[var(--route-ink)]">{notice}</p>}
         </div>
 
@@ -575,10 +850,15 @@ export function JourneyActiveNavigation({
       </div>
 
       <div className={`shrink-0 px-4 ${sheetSnap === 'collapsed' ? 'pb-1 pt-0.5' : 'pb-2 pt-1'}`}>
-        <button type="button" onClick={advance} className={`mg-route-cta flex w-full items-center justify-center gap-3${sheetSnap === 'collapsed' ? ' route-sheet-peek-cta' : ''}`}>
-          {isLast ? <Flag size={19} aria-hidden="true"/> : <ArrowRight size={20} aria-hidden="true"/>}
-          <span>{isLast ? 'Завершити' : 'Далі'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={goBack} disabled={legIndex === 0} aria-label="Попередній етап маршруту" title="Назад" className="map-interaction-control mg-press-subtle grid h-11 w-11 shrink-0 place-items-center rounded-xl disabled:opacity-40">
+            <ArrowLeft size={18} aria-hidden="true"/>
+          </button>
+          <button type="button" onClick={advance} className={`mg-route-cta flex min-w-0 flex-1 items-center justify-center gap-3${sheetSnap === 'collapsed' ? ' route-sheet-peek-cta' : ''}`}>
+            {isLast ? <Flag size={19} aria-hidden="true"/> : <ArrowRight size={20} aria-hidden="true"/>}
+            <span>{isLast ? 'Завершити' : 'Далі'}</span>
+          </button>
+        </div>
       </div>
     </section>
   </section>;
