@@ -6,7 +6,7 @@
 
 - Site branch: `codex/bottom-sheet-density-20261110`
 - Active-navigation source SHA: `8b1ca056459dc976a67fbdd9eac50422926b0cb0`
-- Current branch head: `209f1aaec595622aa4c3667190aeb3a7c93ce545` (fixture disclosure placement only)
+- Preview-fixture SHA: `209f1aaec595622aa4c3667190aeb3a7c93ce545` (fixture disclosure placement only)
 - Draft PR: [#129](https://github.com/dima1203oleg/MarshGO-Site/pull/129)
 - Local preview: [HyperFlight navigation demo](http://127.0.0.1:4178/tests/visual/hyperflight-navigation.html)
 - The preview runs `JourneyActiveNavigation` with a conspicuous synthetic-data disclosure. Its route, stops, fare and times are invented for visual interaction; GPS is not sent and no authenticated API is called.
