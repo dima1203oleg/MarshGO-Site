@@ -15,6 +15,8 @@ import { budgetLabel, isAppliedJourneyBudgetDraft, journeySearchBounds, MAX_JOUR
 import { TransportTypesPanel } from '../components/TransportTypesPanel';
 import { DepartureDateTimePicker } from '../components/DepartureDateTimePicker';
 import { HomeHero } from './HomeHero';
+import { isMapToolbarContext, useMapAwareBottomNavigation } from './mapAwareBottomNavigation';
+import './map-aware-bottom-navigation.css';
 import { SavedJourneyCard } from '../design-system/journey/SavedJourneyCard';
 import { isBookingSection, showsBookingList, showsSavedRoutes, tripsTabSubtitle, tripsTabs, type TripsSection } from './tripsSections';
 import { OnboardingSlides } from '../components/OnboardingSlides';
@@ -219,6 +221,9 @@ export function ProductionMarketplace() {
   const [counterComment, setCounterComment] = useState('');
   const { tab, setTab, activateTab, route, locationKey, setRoutePath, notFound, goHome } = useProductionTabRouter();
   const [showResults, setShowResults] = useState(false);
+  // Every tab tap remounts the icons so the dock-pop replays even when the
+  // tapped tab is already active and aria-current never changes.
+  const [tabPopTick, setTabPopTick] = useState(0);
   const [picker, setPicker] = useState<{ form: 'search' | 'offer' | 'demand'; field: 'origin' | 'destination' } | null>(null);
   const [profileSection, setProfileSection] = useState<ProfileSection | null>(null);
   const [transportSelection, setTransportSelection] = useState<TransportSelection>(() => loadSelection());
@@ -2323,7 +2328,7 @@ export function ProductionMarketplace() {
     { label: 'Опублікувати поїздку', hint: 'Маршрут, авто й ціна', icon: CarFront, pick: publishDriverTrip },
     { label: 'Знайти маршрут', hint: 'Усі види транспорту', icon: Search, pick: () => setTab('search') },
   ] as const).map((action) => { const Icon = action.icon; return <button key={action.label} type="button" onClick={() => { setShowCreateMenu(false); action.pick(); }} className="flex min-h-12 w-full items-center gap-3 rounded-xl bg-blue-50 p-3 text-left"><Icon className="shrink-0 text-blue-600" size={20}/><span className="min-w-0"><b className="block text-sm">{action.label}</b><small className="block text-[var(--mg-muted)]">{action.hint}</small></span></button>; })}</div><p className="mt-3 border-t border-slate-100 px-1 pt-3 text-xs font-bold uppercase tracking-wide text-slate-400">Пасажир</p><button type="button" onClick={() => { setShowCreateMenu(false); setSelectedDemand(null); setSelectedDemandIsOwned(false); setProposals([]); setProposalsUnavailable(false); setTab('demand'); }} className="mt-2 flex min-h-12 w-full items-center gap-3 rounded-xl bg-slate-50 p-3 text-left"><Compass className="shrink-0 text-slate-500" size={19}/><span className="min-w-0"><b className="block text-sm">Створити запит</b><small className="block text-[var(--mg-muted)]">Маршрут і ваш бюджет</small></span></button></section></div> : null;
-  const renderBottomTab = (item: (typeof tabItems)[number]) => { const Icon = item.icon; const active = tab === item.id || (tab === 'navigation' && item.id === 'home'); return <button key={item.id} aria-current={active ? 'page' : undefined} onClick={() => { setTab(item.id); if (item.id === 'home') setShowResults(false); setSelectedOffer(null); setSelectedBooking(null); setSelectedJourney(null); setSelectedRouteMap(null); setSelectedRouteGroup([]); setSelectedRouteRecommendation(undefined); setJourneyBookingLink(null); }} className={`flex w-full min-w-0 flex-col items-center gap-1 px-1 py-1 ${active ? 'text-[var(--mg-blue-ink)]' : 'text-[var(--mg-ink-secondary)]'}`}><Icon size={20} strokeWidth={active ? 2.5 : 2}/><span className="text-xs font-semibold">{item.label}</span></button>; };
+  const renderBottomTab = (item: (typeof tabItems)[number]) => { const Icon = item.icon; const active = tab === item.id || (tab === 'navigation' && item.id === 'home'); return <button key={item.id} aria-current={active ? 'page' : undefined} onClick={() => { setTabPopTick(tick => tick + 1); setTab(item.id); if (item.id === 'home') setShowResults(false); setSelectedOffer(null); setSelectedBooking(null); setSelectedJourney(null); setSelectedRouteMap(null); setSelectedRouteGroup([]); setSelectedRouteRecommendation(undefined); setJourneyBookingLink(null); }} className={`flex w-full min-w-0 flex-col items-center gap-1 px-1 py-1 ${active ? 'text-[var(--mg-blue-ink)]' : 'text-[var(--mg-ink-secondary)]'}`}><Icon key={`${item.id}-${tabPopTick}`} size={20} strokeWidth={active ? 2.5 : 2}/><span className="text-xs font-semibold">{item.label}</span></button>; };
 
 
   const pickerPlace = !picker ? null : picker.form === 'search' ? (picker.field === 'origin' ? searchOriginPlace : searchDestinationPlace)
@@ -2364,7 +2369,14 @@ export function ProductionMarketplace() {
   const hideSharedHeader = tab === 'navigation' || Boolean(activeJourneyNavigation || selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
 
   const immersiveRouteView = Boolean(activeJourneyNavigation || selectedRouteMap);
-  return <main className={`production-app min-h-[100svh] bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[var(--mg-global-nav-clearance)]'}`}>
+  const mapToolbarContext = isMapToolbarContext({
+    tab,
+    activeJourneyNavigation: Boolean(activeJourneyNavigation),
+    selectedRouteMap: Boolean(selectedRouteMap),
+    selectedJourney: Boolean(selectedJourney),
+  });
+  const { visible: mapNavigationVisible, onMapEdgePointerDown } = useMapAwareBottomNavigation(mapToolbarContext);
+  return <main onPointerDownCapture={onMapEdgePointerDown} className={`production-app min-h-[100svh] bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[var(--mg-global-nav-clearance)]'} ${mapToolbarContext ? 'map-toolbar-map-context' : ''}`}>
     {!hideSharedHeader && header}
     {isOffline && !hideSharedHeader && <div className="mx-auto w-full max-w-xl px-5"><p role="status" aria-live="polite" data-testid="offline-notice" className="mg-fade flex items-start gap-2 rounded-2xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-tint)] px-3 py-2.5 text-xs font-semibold leading-snug text-[var(--mg-ink-secondary)]">
       <WifiOff size={15} aria-hidden="true" className="mt-px shrink-0"/>
@@ -2379,7 +2391,7 @@ export function ProductionMarketplace() {
     {navigationOverlay}
     {navigationActive && tab !== 'navigation' && <button type="button" onClick={() => setTab('navigation')} aria-label="Повернутися до активної навігації" className="fixed right-3 z-[var(--mg-z-overlay)] flex items-center gap-2 rounded-full border border-blue-200 bg-white/95 px-3 py-2 text-xs font-bold text-blue-700 shadow-lg backdrop-blur" style={{ bottom: 'calc(var(--mg-global-nav-clearance) + .5rem)' }}><Navigation size={16}/>Навігація · Повернутися</button>}
     {pointPicker}
-    <nav data-testid="global-bottom-navigation" aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
+    <nav data-testid="global-bottom-navigation" data-map-context={mapToolbarContext ? 'true' : undefined} data-map-visible={mapToolbarContext ? String(mapNavigationVisible) : undefined} aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
       {tabItems.slice(0, 2).map(renderBottomTab)}
       <button onClick={() => setShowCreateMenu(true)} aria-label="Створити поїздку або запит" aria-haspopup="dialog" aria-expanded={showCreateMenu} className="app-create-button mg-press col-start-3 row-start-1 -mt-5 grid h-14 w-14 place-items-center justify-self-center rounded-full bg-[var(--mg-action)] text-white shadow-lg shadow-[#0B63D6]/30 transition-transform motion-safe:duration-[var(--mg-dur-fast)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><Plus size={25}/><span className="desktop-create-label">Створити</span></button>
       {tabItems.slice(2).map(renderBottomTab)}

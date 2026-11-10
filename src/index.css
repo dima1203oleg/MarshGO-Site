@@ -1506,7 +1506,9 @@ html.dark .coverage-details[open] { border-color: var(--mg-border-medium); }
 .search-trip-details button[aria-label$="пасажирів"] { position: relative; }
 .search-trip-details button[aria-label$="пасажирів"]::after { content: ''; position: absolute; top: -6px; bottom: -6px; left: -10px; right: -10px; }
 
-/* Bottom navigation: the selected tab lifts instead of only changing colour. */
+/* Bottom navigation: the selected tab pops like a dock icon — press squash,
+   inflate, settle — as tap feedback; the tab remounts its icon on every tap so
+   even re-tapping the active tab replays the pop. */
 .app-tabbar-inner button { transition: background-color var(--mg-dur-fast) var(--mg-ease-standard), color var(--mg-dur-fast) var(--mg-ease-standard); }
 .app-tabbar-inner button svg { transition: transform var(--mg-dur-base) var(--mg-ease-entrance); }
 .app-tabbar-inner button[aria-current="page"] svg { transform: translateY(-1px) scale(1.08); }
