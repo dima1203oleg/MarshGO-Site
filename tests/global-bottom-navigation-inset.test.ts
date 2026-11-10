@@ -14,10 +14,14 @@ test('the shared floating bar stays above immersive route screens and their shee
   const marketplace = readFileSync(new URL('../src/views/ProductionMarketplace.tsx', import.meta.url), 'utf8');
   const routeMap = readFileSync(new URL('../src/views/JourneyRouteMapScreen.tsx', import.meta.url), 'utf8');
   const activeNavigation = readFileSync(new URL('../src/views/JourneyActiveNavigation.tsx', import.meta.url), 'utf8');
+  const gpsNavigation = readFileSync(new URL('../src/views/ProductionNavigation.tsx', import.meta.url), 'utf8');
   assert.match(marketplace, /<nav data-testid="global-bottom-navigation"/);
   assert.doesNotMatch(marketplace, /!immersiveRouteView && <nav data-testid="global-bottom-navigation"/);
   assert.match(routeMap, /bottom: `\$\{bottomNavigationInset\}px`/);
   assert.match(activeNavigation, /bottom: `\$\{bottomNavigationInset\}px`/);
   assert.match(routeMap, /extraBottomInset: bottomNavigationInset/);
   assert.match(activeNavigation, /sheetHeight \+ bottomNavigationInset \+ 24/);
+  assert.match(gpsNavigation, /measureGlobalBottomNavigationInset/);
+  assert.match(gpsNavigation, /bottom: `\$\{bottomNavigationInset\}px`/);
+  assert.doesNotMatch(gpsNavigation, /bottom: 'calc\(4\.6rem \+ env\(safe-area-inset-bottom\)\)'/);
 });

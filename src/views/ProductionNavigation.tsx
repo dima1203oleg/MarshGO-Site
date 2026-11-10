@@ -698,7 +698,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
         </div>
       </section>
     </div>}
-    <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `${sheetHeight + bottomNavigationInset}px` } : !sheetOpen ? { bottom: `${bottomNavigationInset + 4 * 16}px` } : undefined} className={`absolute left-4 z-[var(--mg-z-nav-chrome)] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-[var(--mg-dur-base)] dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen && !sheetHeight ? 'bottom-[20rem]' : ''}`}>
+    <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `${sheetHeight + bottomNavigationInset}px` } : !sheetOpen ? { bottom: `calc(${bottomNavigationInset}px + 4rem)` } : undefined} className={`absolute left-4 z-[var(--mg-z-nav-chrome)] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-[var(--mg-dur-base)] dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen && !sheetHeight ? 'bottom-[20rem]' : ''}`}>
       <span><b data-testid="navigation-speed" className="block text-2xl font-extrabold leading-none">{liveSpeed === null ? '0' : Math.round(liveSpeed * 3.6)}</b><small className="text-xs font-bold text-slate-600 dark:text-slate-300">км/год</small></span>
     </div>
     {!sheetOpen && <>

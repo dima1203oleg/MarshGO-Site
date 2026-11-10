@@ -1512,7 +1512,7 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 .home-canonical-banner { min-height: clamp(10rem, 20svh, 11.75rem); }
 /* The promo absorbs leftover hero height so the tab bar never floats over dead space;
    the cap keeps it a banner, not a poster, on tall phones (iPhone 16 / 15 Pro Max). */
-.home-marshpass-promo { flex-grow: 1; max-height: 14rem; }
+.home-marshpass-promo { flex-grow: 1; max-height: clamp(11.25rem, 21svh, 12.25rem); }
 .home-action-grid { flex: 0 0 auto; grid-template-rows: repeat(2, clamp(6.2rem, 12.5svh, 6.8rem)); gap: .5rem; }
 /* A single navy surface family keeps all four actions calm; hierarchy comes from blue glyphs
    and the primary search action, while labels stay high-contrast ink. */
@@ -2693,6 +2693,7 @@ html {
 .home-action-card__art--transport {
   right: 0; bottom: 0; width: 70%; height: 100%; object-fit: cover;
   object-position: 52% 100%; opacity: .72; mix-blend-mode: screen;
+  transform: scale(2.2); transform-origin: right bottom;
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 31%);
   mask-image: linear-gradient(90deg, transparent 0%, #000 31%);
 }
@@ -2729,6 +2730,7 @@ html {
   box-shadow: 0 8px 22px color-mix(in srgb, var(--mg-blue) 30%, transparent), inset 0 1px 0 color-mix(in srgb, white 38%, transparent);
 }
 @media (max-width: 639px) and (min-height: 741px) {
+  .home-action-grid { grid-template-rows: repeat(2, clamp(6.5rem, 12.5svh, 7.25rem)); }
   .home-popular-routes { flex: 0 0 auto; }
   .home-popular-routes__row { flex: 0 0 auto; height: clamp(7.75rem, 16svh, 8.6rem); }
   .home-popular-route { height: 100%; min-height: 0; }
