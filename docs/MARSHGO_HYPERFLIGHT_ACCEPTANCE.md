@@ -29,7 +29,7 @@
 | Browser interaction | advanced the synthetic preview from access walk to bus, transfer walk and tram; inspected map focus and bottom sheet |
 | Mobile CSS layout | 320×568 and 390×844 viewport configurations; 390×844 sheet 178 px, CTA 44 px |
 | Wide visual check | 1280×720 showed separated route geometry after the chevron change |
-| Exact-head hosted CI | run `42828227538` passed on the active-navigation source SHA: lint, typecheck, 676 tests, token checks, build, bundle/single-React checks and Chromium boot smoke. Fixture-only branch head `209f1aaec595622aa4c3667190aeb3a7c93ce545` has CI runs `42829138608` and `42829130477` in progress. |
+| Exact-head hosted CI | PR head `56b71cc6d51f0577202a6833742f77bee0cb3025` passed run `42829380818`: lint, typecheck, 676 tests (0 failed), token checks, build, bundle/single-React checks and Chromium boot smoke. |
 
 The local browser page is left open in Codex. Browser screenshots were visible during review but were not written as files; there is no video artifact. No continuous recording or frame-time profile was taken.
 

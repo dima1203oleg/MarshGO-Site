@@ -1,12 +1,12 @@
 # MARSHGO zrok visual acceptance record
 
-**Candidate branch head:** `209f1aaec595622aa4c3667190aeb3a7c93ce545` · **Status: BLOCKED** · **Production: NOT_RELEASED**
+**Candidate branch head:** `56b71cc6d51f0577202a6833742f77bee0cb3025` · **Status: BLOCKED** · **Production: NOT_RELEASED**
 
 ## Candidate browser used instead
 
 - Local visual candidate: [http://127.0.0.1:4178/tests/visual/hyperflight-navigation.html](http://127.0.0.1:4178/tests/visual/hyperflight-navigation.html)
 - Worktree: `/Users/dima1203/.codex/worktrees/marshgo-bottom-sheet-density-20261110`
-- Branch/SHA: `codex/bottom-sheet-density-20261110` / `209f1aaec595622aa4c3667190aeb3a7c93ce545`
+- Branch/SHA: `codex/bottom-sheet-density-20261110` / `56b71cc6d51f0577202a6833742f77bee0cb3025`
 - Preview process: PID `30897`; local Vite preview at port `4178`.
 - Fixture mode: synthetic five-stage route, visibly disclosed; no GPS transmission and no API/auth request.
 
