@@ -25,7 +25,7 @@ Evidence distinguishes source code, focused automated checks, synthetic browser 
 
 ### Latest bottom-navigation checkpoint
 
-- Site commit `87684e96d4323dcb8243761037dbcba606c16b79` passed **677 tests (0 failed)**, typecheck, targeted ESLint and production build locally. Exact-head CI is pending.
+- Site commit `87684e96d4323dcb8243761037dbcba606c16b79` passed **677 tests (0 failed)**, typecheck, targeted ESLint and production build locally. PR head `4c51990022742e471ee507e046948913f7ed49e5` passed exact-head CI run `42835947180`, including Chromium boot smoke.
 - A desktop-sized local browser screenshot showed the five navigation items over the active route sheet and the CTA above the tab bar. Synthetic itinerary only; base map tiles/style assets were not available in the screenshot.
 - `M10-G2.1` is **PARTIAL**. The shared zrok still targets the Qoder branch/SHA in G13; this checkpoint was not accepted through zrok.
 

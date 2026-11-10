@@ -10,7 +10,7 @@
 - Preview process: PID `30897`; local Vite preview at port `4178`.
 - Fixture mode: synthetic five-stage route, visibly disclosed; no GPS transmission and no API/auth request.
 - The current preview visibly includes the five-item bottom navigation and active-navigation sheet. The CTA sits above the navigation. The basemap was black with a missing `wood-pattern` image warning, so this does not verify map styling or route geometry.
-- Local checks on this candidate: 677 tests passed, typecheck, targeted ESLint and production build passed. Exact-head CI remains pending.
+- Local checks on this candidate: 677 tests passed, typecheck, targeted ESLint and production build passed. PR head `4c51990022742e471ee507e046948913f7ed49e5` passed exact-head CI run `42835947180`, including Chromium boot smoke.
 
 ## Shared zrok inspected
 
