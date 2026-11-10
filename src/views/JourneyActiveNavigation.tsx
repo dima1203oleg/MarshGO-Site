@@ -20,6 +20,7 @@ import {
   createFrameWriter,
   prefersReducedMotion,
   routeSheetHeights,
+  routeSheetSafeAreaInset,
   routeSheetTransition,
   settleRouteSheetSnap,
   subscribeReducedMotion,
@@ -92,8 +93,8 @@ export function JourneyActiveNavigation({
 
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
-  const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
-  const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 340 : routeSheetHeights(window.innerHeight).half);
+  const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('collapsed');
+  const [sheetHeight, setSheetHeight] = useState(() => routeSheetHeights(typeof window === 'undefined' ? 844 : window.innerHeight, routeSheetSafeAreaInset()).collapsed);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
   const draggingRef = useRef(false);
   const [mapAdapterReady, setMapAdapterReady] = useState(false);
@@ -263,7 +264,7 @@ export function JourneyActiveNavigation({
     const updateViewport = () => {
       const next = window.innerHeight;
       setViewportHeight(next);
-      const nextHeight = routeSheetHeights(next)[sheetSnap];
+      const nextHeight = routeSheetHeights(next, routeSheetSafeAreaInset())[sheetSnap];
       sheetHeightRef.current = nextHeight;
       setSheetHeight(nextHeight);
     };
@@ -272,7 +273,7 @@ export function JourneyActiveNavigation({
   }, [sheetSnap]);
 
   const moveToSnap = (next: RouteSheetSnap) => {
-    const nextHeight = routeSheetHeights(viewportHeight)[next];
+    const nextHeight = routeSheetHeights(viewportHeight, routeSheetSafeAreaInset())[next];
     sheetHeightRef.current = nextHeight;
     setSheetSnap(next);
     setSheetHeight(nextHeight);
@@ -307,7 +308,7 @@ export function JourneyActiveNavigation({
     start.velocity = (start.lastY - event.clientY) / elapsed;
     start.lastY = event.clientY;
     start.lastAt = now;
-    const heights = routeSheetHeights(viewportHeight);
+    const heights = routeSheetHeights(viewportHeight, routeSheetSafeAreaInset());
     const nextHeight = Math.min(heights.expanded, Math.max(heights.collapsed, start.height + delta));
     sheetHeightRef.current = nextHeight;
     dragWriter.current?.schedule(nextHeight);
@@ -317,7 +318,7 @@ export function JourneyActiveNavigation({
     if (!start || start.pointerId !== event.pointerId) return;
     dragWriter.current?.flush();
     if (start.moved) {
-      const heights = routeSheetHeights(viewportHeight);
+      const heights = routeSheetHeights(viewportHeight, routeSheetSafeAreaInset());
       moveToSnap(settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height));
     }
     dragStart.current = null;
@@ -349,7 +350,7 @@ export function JourneyActiveNavigation({
   const nextHint = activeLegNextHint(legs[legIndex + 1]);
   const isLast = legIndex >= legs.length - 1;
   const showRibbon = sheetSnap === 'expanded' || (sheetSnap === 'half' && viewportHeight >= 700);
-  const showAction = sheetSnap !== 'collapsed';
+  const showAction = true;
   const destination = activeNavigationDestination(legs);
   const mapWarning = mapStatus === 'failed' ? mapStatusNote(mapStatus) : null;
   const liveLabel = liveJourneyRequestState === 'failed' ? 'За розкладом' : null;
@@ -427,7 +428,7 @@ export function JourneyActiveNavigation({
 
     <section
       ref={sheetElement}
-      className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-3xl flex-col overflow-hidden rounded-t-[1.75rem] border border-[var(--route-border)] bg-[var(--route-sheet)] shadow-[var(--route-sheet-shadow)]"
+      className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-3xl flex-col overflow-hidden rounded-t-[var(--mg-radius-3xl)] border border-[var(--route-border)] bg-[var(--route-sheet)] shadow-[var(--route-sheet-shadow)]"
       aria-label="Поточний етап маршруту"
       data-testid="active-navigation-sheet"
       data-sheet-state={sheetSnap}
@@ -449,14 +450,14 @@ export function JourneyActiveNavigation({
           if (event.key === 'Home') { event.preventDefault(); moveToSnap('collapsed'); }
           if (event.key === 'End') { event.preventDefault(); moveToSnap('expanded'); }
         }}
-        className="route-sheet-grabber flex h-11 w-full shrink-0 touch-none items-center justify-center"
+        className="route-sheet-grabber flex w-full h-11 shrink-0 touch-none items-center justify-center"
       >
         <span className="route-sheet-grabber__handle h-1.5 w-12 rounded-full bg-[var(--route-grabber)]"/>
       </button>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
-        <div className="shrink-0 px-5">
-          <div className="flex items-center gap-2">
+        <div className="shrink-0 px-4">
+          {sheetSnap !== 'collapsed' && <div className="flex items-center gap-2">
             <p aria-live="polite" aria-atomic="true" className="text-xs font-extrabold uppercase tracking-[.12em] text-[var(--route-muted)]">
               Етап {legIndex + 1} з {legs.length}
             </p>
@@ -465,21 +466,21 @@ export function JourneyActiveNavigation({
               {ACTIVE_LEG_STATUS_LABEL[status]}
             </span>}
             {phase === 'past' && <span className="rounded-full bg-[var(--route-card-alt)] px-2 py-0.5 text-xs font-extrabold text-[var(--route-muted)]">ЗАВЕРШЕНО</span>}
-          </div>
-          <div className="mt-1 flex items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_color-mix(in_srgb,var(--segment-color)_45%,transparent)]" style={{ backgroundColor: journeyModeColor(leg.mode, leg.transportType), ['--segment-color' as string]: journeyModeColor(leg.mode, leg.transportType) }}>
-              <TransportIcon mode={leg.mode} transportType={leg.transportType} size={20} strokeWidth={2.3}/>
+          </div>}
+          <div className="mt-0.5 flex items-center gap-2.5">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white shadow-[0_0_14px_color-mix(in_srgb,var(--segment-color)_38%,transparent)]" style={{ backgroundColor: journeyModeColor(leg.mode, leg.transportType), ['--segment-color' as string]: journeyModeColor(leg.mode, leg.transportType) }}>
+              <TransportIcon mode={leg.mode} transportType={leg.transportType} size={17} strokeWidth={2.3}/>
             </span>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-[21px] font-black leading-7 tracking-[-.03em]">{activeLegTitle(leg)}</h1>
+              <h1 className="truncate text-[19px] font-black leading-6 tracking-[-.03em]">{activeLegTitle(leg)}</h1>
               <p data-testid="active-nav-leg-destination" className="truncate text-xs font-bold text-[var(--route-muted)]">до «{shortPlace(leg.destination.name)}»</p>
             </div>
           </div>
-          <p className="mt-1 text-xs font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</p>
-          {notice && <p role="status" data-testid="active-nav-notice" className="mt-2 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2.5 text-[12px] font-bold leading-[16px] text-[var(--route-ink)]">{notice}</p>}
+          {sheetSnap !== 'collapsed' && <p className="mt-0.5 text-xs font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</p>}
+          {notice && <p role="status" data-testid="active-nav-notice" className="mt-1.5 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-2.5 py-2 text-[12px] font-bold leading-[16px] text-[var(--route-ink)]">{notice}</p>}
         </div>
 
-        {showRibbon && <div className="mg-route-ribbon mt-3 shrink-0 px-5" role="list" aria-label="Етапи навігації">
+        {showRibbon && <div className="mg-route-ribbon mt-2 shrink-0 px-4" role="list" aria-label="Етапи навігації">
           {legs.map((item, index) => {
             const selected = index === legIndex;
             return <div key={item.id} role="listitem" className={`mg-route-ribbon__item${index < legIndex ? ' is-muted' : ''}`} style={{ flexGrow: Math.max(1, Math.round(item.durationSeconds / 60)) }}>
@@ -498,19 +499,26 @@ export function JourneyActiveNavigation({
           })}
         </div>}
 
-        {showAction && <div className="mx-5 mt-3 shrink-0 rounded-2xl border border-[var(--route-border)] bg-[var(--route-card-alt)] p-3">
-          <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--mg-action)] text-white"><ArrowRight size={15} strokeWidth={2.6}/></span>
-            <div className="min-w-0">
-              <p data-testid="active-nav-instruction" className="text-[13px] font-extrabold leading-5">{instruction}</p>
-              {nextHint && <p className="mt-0.5 text-xs font-semibold leading-4 text-[var(--route-muted)]">{nextHint}</p>}
+        {showAction && (sheetSnap === 'collapsed' ? (
+          <p data-testid="active-nav-instruction" className="mx-4 mt-1 flex min-w-0 shrink-0 items-center gap-1.5 text-[12px] font-extrabold leading-4">
+            <ArrowRight size={13} className="shrink-0 text-[var(--mg-blue)]" aria-hidden="true"/>
+            <span className="min-w-0 truncate">{instruction}</span>
+          </p>
+        ) : (
+          <div className="mx-4 mt-2 shrink-0 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-2.5 py-2">
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--mg-action)] text-white"><ArrowRight size={13} strokeWidth={2.6}/></span>
+              <div className="min-w-0">
+                <p data-testid="active-nav-instruction" className="text-[13px] font-extrabold leading-[18px]">{instruction}</p>
+                {nextHint && <p className="mt-0.5 text-xs font-semibold leading-[14px] text-[var(--route-muted)]">{nextHint}</p>}
+              </div>
             </div>
           </div>
-        </div>}
+        ))}
 
-        {sheetSnap === 'expanded' && <div className="mt-3 shrink-0 px-5 pb-2" data-testid="active-navigation-stages">
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-[.12em] text-[var(--route-muted)]">Увесь маршрут · {formatStageCount(legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</p>
-          <ol className="space-y-2">
+        {sheetSnap === 'expanded' && <div className="mt-2 shrink-0 px-4 pb-1" data-testid="active-navigation-stages">
+          <p className="mb-1 text-xs font-extrabold text-[var(--route-muted)]">Увесь маршрут · {formatStageCount(legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</p>
+          <ol className="space-y-1">
             {legs.map((item, index) => {
               const selected = index === legIndex;
               const price = legPriceDisplay(item);
@@ -520,41 +528,45 @@ export function JourneyActiveNavigation({
               const stopsOpen = openStopsLegId === item.id;
               return <li key={item.id}>
                 <div className={`overflow-hidden rounded-2xl border transition-colors ${selected ? 'border-[var(--mg-blue)] bg-[var(--route-card-alt)]' : 'border-[var(--route-border)] bg-[var(--route-card)]'}`}>
-                  <button
-                    type="button"
-                    onClick={() => jumpToLeg(index)}
-                    aria-pressed={selected}
-                    className="flex w-full items-start gap-3 px-3 py-2.5 text-left"
-                  >
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}>
-                      <TransportIcon mode={item.mode} transportType={item.transportType} size={18} strokeWidth={2.2}/>
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <b className="truncate text-[13px] font-extrabold">{activeLegTitle(item)}</b>
-                        <span className="ml-auto shrink-0 text-xs font-bold text-[var(--route-muted)]">Етап {index + 1}</span>
+                  <div className="flex items-center gap-1 px-1 py-1">
+                    <button
+                      type="button"
+                      onClick={() => jumpToLeg(index)}
+                      aria-pressed={selected}
+                      aria-label={`${activeLegTitle(item)}. Етап ${index + 1}. ${activeLegTimes(item)} · ${formatJourneyDurationTile(item.durationSeconds)}${priceText}. ${shortPlace(item.origin.name)} → ${shortPlace(item.destination.name)}`}
+                      title={`${shortPlace(item.origin.name)} → ${shortPlace(item.destination.name)}`}
+                      className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg px-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"
+                    >
+                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-white" style={{ backgroundColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}>
+                        <TransportIcon mode={item.mode} transportType={item.transportType} size={15} strokeWidth={2.2}/>
                       </span>
-                      <span className="mt-0.5 block truncate text-xs font-semibold tabular-nums text-[var(--route-muted)]">{activeLegTimes(item)} · {formatJourneyDurationTile(item.durationSeconds)}{priceText}</span>
-                      <span className="mt-0.5 block truncate text-xs text-[var(--route-subtle)]">{shortPlace(item.origin.name)} → {shortPlace(item.destination.name)}</span>
-                    </span>
-                  </button>
-                  {scheduled && <div className="border-t border-[var(--route-border)] px-3 py-1.5">
-                    {stops.length > 0 ? <>
-                      <button
-                        type="button"
-                        aria-expanded={stopsOpen}
-                        aria-controls={`active-navigation-stops-${item.id}`}
-                        onClick={() => setOpenStopsLegId(nextStopsLegId(openStopsLegId, item.id))}
-                        className="mg-press-subtle inline-flex min-h-11 items-center gap-1 rounded-xl px-1 text-xs font-extrabold text-[var(--route-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"
-                      >
-                        <ChevronDown size={15} aria-hidden="true" className={`route-stops-chevron${stopsOpen ? ' is-open' : ''}`}/>
-                        {formatStopCount(stops.length)}
-                      </button>
-                      {stopsOpen && <div id={`active-navigation-stops-${item.id}`} className="mg-route-stops pb-1.5">
-                        <JourneyLegStops leg={item} color={item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType)}/>
-                      </div>}
-                    </> : <p className="py-1.5 text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5 leading-4">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <b className="min-w-0 flex-1 truncate text-[13px] font-extrabold">{activeLegTitle(item)}</b>
+                          <span className="shrink-0 text-xs font-bold text-[var(--route-muted)]">{formatJourneyDurationTile(item.durationSeconds)}{priceText}</span>
+                        </span>
+                        <span className="flex min-w-0 items-center gap-1 text-xs leading-[14px] text-[var(--route-muted)]">
+                          <span className="shrink-0 tabular-nums">{activeLegTimes(item)}</span>
+                          <span aria-hidden="true">·</span>
+                          <span className="min-w-0 flex-1 truncate text-[var(--route-subtle)]">{shortPlace(item.origin.name)} → {shortPlace(item.destination.name)}</span>
+                        </span>
+                      </span>
+                    </button>
+                    {scheduled && stops.length > 0 && <button
+                      type="button"
+                      aria-label={`${stopsOpen ? 'Згорнути' : 'Розгорнути'} ${formatStopCount(stops.length)} для ${activeLegTitle(item)}`}
+                      aria-expanded={stopsOpen}
+                      aria-controls={`active-navigation-stops-${item.id}`}
+                      onClick={() => setOpenStopsLegId(nextStopsLegId(openStopsLegId, item.id))}
+                      className="mg-press-subtle grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--route-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"
+                    >
+                      <ChevronDown size={15} aria-hidden="true" className={`route-stops-chevron${stopsOpen ? ' is-open' : ''}`}/>
+                    </button>}
+                  </div>
+                  {scheduled && stops.length > 0 && <div id={`active-navigation-stops-${item.id}`} hidden={!stopsOpen} className="mg-route-stops border-t border-[var(--route-border)] px-2 pb-1.5 pt-1">
+                    {stopsOpen && <JourneyLegStops leg={item} color={item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType)}/>}
                   </div>}
+                  {scheduled && stops.length === 0 && <p className="px-3 pb-2 text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
                 </div>
               </li>;
             })}
@@ -562,8 +574,8 @@ export function JourneyActiveNavigation({
         </div>}
       </div>
 
-      <div className="shrink-0 px-4 pb-3 pt-2">
-        <button type="button" onClick={advance} className="mg-route-cta flex w-full items-center justify-center gap-3">
+      <div className={`shrink-0 px-4 ${sheetSnap === 'collapsed' ? 'pb-1 pt-0.5' : 'pb-2 pt-1'}`}>
+        <button type="button" onClick={advance} className={`mg-route-cta flex w-full items-center justify-center gap-3${sheetSnap === 'collapsed' ? ' route-sheet-peek-cta' : ''}`}>
           {isLast ? <Flag size={19} aria-hidden="true"/> : <ArrowRight size={20} aria-hidden="true"/>}
           <span>{isLast ? 'Завершити' : 'Далі'}</span>
         </button>

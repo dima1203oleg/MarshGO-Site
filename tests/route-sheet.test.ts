@@ -6,6 +6,7 @@ import {
   nearestRouteSheetSnap,
   ROUTE_SHEET_LOGICAL_LABELS,
   ROUTE_SHEET_SNAPS,
+  routeSheetExpandedFitHeight,
   routeSheetHeights,
   routeSheetTransition,
   settleRouteSheetSnap,
@@ -19,8 +20,8 @@ test('route sheet keeps four ordered detents (PEEK -> COMPACT -> MEDIUM -> FULL)
     half: 'MEDIUM',
     expanded: 'FULL',
   });
-  for (const viewport of [568, 667, 844, 932]) {
-    const heights = routeSheetHeights(viewport);
+  for (const viewport of [568, 667, 844, 932, 1200]) {
+    const heights = routeSheetHeights(viewport, viewport < 1024 ? 34 : 0);
     assert.ok(heights.peek >= 160 && heights.peek <= 220, `peek height ${heights.peek} on ${viewport}px must remain compact without clipping controls`);
     assert.ok(heights.peek < heights.collapsed);
     assert.ok(heights.collapsed < heights.half);
@@ -28,16 +29,33 @@ test('route sheet keeps four ordered detents (PEEK -> COMPACT -> MEDIUM -> FULL)
     assert.ok(viewport - heights.expanded >= 172);
     assert.ok(heights.collapsed >= 200);
   }
-  assert.equal(routeSheetHeights(844).peek, 168);
-  assert.equal(routeSheetHeights(844).half, 316.5);
-  assert.equal(routeSheetHeights(844).expanded, 672);
-  assert.ok(routeSheetHeights(844).expanded - routeSheetHeights(844).half >= 300);
+  const compactLandscape = routeSheetHeights(320, 34);
+  assert.ok(compactLandscape.peek < compactLandscape.collapsed);
+  assert.ok(compactLandscape.collapsed < compactLandscape.half);
+  assert.ok(compactLandscape.half < compactLandscape.expanded);
+  assert.equal(routeSheetHeights(844, 34).peek, 186);
+  assert.equal(routeSheetHeights(844, 34).collapsed, 224);
+  assert.equal(routeSheetHeights(844, 34).half, 414);
+  assert.equal(routeSheetHeights(844, 34).expanded, 672);
+  assert.equal(routeSheetHeights(568, 34).peek, 180);
+  assert.equal(routeSheetHeights(568, 34).collapsed, 220);
+  assert.equal(routeSheetHeights(844, 34).collapsed - routeSheetHeights(844, 0).collapsed, 34);
+  assert.equal(routeSheetHeights(844, 34).expanded, routeSheetHeights(844, 0).expanded);
+  assert.equal(routeSheetHeights(568, 34).half, 318);
+  assert.ok(routeSheetHeights(844, 34).expanded - routeSheetHeights(844, 34).half >= 220);
+});
+
+test('expanded route sheet fits measured details while keeping a usable map strip and scroll cap', () => {
+  assert.equal(routeSheetExpandedFitHeight(844, 0, 565), 565);
+  assert.equal(routeSheetExpandedFitHeight(844, 0, 200), routeSheetHeights(844).half + 24);
+  assert.equal(routeSheetExpandedFitHeight(568, 0, 565), routeSheetHeights(568).expanded);
+  assert.equal(routeSheetExpandedFitHeight(932, 34, 900), routeSheetHeights(932, 34).expanded);
 });
 
 test('slow release chooses the nearest snap and a quick swipe advances one snap across 4 detents', () => {
-  const heights = routeSheetHeights(844);
+  const heights = routeSheetHeights(844, 34);
   assert.equal(nearestRouteSheetSnap(heights.peek + 10, heights), 'peek');
-  assert.equal(nearestRouteSheetSnap(heights.half - 40, heights), 'collapsed');
+  assert.equal(nearestRouteSheetSnap(heights.collapsed + 10, heights), 'collapsed');
   assert.equal(nearestRouteSheetSnap(heights.half + 40, heights), 'half');
   assert.equal(nearestRouteSheetSnap(heights.expanded + 40, heights), 'expanded');
   assert.equal(settleRouteSheetSnap(heights.peek + 25, 0.8, heights, 0.45, heights.peek), 'collapsed');

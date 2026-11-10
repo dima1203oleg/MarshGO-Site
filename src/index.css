@@ -8,6 +8,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  --mg-safe-area-bottom: env(safe-area-inset-bottom, 0px);
   /* Legacy brand names resolve through the semantic ramp below. */
   --color-marshgo-navy: var(--mg-navy);
   --color-marshgo-blue: var(--mg-action);
@@ -1911,7 +1912,13 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   display: flex;
   align-items: flex-start;
   gap: .5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.mg-route-ribbon::-webkit-scrollbar { display: none; }
 .mg-route-ribbon__item {
   display: flex;
   flex: 1 1 0%;
@@ -1994,6 +2001,9 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   touch-action: manipulation;
 }
 .route-sheet-peek-cta { min-height: 48px; }
+.route-sheet-summary--dense { min-height: 28px; }
+.route-sheet-summary--dense > span:last-child { max-width: 5.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-map-screen [data-testid="route-bottom-sheet"] .mg-route-ribbon__detail { display: none; }
 .mg-route-cta:active { transform: scale(.985); filter: brightness(1.06); }
 .mg-route-cta:disabled { opacity: .5; box-shadow: none; }
 .mg-route-cta:focus-visible { outline: 3px solid color-mix(in srgb, var(--mg-blue) 68%, transparent); outline-offset: 3px; }

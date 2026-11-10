@@ -24,7 +24,7 @@ test('TEST 1 & TEST 9: adaptive map padding preserves visible corridor and respe
 
   for (const vp of viewports) {
     const isDesktop = vp.width >= 1024;
-    const heights = routeSheetHeights(vp.height);
+    const heights = routeSheetHeights(vp.height, isDesktop ? 0 : 34);
 
     for (const snap of ['peek', 'collapsed', 'half', 'expanded'] as const) {
       const padding = calculateAdaptiveMapPadding({
@@ -61,7 +61,7 @@ test('TEST 1 & TEST 9: adaptive map padding preserves visible corridor and respe
 
 test('TEST 2 & TEST 4: bottom sheet heights provide 4 ordered states with high map visibility on collapsed detents', () => {
   const vpHeight = 844;
-  const heights = routeSheetHeights(vpHeight);
+  const heights = routeSheetHeights(vpHeight, 34);
 
   // Four strictly ordered snaps
   assert.ok(heights.peek < heights.collapsed);
@@ -88,7 +88,7 @@ test('TEST 2 & TEST 4: bottom sheet heights provide 4 ordered states with high m
 test('TEST 3: expanded state bounds cap bottom padding to guarantee top map strip remains visible', () => {
   const vpHeight = 844;
   const vpWidth = 390;
-  const heights = routeSheetHeights(vpHeight);
+  const heights = routeSheetHeights(vpHeight, 34);
 
   const padding = calculateAdaptiveMapPadding({
     viewportWidth: vpWidth,
@@ -107,7 +107,7 @@ test('TEST 3: expanded state bounds cap bottom padding to guarantee top map stri
 
 test('TEST 3b: the padded fit region ends above the sheet and centres on the real visible band', () => {
   for (const vp of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 430, height: 932 }]) {
-    const heights = routeSheetHeights(vp.height);
+    const heights = routeSheetHeights(vp.height, 34);
     for (const snap of ['half', 'expanded'] as const) {
       const area = computeVisibleMapArea({
         viewportWidth: vp.width,

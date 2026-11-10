@@ -66,12 +66,12 @@ export function JourneyLegStops({
             onClick={() => onStopSelect(stop, stop.coordinates)}
             aria-pressed={isSelected}
             aria-label={`Зупинка: ${shortPlace(stop.name)}, час ${stopTime(stop, index)}`}
-            className={`relative grid min-h-9 w-full grid-cols-[44px_minmax(0,1fr)] items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs transition-colors hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)] ${isSelected ? 'bg-[var(--route-hover)] ring-1 ring-[var(--mg-blue)]' : ''}`}
+            className={`relative grid min-h-11 w-full grid-cols-[44px_minmax(0,1fr)] items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs transition-colors hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)] ${isSelected ? 'bg-[var(--route-hover)] ring-1 ring-[var(--mg-blue)]' : ''}`}
           >
             {content}
           </button>
         ) : (
-          <div className="relative grid min-h-9 grid-cols-[44px_minmax(0,1fr)] items-center gap-2 py-0.5 text-xs">
+          <div className="relative grid min-h-7 grid-cols-[44px_minmax(0,1fr)] items-center gap-2 py-0.5 text-xs">
             {content}
           </div>
         )}
