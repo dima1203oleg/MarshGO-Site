@@ -145,11 +145,14 @@ describe('a refused activation stays visible on the stage screen', () => {
     assert.match(block, /text-\[12px\]/, 'iPhone legibility floor is 12 px');
   });
 
-  it('routes the refusal to the screen instead of the suppressed band', () => {
+  it('keeps a refused activation on the route sheet and does not persist an active journey', () => {
     const source = marketplace();
-    assert.match(source, /if \(!outcome\.confirmed\) \{[\s\S]*?setJourneyNotice\(outcome\.message\)/);
-    assert.match(source, /activeJourneyStore\.clear\(\)/, 'a refused activation must not be restored as active after reload');
-    assert.match(source, /notice=\{journeyNotice\}/);
+    const start = source.slice(source.indexOf('const startJourneyNavigation = async'), source.indexOf('// Leaving navigation on purpose'));
+    assert.match(start, /if \(!outcome\.confirmed\) return \{ started: false, message: outcome\.message \}/);
+    assert.ok(start.indexOf('activeJourneyStore.write(') > start.indexOf('if (!outcome.confirmed)'),
+      'the journey pointer is stored only after the server confirms activation');
+    const routeMap = readFileSync('src/views/JourneyRouteMapScreen.tsx', 'utf8');
+    assert.match(routeMap, /startError && <p role="status"/);
   });
 
   it('promises nothing the server did not confirm', () => {

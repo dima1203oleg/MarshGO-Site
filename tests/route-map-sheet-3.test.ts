@@ -15,13 +15,47 @@ import type { Coordinate } from '../shared/navigation/contracts';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const routeScreen = read('src/views/JourneyRouteMapScreen.tsx');
+const activeNavigation = read('src/views/JourneyActiveNavigation.tsx');
 const css = read('src/index.css');
 const stops = read('src/views/JourneyLegStops.tsx');
 const adapter = read('src/map/MapLibreAdapter.ts');
 
 test('peek sheet separates duration and fare while retaining a compact action', () => {
   assert.match(routeScreen, /data-testid="route-peek-summary-divider"/);
-  assert.match(routeScreen, /route-sheet-peek-cta/);
+  assert.match(routeScreen, /route-sheet-compact-cta/);
+});
+
+test('compact sheet keeps duration, fare and transfer count together without duplicating the bottom navigation inset', () => {
+  assert.match(routeScreen, /route-sheet-summary--dense/);
+  assert.match(routeScreen, /Без пересадок/);
+  assert.match(routeScreen, /paddingBottom: 0/);
+  assert.match(routeScreen, /reserveBottomNavigation/);
+  assert.doesNotMatch(routeScreen, /pb-\[max\(0\.75rem,env\(safe-area-inset-bottom\)\)\]/);
+  assert.match(css, /route-sheet-summary--dense/);
+  assert.match(css, /overflow-x: auto/);
+});
+
+test('route details compress each stage while retaining timing, place names and accessible stop expansion', () => {
+  assert.match(routeScreen, /mg-route-segment--dense/);
+  assert.match(routeScreen, /formatDuration\(item\.durationSeconds\)/);
+  assert.match(routeScreen, /formatTime\(leg\.departureAt\).*formatTime\(leg\.arrivalAt\)/);
+  assert.match(routeScreen, /aria-label=\{`Вибрати сегмент\. \$\{segmentAccessibleLabel\}`\}/);
+  assert.match(routeScreen, /className="sr-only" data-testid="route-walk-hint"/);
+  assert.match(routeScreen, /aria-label=\{`\$\{stopsOpen \? 'Згорнути' : 'Розгорнути'\} \$\{formatStopCount\(stops\.length\)\}/);
+});
+
+test('active navigation uses the same compact stage rhythm and preserves full details for assistive tech', () => {
+  assert.match(activeNavigation, /data-testid="active-navigation-stages"/);
+  assert.match(activeNavigation, /min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg px-1/);
+  assert.match(activeNavigation, /aria-label=\{`\$\{activeLegTitle\(item\)\}\. Етап/);
+  assert.match(activeNavigation, /<ol className="space-y-1">/);
+  assert.match(activeNavigation, /const showAction = true/);
+  assert.match(activeNavigation, /data-testid="active-nav-instruction" className="mx-4 mt-1/);
+  assert.match(activeNavigation, /\{sheetSnap !== 'collapsed' && <div className="flex items-center gap-2">/);
+  assert.match(activeNavigation, /\{sheetSnap !== 'collapsed' && <p className="mt-0\.5 text-xs font-semibold tabular-nums/);
+  assert.match(activeNavigation, /sheetSnap === 'collapsed' \? ' route-sheet-compact-cta'/);
+  assert.match(activeNavigation, /grid h-11 w-11 shrink-0 place-items-center/);
+  assert.match(stops, /min-h-11 w-full grid-cols-\[44px_minmax\(0,1fr\)\]/);
 });
 
 const route: Coordinate[] = [[30.5, 50.4], [30.52, 50.45], [30.55, 50.5]];
@@ -38,7 +72,7 @@ test('the camera fit rectangle ends above the sheet on every mobile detent', () 
     { width: 390, height: 844 },
     { width: 430, height: 932 },
   ]) {
-    const heights = routeSheetHeights(viewport.height);
+    const heights = routeSheetHeights(viewport.height, 34);
     for (const snap of ['peek', 'collapsed', 'half', 'expanded'] as const) {
       const padding = calculateAdaptiveMapPadding({
         viewportWidth: viewport.width,
@@ -58,7 +92,7 @@ test('the camera fit rectangle ends above the sheet on every mobile detent', () 
 });
 
 test('the fit rectangle clears the live chip that floats above the sheet', () => {
-  const heights = routeSheetHeights(844);
+  const heights = routeSheetHeights(844, 34);
   for (const snap of ['collapsed', 'half'] as const) {
     const base = { viewportWidth: 390, viewportHeight: 844, sheetHeight: heights[snap], sheetSnap: snap, topBarHeight: 100 };
     const plain = calculateAdaptiveMapPadding(base);
@@ -199,7 +233,7 @@ test('transfer and walk hints live inside the sheet, not in floating map callout
   const screenRootAt = routeScreen.search(/return\s*\(\s*<(?:main|section)\b/);
   assert.ok(cardsAt > 0 && transferAt > cardsAt && transferAt < screenRootAt,
     'the transfer row has to be produced by renderSegmentCards');
-  const listAt = routeScreen.indexOf('data-testid="route-segment-list"');
+  const listAt = routeScreen.indexOf('data-testid="route-segment-list"', cardsAt);
   assert.ok(listAt > 0 && routeScreen.slice(listAt, listAt + 300).includes('{renderSegmentCards()}'),
     'the segment list must render those cards and their transfer rows');
 });
@@ -215,8 +249,8 @@ test('the duplicated stage narration is gone and the sheet breathes without it',
     'the FULL-state pill lives in the strip padding instead of covering the fitted geometry');
   assert.match(routeScreen, /topBarHeight: 100/,
     'the measured 102 px compact header must be reserved, not a nominal 84 px');
-  assert.match(routeScreen, /extraBottomInset: floatingChipVisible \? 58 : 0/,
-    'the camera must reserve the live chip above the sheet');
+  assert.match(routeScreen, /extraBottomInset: bottomNavigationInset \+ \(floatingChipVisible \? 58 : 0\)/,
+    'the camera must reserve the global navigation and the live chip above the sheet');
 });
 
 test('the primary action uses the canonical blue–graphite ramp, never purple', () => {
@@ -242,9 +276,7 @@ test('the primary action uses the canonical blue–graphite ramp, never purple',
   assert.match(routeScreen, /bg-\[var\(--mg-action\)\]/, 'the community booking button must be a filled action control');
 });
 
-test('stop rows keep a dense but tappable 36 px rhythm', () => {
-  const rows = [...stops.matchAll(/min-h-(7|8|9|10)\b/g)].map(match => match[0]);
-  assert.ok(rows.length >= 2, 'both the button and static stop rows must declare their minimum height');
-  assert.ok(rows.every(row => row === 'min-h-9' || row === 'min-h-10'), `stop rows drifted off the 36–40 px band: ${rows.join(', ')}`);
-  assert.doesNotMatch(stops, /min-h-7\b/, 'the 28 px stop row is too short for a thumb');
+test('interactive stop rows keep 44 px touch targets while static stop rows stay compact', () => {
+  assert.match(stops, /className=\{`relative grid min-h-11 w-full/);
+  assert.match(stops, /<div className="relative grid min-h-7/);
 });

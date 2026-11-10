@@ -4,6 +4,28 @@ export type RouteSheetHeights = Record<RouteSheetSnap, number>;
 
 export const ROUTE_SHEET_SNAPS: readonly RouteSheetSnap[] = ['peek', 'collapsed', 'half', 'expanded'];
 
+// The fixed app tab bar is 57 px of chrome plus its bottom safe-area padding:
+// 1 px border, 8 px top padding and a 48 px control row. Keep the route sheet
+// above it in immersive map states so the CTA and every tab remain reachable.
+export const ROUTE_TABBAR_CHROME_HEIGHT = 57;
+
+export function routeTabbarInset(safeAreaBottom = 0): number {
+  const safeArea = Number.isFinite(safeAreaBottom) ? Math.max(0, Math.min(64, safeAreaBottom)) : 0;
+  return ROUTE_TABBAR_CHROME_HEIGHT + Math.max(7.2, safeArea);
+}
+
+export function routeSheetAvailableViewportHeight(viewportHeight: number, safeAreaBottom = 0, reserveBottomNavigation = false): number {
+  const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
+  return Math.max(320, viewport - (reserveBottomNavigation ? routeTabbarInset(safeAreaBottom) : 0));
+}
+
+export function routeSheetViewportHeights(viewportHeight: number, safeAreaBottom = 0, reserveBottomNavigation = false): RouteSheetHeights {
+  const availableHeight = routeSheetAvailableViewportHeight(viewportHeight, safeAreaBottom, reserveBottomNavigation);
+  // When the sheet floats above the persistent tab bar, that bar already owns
+  // the device safe area. Adding it to the sheet detents would create a blank band.
+  return routeSheetHeights(availableHeight, reserveBottomNavigation ? 0 : safeAreaBottom);
+}
+
 export const ROUTE_SHEET_LOGICAL_LABELS: Readonly<Record<RouteSheetSnap, RouteSheetLogicalState>> = {
   peek: 'PEEK',
   collapsed: 'COMPACT',
@@ -12,21 +34,34 @@ export const ROUTE_SHEET_LOGICAL_LABELS: Readonly<Record<RouteSheetSnap, RouteSh
 };
 
 /**
- * Snap points match the approved 4-position route-sheet composition:
- * - peek (PEEK, 168–176 px) leaves the maximum map view with only handle,
- *   total duration, total fare, one-line stage chain, compact scale and CTA;
- * - collapsed (COMPACT) keeps the departure/arrival summary, ribbon and CTA;
- * - half (MEDIUM) adds concise stage context while keeping the map interactive;
- * - expanded (FULL) shows scrollable per-segment details while leaving a
- *   top map strip.
+ * Compact shared snap points for route preview and active navigation. The
+ * compact states add only the device's actual bottom safe area, once.
  */
-export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
+export function routeSheetHeights(viewportHeight: number, safeAreaBottom = 0): RouteSheetHeights {
   const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
-  const expanded = Math.min(840, viewport * 0.9, Math.max(0, viewport - 172));
-  const half = Math.min(430, Math.max(300, viewport * 0.375));
-  const collapsed = Math.min(300, Math.max(240, Math.round(viewport * 0.29)), Math.max(180, half - 44));
-  const peek = Math.min(collapsed - 36, Math.max(168, Math.min(176, Math.round(viewport * 0.18))));
+  const safeArea = Number.isFinite(safeAreaBottom) ? Math.max(0, Math.min(64, safeAreaBottom)) : 0;
+  const expanded = Math.min(840, viewport * 0.9, Math.max(220, viewport - 172));
+  const halfRatio = viewport < 700 ? 0.5 : 0.45;
+  const half = Math.min(expanded - 44, 420, Math.max(245, Math.round(viewport * halfRatio)) + safeArea);
+  const collapsedContent = Math.min(half - safeArea - 28, 280, Math.max(178, Math.round(viewport * 0.2)));
+  const peekContent = Math.min(collapsedContent - 24, 196, Math.max(146, Math.round(viewport * 0.18)));
+  const collapsed = collapsedContent + safeArea;
+  const peek = peekContent + safeArea;
   return { peek, collapsed, half, expanded };
+}
+
+export function routeSheetSafeAreaInset(): number {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return 0;
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue('--mg-safe-area-bottom');
+  const inset = Number.parseFloat(value);
+  return Number.isFinite(inset) ? inset : 0;
+}
+
+/** Keeps FULL content-sized when possible while preserving a short map band and scroll access for long itineraries. */
+export function routeSheetExpandedFitHeight(viewportHeight: number, safeAreaBottom: number, requiredHeight: number): number {
+  const heights = routeSheetHeights(viewportHeight, safeAreaBottom);
+  const required = Number.isFinite(requiredHeight) ? Math.ceil(requiredHeight) : heights.expanded;
+  return Math.min(heights.expanded, Math.max(heights.half + 24, required));
 }
 
 export function nearestRouteSheetSnap(

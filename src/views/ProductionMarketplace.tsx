@@ -47,7 +47,10 @@ import { navigationDestinationName } from '../navigation/destinationName';
 import { JourneyResultsPanel, JourneySearchPending } from './JourneyResultsPanel';
 import { JOURNEY_SEARCH_DEADLINE_MS, journeySearchAbortMessage } from './journeyResultPresentation';
 import { JOURNEY_SEARCH_UNAVAILABLE_COPY, journeySearchFailureKind } from './journeySearchRecovery';
-import { JourneyRouteMapScreen } from './JourneyRouteMapScreen';
+import { JourneyRouteMapScreen, type JourneyNavigationStartResult } from './JourneyRouteMapScreen';
+import { WebGeolocationProvider } from '../platform/LocationProvider';
+import type { LocationFix } from '../../shared/navigation/contracts';
+import { passengerLocationStartMessage, validatePassengerStartFix } from '../navigation/passengerLocation';
 import { JourneyActiveNavigation } from './JourneyActiveNavigation';
 const MobilityAdminPanel = lazy(() => import('./MobilityAdminPanel').then((module) => ({ default: module.MobilityAdminPanel })));
 const ProfileSections = lazy(() => import('./ProfileSections').then((module) => ({ default: module.ProfileSections })));
@@ -291,10 +294,12 @@ export function ProductionMarketplace() {
   const [selectedOffer, setSelectedOffer] = useState<ApiOffer | null>(null);
   const [selectedJourney, setSelectedJourney] = useState<ApiStoredJourney | null>(null);
   const [activeJourneyNavigation, setActiveJourneyNavigation] = useState<ApiJourney | null>(null);
+  const [activeJourneyStartFix, setActiveJourneyStartFix] = useState<LocationFix | null>(null);
   const [journeyNotice, setJourneyNotice] = useState('');
   const activeJourneyStore = useMemo(() => new ActiveJourneyNavigationStore(), []);
+  const startJourneyInFlight = useRef(false);
   const pendingNavigationRestore = useRef<{ journeyId: string; legIndex: number } | null>(null);
-  const restoredNavigationStage = useRef<number | null>(null);
+  const restoredNavigationPreview = useRef<number | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<ApiBooking | null>(null);
   const [visibleBookingTicket, setVisibleBookingTicket] = useState<{ bookingId: string; token: string } | null>(null);
   const [boardingTicketInput, setBoardingTicketInput] = useState<Record<string, string>>({});
@@ -406,6 +411,7 @@ export function ProductionMarketplace() {
   const refreshJourneys = useCallback(async () => setJourneys(await productionApi.journeys()), []);
   const finishJourneyNavigation = useCallback((journeyId: string) => {
     setActiveJourneyNavigation(null);
+    setActiveJourneyStartFix(null);
     setJourneyNotice('');
     void (async () => {
       const outcome = await completePassengerJourney(productionApi, journeyId);
@@ -542,26 +548,44 @@ export function ProductionMarketplace() {
     }).finally(() => setLoading(false));
   }, [refreshBlockedUsers, refreshBookings, refreshJourneys, refreshMyOffers, refreshPassengerNavigationMatches, refreshVehicles]);
 
-  // Starting navigation is one tap and one record. Nothing but the pointer is
-  // stored: no token, no coordinates, no GPS history, no price snapshot.
-  const startJourneyNavigation = (journey: ApiJourney) => {
-    restoredNavigationStage.current = null;
-    pendingNavigationRestore.current = null;
-    if (user) activeJourneyStore.write({ journeyId: journey.id, legIndex: 0, ownerUserId: user.id });
-    // The URL carries the journey so a reload or a relaunched PWA can ask the
-    // server for the same itinerary instead of sending the passenger back to
-    // an empty search box.
-    setRoutePath(pathForProductionEntity('journey', journey.id));
-    setActiveJourneyNavigation(journey);
+  // Start from a fresh device fix, ask the server to activate, then persist
+  // only a journey/preview pointer. Coordinates never leave this component.
+  const startJourneyNavigation = async (journey: ApiJourney): Promise<JourneyNavigationStartResult> => {
+    if (startJourneyInFlight.current) return { started: false, message: 'Навігація вже запускається.' };
+    startJourneyInFlight.current = true;
     setJourneyNotice('');
-    void activatePassengerJourney(productionApi, journey.id, journey.legs[0]?.id).then(async (outcome) => {
-      if (!outcome.confirmed) {
-        activeJourneyStore.clear();
-        setJourneyNotice(outcome.message);
-        return;
+    try {
+      const locationProvider = new WebGeolocationProvider();
+      let rawFix: LocationFix;
+      try {
+        rawFix = await locationProvider.getCurrentFix({ enableHighAccuracy: true, maximumAgeMs: 0, timeoutMs: 15_000 });
+      } catch (error) {
+        return { started: false, message: passengerLocationStartMessage(error instanceof Error ? error.message : '') };
       }
-      await refreshJourneys().catch(() => undefined);
-    });
+      const validation = validatePassengerStartFix(rawFix, Date.now());
+      if (!validation.accepted) return { started: false, message: passengerLocationStartMessage(validation.code) };
+
+      // The server is only told to activate after a fresh, accurate browser GPS
+      // fix exists. The coordinate itself stays on this device.
+      const outcome = await activatePassengerJourney(productionApi, journey.id, journey.legs[0]?.id);
+      if (!outcome.confirmed) return { started: false, message: outcome.message };
+
+      const serverLegIndex = outcome.currentLegId
+        ? journey.legs.findIndex(leg => leg.id === outcome.currentLegId)
+        : 0;
+      const initialPreviewIndex = serverLegIndex >= 0 ? serverLegIndex : 0;
+      restoredNavigationPreview.current = initialPreviewIndex;
+      pendingNavigationRestore.current = null;
+      if (user) activeJourneyStore.write({ journeyId: journey.id, legIndex: initialPreviewIndex, ownerUserId: user.id });
+      setActiveJourneyStartFix(validation.fix);
+      // The URL carries only the journey ID; GPS coordinates are never persisted.
+      setRoutePath(pathForProductionEntity('journey', journey.id));
+      setActiveJourneyNavigation(journey);
+      void refreshJourneys().catch(() => undefined);
+      return { started: true };
+    } finally {
+      startJourneyInFlight.current = false;
+    }
   };
 
   // Leaving navigation on purpose means the passenger is no longer riding it,
@@ -570,11 +594,12 @@ export function ProductionMarketplace() {
   const exitJourneyNavigation = () => {
     activeJourneyStore.clear();
     pendingNavigationRestore.current = null;
-    restoredNavigationStage.current = null;
+    restoredNavigationPreview.current = null;
+    setActiveJourneyStartFix(null);
     setActiveJourneyNavigation(null);
   };
 
-  const keepActiveJourneyStage = (journeyId: string, legIndex: number) => {
+  const keepActiveJourneyPreview = (journeyId: string, legIndex: number) => {
     activeJourneyStore.updateStage(journeyId, legIndex);
   };
 
@@ -591,7 +616,8 @@ export function ProductionMarketplace() {
       activeJourneyStore.clear();
       return;
     }
-    restoredNavigationStage.current = pending.legIndex;
+    restoredNavigationPreview.current = pending.legIndex;
+    setActiveJourneyStartFix(null);
     setActiveJourneyNavigation(storedJourneyToApiJourney(journey));
   }, [activeJourneyStore]);
 
@@ -2335,6 +2361,7 @@ export function ProductionMarketplace() {
   const routeMapScreen = (journey: ApiJourney, onClose: () => void, alternatives: ApiJourney[] = [], recommendation?: string) => <JourneyRouteMapScreen
     key={journey.id}
     journey={journey}
+    reserveBottomNavigation
     alternativeDepartures={alternatives.filter(alternative => alternative.id !== journey.id)}
     onSelectAlternative={alternative => { setSelectedRouteMap(alternative); setSelectedRouteRecommendation(undefined); }}
     recommendation={recommendation}
@@ -2348,10 +2375,12 @@ export function ProductionMarketplace() {
 
   const screen = activeJourneyNavigation ? <JourneyActiveNavigation
     journey={activeJourneyNavigation}
+    reserveBottomNavigation
+    initialLocationFix={activeJourneyStartFix}
     notice={journeyNotice}
     onFinish={() => finishJourneyNavigation(activeJourneyNavigation.id)}
-    initialLegIndex={restoredNavigationStage.current}
-    onStageChange={(legIndex) => keepActiveJourneyStage(activeJourneyNavigation.id, legIndex)}
+    initialPreviewLegIndex={restoredNavigationPreview.current}
+    onPreviewStageChange={(legIndex) => keepActiveJourneyPreview(activeJourneyNavigation.id, legIndex)}
     onExit={exitJourneyNavigation}
   />
     : selectedRouteMap ? routeMapScreen(selectedRouteMap, () => { setSelectedRouteMap(null); setSelectedRouteGroup([]); setSelectedRouteRecommendation(undefined); }, selectedRouteGroup, selectedRouteRecommendation)
@@ -2379,11 +2408,11 @@ export function ProductionMarketplace() {
     {navigationOverlay}
     {navigationActive && tab !== 'navigation' && <button type="button" onClick={() => setTab('navigation')} aria-label="Повернутися до активної навігації" className="fixed right-3 z-[var(--mg-z-overlay)] flex items-center gap-2 rounded-full border border-blue-200 bg-white/95 px-3 py-2 text-xs font-bold text-blue-700 shadow-lg backdrop-blur" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}><Navigation size={16}/>Навігація · Повернутися</button>}
     {pointPicker}
-    {!immersiveRouteView && <nav data-testid="global-bottom-navigation" aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
+    <nav data-testid="global-bottom-navigation" aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
       {tabItems.slice(0, 2).map(renderBottomTab)}
       <button onClick={() => setShowCreateMenu(true)} aria-label="Створити поїздку або запит" aria-haspopup="dialog" aria-expanded={showCreateMenu} className="app-create-button mg-press col-start-3 row-start-1 -mt-5 grid h-14 w-14 place-items-center justify-self-center rounded-full bg-[var(--mg-action)] text-white shadow-lg shadow-[#0B63D6]/30 transition-transform motion-safe:duration-[var(--mg-dur-fast)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><Plus size={25}/><span className="desktop-create-label">Створити</span></button>
       {tabItems.slice(2).map(renderBottomTab)}
-    </div></nav>}
+    </div></nav>
     {createMenu}
     <DepartureDateTimePicker open={departurePickerOpen} title="Виїзд" caption="Виберіть дату й час виїзду" timeLabel="Виїзд" value={journeyDeparture} onChange={(value) => { setJourneyDeparture(value); setDate(value.slice(0, 10)); if (journeyArrivalBy && value >= journeyArrivalBy) setJourneyArrivalBy(null); }} onClose={() => setDeparturePickerOpen(false)}/>
     <DepartureDateTimePicker open={arrivalPickerOpen} title="Прибути до" caption="Повернемо лише маршрути, що прибувають не пізніше цього часу" timeLabel="Прибути до" minDate={journeyDeparture.slice(0, 10)} value={journeyArrivalBy ?? journeyDeparture} onChange={(value) => setJourneyArrivalBy(value)} onClose={() => setArrivalPickerOpen(false)}/>

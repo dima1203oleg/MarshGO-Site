@@ -1,5 +1,5 @@
 import {
-  ArrowLeftRight, Bike, BusFront, Car, Caravan, CarFront, CarTaxiFront, Clock3, createLucideIcon,
+  Bike, BusFront, CarTaxiFront, Clock3, createLucideIcon,
   PersonStanding, TrainFront, TramFront, Waypoints,
   type LucideIcon,
 } from 'lucide-react';
@@ -26,6 +26,42 @@ const Scooter = createLucideIcon('Scooter', [
   ['circle', { cx: '18', cy: '19', r: '2', key: 'scooter-wheel-front' }],
   ['path', { d: 'M8 19h6l2-11h4', key: 'scooter-deck-and-stem' }],
   ['path', { d: 'M16 8l-1-4h-2', key: 'scooter-handlebar' }],
+]);
+
+/** Compact city minibus profile; it stays distinct from the larger, front-facing bus glyph. */
+const Minibus = createLucideIcon('Minibus', [
+  ['path', { d: 'M3 16V9a2 2 0 0 1 2-2h10.5a2 2 0 0 1 1.6.8L20 11v5H3Z', key: 'minibus-body' }],
+  ['path', { d: 'M5 9h4v4H5zM11 9h4v4h-4zM17 10.5h1.5', key: 'minibus-windows' }],
+  ['path', { d: 'M14 13v3', key: 'minibus-door' }],
+  ['circle', { cx: '7', cy: '17', r: '1.5', key: 'minibus-wheel-rear' }],
+  ['circle', { cx: '16.5', cy: '17', r: '1.5', key: 'minibus-wheel-front' }],
+]);
+
+/** Long transfer van with a clear roof suitcase, separate from the compact city minibus. */
+const Shuttle = createLucideIcon('Shuttle', [
+  ['path', { d: 'M2.5 16V9a2 2 0 0 1 2-2H16l4.5 4v5H2.5Z', key: 'shuttle-body' }],
+  ['path', { d: 'M4.5 9h4v4h-4zM10.5 9h4v4h-4zM17 11h2', key: 'shuttle-windows' }],
+  ['path', { d: 'M6 7V4.5A1.5 1.5 0 0 1 7.5 3h5A1.5 1.5 0 0 1 14 4.5V7M9 3V2h2v1M14 16v-3', key: 'shuttle-suitcase-and-door' }],
+  ['circle', { cx: '7', cy: '17', r: '1.5', key: 'shuttle-wheel-rear' }],
+  ['circle', { cx: '16.5', cy: '17', r: '1.5', key: 'shuttle-wheel-front' }],
+]);
+
+/** Side-profile shared ride with two visible passengers, unlike the taxi front view. */
+const Carpool = createLucideIcon('Carpool', [
+  ['path', { d: 'M3 16v-2.5l2-4 2-2h6l3 3 3 1v4.5H3Z', key: 'carpool-body' }],
+  ['path', { d: 'M7.5 9h4v3h-5zM13 9.5l2.3 2.5H13z', key: 'carpool-cabin' }],
+  ['circle', { cx: '8.4', cy: '8.2', r: '1', key: 'carpool-passenger-one' }],
+  ['circle', { cx: '13.7', cy: '8.7', r: '.9', key: 'carpool-passenger-two' }],
+  ['circle', { cx: '7', cy: '17', r: '1.5', key: 'carpool-wheel-rear' }],
+  ['circle', { cx: '16', cy: '17', r: '1.5', key: 'carpool-wheel-front' }],
+]);
+
+/** Shared-access hatchback with a small exchange mark; no passenger faces, taxi sign, or minibus body. */
+const Carsharing = createLucideIcon('Carsharing', [
+  ['path', { d: 'M3 16v-2l2-4 2-2h7l3 3 3 1v4H3Z', key: 'carshare-body' }],
+  ['path', { d: 'M7 9h6l2 3H6.5zM14 5h4m0 0-2-2m2 2-2 2', key: 'carshare-cabin-and-share' }],
+  ['circle', { cx: '7', cy: '17', r: '1.5', key: 'carshare-wheel-rear' }],
+  ['circle', { cx: '16', cy: '17', r: '1.5', key: 'carshare-wheel-front' }],
 ]);
 
 /** Trolleybus must not share the bus silhouette: the body carries two current-collector poles. */
@@ -65,17 +101,17 @@ function visual(
  */
 export const transportModeRegistry: Record<TransportModeId, CanonicalVisual> = {
   bus: visual('bus', 'Автобус', 'Автобуси', 'Bus', BusFront, '#327FC3', 'Громадський транспорт'),
-  marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', Caravan, '#327FC3', 'Громадський транспорт'),
+  marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', Minibus, '#327FC3', 'Громадський транспорт'),
   trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', Trolleybus, '#327FC3', 'Громадський транспорт'),
   tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#327FC3', 'Громадський транспорт'),
   metro: visual('metro', 'Метро', 'Метро', 'Metro', Metro, '#327FC3', 'Громадський транспорт'),
-  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#327FC3', 'Спільні поїздки'),
+  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', Carpool, '#327FC3', 'Спільні поїздки'),
   taxi: visual('taxi', 'Таксі', 'Таксі', 'Taxi', CarTaxiFront, '#327FC3', 'Спільні поїздки'),
   train: visual('train', 'Поїзд', 'Поїзди', 'Train', TrainFront, '#327FC3', 'Залізниця'),
   bike: visual('bike', 'Велосипед', 'Велосипеди', 'Bicycle', Bike, '#327FC3', 'Мікромобільність'),
   scooter: visual('scooter', 'Самокат', 'Самокати', 'Scooter', Scooter, '#327FC3', 'Мікромобільність'),
-  carsharing: visual('carsharing', 'Каршеринг', 'Каршеринг', 'Car sharing', Car, '#327FC3', 'Спільні поїздки'),
-  transfer: visual('transfer', 'Трансфер', 'Трансфери', 'Transfer', ArrowLeftRight, '#327FC3', 'Спільні поїздки'),
+  carsharing: visual('carsharing', 'Каршеринг', 'Каршеринг', 'Car sharing', Carsharing, '#327FC3', 'Спільні поїздки'),
+  transfer: visual('transfer', 'Трансфер', 'Трансфери', 'Transfer shuttle', Shuttle, '#327FC3', 'Спільні поїздки'),
 };
 
 const specialVisuals: Record<string, CanonicalVisual> = {
