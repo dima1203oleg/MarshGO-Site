@@ -14,7 +14,7 @@ This checkpoint implements and visually reviews the short map callout for a sele
 | Keep the label temporary and replaceable | VERIFIED | Lifecycle is `ENTERING → VISIBLE → DISSOLVING → HIDDEN`; 350 ms entrance, 4 s readable hold, 750 ms dissolve. A new selection cancels the previous lifecycle. |
 | Let the rider dismiss the callout | VERIFIED | The visual marker is a button and click dismissal does not change the selected route stage. A screen-reader close action is also exposed in the live region. |
 | Support reduced motion | VERIFIED | Reduced motion skips animated phases while preserving the readable hold; covered by lifecycle tests. |
-| Announce the selected map information accessibly | VERIFIED | Local browser accessibility tree exposed `Автобус A53, 33 хв · 7,4 км` and `Закрити підказку: …` after selection. |
+| Announce replacements and expose keyboard dismissal | VERIFIED | Selecting Bus then Walk replaced the live-region message; keyboard focus visibly exposed the close action, and Enter dismissed it without changing the selected bus stage. |
 | Preserve the existing compact sheet and map controls | VERIFIED in local preview | The map, control rail, selected segment, 44-minute / 30 ₴ summary, and compact bottom sheet rendered together at the tested phone-sized viewport. |
 | Validate the public :7777 / zrok runtime | NOT_TESTED | The user-owned :7777 and zrok process were deliberately left untouched. This local preview is served by the isolated candidate worktree. |
 | Validate authenticated live route data and provider-backed geometry | NOT_TESTED | The visual route is a labeled synthetic fixture, not a live journey or transport-provider response. |

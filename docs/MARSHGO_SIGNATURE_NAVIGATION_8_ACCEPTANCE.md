@@ -11,6 +11,7 @@ Release status: `NOT_RELEASED`
 - The callout displays only confirmed information already present in the itinerary: its label, duration, and distance. It is omitted when required coordinates are invalid.
 - Added an explicit lifecycle: short entrance, four-second readable display, and dissolve. Replacing the focused item cancels the old timer; tapping the callout dismisses it without changing journey state.
 - Added reduced-motion behavior, a polite assistive-technology announcement, and an accessible close action.
+- When a new stage replaces the current callout, stale timer callbacks cannot clear the new announcement. The close action becomes visible on keyboard focus and closes only the callout.
 - Preserved the route line, map controls, selected route, and compact route sheet.
 
 ## Changed files
@@ -37,8 +38,9 @@ Release status: `NOT_RELEASED`
 | Full Site test suite | VERIFIED | `npm test`: 667 passed, 0 failed, 0 skipped. |
 | ESLint | VERIFIED | `npm run lint` passed after the final source changes. |
 | Local change whitespace check | VERIFIED | `git diff --cached --check` passed for the task-owned staged files. |
-| Candidate visual review | VERIFIED | The Codex in-app browser opened `http://127.0.0.1:4178/bottom-sheet-visual.html`; the selected bus callout appeared over its route geometry with the compact sheet visible. The browser accessibility tree exposed the callout announcement and close action. |
-| Tap dismissal | VERIFIED by focused test / prior visual check | The lifecycle test covers tap dismissal; a previous visual interaction confirmed that dismissing the callout kept the bus stage selected. |
+| Candidate visual review | VERIFIED | The Codex in-app browser opened `http://127.0.0.1:4178/bottom-sheet-visual.html`; bus and walking callouts appeared over their selected fixture geometry with the compact sheet visible. |
+| Accessible replacement and keyboard dismissal | VERIFIED | Selecting Bus then Walk updated the live-region text to `Пішки, 4 хв · 330 м`. Tab focused a visible close button; Enter removed the callout while the bus route stage remained selected. |
+| Pointer dismissal | VERIFIED by focused test / prior visual check | The lifecycle test covers tap dismissal; a prior visual interaction confirmed that dismissing the callout kept the bus stage selected. |
 | Candidate build and exact-head CI | PENDING | Run after committing/pushing this checkpoint; no production build was run locally while the visual preview was active. |
 | Authenticated live route / public zrok | NOT_TESTED | The fixture is synthetic. The existing user-owned :7777 and zrok session were not changed. |
 | Physical iPhone Safari and real touch hardware | NOT_TESTED | A phone-sized visual preview does not constitute a physical-device gesture test. |

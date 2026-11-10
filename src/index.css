@@ -2271,6 +2271,31 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   outline: 2px solid var(--mg-blue);
   outline-offset: 3px;
 }
+.route-map-screen .mg-floating-map-info__keyboard-dismiss {
+  position: fixed;
+  z-index: 1000;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  left: 12px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--mg-label-border);
+  border-radius: 12px;
+  background: var(--mg-label-bg);
+  color: var(--mg-label-ink);
+  font-size: 13px;
+  font-weight: 800;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.route-map-screen .mg-floating-map-info__keyboard-dismiss:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  outline: 2px solid var(--mg-blue);
+  outline-offset: 3px;
+}
 .route-map-screen .mg-floating-map-info__accent {
   flex: 0 0 7px;
   width: 7px;
