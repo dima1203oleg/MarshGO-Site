@@ -37,11 +37,11 @@ const Minibus = createLucideIcon('Minibus', [
   ['circle', { cx: '16.5', cy: '17', r: '1.5', key: 'minibus-wheel-front' }],
 ]);
 
-/** Shuttle profile with luggage roof pod and passenger windows, separate from the city minibus. */
+/** Long transfer van with a clear roof suitcase, separate from the compact city minibus. */
 const Shuttle = createLucideIcon('Shuttle', [
-  ['path', { d: 'M3 16V9a2 2 0 0 1 2-2h11l4 4v5H3Z', key: 'shuttle-body' }],
-  ['path', { d: 'M5 9h4v4H5zM11 9h4v4h-4zM17 11h1.5', key: 'shuttle-windows' }],
-  ['path', { d: 'M7 7V5.5h5V7M14 16v-3', key: 'shuttle-luggage-and-door' }],
+  ['path', { d: 'M2.5 16V9a2 2 0 0 1 2-2H16l4.5 4v5H2.5Z', key: 'shuttle-body' }],
+  ['path', { d: 'M4.5 9h4v4h-4zM10.5 9h4v4h-4zM17 11h2', key: 'shuttle-windows' }],
+  ['path', { d: 'M6 7V4.5A1.5 1.5 0 0 1 7.5 3h5A1.5 1.5 0 0 1 14 4.5V7M9 3V2h2v1M14 16v-3', key: 'shuttle-suitcase-and-door' }],
   ['circle', { cx: '7', cy: '17', r: '1.5', key: 'shuttle-wheel-rear' }],
   ['circle', { cx: '16.5', cy: '17', r: '1.5', key: 'shuttle-wheel-front' }],
 ]);
