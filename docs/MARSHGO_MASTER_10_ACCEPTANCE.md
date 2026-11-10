@@ -54,3 +54,11 @@ This is an interim, evidence-based checkpoint for the first Master 10 implementa
 - **G14 Full Journey E2E — NOT_TESTED.**
 
 The detailed per-gate ledger is in [MARSHGO_MASTER_10_REQUIREMENTS_MATRIX.md](MARSHGO_MASTER_10_REQUIREMENTS_MATRIX.md). See also [HyperFlight acceptance](MARSHGO_HYPERFLIGHT_ACCEPTANCE.md), [zrok visual acceptance](MARSHGO_ZROK_VISUAL_ACCEPTANCE.md) and [bottom-sheet density acceptance](MARSHGO_BOTTOM_SHEET_DENSITY_ACCEPTANCE.md). No production deployment or database mutation occurred.
+
+## Follow-up — Persistent bottom navigation
+
+- Site commit `87684e96d4323dcb8243761037dbcba606c16b79` keeps the canonical five-item navigation mounted over route details and active navigation. Both journey screens reserve the tab bar's chrome and safe area for sheet detents, map framing and floating controls; the sheet does not add that safe area again.
+- The tab bar is explicitly layered above the fixed map. Automated regression checks cover shell mounting, reservation and z-order.
+- Local preview URL: `http://127.0.0.1:4178/tests/visual/hyperflight-navigation.html`. The visible browser showed the active-navigation sheet and all five navigation items, with the CTA above the bar. Data is synthetic; the map base layer rendered black because a style image was missing.
+- Exact local verification for `87684e96d4323dcb8243761037dbcba606c16b79`: **677/677 tests passed**, typecheck passed, targeted ESLint passed, production build passed. CI for this exact commit is pending.
+- The public zrok remains attached to the other Qoder worktree (`d8e813d08446c851604a9f229172fa9979dc4cdd`). G13 stays **BLOCKED**; no live route, real device, touch, GPS, vehicle ETA, production, or full-map visual gate is upgraded by this change.

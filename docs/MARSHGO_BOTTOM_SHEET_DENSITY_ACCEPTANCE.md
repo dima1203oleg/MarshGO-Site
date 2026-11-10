@@ -9,7 +9,7 @@ This candidate updates the shared route-preview and active-navigation sheets in 
 - Compact route cards show mode/name, duration, fare when known, exact times, and both place names in two rows. Stop lists remain available behind a thumb-sized disclosure; interactive stop rows retain 44 px targets.
 - The summary ribbon scrolls natively on narrow screens. The page itself has no horizontal overflow.
 - Floating segment callouts now choose a screen-space anchor that avoids the visible map-control rail, route sheet, header, route chip and viewport edge when another safe placement exists.
-- Bottom safe area is included once in the sheet height and inner padding. The four detents remain ordered.
+- In isolated route-sheet previews, safe area remains within the sheet detents. In production immersive route states, the persistent tab bar owns the safe-area inset and the sheet sits above it without adding a second blank inset. The four detents remain ordered.
 - Active navigation starts compact, keeps its current instruction and primary action visible, and hides secondary stage/status metadata until the sheet is opened. The previous overlap between the instruction and CTA is removed.
 - The expanded route-details sheet measures its actual content, including opened stop rows. It shrinks to the content height when possible and grows to the configured cap when the content needs more room. Camera padding uses the measured sheet height.
 
@@ -77,3 +77,12 @@ At 320 px, the five-step ribbon measured 374 px of content in a 318 px scroller;
 - At 320×568, the fixture's demo disclaimer was first moved away from the bottom stop label, then shortened to one line when it covered the tram info chip. The final preview keeps both labels clear and the document width at 320 px.
 - Current PR head `56b71cc6d51f0577202a6833742f77bee0cb3025` passed exact-head CI run `42829380818` (676 tests, 0 failed, lint, typecheck, token checks, production build, bundle checks and Chromium boot smoke). This includes active-navigation source commit `8b1ca056459dc976a67fbdd9eac50422926b0cb0` and the fixture-only mobile disclosure follow-up.
 - This follow-up does not change the earlier route-detail before/after measurements. The underlying demo route remains synthetic and physical-device acceptance remains NOT_TESTED.
+
+## Follow-up — Persistent navigation over immersive routes
+
+- Commit `87684e96d4323dcb8243761037dbcba606c16b79` keeps the canonical five-item bottom navigation mounted during route details and active navigation. The route sheet, camera-fit area, floating stage chip and scale control reserve its 57 px chrome plus the device safe area.
+- The sheet detents now use the remaining viewport and do not add the safe area a second time. The bottom bar paints above the fixed MapLibre screen; a regression check covers this z-order.
+- The local HyperFlight preview now renders the active-navigation component with the same five-item navigation silhouette. The visible browser check showed the CTA ending above the bar at the current desktop viewport. The preview still uses synthetic journey data.
+- The local browser's basemap rendered black and logged a missing `wood-pattern` style image, so this screenshot supports only the relative sheet/navigation layout. Map rendering and zrok acceptance remain unverified.
+- Exact local checks for commit `87684e96d4323dcb8243761037dbcba606c16b79`: full Site suite **677 passed, 0 failed, 0 skipped**; `npm run typecheck`, targeted ESLint and `npm run build` passed. Exact-head CI has not yet run for this commit.
+- The shared zrok continues to point at the separate Qoder worktree described above. No tunnel or `:7777` process was restarted or changed.

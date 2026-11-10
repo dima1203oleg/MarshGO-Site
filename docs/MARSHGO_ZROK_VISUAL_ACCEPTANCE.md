@@ -1,14 +1,16 @@
 # MARSHGO zrok visual acceptance record
 
-**Candidate source/fixture snapshot:** `8b1ca056459dc976a67fbdd9eac50422926b0cb0` / `209f1aaec595622aa4c3667190aeb3a7c93ce545` · **Status: BLOCKED** · **Production: NOT_RELEASED**
+**Candidate source/fixture snapshot:** `87684e96d4323dcb8243761037dbcba606c16b79` · **Status: BLOCKED** · **Production: NOT_RELEASED**
 
 ## Candidate browser used instead
 
 - Local visual candidate: [http://127.0.0.1:4178/tests/visual/hyperflight-navigation.html](http://127.0.0.1:4178/tests/visual/hyperflight-navigation.html)
 - Worktree: `/Users/dima1203/.codex/worktrees/marshgo-bottom-sheet-density-20261110`
-- Branch: `codex/bottom-sheet-density-20261110`; application source SHA `8b1ca056459dc976a67fbdd9eac50422926b0cb0`, preview-fixture SHA `209f1aaec595622aa4c3667190aeb3a7c93ce545`.
+- Branch: `codex/bottom-sheet-density-20261110`; current source and preview-fixture SHA `87684e96d4323dcb8243761037dbcba606c16b79` (includes prior navigation work).
 - Preview process: PID `30897`; local Vite preview at port `4178`.
 - Fixture mode: synthetic five-stage route, visibly disclosed; no GPS transmission and no API/auth request.
+- The current preview visibly includes the five-item bottom navigation and active-navigation sheet. The CTA sits above the navigation. The basemap was black with a missing `wood-pattern` image warning, so this does not verify map styling or route geometry.
+- Local checks on this candidate: 677 tests passed, typecheck, targeted ESLint and production build passed. Exact-head CI remains pending.
 
 ## Shared zrok inspected
 
