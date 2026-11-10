@@ -21,6 +21,7 @@ import { OffRouteGuard } from '../navigation/OffRouteGuard';
 import { snapNavigationSheet, type NavigationSheetLevel } from '../navigation/navigationSheet';
 import { createNavigationShareUrl } from '../routing/navigationShare';
 import { navigationDestinationName } from '../navigation/destinationName';
+import { globalBottomNavigationInset, measureGlobalBottomNavigationInset } from './globalBottomNavigationInset';
 
 function navigationErrorMessage(error: unknown, fallback: string) {
   if (!(error instanceof Error)) return fallback;
@@ -99,6 +100,26 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const centeredOnce = useRef<string | null>(null);
   const sheetRef = useRef<HTMLElement | null>(null);
   const [sheetHeight, setSheetHeight] = useState(0);
+  const [bottomNavigationInset, setBottomNavigationInset] = useState(measureGlobalBottomNavigationInset);
+  useEffect(() => {
+    const navigation = document.querySelector<HTMLElement>('[data-testid="global-bottom-navigation"]');
+    const measure = () => {
+      const next = navigation
+        ? globalBottomNavigationInset(window.innerHeight, navigation.getBoundingClientRect().top)
+        : 0;
+      setBottomNavigationInset((current) => current === next ? current : next);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.visualViewport?.addEventListener('resize', measure);
+    const observer = typeof ResizeObserver === 'undefined' || !navigation ? null : new ResizeObserver(measure);
+    if (navigation) observer?.observe(navigation);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.visualViewport?.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+  }, []);
   useEffect(() => {
     const sheet = sheetRef.current;
     if (!sheet || typeof ResizeObserver === 'undefined') { setSheetHeight(0); return; }
@@ -661,7 +682,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       <button type="button" aria-label="Показати моє місце" aria-pressed={following} onClick={() => { const point = navigationState.currentLocation ? [navigationState.currentLocation.longitude, navigationState.currentLocation.latitude] as [number, number] : liveFix ?? session?.current_location ?? undefined; mapRef.current?.recenter(point ?? undefined); }} title="Показати моє місце" className={`grid h-12 w-12 place-items-center rounded-full border border-slate-200 shadow-lg backdrop-blur dark:border-[var(--mg-border-subtle)] ${following ? 'bg-[var(--mg-action)] text-white' : 'bg-white/95 text-[#0B1730] dark:bg-[var(--mg-surface-primary)]/90 dark:text-[var(--mg-ink-primary)]'}`}><Navigation size={20} fill={following ? 'currentColor' : 'none'}/></button>
       <button type="button" aria-label="Інструменти навігації" aria-expanded={actionsOpen} onClick={() => setActionsOpen(true)} title="Інструменти навігації" className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white/95 text-[#0B1730] shadow-lg backdrop-blur dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]/90 dark:text-[var(--mg-ink-primary)]"><MoreHorizontal size={22}/></button>
     </MapControlRail>}
-    {actionsOpen && <div style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))' }} className="fixed inset-x-0 top-0 z-[var(--mg-z-modal)] flex items-end justify-center bg-slate-950/45 px-0 pt-[max(.8rem,env(safe-area-inset-top))] backdrop-blur-sm sm:items-center sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setActionsOpen(false); }}>
+    {actionsOpen && <div style={{ bottom: `${bottomNavigationInset}px` }} className="fixed inset-x-0 top-0 z-[var(--mg-z-modal)] flex items-end justify-center bg-slate-950/45 px-0 pt-[max(.8rem,env(safe-area-inset-top))] backdrop-blur-sm sm:items-center sm:p-4" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setActionsOpen(false); }}>
       <section ref={actionsDialogRef} role="dialog" aria-modal="true" aria-labelledby="navigation-actions-title" tabIndex={-1} className="max-h-[calc(100dvh-5.5rem-env(safe-area-inset-bottom))] w-full max-w-xl overflow-y-auto rounded-t-[var(--mg-radius-3xl)] border border-slate-200 bg-white px-4 pb-4 pt-2 text-[#0B1730] shadow-2xl dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:text-[var(--mg-ink-primary)] sm:rounded-[var(--mg-radius-3xl)]">
         <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600 sm:hidden" aria-hidden="true"/>
         <header className="mb-2 flex items-center justify-between"><div><h2 id="navigation-actions-title" className="text-lg font-extrabold">Дії маршруту</h2><p className="text-xs text-slate-500 dark:text-slate-400">{session?.destination_name ?? 'Активна навігація'}</p></div><button type="button" onClick={() => setActionsOpen(false)} aria-label="Закрити дії маршруту" className="grid h-11 w-11 place-items-center rounded-full hover:bg-slate-100 dark:hover:bg-white/10"><X size={19}/></button></header>
@@ -677,12 +698,12 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
         </div>
       </section>
     </div>}
-    <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `calc(${sheetHeight}px + 4.6rem + env(safe-area-inset-bottom))` } : !sheetOpen ? { bottom: 'calc(10.2rem + env(safe-area-inset-bottom))' } : undefined} className={`absolute left-4 z-[var(--mg-z-nav-chrome)] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-[var(--mg-dur-base)] dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen && !sheetHeight ? 'bottom-[20rem]' : ''}`}>
+    <div aria-label="Швидкість" style={sheetOpen && sheetHeight ? { bottom: `${sheetHeight + bottomNavigationInset}px` } : !sheetOpen ? { bottom: `${bottomNavigationInset + 4 * 16}px` } : undefined} className={`absolute left-4 z-[var(--mg-z-nav-chrome)] grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full border border-slate-200 bg-white/95 text-center text-[#0B1730] shadow-lg backdrop-blur transition-[bottom] duration-[var(--mg-dur-base)] dark:border-white/25 dark:bg-[#071827]/90 dark:text-white ${sheetOpen && !sheetHeight ? 'bottom-[20rem]' : ''}`}>
       <span><b data-testid="navigation-speed" className="block text-2xl font-extrabold leading-none">{liveSpeed === null ? '0' : Math.round(liveSpeed * 3.6)}</b><small className="text-xs font-bold text-slate-600 dark:text-slate-300">км/год</small></span>
     </div>
     {!sheetOpen && <>
       {gpsMessage && <p role="status" className="absolute z-[var(--mg-z-nav-chrome)] rounded-xl bg-amber-50/95 p-2.5 text-xs leading-5 text-amber-900 shadow" style={{ left: 'calc(env(safe-area-inset-left) + 5.65rem)', right: 'calc(env(safe-area-inset-right) + 4.4rem)', bottom: 'calc(max(.35rem, env(safe-area-inset-bottom)) + 8rem)' }}>{gpsMessage}</p>}
-      <div className="absolute z-[var(--mg-z-nav-chrome)] flex min-h-[5.2rem] items-center gap-2 rounded-t-[var(--mg-radius-2xl)] border border-slate-200 bg-white/95 px-3 py-2 text-left text-[#0B1730] shadow-xl backdrop-blur dark:border-white/15 dark:bg-[var(--mg-surface-primary)]/95 dark:text-white" style={{ left: 'max(env(safe-area-inset-left), calc((100% - 36rem) / 2))', right: 'max(env(safe-area-inset-right), calc((100% - 36rem) / 2))', bottom: 'calc(4.6rem + env(safe-area-inset-bottom))' }}>
+      <div className="absolute z-[var(--mg-z-nav-chrome)] flex min-h-[5.2rem] items-center gap-2 rounded-t-[var(--mg-radius-2xl)] border border-slate-200 bg-white/95 px-3 py-2 text-left text-[#0B1730] shadow-xl backdrop-blur dark:border-white/15 dark:bg-[var(--mg-surface-primary)]/95 dark:text-white" style={{ left: 'max(env(safe-area-inset-left), calc((100% - 36rem) / 2))', right: 'max(env(safe-area-inset-right), calc((100% - 36rem) / 2))', bottom: `${bottomNavigationInset}px` }}>
       <button type="button" aria-label="Розгорнути панель навігації" aria-describedby={routed ? 'navigation-route-summary' : undefined} aria-expanded={false} onClick={() => setSheetLevel('partial')}
         onPointerDown={(event) => { dragStart.current = event.clientY; }}
         onPointerUp={(event) => { const start = dragStart.current; dragStart.current = null; if (start !== null && event.clientY - start < -16) setSheetLevel('partial'); }}
@@ -692,7 +713,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       <button type="button" aria-label="Завершити навігацію" disabled={busy} onClick={() => { if (session) { void end(); } else { onBack(); } }} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-slate-300 px-3 text-xs font-bold text-slate-800 disabled:opacity-50 dark:border-white/20 dark:text-white"><X size={16}/><span>Завершити</span></button>
       </div>
     </>}
-    {sheetOpen && <section ref={sheetRef} aria-label="Панель навігації" style={{ bottom: 'calc(4.6rem + env(safe-area-inset-bottom))', maxHeight: 'calc(100dvh - max(.8rem, env(safe-area-inset-top)) - 5.4rem - env(safe-area-inset-bottom))', height: sheetLevel === 'partial' ? 'min(42dvh, 360px)' : undefined }} className="absolute inset-x-0 z-[var(--mg-z-nav-chrome)] overflow-y-auto rounded-t-[var(--mg-radius-3xl)] border-t border-slate-200 bg-white/95 px-5 pb-4 pt-1.5 text-[#0B1730] shadow-[0_-12px_35px_rgba(0,0,0,.2)] backdrop-blur-xl transition-[height,padding] duration-[var(--mg-dur-fast)] dark:border-white/10 dark:bg-[var(--mg-surface-primary)]/95 dark:text-white dark:shadow-[0_-12px_35px_rgba(0,0,0,.4)]">
+    {sheetOpen && <section ref={sheetRef} aria-label="Панель навігації" style={{ bottom: `${bottomNavigationInset}px`, maxHeight: `calc(100dvh - max(.8rem, env(safe-area-inset-top)) - ${bottomNavigationInset}px - .8rem)`, height: sheetLevel === 'partial' ? 'min(42dvh, 360px)' : undefined }} className="absolute inset-x-0 z-[var(--mg-z-nav-chrome)] overflow-y-auto rounded-t-[var(--mg-radius-3xl)] border-t border-slate-200 bg-white/95 px-5 pb-4 pt-1.5 text-[#0B1730] shadow-[0_-12px_35px_rgba(0,0,0,.2)] backdrop-blur-xl transition-[height,padding] duration-[var(--mg-dur-fast)] dark:border-white/10 dark:bg-[var(--mg-surface-primary)]/95 dark:text-white dark:shadow-[0_-12px_35px_rgba(0,0,0,.4)]">
       <button type="button" aria-label={sheetLevel === 'expanded' ? 'Згорнути панель до часткового вигляду' : 'Розгорнути панель повністю'} aria-expanded={sheetLevel === 'expanded'} onClick={() => setSheetLevel((level) => level === 'expanded' ? 'partial' : 'expanded')}
         onPointerDown={(event) => { dragStart.current = event.clientY; }}
         onPointerUp={(event) => { const start = dragStart.current; dragStart.current = null; if (start === null) return; const delta = event.clientY - start; if (Math.abs(delta) >= 24) { setSheetLevel((level) => snapNavigationSheet(level, delta)); event.preventDefault(); } }}

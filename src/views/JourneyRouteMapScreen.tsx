@@ -12,6 +12,7 @@ import { mapStatusDetail, mapStatusNote } from '../map/mapStatusCopy';
 import { productionApi, hasApiSession, ProductionApiError, type ApiJourney, type ApiJourneyLive } from '../services/productionApi';
 import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { journeyLegCaveat, journeyLegLabel } from './journeyLegLabel';
+import { legLabel, walkHintFor } from './journeyWalkHint';
 import { diagnosticsRequested } from './resultsDiagnostics';
 import {
   journeyArrivalDayNote,
@@ -37,6 +38,7 @@ import { priorityLevelOf } from '../map/transportVisualZones';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
 import { nextStopsLegId, sheetNeedsRaiseForStops, stopsDetent } from './journeyStopsPanel';
 import { calculateAdaptiveMapPadding } from '../map/mapViewportCoordinator';
+import { measureGlobalBottomNavigationInset } from './globalBottomNavigationInset';
 import {
   RouteCameraController,
   calculateSegmentFocusTarget,
@@ -97,10 +99,6 @@ function legTimeLabel(leg: JourneyLeg, durationSeconds: number) {
     : `${departure}–${arrival} · ${duration}`;
 }
 
-function legLabel(leg: JourneyLeg) {
-  return `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`;
-}
-
 type RibbonItem = {
   id: string;
   label: string;
@@ -145,15 +143,6 @@ function inlineTransferHints(legs: JourneyLeg[]): Map<string, InlineTransferHint
   return hints;
 }
 
-function walkHintFor(legs: JourneyLeg[], index: number): { title: string; detail: string } | null {
-  if (legs[index]?.mode !== 'WALK') return null;
-  const next = legs[index + 1];
-  if (index === 0) return { title: 'Почніть пішки', detail: next && next.mode !== 'WALK' ? `до ${legLabel(next)}` : '' };
-  if (next && next.mode !== 'WALK') return { title: 'Пересадка пішки', detail: `до ${legLabel(next)}` };
-  if (!next) return { title: 'Пройдіть пішки до фінішу', detail: '' };
-  return { title: 'Пішки', detail: '' };
-}
-
 export function JourneyRouteMapScreen({
   journey,
   alternativeDepartures = [],
@@ -188,6 +177,7 @@ export function JourneyRouteMapScreen({
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
   const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 316 : routeSheetHeights(window.innerHeight).half);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
+  const [bottomNavigationInset, setBottomNavigationInset] = useState(measureGlobalBottomNavigationInset);
   const [viewportWidth, setViewportWidth] = useState(() => typeof window === 'undefined' ? 390 : window.innerWidth);
   const draggingRef = useRef(false);
 
@@ -338,18 +328,21 @@ export function JourneyRouteMapScreen({
     });
   }, [liveSegment, liveLeg, mapAdapterReady]);
 
-  const snapHeight = useCallback((snap: RouteSheetSnap, viewport = viewportHeight) => routeSheetHeights(viewport)[snap], [viewportHeight]);
+  const snapHeight = useCallback((snap: RouteSheetSnap, viewport = viewportHeight) => routeSheetHeights(Math.max(320, viewport - bottomNavigationInset))[snap], [bottomNavigationInset, viewportHeight]);
 
   useEffect(() => {
     const updateViewport = () => {
       const nextH = window.innerHeight;
       const nextW = window.innerWidth;
+      const nextNavigationInset = measureGlobalBottomNavigationInset();
       setViewportHeight(nextH);
       setViewportWidth(nextW);
+      setBottomNavigationInset(nextNavigationInset);
       const nextHeight = snapHeight(sheetSnap, nextH);
       sheetHeightRef.current = nextHeight;
       setSheetHeight(nextHeight);
     };
+    updateViewport();
     window.addEventListener('resize', updateViewport);
     return () => window.removeEventListener('resize', updateViewport);
   }, [sheetSnap, snapHeight]);
@@ -372,8 +365,8 @@ export function JourneyRouteMapScreen({
     topBarHeight: 100,
     isDesktop,
     hasWarningNote: mapUnavailable,
-    extraBottomInset: floatingChipVisible ? 58 : 0,
-  }), [floatingChipVisible, isDesktop, mapUnavailable, settledHeight, sheetSnap, viewportHeight, viewportWidth]);
+    extraBottomInset: bottomNavigationInset + (floatingChipVisible ? 58 : 0),
+  }), [bottomNavigationInset, floatingChipVisible, isDesktop, mapUnavailable, settledHeight, sheetSnap, viewportHeight, viewportWidth]);
 
   // Segment orientation follows the real camera band after route and sheet insets.
   const visibleMapArea = useMemo(() => ({
@@ -615,7 +608,7 @@ export function JourneyRouteMapScreen({
     start.velocity = (start.lastY - event.clientY) / elapsed;
     start.lastY = event.clientY;
     start.lastAt = now;
-    const heights = routeSheetHeights(viewportHeight);
+    const heights = routeSheetHeights(Math.max(320, viewportHeight - bottomNavigationInset));
     const nextHeight = Math.min(heights.expanded, Math.max(heights.peek, start.height + delta));
     sheetHeightRef.current = nextHeight;
     dragWriter.current?.schedule(nextHeight);
@@ -626,7 +619,7 @@ export function JourneyRouteMapScreen({
     if (!start || start.pointerId !== event.pointerId) return;
     dragWriter.current?.flush();
     if (start.moved) {
-      const heights = routeSheetHeights(viewportHeight);
+      const heights = routeSheetHeights(Math.max(320, viewportHeight - bottomNavigationInset));
       const next = settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height);
       moveToSnap(next);
     }
@@ -846,7 +839,7 @@ export function JourneyRouteMapScreen({
       className="route-map-screen fixed inset-0 z-[var(--mg-z-map-chip)] overflow-hidden text-[var(--route-ink)]"
       data-theme={isDark ? 'dark' : 'light'}
       data-sheet-snap={sheetSnap}
-      style={{ ['--route-map-inset' as string]: `${sheetHeight + (sheetSnap === 'expanded' ? 10 : 58)}px` }}
+      style={{ ['--route-map-inset' as string]: `${sheetHeight + bottomNavigationInset + (sheetSnap === 'expanded' ? 10 : 58)}px` }}
       aria-labelledby="journey-route-map-title"
     >
       <h1 id="journey-route-map-title" className="sr-only">{cleanStopName(firstLeg?.origin.name) || 'Початок'} — {cleanStopName(lastLeg?.destination.name) || 'Кінець'}</h1>
@@ -1020,7 +1013,7 @@ export function JourneyRouteMapScreen({
       )}
 
       {showChrome && scale && (
-        <div className="route-map-scale" style={{ left: 16, bottom: sheetHeight + (sheetSnap === 'peek' ? 14 : 64) }} aria-hidden="true">
+        <div className="route-map-scale" style={{ left: 16, bottom: bottomNavigationInset + sheetHeight + (sheetSnap === 'peek' ? 14 : 64) }} aria-hidden="true">
           <span>{scale.label}</span>
           <i style={{ width: scale.widthPx }}/>
         </div>
@@ -1029,7 +1022,7 @@ export function JourneyRouteMapScreen({
       {showChrome && sheetSnap !== 'peek' && liveLeg && (
         <div
           className="pointer-events-none absolute inset-x-0 z-10 mx-auto flex max-w-3xl justify-center px-4"
-          style={{ bottom: sheetHeight + 8, transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}
+          style={{ bottom: bottomNavigationInset + sheetHeight + 8, transition: routeSheetTransition(draggingRef.current, reducedMotion, 'bottom') }}
         >
           <button
             type="button"
@@ -1064,6 +1057,7 @@ export function JourneyRouteMapScreen({
         data-dragging={draggingRef.current ? 'true' : 'false'}
         style={{
           height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`,
+          bottom: `${bottomNavigationInset}px`,
           transition: routeSheetTransition(draggingRef.current, reducedMotion),
           paddingBottom: 'env(safe-area-inset-bottom)',
           background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))',

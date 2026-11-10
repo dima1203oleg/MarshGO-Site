@@ -179,7 +179,7 @@ test('journey search enters the results screen and shows a pending panel while p
 test('route sheet snap uses the motion tokens without leaving the style prop', async () => {
   const sheet = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/JourneyRouteMapScreen.tsx'), 'utf8');
   assert.doesNotMatch(sheet, /280ms cubic-bezier/, 'the sheet snap reverted to an off-system curve');
-  assert.match(sheet, /style=\{\{[\s\S]{0,120}transition: routeSheetTransition\(draggingRef\.current, reducedMotion\)/,
+  assert.match(sheet, /style=\{\{[\s\S]{0,240}transition: routeSheetTransition\(draggingRef\.current, reducedMotion\)/,
     'sheet snap must keep its transition in the React style prop, on the motion tokens');
 });
 

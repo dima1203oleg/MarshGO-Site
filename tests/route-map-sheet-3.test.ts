@@ -226,7 +226,7 @@ test('transfer and walk hints live inside the sheet, not in floating map callout
   assert.doesNotMatch(routeScreen, /data-testid="route-walk-hint"/, 'the redundant pill should not add a full row to every walk segment');
   assert.match(routeScreen, /walkHint\.title/, 'the same route guidance remains in the segment accessible name');
   assert.match(routeScreen, /function inlineTransferHints\(/);
-  assert.match(routeScreen, /function walkHintFor\(/);
+  assert.match(routeScreen, /import \{ legLabel, walkHintFor \} from '\.\/journeyWalkHint'/, 'the sheet wires the subject-first walk hint helper');
   const cardsAt = routeScreen.indexOf('const renderSegmentCards');
   const transferAt = routeScreen.indexOf('data-testid="route-inline-transfer"');
   const screenRootAt = routeScreen.search(/return\s*\(\s*<(?:main|section)\b/);
@@ -248,8 +248,8 @@ test('the duplicated stage narration is gone and the sheet breathes without it',
     'the FULL-state pill lives in the strip padding instead of covering the fitted geometry');
   assert.match(routeScreen, /topBarHeight: 100/,
     'the measured 102 px compact header must be reserved, not a nominal 84 px');
-  assert.match(routeScreen, /extraBottomInset: floatingChipVisible \? 58 : 0/,
-    'the camera must reserve the live chip above the sheet');
+  assert.match(routeScreen, /extraBottomInset: bottomNavigationInset \+ \(floatingChipVisible \? 58 : 0\)/,
+    'the camera must reserve the navigation inset and the live chip above the sheet');
 });
 
 test('the primary action uses the canonical blue–graphite ramp, never purple', () => {

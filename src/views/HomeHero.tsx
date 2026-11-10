@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { ArrowRight, BusFront, CheckCircle2, ChevronLeft, ChevronRight, CirclePlus, Navigation, QrCode, Search, ShieldCheck, Ticket } from 'lucide-react';
+import { ArrowRight, BusFront, CheckCircle2, ChevronLeft, ChevronRight, CirclePlus, MapPin, Navigation, QrCode, Search, ShieldCheck, Ticket } from 'lucide-react';
 import { selectHomeMarshPasses } from '../domain/marshPass';
 import { calculateHomeAvailableHeight } from './homeViewport';
 
@@ -25,9 +25,9 @@ const actions = [
 ] as const;
 
 const popularRoutes = [
-  { city: 'Київ', image: '/images/welcome-kyiv-v1.jpg' },
-  { city: 'Рівне', image: '/images/welcome-road.jpg' },
-  { city: 'Тернопіль', image: '/images/lviv_stop_banner.jpg' },
+  { origin: 'Львів', city: 'Київ', image: '/images/welcome-kyiv-v1.jpg' },
+  { origin: 'Львів', city: 'Рівне', image: '/images/welcome-road.jpg' },
+  { origin: 'Львів', city: 'Тернопіль', image: '/images/lviv_stop_banner.jpg' },
 ] as const;
 
 function formatDeparture(value: string): string {
@@ -52,7 +52,7 @@ export function HomeHero({
   onOpenTrips: () => void;
   onPublishTrip: () => void;
   onOpenMap: () => void;
-  onSearchDestination: (city: string) => void;
+  onSearchDestination: (city: string, origin: string) => void;
   trips?: HomeTrip[];
 }) {
   const root = useRef<HTMLElement | null>(null);
@@ -112,19 +112,22 @@ export function HomeHero({
     </section> : <button type="button" onClick={onOpenTrips} aria-label="Відкрити майбутні поїздки та квитки MarshPass" className="home-canonical-banner home-banner home-marshpass-card home-marshpass-promo mg-press-subtle relative mb-3 flex w-full shrink-0 flex-col justify-between overflow-hidden rounded-[var(--mg-radius-xl)] border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-primary)] p-4 text-left shadow-[var(--mg-card-shadow)]">
       <span aria-hidden="true" className="home-marshpass-promo__route">
         <svg viewBox="0 0 220 96" fill="none" preserveAspectRatio="xMidYMid meet">
-          <path d="M8 76C46 76 53 25 92 25H116C151 25 151 70 187 70H211" />
-          <circle cx="10" cy="76" r="5" />
-          <circle cx="92" cy="25" r="5" />
-          <circle cx="210" cy="70" r="5" />
+          <path d="M12 77C43 77 49 31 80 31C110 31 111 55 136 55C156 55 168 31 181 20" />
+          <circle cx="12" cy="77" r="5" />
+          <circle cx="80" cy="31" r="3.5" />
+          <circle cx="136" cy="55" r="3.5" />
         </svg>
       </span>
+      <span className="home-marshpass-promo__destination" aria-hidden="true"><MapPin size={27} strokeWidth={2.5}/></span>
       <span className="home-marshpass-promo__eyebrow relative flex items-center gap-2 text-xs font-black tracking-[.16em] text-[var(--mg-ink-secondary)]"><span className="grid h-8 w-8 place-items-center rounded-xl bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]"><Ticket size={17}/></span>MARSH PASS</span>
       <span className="home-marshpass-promo__title relative block font-display text-[1.35rem] font-extrabold leading-tight text-[var(--mg-ink-primary)]">Твій шлях. Один квиток.</span>
-      <span className="home-marshpass-promo__footer relative flex items-center justify-between border-t border-dashed border-[var(--mg-border-subtle)] pt-2 text-xs font-bold tracking-[.28em] text-[var(--mg-ink-secondary)]"><span>MARSHGO</span><span className="home-marshpass-promo__caption">Квиток підтвердженої попутки</span></span>
+      <span className="home-marshpass-promo__description relative block text-xs font-medium leading-snug text-[var(--mg-ink-secondary)]">Увесь міський і міжміський транспорт<br/>в одному рішенні.</span>
+      <span className="home-marshpass-promo__footer relative flex items-center justify-between border-t border-dashed border-[var(--mg-border-subtle)] pt-2 text-xs font-bold tracking-[.28em] text-[var(--mg-ink-secondary)]"><span>MARSHGO</span><span className="home-marshpass-promo__barcode" aria-hidden="true"/></span>
     </button>}
 
     <div className="home-action-grid mg-stagger-list grid grid-cols-2 gap-2" aria-label="Швидкі дії">
       {actions.map(({ title, subtitle, tone, icon: Icon }, index) => <button key={tone} type="button" style={{ '--mg-stagger-i': index } as CSSProperties} onClick={() => runAction(tone)} className={`home-action-card home-action-card--${tone} mg-press relative flex min-h-[92px] flex-col items-start justify-center gap-2 overflow-hidden rounded-[var(--mg-radius-xl)] border p-3 text-left transition active:scale-[.98]`}>
+        {tone === 'transport' ? <img src="/images/hero_ukraine_mobility.jpg" alt="" loading="lazy" className="home-action-card__art home-action-card__art--transport"/> : tone === 'navigation' ? <svg aria-hidden="true" viewBox="0 0 160 100" className="home-action-card__art home-action-card__art--route"><path d="M0 84C35 84 44 77 55 59C67 40 46 34 67 25C91 15 127 21 160 0"/><path d="M0 88C35 88 47 81 59 62C72 42 51 36 71 28C94 18 128 24 160 4"/></svg> : tone === 'search' ? <svg aria-hidden="true" viewBox="0 0 110 80" className="home-action-card__art home-action-card__art--network"><path d="M8 62 48 48 70 50 99 14"/><circle cx="8" cy="62" r="4"/><circle cx="48" cy="48" r="4"/><circle cx="70" cy="50" r="4"/><circle cx="99" cy="14" r="4"/></svg> : <span aria-hidden="true" className="home-action-card__art home-action-card__art--publish"/>}
         <span className="home-action-icon relative z-10 grid h-10 w-10 place-items-center rounded-2xl"><Icon size={20} strokeWidth={2.3}/></span>
         <span className="relative z-10 w-full">
           <span className="min-w-0"><span className="home-action-card__title block text-[14px] font-black leading-tight tracking-tight">{title}</span><span className="home-action-card__subtitle mt-0.5 block text-xs font-semibold leading-snug">{subtitle}</span></span>
@@ -136,10 +139,10 @@ export function HomeHero({
     <section className="home-popular-routes mt-3 min-h-0" aria-labelledby="popular-routes-title">
       <div className="mb-2 flex items-center justify-between px-1"><h2 id="popular-routes-title" className="text-[15px] font-black text-[var(--mg-ink)]">Популярні напрямки</h2><button type="button" onClick={onSearchTrip} className="mg-press-subtle inline-flex min-h-11 items-center gap-1 text-[12px] font-bold text-blue-600">Показати всі <ChevronRight className="inline" size={13}/></button></div>
       <div className="home-popular-routes__row no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
-        {popularRoutes.map(({ city, image }) => <button key={city} type="button" onClick={() => onSearchDestination(city)} className="home-popular-route mg-press relative h-[68px] min-w-[108px] flex-1 overflow-hidden rounded-2xl border border-white/70 bg-slate-200 text-left shadow-sm">
+        {popularRoutes.map(({ origin, city, image }) => <button key={city} type="button" aria-label={`Маршрут ${origin} — ${city}`} onClick={() => onSearchDestination(city, origin)} className="home-popular-route mg-press relative h-[68px] min-w-[108px] flex-1 overflow-hidden rounded-2xl border border-white/70 bg-slate-200 text-left shadow-sm">
           <img src={image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover"/>
           <span className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/35 to-transparent"/>
-          <span className="absolute inset-x-2 bottom-2 flex items-end justify-between gap-1 text-[12px] font-extrabold leading-tight text-white">Львів → {city}<ChevronRight size={14} className="shrink-0"/></span>
+          <span className="home-popular-route__label absolute inset-x-2 bottom-2 flex items-end justify-between gap-1 text-[12px] font-extrabold leading-tight text-white"><span>{origin} →<br/>{city}</span><ChevronRight size={14} className="shrink-0"/></span>
         </button>)}
       </div>
     </section>

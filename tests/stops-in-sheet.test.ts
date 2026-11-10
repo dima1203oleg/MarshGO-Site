@@ -79,7 +79,8 @@ test('the fused stop panel is token-only and stills itself under reduced motion'
   assert.doesNotMatch(rule, /rgba?\(/, 'no literal color in the stop panel — it has to survive both themes');
   assert.match(rule, /var\(--route-hover\)/);
 
-  const guardAt = css.lastIndexOf('@media (prefers-reduced-motion: reduce)');
-  assert.ok(guardAt > css.indexOf('.mg-route-stops {'), 'the reduced-motion guard must come after the rule it stills');
+  const ruleAt = css.indexOf('.mg-route-stops {');
+  const guardAt = css.indexOf('@media (prefers-reduced-motion: reduce)', ruleAt);
+  assert.ok(guardAt > ruleAt, 'the reduced-motion guard must come after the rule it stills');
   assert.match(css.slice(guardAt), /\.mg-route-stops\b/, 'the reveal animation must respect prefers-reduced-motion');
 });
