@@ -1,6 +1,7 @@
 import type { Coordinate } from '../../shared/navigation/contracts';
 import type { MapAnnotation } from '../map/MapAdapter';
 import type { ApiJourney, ApiJourneyLive } from '../services/productionApi';
+import { etaConfidenceForDisplay, focusedApproachVehiclesFor } from '../map/transportVisualZones';
 import { formatJourneyDistance, formatJourneyDuration } from './journeyResultPresentation';
 import { journeyLegLabel } from './journeyLegLabel';
 import { shortPlace } from './journeyStageNavigation';
@@ -74,12 +75,6 @@ function routeLabel(leg: Leg, live: LiveSegment | undefined): string {
   return leg.routeName ?? live?.lineRoutes?.[0]?.name ?? journeyLegLabel(leg.mode, leg.transportType);
 }
 
-function directionTermini(direction: string | undefined): [string | null, string | null] {
-  if (!direction || !direction.includes('→')) return [null, null];
-  const [from, to] = direction.split('→').map(part => part.trim());
-  return [from || null, to || null];
-}
-
 /**
  * Labels drawn on top of the route map. Every label comes from an itinerary
  * field or from the live overlay; nothing is placed on a guessed coordinate.
@@ -88,16 +83,17 @@ export function buildRouteMapAnnotations({
   journey,
   live,
   preferredLegId,
+  now = Date.now(),
 }: {
   journey: ApiJourney;
   live: ApiJourneyLive | null;
   preferredLegId?: string | null;
+  now?: number;
 }): MapAnnotation[] {
   const annotations: MapAnnotation[] = [];
   const legs = journey.legs;
   const transit = primaryTransitLeg(legs, preferredLegId);
   const liveSegment = transit ? live?.segments.find(segment => segment.legId === transit.id) : undefined;
-  const liveLine = liveSegment?.lineRoutes?.find(route => route.zones?.passengerSegment?.length) ?? liveSegment?.lineRoutes?.[0];
   const name = transit ? routeLabel(transit, liveSegment) : '';
 
   legs.forEach((leg, index) => {
@@ -137,53 +133,18 @@ export function buildRouteMapAnnotations({
     });
   }
 
-  if (transit && liveSegment && liveLine) {
-    const [terminusFrom, terminusTo] = directionTermini(liveLine.direction);
-    const before = liveLine.zones?.beforeBoarding;
-    const after = liveLine.zones?.afterAlighting;
-    if (liveLine.geometryScope !== 'leg_only') {
-      if (before?.length && terminusFrom) {
-        annotations.push({
-          id: `terminus:start:${liveLine.id}`,
-          kind: 'TERMINUS',
-          coordinates: before[0]!,
-          title: 'Кінцева',
-          detail: shortPlace(terminusFrom),
-          tone: 'neutral',
-        });
-        const routePoint = midpoint(before);
-        if (routePoint) annotations.push({ id: `route:before:${liveLine.id}`, kind: 'ROUTE', coordinates: routePoint, title: name, tone: 'purple' });
-      }
-      if (after?.length && terminusTo) {
-        annotations.push({
-          id: `terminus:end:${liveLine.id}`,
-          kind: 'TERMINUS',
-          coordinates: after.at(-1)!,
-          title: 'Кінцева',
-          detail: shortPlace(terminusTo),
-          tone: 'neutral',
-        });
-        const routePoint = midpoint(after);
-        if (routePoint) annotations.push({ id: `route:after:${liveLine.id}`, kind: 'ROUTE', coordinates: routePoint, title: name, tone: 'purple' });
-      }
-    }
-  }
-
-  for (const vehicle of liveSegment?.vehicles ?? []) {
+  for (const vehicle of focusedApproachVehiclesFor(liveSegment?.vehicles ?? [], now)) {
     if (!validCoordinate(vehicle.coordinates)) continue;
-    const level = vehicle.priority?.level;
-    const eta = typeof vehicle.etaSeconds === 'number' && Number.isFinite(vehicle.etaSeconds) && vehicle.etaSeconds > 0
-      && (vehicle.etaConfidence ?? 'NONE') !== 'NONE'
+    const eta = etaConfidenceForDisplay(vehicle, now) !== 'NONE'
       ? vehicle.etaSeconds
       : null;
-    if (!eta && !vehicle.emphasized && level !== 'L2' && level !== 'L3' && level !== 'L4') continue;
     annotations.push({
       id: `vehicle:${vehicle.id}`,
       kind: 'VEHICLE',
       coordinates: vehicle.coordinates,
       title: name,
-      ...(eta ? { detail: `≈ ${formatJourneyDuration(eta)}` } : vehicle.approachingBoarding ? { detail: 'наближається' } : {}),
-      tone: 'purple',
+      ...(eta ? { detail: `≈ ${formatJourneyDuration(eta)}` } : { detail: 'наближається' }),
+      tone: 'blue',
     });
   }
 

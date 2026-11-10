@@ -33,7 +33,7 @@ import {
 } from './routeSheet';
 import { themeService } from '../services/theme';
 import { formatSegmentCount, formatStopCount, primaryTransitLeg } from './routeMapAnnotations';
-import { priorityLevelOf } from '../map/transportVisualZones';
+import { etaConfidenceForDisplay, focusedApproachVehiclesFor, isFreshVehicleForDisplay, priorityLevelOf } from '../map/transportVisualZones';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
 import { nextStopsLegId, sheetNeedsRaiseForStops, stopsDetent } from './journeyStopsPanel';
 import { calculateAdaptiveMapPadding } from '../map/mapViewportCoordinator';
@@ -314,6 +314,8 @@ export function JourneyRouteMapScreen({
       return;
     }
     mapAdapter.current?.setLiveTransitPosition?.(null);
+    const vehicles = liveSegment.vehicles ?? [];
+    const focusedApproachIds = new Set(focusedApproachVehiclesFor(vehicles).map(vehicle => vehicle.id));
     mapAdapter.current?.setFocusedTransitOverlay?.({
       color: journeyModeColor(liveLeg.mode, liveLeg.transportType),
       transportType: liveLeg.transportType ?? liveLeg.mode,
@@ -325,16 +327,19 @@ export function JourneyRouteMapScreen({
         geometryScope: route.geometryScope,
         zones: route.zones ?? null,
       })),
-      vehicles: (liveSegment.vehicles ?? []).map(vehicle => ({
-        id: vehicle.id,
-        coordinates: vehicle.coordinates,
-        updatedAt: vehicle.updatedAt,
-        routeLabel: liveLeg.routeName ?? journeyLegLabel(liveLeg.mode, liveLeg.transportType),
-        emphasized: vehicle.emphasized,
-        priorityLevel: priorityLevelOf(vehicle),
-        etaSeconds: vehicle.etaSeconds ?? null,
-        etaConfidence: vehicle.etaConfidence ?? 'NONE',
-      })),
+      vehicles: vehicles.filter(vehicle => vehicle.priority?.reason !== 'stale_position' && isFreshVehicleForDisplay(vehicle)).map(vehicle => {
+        const selectedApproach = focusedApproachIds.has(vehicle.id);
+        return {
+          id: vehicle.id,
+          coordinates: vehicle.coordinates,
+          updatedAt: vehicle.updatedAt,
+          routeLabel: liveLeg.routeName ?? journeyLegLabel(liveLeg.mode, liveLeg.transportType),
+          emphasized: selectedApproach,
+          priorityLevel: selectedApproach ? priorityLevelOf(vehicle) : vehicle.priority?.reason === 'stale_position' ? 'L0' : 'L1',
+          etaSeconds: vehicle.etaSeconds ?? null,
+          etaConfidence: etaConfidenceForDisplay(vehicle),
+        };
+      }),
     });
   }, [liveSegment, liveLeg, mapAdapterReady]);
 

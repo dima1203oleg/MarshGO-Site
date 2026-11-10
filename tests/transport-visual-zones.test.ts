@@ -3,6 +3,9 @@ import test from 'node:test';
 import {
   VEHICLE_PRIORITY_TOKENS,
   ZONE_LINE_TOKENS,
+  etaConfidenceForDisplay,
+  focusedApproachVehiclesFor,
+  isFreshVehicleForDisplay,
   priorityLevelOf,
   zoneArrowsFor,
   zoneFeaturesFor,
@@ -37,6 +40,54 @@ test('a leg-only fallback never invents pre-boarding or post-alighting geometry'
   }, 'leg_only');
   assert.deepEqual(features.map(feature => feature.zone), ['B']);
   assert.equal(features[0]!.coordinates.length, 4);
+});
+
+test('focused passenger geometry keeps only the confirmed boarding-to-alighting slice', () => {
+  const line: Array<[number, number]> = [[24, 49.84], [24.01, 49.84], [24.02, 49.84], [24.03, 49.84]];
+  const zones = {
+    boardingShapeIndex: 1,
+    alightingShapeIndex: 2,
+    beforeBoarding: line.slice(0, 2),
+    passengerSegment: line.slice(1, 3),
+    afterAlighting: line.slice(2),
+    snapMeters: 12,
+  };
+  const focused = zoneFeaturesFor(zones, 'full_route', true);
+  assert.deepEqual(focused.map(feature => feature.zone), ['B']);
+  assert.deepEqual(focused[0]?.coordinates, zones.passengerSegment);
+  // The full route-network presentation can still request every verified zone.
+  assert.deepEqual(zoneFeaturesFor(zones, 'full_route').map(feature => feature.zone), ['A', 'B', 'C']);
+});
+
+test('focused approach selection is fresh, server-confirmed, ranked, and capped at three', () => {
+  const now = Date.parse('2026-11-10T10:00:00Z');
+  const vehicle = (id: string, etaSeconds: number, remainingStops: number, updatedAt = new Date(now).toISOString()) => ({
+    id, coordinates: [24.0, 49.84] as [number, number], updatedAt,
+    approachingBoarding: true, emphasized: true, remainingStops, etaSeconds, etaConfidence: 'PREDICTED' as const,
+    approachEvidence: { source: 'OBSERVED_PROGRESS' as const, remainingStops },
+  });
+  const selected = focusedApproachVehiclesFor([
+    vehicle('vehicle-5', 600, 5), vehicle('vehicle-3', 300, 3), vehicle('vehicle-1', 60, 1),
+    vehicle('vehicle-2', 120, 2), vehicle('stale', 10, 0, new Date(now - 91_000).toISOString()),
+  ], now);
+  assert.deepEqual(selected.map(candidate => candidate.id), ['vehicle-1', 'vehicle-2', 'vehicle-3']);
+  assert.equal(isFreshVehicleForDisplay(vehicle('fresh', 60, 1), now), true);
+  assert.equal(isFreshVehicleForDisplay({ ...vehicle('invalid-coordinate', 60, 1), coordinates: [181, 49.84] }, now), false);
+  assert.equal(focusedApproachVehiclesFor([{ ...vehicle('wrong-direction', 20, 0), approachingBoarding: false }], now).length, 0);
+});
+
+test('recovers predicted ETA confidence only from the server future-arrival evidence', () => {
+  const now = Date.parse('2026-11-10T10:00:00Z');
+  assert.equal(etaConfidenceForDisplay({
+    etaSeconds: 240,
+    etaConfidence: 'NONE',
+    approachEvidence: { source: 'TRIP_UPDATE_PREDICTION', predictedArrivalAt: '2026-11-10T10:04:00Z' },
+  }, now), 'PREDICTED');
+  assert.equal(etaConfidenceForDisplay({
+    etaSeconds: 240,
+    etaConfidence: 'NONE',
+    approachEvidence: { source: 'OBSERVED_PROGRESS' },
+  }, now), 'NONE');
 });
 
 test('a zone shorter than two points is not drawn at all', () => {
@@ -79,6 +130,10 @@ test('vehicle priority comes from the server, with the pre-priority contract as 
   assert.equal(priorityLevelOf({ emphasized: true }), 'L2');
   assert.equal(priorityLevelOf({ emphasized: false }), 'L1');
   assert.equal(priorityLevelOf({}), 'L1');
+  assert.equal(priorityLevelOf({ priorityLevel: 'L3' }), 'L3');
+  assert.equal(priorityLevelOf({ approachingBoarding: true, etaSeconds: 120, etaConfidence: 'PREDICTED' }), 'L3');
+  assert.equal(priorityLevelOf({ approachingBoarding: true, approachEvidence: { source: 'OBSERVED_PROGRESS', remainingStops: 0 } }), 'L4');
+  assert.equal(priorityLevelOf({ approachingBoarding: true, etaSeconds: 120, etaConfidence: 'NONE' }), 'L2');
 });
 
 test('priority tokens make closer-to-boarding vehicles visibly more active', () => {
