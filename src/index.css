@@ -606,6 +606,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
 }
 .journey-segment-tile-button:hover { background: color-mix(in srgb, var(--mg-blue) 7%, transparent); }
 .journey-segment-tile-button:focus-visible { position: relative; z-index: var(--mg-z-base); outline: 2px solid var(--mg-blue); outline-offset: -2px; }
+.journey-segment-tile.is-active { z-index: var(--mg-z-raised); }
 .journey-segment-tile.is-active .journey-segment-tile-button { background: color-mix(in srgb, var(--mg-blue) 10%, transparent); }
 .journey-segment-tile-heading {
   display: flex;
