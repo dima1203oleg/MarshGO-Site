@@ -35,6 +35,19 @@ test('a real gap between modes is preserved - no fabricated connector road', () 
   assert.deepEqual(bus.coordinates.at(-1), [24.02, 49.82], 'a ~90 m gap must stay open, not be snapped shut');
 });
 
+test('does not snap two shapes across an intervening leg whose geometry is missing', () => {
+  const model = routeModel.buildJourneyRouteMapModel(legs([
+    { id: 'bus', mode: 'BUS', transportType: 'bus', routeGeometry: [[24, 49.8], [24.02, 49.82]] },
+    { id: 'unknown-shape', mode: 'TRAM', transportType: 'tram', routeGeometry: null },
+    { id: 'train', mode: 'RAIL', transportType: 'train', routeGeometry: [[24.020005, 49.820002], [24.03, 49.83]] },
+  ]));
+  const bus = model.routeSegments.find(segment => segment.id === 'bus')!;
+  const train = model.routeSegments.find(segment => segment.id === 'train')!;
+  assert.notDeepEqual(bus.coordinates.at(-1), train.coordinates[0]);
+  assert.deepEqual(bus.coordinates.at(-1), [24.02, 49.82]);
+  assert.equal(model.missingShapeCount, 1);
+});
+
 test('a dashed walking estimate is never bridged to the transit line', () => {
   const model = routeModel.buildJourneyRouteMapModel(legs([
     { id: 'walk', mode: 'WALK', source: 'walking-estimate', routeGeometry: [[24.01, 49.81], [24.02, 49.82]] },
@@ -67,4 +80,12 @@ test('an already-exact join is left unchanged', () => {
   const tram = model.routeSegments.find(segment => segment.id === 'tram')!;
   assert.deepEqual(bus.coordinates.at(-1), [24.02, 49.82]);
   assert.deepEqual(bus.coordinates.at(-1), tram.coordinates[0]);
+});
+
+test('an invalid transit vertex hides that shape rather than connecting around the bad point', () => {
+  const model = routeModel.buildJourneyRouteMapModel(legs([
+    { id: 'bus', mode: 'BUS', transportType: 'bus', routeGeometry: [[24, 49.8], [200, 49.81], [24.02, 49.82]] },
+  ]));
+  assert.deepEqual(model.routeSegments, []);
+  assert.equal(model.missingShapeCount, 1);
 });

@@ -25,6 +25,16 @@ test('search provider dialog does not repeat transport type controls', async () 
   assert.doesNotMatch(marketplace, /Обрати на мапі: \\{\(routePlaceField/, 'the duplicated wide map picker must be absent');
 });
 
+test('static bicycle points do not imply live inventory or booking', async () => {
+  const [panel, api] = await Promise.all([
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/components/TransportTypesPanel.tsx'), 'utf8'),
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/services/productionApi.ts'), 'utf8'),
+  ]);
+  assert.match(api, /availabilityStatus\?: string; bookingAvailable\?: boolean/, 'the client retains availability and booking evidence');
+  assert.match(panel, /type\.id === 'bike' && providers\.some\(provider => provider\.availabilityStatus === 'UNKNOWN' \|\| provider\.bookingAvailable === false\)/, 'the caveat is driven by provider evidence');
+  assert.match(panel, /наявність велосипедів і бронювання не підтверджені/, 'customers are told that static points are not live inventory');
+});
+
 test('traveler surfaces keep technical search and map diagnostics out of the default design', async () => {
   const root = dirname(fileURLToPath(import.meta.url));
   const [panel, mapDetails, transportMap, marketplace, transportTypes, canonicalDesign] = await Promise.all([

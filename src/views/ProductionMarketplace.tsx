@@ -126,7 +126,7 @@ export function ProductionMarketplace() {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authDisplayName, setAuthDisplayName] = useState('');
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'reset'>('login');
   const [showLogin, setShowLogin] = useState(false);
   const [authIntro, setAuthIntro] = useState(true);
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -854,6 +854,16 @@ export function ProductionMarketplace() {
       setShowLogin(false);
     } catch (error) { setAuthError(error instanceof Error ? error.message : 'Помилка входу. Перевірте email та пароль.'); }
     finally { setBusy(false); }
+  };
+
+  const handlePasswordResetRequest = async (event: FormEvent) => {
+    event.preventDefault(); setBusy(true); setStatusMessage(''); setAuthError('');
+    try {
+      const result = await productionApi.requestPasswordReset(authEmail.trim());
+      setStatusMessage(result.message);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Відновлення пароля тимчасово недоступне. Спробуйте пізніше.');
+    } finally { setBusy(false); }
   };
 
   const handleRegister = async (event: FormEvent) => {
@@ -1829,6 +1839,17 @@ export function ProductionMarketplace() {
     );
   };
 
+  // Keep this hook in the same position on loading, public and authenticated
+  // renders. The protected-screen early returns below used to skip it for the
+  // first render and trigger React's "Rendered more hooks" crash after restore.
+  const mapToolbarContext = isMapToolbarContext({
+    tab,
+    activeJourneyNavigation: Boolean(activeJourneyNavigation),
+    selectedRouteMap: Boolean(selectedRouteMap),
+    selectedJourney: Boolean(selectedJourney),
+  });
+  const { visible: mapNavigationVisible, onMapEdgePointerDown } = useMapAwareBottomNavigation(mapToolbarContext);
+
   if (loading) return <main className="grid min-h-[100svh] place-items-center bg-[var(--mg-canvas)] text-sm text-slate-500">Завантажуємо захищену сесію…</main>;
   if (!user || showLogin) return (
     <main className={`auth-screen relative flex min-h-[100svh] overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-safe ${authIntro ? 'auth-intro-screen' : ''} ${onboardingStep > 0 ? 'bg-[#f4f8ff] text-[var(--mg-ink-primary)] dark:bg-[var(--mg-surface-secondary)] dark:text-[var(--mg-ink-primary)]' : 'bg-[#081b35] text-white'} ${authIntro ? 'items-stretch' : onboardingStep > 0 ? 'h-[100svh] max-h-[100svh] items-stretch' : 'items-end sm:items-center sm:justify-center'}`}>
@@ -1864,8 +1885,9 @@ export function ProductionMarketplace() {
             <AuthField id="login-password" label="Пароль" type="password" autoComplete="current-password" minLength={8} value={authPassword} onChange={setAuthPassword} invalid={!!authError} describedBy={authError ? 'auth-error' : undefined} />
             <button type="submit" disabled={busy} className="mg-press mt-1 min-h-11 w-full rounded-2xl bg-[var(--mg-action)] px-5 py-4 font-bold text-white shadow-lg shadow-blue-950/40 hover:bg-[var(--mg-action-hover)] disabled:opacity-60">{busy ? 'Входимо…' : 'Увійти'}</button>
           </form>
+          <button type="button" onClick={() => { setAuthMode('reset'); setStatusMessage(''); setAuthError(''); }} className="mt-1 min-h-11 w-full rounded-xl px-3 text-sm text-blue-100 hover:text-white">Забули пароль?</button>
           <button type="button" onClick={() => { setAuthMode('register'); setStatusMessage(''); setAuthError(''); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-sm text-blue-100 hover:text-white">Немає акаунта? Зареєструватися</button>
-        </> : <>
+        </> : authMode === 'register' ? <>
           <h1 className="text-3xl font-extrabold">Реєстрація</h1><p className="mt-2 text-sm text-blue-100/80">Створіть акаунт MARSHGO.</p>
           <form onSubmit={handleRegister} aria-describedby={authError ? 'auth-error' : undefined} className="mt-6 space-y-3">
             <AuthField id="register-name" label="Ваше ім'я" type="text" autoComplete="name" minLength={2} maxLength={80} placeholder="Як вас називати водіям" value={authDisplayName} onChange={setAuthDisplayName} invalid={!!authError} describedBy={authError ? 'auth-error' : undefined} />
@@ -1874,6 +1896,13 @@ export function ProductionMarketplace() {
             <button type="submit" disabled={busy} className="mg-press mt-1 min-h-11 w-full rounded-2xl bg-[var(--mg-action)] px-5 py-4 font-bold text-white shadow-lg shadow-blue-950/40 hover:bg-[var(--mg-action-hover)] disabled:opacity-60">{busy ? 'Реєструємо…' : 'Зареєструватися'}</button>
           </form>
           <button type="button" onClick={() => { setAuthMode('login'); setStatusMessage(''); setAuthError(''); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-sm text-blue-100 hover:text-white">Вже є акаунт? Увійти</button>
+        </> : <>
+          <h1 className="text-3xl font-extrabold">Відновлення пароля</h1><p className="mt-2 text-sm text-blue-100/80">Введіть email свого акаунта.</p>
+          <form onSubmit={handlePasswordResetRequest} aria-describedby={authError ? 'auth-error' : undefined} className="mt-6 space-y-3">
+            <AuthField id="reset-email" label="Email" type="email" autoComplete="email" placeholder="name@example.com" value={authEmail} onChange={setAuthEmail} invalid={!!authError} describedBy={authError ? 'auth-error' : undefined} />
+            <button type="submit" disabled={busy} className="mg-press mt-1 min-h-11 w-full rounded-2xl bg-[var(--mg-action)] px-5 py-4 font-bold text-white shadow-lg shadow-blue-950/40 hover:bg-[var(--mg-action-hover)] disabled:opacity-60">{busy ? 'Перевіряємо…' : 'Надіслати посилання'}</button>
+          </form>
+          <button type="button" onClick={() => { setAuthMode('login'); setStatusMessage(''); setAuthError(''); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-sm text-blue-100 hover:text-white">Повернутися до входу</button>
         </>}
         {authError && <p id="auth-error" role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-[#FF9CA7]/45 bg-[rgba(255,90,106,.15)] px-3.5 py-3 text-sm leading-5 text-[#FFE2E6]"><AlertCircle size={16} className="mt-0.5 shrink-0 text-[#FF9CA7]"/><span className="min-w-0 flex-1">{authError}</span></p>}
         {statusMessage && <p role="status" className="mt-4 rounded-xl bg-white/10 p-3 text-sm text-white">{statusMessage}</p>}
@@ -2369,13 +2398,6 @@ export function ProductionMarketplace() {
   const hideSharedHeader = tab === 'navigation' || Boolean(activeJourneyNavigation || selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
 
   const immersiveRouteView = Boolean(activeJourneyNavigation || selectedRouteMap);
-  const mapToolbarContext = isMapToolbarContext({
-    tab,
-    activeJourneyNavigation: Boolean(activeJourneyNavigation),
-    selectedRouteMap: Boolean(selectedRouteMap),
-    selectedJourney: Boolean(selectedJourney),
-  });
-  const { visible: mapNavigationVisible, onMapEdgePointerDown } = useMapAwareBottomNavigation(mapToolbarContext);
   return <main onPointerDownCapture={onMapEdgePointerDown} className={`production-app min-h-[100svh] bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[var(--mg-global-nav-clearance)]'} ${mapToolbarContext ? 'map-toolbar-map-context' : ''}`}>
     {!hideSharedHeader && header}
     {isOffline && !hideSharedHeader && <div className="mx-auto w-full max-w-xl px-5"><p role="status" aria-live="polite" data-testid="offline-notice" className="mg-fade flex items-start gap-2 rounded-2xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-tint)] px-3 py-2.5 text-xs font-semibold leading-snug text-[var(--mg-ink-secondary)]">

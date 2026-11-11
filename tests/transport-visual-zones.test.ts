@@ -52,6 +52,18 @@ test('a zone shorter than two points is not drawn at all', () => {
   assert.deepEqual(features.map(feature => feature.zone), ['B']);
 });
 
+test('a malformed passenger slice suppresses the zone ribbon instead of drawing a broken A/C fragment', () => {
+  const features = zoneFeaturesFor({
+    boardingShapeIndex: 1,
+    alightingShapeIndex: 2,
+    beforeBoarding: [[24, 49.84], [24.01, 49.84]],
+    passengerSegment: [[24.01, 49.84], [200, 49.85], [24.02, 49.84]],
+    afterAlighting: [[24.02, 49.84], [24.03, 49.84]],
+    snapMeters: 3,
+  }, 'full_route');
+  assert.deepEqual(features, []);
+});
+
 test('zone tokens keep the ride line dominant over context zones', () => {
   assert.ok(ZONE_LINE_TOKENS.A.width[1] < ZONE_LINE_TOKENS.B.width[1]);
   assert.ok(ZONE_LINE_TOKENS.C.width[1] < ZONE_LINE_TOKENS.A.width[1]);

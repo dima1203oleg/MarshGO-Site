@@ -1,0 +1,137 @@
+/* Route detail density: keep each touch target at least 44px. */
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) {
+  --mg-sheet-cta-min-height: 44px;
+  --mg-sheet-stack-gap: 1px;
+  --mg-sheet-card-pad-y: 0px;
+  --mg-sheet-summary-pad-top: 0px;
+  --mg-sheet-summary-pad-bottom: 1px;
+  --mg-sheet-endpoints-pad-bottom: 1px;
+  --mg-sheet-ribbon-height: 44px;
+}
+.route-map-screen section:is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) {
+  border-top-left-radius: 2rem;
+  border-top-right-radius: 2rem;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .route-details-head {
+  padding-inline: 12px;
+  padding-bottom: 0;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .route-sheet-endpoints {
+  padding-bottom: 0;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-cta {
+  font-size: 15px;
+  border-radius: 14px;
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--mg-action) 20%, transparent), inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-segment__body {
+  align-items: center;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-segment__body > button {
+  align-items: center;
+  min-height: 44px;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-endpoints {
+  margin-top: 0;
+  line-height: 1;
+  column-gap: 2px;
+  row-gap: 0;
+}
+
+/* Keep each leg to two compact text rows on phones: title/metrics, then streets. */
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-segment__body > button > span:last-child > span:first-child {
+  flex-wrap: nowrap;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 14px;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-segment__body > button > span:last-child > span:first-child > b {
+  flex: 0 0 auto;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-segment__body > button > span:last-child > span:first-child > span:not(:last-child) {
+  flex: 0 0 auto;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-segment__body > button > span:last-child > span:first-child > span:last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.route-status-short { display: none; }
+
+/* The first and last leg already show both street names; keep the route-level
+   duplicate available to assistive tech without spending another visual row. */
+@media (max-width: 430px) {
+  .route-map-screen [data-testid="route-bottom-sheet"] .route-status-full { display: none; }
+  .route-map-screen [data-testid="route-bottom-sheet"] .route-status-short { display: inline; }
+  .route-map-screen [data-testid="route-bottom-sheet"] .route-sheet-endpoints {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* Narrow phones: keep stop names and prices readable without shrinking tap targets. */
+@media (max-width: 380px) {
+  .route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-endpoints__name {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .route-segment-price {
+    max-width: 42%;
+    min-width: 0;
+  }
+  .route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .route-segment-price span {
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+}
+
+/* Keep the expanded stop list close to its segment card in both modes. */
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-stops {
+  padding-block: 2px;
+}
+
+/* Static intermediate stops are information, not controls. Keep their rhythm
+   compact; selectable stops retain a full 44 px hit target. */
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-stops ol > li > div {
+  min-height: 24px;
+  padding-block: 0;
+  line-height: 1.15;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-stops ol > li > button {
+  min-height: 44px;
+  padding-block: 2px;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-stop-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-stop-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.route-map-screen :is([data-testid="route-bottom-sheet"], [data-testid="active-navigation-sheet"]) .mg-route-stop-badge {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}

@@ -8,7 +8,7 @@ export type LegPhase = 'upcoming' | 'underway' | 'past';
 export type ActiveLegStatus = 'LIVE' | 'PREDICTED' | 'FREQUENCY' | 'SCHEDULED' | 'UNAVAILABLE' | 'UNCONFIRMED' | null;
 
 export const ACTIVE_LEG_STATUS_LABEL: Record<Exclude<ActiveLegStatus, null>, string> = {
-  LIVE: 'ЗА РУХОМ',
+  LIVE: 'GPS ОНЛАЙН',
   PREDICTED: 'ПРОГНОЗ',
   FREQUENCY: 'ІНТЕРВАЛ',
   SCHEDULED: 'ЗА РОЗКЛАДОМ',
@@ -34,7 +34,10 @@ export function shortPlace(name: string): string {
 export function activeLegStatus(leg: ActiveLeg, liveStatus?: string | null): ActiveLegStatus {
   if (leg.mode === 'WALK') return null;
   const status = liveStatus ?? leg.liveStatus ?? null;
-  if (status === 'LIVE' || status === 'PREDICTED' || status === 'UNAVAILABLE') return status;
+  // A planner's stored LIVE label can become stale before navigation opens.
+  // Only a status from the current live endpoint is evidence of a live vehicle.
+  if (status === 'LIVE' && liveStatus === 'LIVE') return 'LIVE';
+  if (status === 'PREDICTED' || status === 'UNAVAILABLE') return status;
   if (status === 'SCHEDULED') return leg.scheduleSemantics === 'frequency_estimate' ? 'FREQUENCY' : 'SCHEDULED';
   return isTransitLeg(leg) ? 'UNCONFIRMED' : null;
 }

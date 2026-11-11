@@ -37,46 +37,47 @@ export function distanceMeters(a: Coordinate, b: Coordinate): number {
   return 6371000 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/** Interpolates coordinates along polyline based on fractional distance (0.0 to 1.0). */
-export function interpolateLineProgress(coordinates: readonly Coordinate[], progress: number): Coordinate[] {
-  if (coordinates.length === 0) return [];
-  if (coordinates.length === 1 || progress <= 0) return [coordinates[0]!];
-  if (progress >= 1) return [...coordinates];
+/** Prepare segment lengths once for a cancellable route reveal. */
+export function prepareLineProgress(input: readonly Coordinate[]): (progress: number) => Coordinate[] {
+  const coordinates = input.map(point => [point[0], point[1]] as Coordinate);
+  const segmentDistances = coordinates.slice(1).map((point, index) => distanceMeters(coordinates[index]!, point));
+  const totalLength = segmentDistances.reduce((sum, length) => sum + length, 0);
+  return (progress: number): Coordinate[] => {
+    if (coordinates.length === 0) return [];
+    if (coordinates.length === 1 || progress <= 0) return [coordinates[0]!];
+    if (progress >= 1) return [...coordinates];
 
-  // Calculate cumulative segment distances
-  const segmentDistances: number[] = [];
-  let totalLength = 0;
-  for (let i = 0; i < coordinates.length - 1; i++) {
-    const d = distanceMeters(coordinates[i]!, coordinates[i + 1]!);
-    segmentDistances.push(d);
-    totalLength += d;
-  }
+    if (totalLength === 0) return [...coordinates];
 
-  if (totalLength === 0) return [...coordinates];
+    const targetDistance = totalLength * Math.max(0, Math.min(1, progress));
+    const result: Coordinate[] = [coordinates[0]!];
+    let accumulated = 0;
 
-  const targetDistance = totalLength * Math.max(0, Math.min(1, progress));
-  const result: Coordinate[] = [coordinates[0]!];
-  let accumulated = 0;
-
-  for (let i = 0; i < segmentDistances.length; i++) {
-    const segDist = segmentDistances[i]!;
-    if (accumulated + segDist >= targetDistance) {
-      const remaining = targetDistance - accumulated;
-      const ratio = segDist > 0 ? remaining / segDist : 0;
-      const p1 = coordinates[i]!;
-      const p2 = coordinates[i + 1]!;
-      const interpolated: Coordinate = [
-        p1[0] + (p2[0] - p1[0]) * ratio,
-        p1[1] + (p2[1] - p1[1]) * ratio,
-      ];
-      result.push(interpolated);
-      break;
+    for (let i = 0; i < segmentDistances.length; i++) {
+      const segDist = segmentDistances[i]!;
+      if (accumulated + segDist >= targetDistance) {
+        const remaining = targetDistance - accumulated;
+        const ratio = segDist > 0 ? remaining / segDist : 0;
+        const p1 = coordinates[i]!;
+        const p2 = coordinates[i + 1]!;
+        const interpolated: Coordinate = [
+          p1[0] + (p2[0] - p1[0]) * ratio,
+          p1[1] + (p2[1] - p1[1]) * ratio,
+        ];
+        result.push(interpolated);
+        break;
+      }
+      accumulated += segDist;
+      result.push(coordinates[i + 1]!);
     }
-    accumulated += segDist;
-    result.push(coordinates[i + 1]!);
-  }
 
-  return result;
+    return result;
+  };
+}
+
+/** Interpolates coordinates along a polyline by travelled distance. */
+export function interpolateLineProgress(coordinates: readonly Coordinate[], progress: number): Coordinate[] {
+  return prepareLineProgress(coordinates)(progress);
 }
 
 /** Extract icon type from leg mode. */

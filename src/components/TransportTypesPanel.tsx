@@ -73,6 +73,7 @@ export function TransportTypesPanel({ selection, groups, onChange, compact = fal
               {providers.map((provider) => { const checked = choice.all || choice.ids.includes(provider.id); const onlyOne = providers.length === 1;
                 return <button key={provider.id} type="button" aria-pressed={checked} disabled={onlyOne} onClick={() => onChange(toggleProvider(selection, type.id, provider.id, providers.map((item) => item.id)))} title={onlyOne ? 'Це єдиний провайдер категорії — вимкніть саму категорію' : provider.cities.join(', ') || undefined} className={`mg-pill-switch mg-press-subtle inline-flex min-h-11 items-center rounded-full border px-3.5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-60 ${checked ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white' : 'border-[var(--mg-border-subtle)] bg-white text-slate-600'}`}>{provider.name}</button>; })}
             </div>}
+          {type.id === 'bike' && providers.some(provider => provider.availabilityStatus === 'UNKNOWN' || provider.bookingAvailable === false) && <p data-testid="bike-provider-availability-note" className="mt-2 text-xs leading-4 text-[var(--mg-ink-muted)]">Пункти мережі дають орієнтир маршруту; наявність велосипедів і бронювання не підтверджені.</p>}
         </div>; })}
     </div>}
   </section>;

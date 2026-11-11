@@ -3,6 +3,7 @@ import type { ColoredRouteSegment, RouteWaypoint } from './MapAdapter';
 import type { Coordinate } from '../../shared/navigation/contracts';
 import { journeyLegLabel } from '../views/journeyLegLabel';
 import { getTransportModeVisual } from '../design-system/transport/transportModeRegistry';
+import { greatCircleDistanceMeters, isValidCoordinate, sanitizeLineCoordinates } from './lineGeometry';
 
 export const journeyModeColor = (mode: string, transportType?: string) =>
   getTransportModeVisual(mode, transportType).color;
@@ -22,19 +23,8 @@ export function formatTransferCount(value: number): string {
  */
 export const ROUTE_JOIN_SNAP_TOLERANCE_M = 1.5;
 
-function metersBetween(a: Coordinate, b: Coordinate): number {
-  const meanLat = ((a[1] + b[1]) / 2) * Math.PI / 180;
-  const dx = (a[0] - b[0]) * Math.cos(meanLat);
-  const dy = a[1] - b[1];
-  return Math.hypot(dx, dy) * 111_320;
-}
-
 function validGeometry(points: Array<[number, number]> | null | undefined): Coordinate[] {
-  if (!Array.isArray(points)) return [];
-  const valid = points.every(point => Array.isArray(point) && point.length === 2
-    && Number.isFinite(point[0]) && Number.isFinite(point[1])
-    && point[0] >= -180 && point[0] <= 180 && point[1] >= -90 && point[1] <= 90);
-  return valid ? points : [];
+  return sanitizeLineCoordinates(points);
 }
 
 export type JourneyRouteMapLeg = {
@@ -45,10 +35,13 @@ export type JourneyRouteMapLeg = {
   approximate?: boolean;
 };
 
+/** Estimated endpoint chords are not a confirmed path and must not be drawn as one. */
+export function confirmedJourneySegments(segments: readonly ColoredRouteSegment[]): ColoredRouteSegment[] {
+  return segments.filter(segment => segment.approximate !== true);
+}
+
 function validCoordinate(point: unknown): point is Coordinate {
-  return Array.isArray(point) && point.length === 2
-    && Number.isFinite(point[0]) && Number.isFinite(point[1])
-    && point[0] >= -180 && point[0] <= 180 && point[1] >= -90 && point[1] <= 90;
+  return isValidCoordinate(point);
 }
 
 export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
@@ -69,14 +62,19 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     return accuracy === 'STRAIGHT_LINE_ESTIMATE' || accuracy === 'ESTIMATED'
       || source.includes('estimate') || source.startsWith('gbfs-') || source === 'micromobility';
   };
-  const mappedLegs = legs.flatMap(leg => {
+  const mappedLegs = legs.flatMap((leg, sourceIndex) => {
     const estimatedMicromobility = isEstimatedMicromobility(leg);
     let coordinates = validGeometry(leg.routeGeometry);
     // Only an explicit routing provider/feed proves street geometry. Legacy `walking` and
     // `transfer-walk` legs come from a synthetic city grid, not a pedestrian graph.
     // Keep them visible as dashed estimates, never as exact street trajectories.
-    const approximateSource = /estimate|straight-line|^(walking|transfer-walk)$/i.test(leg.source ?? '');
-    let approximate = (leg.mode === 'WALK' && approximateSource) || estimatedMicromobility;
+    const approximateSource = /estimate|straight-line|^(walking|transfer-walk)$/i.test(leg.source ?? '')
+      || /^(STRAIGHT_LINE_ESTIMATE|ESTIMATED)$/i.test(leg.routeAccuracy ?? '')
+      || leg.geometrySource === 'walking-estimate';
+    const source = leg.source?.toLowerCase() ?? '';
+    const confirmedWalkingGeometry = /^(SOURCE_GEOMETRY|VERIFIED)$/i.test(leg.routeAccuracy ?? '')
+      || ['osrm-foot-route', 'gtfs-pathway', 'gtfs-pathways', 'pedestrian-router'].includes(source);
+    let approximate = (leg.mode === 'WALK' && (approximateSource || !confirmedWalkingGeometry)) || estimatedMicromobility;
     // Inventory feeds and static rental networks provide endpoints, not a rideable
     // street route. Keep that estimate visible as a dashed chord rather than hiding
     // the segment or implying a verified cycling path.
@@ -89,22 +87,30 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
       approximate = true;
     }
     return coordinates.length >= 2 ? [{
-      id: leg.id,
-      label: `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`,
-      color: journeyModeColor(leg.mode, leg.transportType),
-      isWalk: leg.mode === 'WALK',
-      coordinates,
-      ...(approximate ? { approximate: true } : {}),
+      sourceIndex,
+      leg: {
+        id: leg.id,
+        label: `${journeyLegLabel(leg.mode, leg.transportType)}${leg.routeName ? ` ${leg.routeName}` : ''}`,
+        color: journeyModeColor(leg.mode, leg.transportType),
+        isWalk: leg.mode === 'WALK',
+        coordinates,
+        ...(approximate ? { approximate: true } : {}),
+      },
     }] : [];
   });
   for (let index = 0; index < mappedLegs.length - 1; index++) {
-    const earlier = mappedLegs[index]!;
-    const later = mappedLegs[index + 1]!;
+    const earlierEntry = mappedLegs[index]!;
+    const laterEntry = mappedLegs[index + 1]!;
+    // A missing shape is a real unknown section, not permission to connect the
+    // surrounding geometries. Only consecutive itinerary legs may share a join.
+    if (laterEntry.sourceIndex !== earlierEntry.sourceIndex + 1) continue;
+    const earlier = earlierEntry.leg;
+    const later = laterEntry.leg;
     if (earlier.approximate || later.approximate) continue;
     if (earlier.coordinates.length < 2 || later.coordinates.length < 2) continue;
     const tail = earlier.coordinates.at(-1)!;
     const head = later.coordinates[0]!;
-    const gap = metersBetween(tail, head);
+    const gap = greatCircleDistanceMeters(tail, head);
     if (gap > 0 && gap <= ROUTE_JOIN_SNAP_TOLERANCE_M) {
       earlier.coordinates = [...earlier.coordinates.slice(0, -1), head];
     }
@@ -138,10 +144,11 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     }
   }
   const routeWaypoints = [...waypointsByCoordinate.values()];
-  const mappedLegIds = new Set(mappedLegs.map(leg => leg.id));
+  const renderedLegs = mappedLegs.map(({ leg }) => leg);
+  const mappedLegIds = new Set(renderedLegs.map(leg => leg.id));
   return {
-    legs: mappedLegs,
-    routeSegments: mappedLegs.map(({ id, coordinates, color, isWalk, approximate }) => ({
+    legs: renderedLegs,
+    routeSegments: renderedLegs.map(({ id, coordinates, color, isWalk, approximate }) => ({
       id,
       coordinates,
       modeColor: color,
@@ -151,7 +158,7 @@ export function buildJourneyRouteMapModel(legs: ApiJourney['legs']): {
     routeWaypoints,
     missingShapeCount: legs.filter(leg => leg.mode !== 'WALK' && !mappedLegIds.has(leg.id)).length,
     missingWalkingShapeCount: legs.filter(leg => leg.mode === 'WALK' && !mappedLegIds.has(leg.id)).length,
-    approximateWalkCount: mappedLegs.filter(leg => leg.approximate).length,
+    approximateWalkCount: renderedLegs.filter(leg => leg.approximate).length,
     approximateMicromobilityCount: legs.filter(isEstimatedMicromobility).length,
   };
 }

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, ArrowRight, ChevronDown, Flag, Navigation } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, Clock3, Flag, Navigation } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
 import { MapBasemapControl, MapControlRail, MapPerspectiveControl, MapVoiceControl, MapZoomControls } from '../components/MapInteractionControls';
 import {
-  buildJourneyRouteMapModel, formatTransferCount, journeyModeColor,
+  buildJourneyRouteMapModel, confirmedJourneySegments, formatTransferCount, journeyModeColor,
 } from '../map/journeyRouteModel';
 import { boundsOf, corridorFitPoints } from '../map/routeContextCorridor';
 import { extentMeters, principalBearing } from '../map/routeCameraFocus';
@@ -15,10 +15,14 @@ import { TransportIcon } from '../design-system/transport/TransportIcon';
 import { buildRouteMapAnnotations, formatStopCount, isTransitLeg } from './routeMapAnnotations';
 import { JourneyLegStops, isScheduledRouteLeg } from './JourneyLegStops';
 import { nextStopsLegId } from './journeyStopsPanel';
+import { useFocusedFleetClock } from './useFocusedFleetClock';
+import './routeSheetDensity.css';
 import { diagnosticsRequested } from './resultsDiagnostics';
 import {
   createFrameWriter,
+  fitExpandedRouteSheetHeight,
   prefersReducedMotion,
+  recoverRouteSheetDrag,
   routeSheetHeights,
   routeSheetTransition,
   settleRouteSheetSnap,
@@ -26,8 +30,8 @@ import {
   type RouteSheetSnap,
 } from './routeSheet';
 import { themeService } from '../services/theme';
-import { priorityLevelOf } from '../map/transportVisualZones';
-import { formatJourneyDurationTile } from './journeyResultPresentation';
+import { focusedApproachVehicles, passengerContextLines, priorityLevelOf } from '../map/transportVisualZones';
+import { formatJourneyDistance, formatJourneyDurationTile } from './journeyResultPresentation';
 import { legPriceDisplay } from './cashFare';
 import { measureGlobalBottomNavigationInset } from './globalBottomNavigationInset';
 import {
@@ -41,7 +45,6 @@ import {
   activeLegTitle,
   activeNavigationDestination,
   activeNavigationStartIndex,
-  activeTime,
   formatStageCount,
   shortPlace,
 } from './journeyStageNavigation';
@@ -73,6 +76,7 @@ export function JourneyActiveNavigation({
   );
   const legs = journey.legs;
   const model = useMemo(() => buildJourneyRouteMapModel(legs), [legs]);
+  const confirmedSegments = useMemo(() => confirmedJourneySegments(model.routeSegments), [model.routeSegments]);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [legIndex, setLegIndex] = useState(() => {
     const scheduledStart = activeNavigationStartIndex(legs, Date.now());
@@ -86,15 +90,13 @@ export function JourneyActiveNavigation({
   const leg = legs[Math.min(legIndex, Math.max(0, legs.length - 1))];
   const liveLeg = leg && isTransitLeg(leg) ? leg : undefined;
   const liveLegId = liveLeg?.id ?? null;
-  const [openStopsLegId, setOpenStopsLegId] = useState<string | null>(() => {
-    const startingLeg = legs[legIndex];
-    return startingLeg && isScheduledRouteLeg(startingLeg) ? startingLeg.id : null;
-  });
+  const [openStopsLegId, setOpenStopsLegId] = useState<string | null>(null);
 
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
   const [sheetSnap, setSheetSnap] = useState<RouteSheetSnap>('half');
   const [sheetHeight, setSheetHeight] = useState(() => typeof window === 'undefined' ? 340 : routeSheetHeights(window.innerHeight).half);
+  const [expandedContentHeight, setExpandedContentHeight] = useState<number | null>(null);
   const [viewportHeight, setViewportHeight] = useState(() => typeof window === 'undefined' ? 844 : window.innerHeight);
   const [bottomNavigationInset, setBottomNavigationInset] = useState(measureGlobalBottomNavigationInset);
   const draggingRef = useRef(false);
@@ -103,6 +105,7 @@ export function JourneyActiveNavigation({
   const [liveJourney, setLiveJourney] = useState<ApiJourneyLive | null>(null);
   const [liveJourneyRequestState, setLiveJourneyRequestState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const liveSegment = liveJourney?.segments.find(segment => segment.legId === liveLegId);
+  const fleetClock = useFocusedFleetClock(liveSegment?.vehicles);
   const mapAdapter = useRef<MapAdapter | null>(null);
   const sheetElement = useRef<HTMLElement | null>(null);
   const sheetHeightRef = useRef(sheetHeight);
@@ -119,12 +122,51 @@ export function JourneyActiveNavigation({
     });
   }
 
+  const getSheetHeights = useCallback((height = viewportHeight, navigationInset = bottomNavigationInset) => {
+    const heights = routeSheetHeights(Math.max(320, height - navigationInset));
+    heights.expanded = fitExpandedRouteSheetHeight(heights, expandedContentHeight);
+    return heights;
+  }, [bottomNavigationInset, expandedContentHeight, viewportHeight]);
+
   useEffect(() => themeService.subscribe((_mode, dark) => setIsDark(dark)), []);
   useEffect(() => subscribeReducedMotion(setReducedMotion), []);
   useEffect(() => {
     const writer = dragWriter.current;
     return () => writer?.discard();
   }, []);
+
+  useEffect(() => {
+    const recoverInterruptedDrag = () => {
+      if (!draggingRef.current) return;
+      const sheet = sheetElement.current;
+      const pointerId = dragStart.current?.pointerId;
+      const heights = getSheetHeights();
+      const recovered = recoverRouteSheetDrag(sheet?.getBoundingClientRect().height ?? sheetHeightRef.current, heights);
+      dragWriter.current?.discard();
+      dragStart.current = null;
+      suppressHandleClick.current = false;
+      draggingRef.current = false;
+      sheetHeightRef.current = recovered.height;
+      setSheetSnap(recovered.snap);
+      setSheetHeight(recovered.height);
+      if (sheet) {
+        const handle = sheet.querySelector<HTMLElement>('.route-sheet-grabber');
+        if (pointerId !== undefined && handle?.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+        sheet.dataset.dragging = 'false';
+        sheet.style.height = `${recovered.height}px`;
+        sheet.style.transition = routeSheetTransition(false, reducedMotion);
+      }
+    };
+    const recoverWhenHidden = () => {
+      if (document.visibilityState === 'hidden') recoverInterruptedDrag();
+    };
+    window.addEventListener('blur', recoverInterruptedDrag);
+    document.addEventListener('visibilitychange', recoverWhenHidden);
+    return () => {
+      window.removeEventListener('blur', recoverInterruptedDrag);
+      document.removeEventListener('visibilitychange', recoverWhenHidden);
+    };
+  }, [getSheetHeights, reducedMotion]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
@@ -194,7 +236,7 @@ export function JourneyActiveNavigation({
         geometryScope: route.geometryScope,
         zones: route.zones ?? null,
       })),
-      vehicles: (liveSegment.vehicles ?? []).map(vehicle => ({
+      vehicles: focusedApproachVehicles(liveSegment.vehicles ?? [], fleetClock).map(vehicle => ({
         id: vehicle.id,
         coordinates: vehicle.coordinates,
         updatedAt: vehicle.updatedAt,
@@ -205,11 +247,11 @@ export function JourneyActiveNavigation({
         etaConfidence: vehicle.etaConfidence ?? 'NONE',
       })),
     });
-  }, [liveSegment, liveLeg, mapAdapterReady]);
+  }, [liveSegment, liveLeg, mapAdapterReady, fleetClock]);
 
   const routeLabels = useMemo(
-    () => buildRouteMapAnnotations({ journey, live: liveJourney, preferredLegId: liveLegId }),
-    [journey, liveJourney, liveLegId],
+    () => buildRouteMapAnnotations({ journey, live: liveJourney, preferredLegId: liveLegId, focusedOnly: true, now: fleetClock }),
+    [journey, liveJourney, liveLegId, fleetClock],
   );
 
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
@@ -219,18 +261,14 @@ export function JourneyActiveNavigation({
   }, [bottomNavigationInset, isDesktop, sheetHeight]);
 
   const legSegment = useMemo(
-    () => (leg ? model.routeSegments.find(segment => segment.id === leg.id) : undefined),
-    [leg, model.routeSegments],
+    () => (leg ? confirmedSegments.find(segment => segment.id === leg.id) : undefined),
+    [leg, confirmedSegments],
   );
 
   const focusData = useMemo(() => {
-    const contextLines = (liveSegment?.lineRoutes ?? []).flatMap(route => [
-      route.coordinates,
-      ...(route.zones?.beforeBoarding ? [route.zones.beforeBoarding] : []),
-      ...(route.zones?.afterAlighting ? [route.zones.afterAlighting] : []),
-    ]);
+    const contextLines = passengerContextLines(liveSegment?.lineRoutes ?? []);
     const points = focusWhole
-      ? corridorFitPoints(model.routeSegments.flatMap(segment => segment.coordinates), contextLines)
+      ? corridorFitPoints(confirmedSegments.flatMap(segment => segment.coordinates), contextLines)
       : legSegment
         ? corridorFitPoints(legSegment.coordinates, contextLines, 0.5)
         : [];
@@ -240,7 +278,7 @@ export function JourneyActiveNavigation({
     const bounds = boundsOf(points);
     const key = `${focusWhole}:${leg?.id ?? 'none'}:${points.length}:${bearing === null ? 'flat' : bearing.toFixed(1)}:${bounds?.map(value => value.toFixed(5)).join(',') ?? ''}`;
     return { points, bearing, key };
-  }, [focusWhole, leg?.id, legSegment, liveSegment, model.routeSegments]);
+  }, [focusWhole, leg?.id, legSegment, liveSegment, confirmedSegments]);
 
   useEffect(() => {
     if (draggingRef.current || !mapAdapterReady || !leg) return;
@@ -267,17 +305,47 @@ export function JourneyActiveNavigation({
       const nextNavigationInset = measureGlobalBottomNavigationInset();
       setViewportHeight(next);
       setBottomNavigationInset(nextNavigationInset);
-      const nextHeight = routeSheetHeights(Math.max(320, next - nextNavigationInset))[sheetSnap];
+      const nextHeight = getSheetHeights(next, nextNavigationInset)[sheetSnap];
       sheetHeightRef.current = nextHeight;
       setSheetHeight(nextHeight);
     };
     updateViewport();
     window.addEventListener('resize', updateViewport);
     return () => window.removeEventListener('resize', updateViewport);
-  }, [sheetSnap]);
+  }, [getSheetHeights, sheetSnap]);
+
+  useEffect(() => {
+    if (sheetSnap !== 'expanded') return;
+    const sheet = sheetElement.current;
+    const content = sheet?.querySelector<HTMLElement>('[data-testid="active-navigation-content"]');
+    if (!sheet || !content) return;
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (draggingRef.current) return;
+        const naturalHeight = Math.ceil(sheet.getBoundingClientRect().height - content.clientHeight + content.scrollHeight);
+        setExpandedContentHeight(previous => previous !== null && Math.abs(previous - naturalHeight) < 2 ? previous : naturalHeight);
+      });
+    };
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(content);
+    Array.from(content.children).forEach(child => observer?.observe(child));
+    const stages = content.querySelector<HTMLElement>('[data-testid="active-navigation-stages"]');
+    if (stages) Array.from(stages.querySelectorAll(':scope > ol > li')).forEach(child => observer?.observe(child));
+    measure();
+    return () => { observer?.disconnect(); cancelAnimationFrame(frame); };
+  }, [legIndex, openStopsLegId, sheetSnap, viewportHeight]);
+
+  useEffect(() => {
+    if (sheetSnap !== 'expanded' || draggingRef.current) return;
+    const nextHeight = getSheetHeights().expanded;
+    sheetHeightRef.current = nextHeight;
+    setSheetHeight(previous => Math.abs(previous - nextHeight) < 1 ? previous : nextHeight);
+  }, [expandedContentHeight, getSheetHeights, sheetSnap]);
 
   const moveToSnap = (next: RouteSheetSnap) => {
-    const nextHeight = routeSheetHeights(Math.max(320, viewportHeight - bottomNavigationInset))[next];
+    const nextHeight = getSheetHeights()[next];
     sheetHeightRef.current = nextHeight;
     setSheetSnap(next);
     setSheetHeight(nextHeight);
@@ -312,7 +380,7 @@ export function JourneyActiveNavigation({
     start.velocity = (start.lastY - event.clientY) / elapsed;
     start.lastY = event.clientY;
     start.lastAt = now;
-    const heights = routeSheetHeights(Math.max(320, viewportHeight - bottomNavigationInset));
+    const heights = getSheetHeights();
     const nextHeight = Math.min(heights.expanded, Math.max(heights.collapsed, start.height + delta));
     sheetHeightRef.current = nextHeight;
     dragWriter.current?.schedule(nextHeight);
@@ -322,7 +390,7 @@ export function JourneyActiveNavigation({
     if (!start || start.pointerId !== event.pointerId) return;
     dragWriter.current?.flush();
     if (start.moved) {
-      const heights = routeSheetHeights(Math.max(320, viewportHeight - bottomNavigationInset));
+      const heights = getSheetHeights();
       moveToSnap(settleRouteSheetSnap(sheetHeightRef.current, start.velocity, heights, 0.45, start.height));
     }
     dragStart.current = null;
@@ -353,7 +421,8 @@ export function JourneyActiveNavigation({
   const instruction = activeLegInstruction(leg, nowMs);
   const nextHint = activeLegNextHint(legs[legIndex + 1]);
   const isLast = legIndex >= legs.length - 1;
-  const showRibbon = sheetSnap === 'expanded' || (sheetSnap === 'half' && viewportHeight >= 700);
+  // The ribbon handles compact states; detailed stage cards handle half/expanded states.
+  const showRibbon = sheetSnap === 'collapsed';
   const showAction = sheetSnap !== 'collapsed';
   const destination = activeNavigationDestination(legs);
   const mapWarning = mapStatus === 'failed' ? mapStatusNote(mapStatus) : null;
@@ -376,7 +445,7 @@ export function JourneyActiveNavigation({
     <div className="absolute inset-0">
       <MarshGoMap
         route={[]}
-        routeSegments={model.routeSegments}
+        routeSegments={confirmedSegments}
         routeWaypoints={model.routeWaypoints}
         routeLabels={routeLabels}
         routeFitPadding={mapPadding}
@@ -437,7 +506,14 @@ export function JourneyActiveNavigation({
       data-testid="active-navigation-sheet"
       data-sheet-state={sheetSnap}
       data-dragging={draggingRef.current ? 'true' : 'false'}
-      style={{ height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`, bottom: `${bottomNavigationInset}px`, transition: routeSheetTransition(draggingRef.current, reducedMotion), paddingBottom: 'env(safe-area-inset-bottom)', background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))' }}
+      style={{
+        height: `${draggingRef.current ? sheetHeightRef.current : sheetHeight}px`,
+        bottom: `${bottomNavigationInset}px`,
+        transition: routeSheetTransition(draggingRef.current, reducedMotion),
+        // Match route details: reserve the home indicator/tab-bar clearance once.
+        paddingBottom: bottomNavigationInset > 0 ? '8px' : 'max(8px, env(safe-area-inset-bottom))',
+        background: 'linear-gradient(160deg,var(--route-sheet-start),var(--route-sheet-end))',
+      }}
     >
       <button
         type="button"
@@ -448,22 +524,27 @@ export function JourneyActiveNavigation({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
+        onLostPointerCapture={handlePointerEnd}
         onKeyDown={event => {
           if (event.key === 'ArrowUp') { event.preventDefault(); moveToSnap(sheetSnap === 'collapsed' ? 'half' : 'expanded'); }
           if (event.key === 'ArrowDown') { event.preventDefault(); moveToSnap(sheetSnap === 'expanded' ? 'half' : 'collapsed'); }
           if (event.key === 'Home') { event.preventDefault(); moveToSnap('collapsed'); }
           if (event.key === 'End') { event.preventDefault(); moveToSnap('expanded'); }
         }}
-        className="route-sheet-grabber flex h-11 w-full shrink-0 touch-none items-center justify-center"
+        className="route-sheet-grabber flex h-6 w-full shrink-0 touch-none items-center justify-center"
       >
         <span className="route-sheet-grabber__handle h-1.5 w-12 rounded-full bg-[var(--route-grabber)]"/>
       </button>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+      {model.missingWalkingShapeCount > 0 || model.routeSegments.some(segment => segment.isWalk && segment.approximate) ? (
+        <p role="status" aria-label="Для частини пішого маршруту немає перевіреної геометрії — лінію не домальовано." className="mx-3 mb-1 flex min-h-7 items-center truncate rounded-lg bg-[var(--route-card-alt)] px-2 py-1 text-[12px] font-semibold leading-4 text-[var(--route-muted)]">Частина пішої геометрії не підтверджена</p>
+      ) : null}
+
+      <div data-testid="active-navigation-content" className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         <div className="shrink-0 px-5">
           <div className="flex items-center gap-2">
             <p aria-live="polite" aria-atomic="true" className="text-xs font-extrabold uppercase tracking-[.12em] text-[var(--route-muted)]">
-              Етап {legIndex + 1} з {legs.length}
+              Етап {legIndex + 1} з {legs.length}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}
             </p>
             {status && <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${status === 'LIVE' ? (isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-emerald-800') : 'bg-[var(--route-card-alt)] text-[var(--route-muted)]'}`}>
               {status === 'LIVE' && <i aria-hidden="true" className="mg-live-dot mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"/>}
@@ -472,22 +553,25 @@ export function JourneyActiveNavigation({
             {phase === 'past' && <span className="rounded-full bg-[var(--route-card-alt)] px-2 py-0.5 text-xs font-extrabold text-[var(--route-muted)]">ЗАВЕРШЕНО</span>}
           </div>
           <div className="mt-1 flex items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_color-mix(in_srgb,var(--segment-color)_45%,transparent)]" style={{ backgroundColor: journeyModeColor(leg.mode, leg.transportType), ['--segment-color' as string]: journeyModeColor(leg.mode, leg.transportType) }}>
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_color-mix(in_srgb,var(--segment-color)_45%,transparent)]" style={{ backgroundColor: journeyModeColor(leg.mode, leg.transportType), ['--segment-color' as string]: journeyModeColor(leg.mode, leg.transportType) }}>
               <TransportIcon mode={leg.mode} transportType={leg.transportType} size={20} strokeWidth={2.3}/>
             </span>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-[21px] font-black leading-7 tracking-[-.03em]">{activeLegTitle(leg)}</h1>
-              <p data-testid="active-nav-leg-destination" className="truncate text-xs font-bold text-[var(--route-muted)]">до «{shortPlace(leg.destination.name)}»</p>
+              <h1 className="truncate text-[19px] font-black leading-6 tracking-[-.03em]">{activeLegTitle(leg)}</h1>
+              <p data-testid="active-nav-leg-destination" className="flex min-w-0 items-center gap-1 text-xs font-bold text-[var(--route-muted)]">
+                <span className="min-w-0 flex-1 truncate">до «{shortPlace(leg.destination.name)}»</span>
+                <span aria-hidden="true" className="shrink-0">·</span>
+                <span data-testid="active-nav-leg-meta" className="shrink-0 font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</span>
+              </p>
             </div>
           </div>
-          <p className="mt-1 text-xs font-semibold tabular-nums text-[var(--route-subtle)]">{activeLegMeta(leg)}</p>
-          {notice && <p role="status" data-testid="active-nav-notice" className="mt-2 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2.5 text-[12px] font-bold leading-[16px] text-[var(--route-ink)]">{notice}</p>}
+          {notice && <p role="status" data-testid="active-nav-notice" className="mt-1 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-2 text-[12px] font-bold leading-4 text-[var(--route-ink)]">{notice}</p>}
         </div>
 
-        {showRibbon && <div className="mg-route-ribbon no-scrollbar mt-3 shrink-0 px-5" role="list" aria-label="Етапи навігації">
+        {showRibbon && <div className="mg-route-ribbon mg-route-ribbon--compact no-scrollbar shrink-0 px-4" role="list" aria-label="Етапи навігації">
           {legs.map((item, index) => {
             const selected = index === legIndex;
-            return <div key={item.id} role="listitem" className={`mg-route-ribbon__item${index < legIndex ? ' is-muted' : ''}`} style={{ flexGrow: Math.max(1, Math.round(item.durationSeconds / 60)) }}>
+            return <div key={item.id} role="listitem" className={`mg-route-ribbon__item${index !== legIndex ? ' is-muted' : ''}`}>
               <button
                 type="button"
                 onClick={() => jumpToLeg(index)}
@@ -497,14 +581,14 @@ export function JourneyActiveNavigation({
                 style={{ backgroundColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}
               >
                 <TransportIcon mode={item.mode} transportType={item.transportType} size={17} strokeWidth={2.4}/>
+                <span className="mg-route-ribbon__copy"><span className="mg-route-ribbon__label">{activeLegTitle(item)}</span><span className="mg-route-ribbon__detail">{formatJourneyDurationTile(item.durationSeconds)}</span></span>
               </button>
-              <span className="mg-route-ribbon__label tabular-nums">{activeTime(item.departureAt)}</span>
             </div>;
           })}
         </div>}
 
-        {showAction && <div className="mx-5 mt-3 shrink-0 rounded-2xl border border-[var(--route-border)] bg-[var(--route-card-alt)] p-3">
-          <div className="flex items-start gap-2.5">
+        {showAction && <div className="mx-5 mt-2 shrink-0 rounded-2xl border border-[var(--route-border)] bg-[var(--route-card-alt)] p-2">
+          <div className="flex items-start gap-2">
             <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--mg-action)] text-white"><ArrowRight size={15} strokeWidth={2.6}/></span>
             <div className="min-w-0">
               <p data-testid="active-nav-instruction" className="text-[13px] font-extrabold leading-5">{instruction}</p>
@@ -513,61 +597,40 @@ export function JourneyActiveNavigation({
           </div>
         </div>}
 
-        {sheetSnap === 'expanded' && <div className="mt-3 shrink-0 px-5 pb-2" data-testid="active-navigation-stages">
-          <p className="mb-2 text-xs font-extrabold uppercase tracking-[.12em] text-[var(--route-muted)]">Увесь маршрут · {formatStageCount(legs.length)}{journey.transfers > 0 ? ` · ${formatTransferCount(journey.transfers)}` : ''}</p>
-          <ol className="space-y-2">
+        {sheetSnap !== 'collapsed' && <div className="mt-1 shrink-0 px-5 pb-0.5" data-testid="active-navigation-stages">
+          <ol className="mg-route-segment-list" aria-label={`Усі етапи маршруту: ${formatStageCount(legs.length)}${journey.transfers > 0 ? `, ${formatTransferCount(journey.transfers)}` : ''}`}>
             {legs.map((item, index) => {
               const selected = index === legIndex;
               const price = legPriceDisplay(item);
-              const priceText = item.mode === 'WALK' ? '' : price.value !== '—' ? ` · ${price.value}` : '';
               const scheduled = isScheduledRouteLeg(item);
               const stops = item.stops ?? [];
               const stopsOpen = openStopsLegId === item.id;
-              return <li key={item.id}>
-                <div className={`overflow-hidden rounded-2xl border transition-colors ${selected ? 'border-[var(--mg-blue)] bg-[var(--route-card-alt)]' : 'border-[var(--route-border)] bg-[var(--route-card)]'}`}>
-                  <button
-                    type="button"
-                    onClick={() => jumpToLeg(index)}
-                    aria-pressed={selected}
-                    className="flex w-full items-start gap-3 px-3 py-2.5 text-left"
-                  >
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-white" style={{ backgroundColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}>
-                      <TransportIcon mode={item.mode} transportType={item.transportType} size={18} strokeWidth={2.2}/>
+              const previousTime = index > 0 ? Date.parse(legs[index - 1].arrivalAt) : Date.parse(journey.requestedDepartureAt ?? item.departureAt);
+              const departureTime = Date.parse(item.departureAt);
+              const waitSeconds = Number.isFinite(previousTime) && Number.isFinite(departureTime) ? Math.max(0, Math.round((departureTime - previousTime) / 1000)) : 0;
+              return <li key={item.id}>{waitSeconds > 0 && <div className="mb-0.5 rounded-xl border border-[var(--route-border)] bg-[var(--route-card-alt)] px-3 py-0.5 text-xs text-[var(--route-muted)]"><span className="inline-flex items-center gap-2"><Clock3 size={14} className="text-[var(--route-subtle)]"/>Очікування · {formatJourneyDurationTile(waitSeconds)}</span></div>}<div className={`mg-route-segment overflow-hidden rounded-xl border ${selected ? 'border-[var(--mg-blue)] bg-[var(--route-card-alt)]' : 'border-[var(--route-border)] bg-[var(--route-card)]'}`} style={{ borderLeftWidth: 3.5, borderLeftColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}>
+                <div className="mg-route-segment__body flex items-center gap-1.5">
+                  <button type="button" onClick={() => jumpToLeg(index)} aria-pressed={selected} className="mg-press-subtle flex min-h-11 min-w-0 flex-1 items-center gap-1.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white" style={{ backgroundColor: item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType) }}>
+                      <TransportIcon mode={item.mode} transportType={item.transportType} size={16} strokeWidth={2.3}/>
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <b className="truncate text-[13px] font-extrabold">{activeLegTitle(item)}</b>
-                        <span className="ml-auto shrink-0 text-xs font-bold text-[var(--route-muted)]">Етап {index + 1}</span>
-                      </span>
-                      <span className="mt-0.5 block truncate text-xs font-semibold tabular-nums text-[var(--route-muted)]">{activeLegTimes(item)} · {formatJourneyDurationTile(item.durationSeconds)}{priceText}</span>
-                      <span className="mt-0.5 block truncate text-xs text-[var(--route-subtle)]">{shortPlace(item.origin.name)} → {shortPlace(item.destination.name)}</span>
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5"><b className="text-xs font-black tracking-tight">{activeLegTitle(item)}</b><span className="text-xs font-semibold leading-4 tabular-nums text-[var(--route-muted)]">{activeLegTimes(item)} · {formatJourneyDurationTile(item.durationSeconds)}{typeof item.distanceMeters === 'number' && Number.isFinite(item.distanceMeters) ? ` · ${formatJourneyDistance(item.distanceMeters)}` : ''}{scheduled && stops.length ? ` · ${formatStopCount(stops.length)}` : ''}</span></span>
+                      <span className="mg-route-endpoints mt-0.5 text-xs font-medium leading-4 text-[var(--route-subtle)]"><span className="mg-route-endpoints__name" title={item.origin.name}>{shortPlace(item.origin.name)}</span><ArrowRight size={12} aria-hidden="true"/><span className="mg-route-endpoints__name mg-route-endpoints__name--end" title={item.destination.name}>{shortPlace(item.destination.name)}</span></span>
                     </span>
                   </button>
-                  {scheduled && <div className="border-t border-[var(--route-border)] px-3 py-1.5">
-                    {stops.length > 0 ? <>
-                      <button
-                        type="button"
-                        aria-expanded={stopsOpen}
-                        aria-controls={`active-navigation-stops-${item.id}`}
-                        onClick={() => setOpenStopsLegId(nextStopsLegId(openStopsLegId, item.id))}
-                        className="mg-press-subtle inline-flex min-h-11 items-center gap-1 rounded-xl px-1 text-xs font-extrabold text-[var(--route-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"
-                      >
-                        <ChevronDown size={15} aria-hidden="true" className={`route-stops-chevron${stopsOpen ? ' is-open' : ''}`}/>
-                        {formatStopCount(stops.length)}
-                      </button>
-                      {stopsOpen && <div id={`active-navigation-stops-${item.id}`} className="mg-route-stops pb-1.5">
-                        <JourneyLegStops leg={item} color={item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType)}/>
-                      </div>}
-                    </> : <p className="py-1.5 text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
-                  </div>}
+                  {item.mode !== 'WALK' && <span className="route-segment-price flex flex-col items-end"><b className="text-xs font-black tabular-nums">{price.value}</b>{price.caption && <span className="text-xs font-semibold text-[var(--route-muted)]">{price.caption}</span>}</span>}
+                  {scheduled && stops.length > 0 && <button type="button" aria-label={`${stopsOpen ? 'Згорнути' : 'Розгорнути'} зупинки: ${activeLegTitle(item)}`} aria-expanded={stopsOpen} aria-controls={`active-navigation-stops-${item.id}`} onClick={() => setOpenStopsLegId(nextStopsLegId(openStopsLegId, item.id))} className="mg-press-subtle grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--route-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]"><ChevronDown size={16} aria-hidden="true" className={`route-stops-chevron${stopsOpen ? ' is-open' : ''}`}/></button>}
                 </div>
-              </li>;
+                {scheduled && stopsOpen && <div id={`active-navigation-stops-${item.id}`} className="mg-route-stops border-t border-[var(--route-border)] px-3 pb-3 pt-2"><JourneyLegStops leg={item} color={item.mode === 'WALK' ? 'var(--route-ribbon-walk)' : journeyModeColor(item.mode, item.transportType)}/></div>}
+                {scheduled && stops.length === 0 && <p className="border-t border-[var(--route-border)] px-3 py-1.5 text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>}
+              </div></li>;
             })}
           </ol>
         </div>}
       </div>
 
-      <div className="shrink-0 px-4 pb-3 pt-2">
+      <div className="shrink-0 px-4">
         <button type="button" onClick={advance} className="mg-route-cta flex w-full items-center justify-center gap-3">
           {isLast ? <Flag size={19} aria-hidden="true"/> : <ArrowRight size={20} aria-hidden="true"/>}
           <span>{isLast ? 'Завершити' : 'Далі'}</span>

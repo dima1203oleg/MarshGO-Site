@@ -82,15 +82,20 @@ export function useMapAwareBottomNavigation(isMapContext: boolean) {
   }, [isMapContext, visible]);
 
   useEffect(() => {
-    const navigation = document.querySelector<HTMLElement>('[data-testid="global-bottom-navigation"]');
-    if (!navigation) return;
     const remeasureAfterTransition = (event: TransitionEvent) => {
+      const navigation = event.target instanceof HTMLElement
+        && event.target.matches('[data-testid="global-bottom-navigation"]')
+        ? event.target
+        : null;
+      if (!navigation) return;
       if (shouldRemeasureAfterNavigationTransition(event.target, navigation, event.propertyName)) {
         window.dispatchEvent(new Event('resize'));
       }
     };
-    navigation.addEventListener('transitionend', remeasureAfterTransition);
-    return () => navigation.removeEventListener('transitionend', remeasureAfterTransition);
+    // Delegate to document so this still attaches if auth/loading renders the
+    // global dock after this hook's first effect has already run.
+    document.addEventListener('transitionend', remeasureAfterTransition);
+    return () => document.removeEventListener('transitionend', remeasureAfterTransition);
   }, []);
 
   const onMapEdgePointerDown = useCallback((event: { clientY: number }) => {

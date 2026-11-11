@@ -102,7 +102,7 @@ test('walk stages carry no status badge; transit keeps the honest source label',
   assert.equal(activeLegStatus(walk()), null);
   assert.equal(activeLegStatus(tram()), 'SCHEDULED');
   assert.equal(activeLegStatus(tram({ scheduleSemantics: 'frequency_estimate' })), 'FREQUENCY');
-  assert.equal(activeLegStatus(tram({ liveStatus: 'LIVE' })), 'LIVE');
+  assert.equal(activeLegStatus(tram({ liveStatus: 'LIVE' })), 'UNCONFIRMED');
   assert.equal(activeLegStatus(tram({ liveStatus: 'UNVERIFIED' })), 'UNCONFIRMED');
   assert.equal(activeLegStatus(tram({ liveStatus: undefined })), 'UNCONFIRMED');
   assert.equal(activeLegStatus(tram(), 'LIVE'), 'LIVE');

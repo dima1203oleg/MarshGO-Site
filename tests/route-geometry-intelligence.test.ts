@@ -147,6 +147,13 @@ test('the adapter draws chevrons only on the selected confirmed transit leg', ()
   assert.match(adapter, /hasImage\('marshgo-route-arrow'\)/);
 });
 
+test('intermediate stops are zoom-gated while key journey waypoints remain visible', () => {
+  assert.match(adapter, /id: 'marshgo-waypoints',[\s\S]{0,320}filter: \['!=', \['get', 'kind'\], 'STOP'\]/);
+  assert.match(adapter, /id: 'marshgo-waypoints-stops',[\s\S]{0,220}minzoom: STOP_DETAIL_MIN_ZOOM/);
+  assert.match(adapter, /import \{ STOP_DETAIL_MIN_ZOOM,/);
+  assert.match(adapter, /setPaintProperty\('marshgo-waypoints-stops', 'circle-color'/);
+});
+
 test('route and walk layers consume the geometry tokens, not inline literals', () => {
   assert.match(adapter, /routeStrokeWidthExpression\('halo'\)/);
   assert.match(adapter, /routeStrokeWidthExpression\('casing'\)/);
@@ -162,6 +169,17 @@ test('route and walk layers consume the geometry tokens, not inline literals', (
   assert.match(adapter, /ROUTE_RENDER_TOKENS\.walkHaloBlur/);
   assert.doesNotMatch(adapter, /'#38BDF8'|'#0EA5E9'|'#0284C7'|'#0369A1'/,
     'walk colors must come from the theme tokens, not hardcoded hex');
+});
+
+test('route source ingress validates whole paths before handing geometry to MapLibre', () => {
+  assert.match(adapter, /this\.route = sanitizeLineCoordinates\(points\)/);
+  assert.match(adapter, /sanitizeLineCoordinates\(segment\.coordinates\)/);
+  assert.match(adapter, /const validCoordinates = sanitizeLineCoordinates\(coordinates\)/);
+  assert.match(adapter, /if \(position && !isValidCoordinate\(position\.coordinates\)\) position = null/);
+  assert.match(adapter, /if \(this\.route\.length < 2\)[\s\S]{0,160}setData\(\{ type: 'FeatureCollection', features: \[\] \}\)/);
+  assert.match(adapter, /focusCoordinates\(points: Coordinate\[\][\s\S]{0,130}points\.every\(isValidCoordinate\)/);
+  assert.match(adapter, /focus\(point: Coordinate,[\s\S]{0,100}if \(!isValidCoordinate\(point\)\) return/);
+  assert.match(adapter, /route\.zones && passengerSegment\.length < 2\) return \[\]/);
 });
 
 test('every programmatic camera move shares the entrance easing', () => {

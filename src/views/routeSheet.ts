@@ -24,9 +24,27 @@ export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
   const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
   const half = Math.min(430, Math.max(260, viewport * 0.375), viewport * 0.7);
   const expanded = Math.max(half + 24, Math.min(840, viewport * 0.9, Math.max(0, viewport - 172)));
-  const collapsed = Math.min(300, Math.max(220, Math.round(viewport * 0.26), half - 48));
+  const collapsed = Math.min(300, Math.max(220, Math.round(viewport * 0.28)));
   const peek = Math.min(collapsed - 36, Math.max(168, Math.min(176, Math.round(viewport * 0.18))));
   return { peek, collapsed, half, expanded };
+}
+
+/** Fit the compact detent to its visible content while keeping all four snaps distinct. */
+export function fitCollapsedRouteSheetHeight(heights: RouteSheetHeights, contentHeight: number | null): number {
+  if (contentHeight === null || !Number.isFinite(contentHeight) || contentHeight <= 0) return heights.collapsed;
+  return Math.min(heights.collapsed, Math.max(200, heights.peek + 24, Math.ceil(contentHeight)));
+}
+
+/** Fit the medium detent to the route cards when they fit; long itineraries keep a scrollable list. */
+export function fitMediumRouteSheetHeight(heights: RouteSheetHeights, contentHeight: number | null): number {
+  if (contentHeight === null || !Number.isFinite(contentHeight) || contentHeight <= 0) return heights.half;
+  return Math.min(heights.half, Math.max(heights.collapsed + 24, Math.ceil(contentHeight)));
+}
+
+/** Keep the full detent large enough to remain distinct, but no taller than its content or viewport cap. */
+export function fitExpandedRouteSheetHeight(heights: RouteSheetHeights, contentHeight: number | null): number {
+  if (contentHeight === null || !Number.isFinite(contentHeight) || contentHeight <= 0) return heights.expanded;
+  return Math.min(heights.expanded, Math.max(heights.half + 24, Math.ceil(contentHeight)));
 }
 
 export function nearestRouteSheetSnap(
@@ -37,6 +55,12 @@ export function nearestRouteSheetSnap(
   return choices.reduce((nearest, candidate) =>
     Math.abs(heights[candidate] - height) < Math.abs(heights[nearest] - height) ? candidate : nearest,
   choices[0]!);
+}
+
+/** Recover a sheet left between snap points when its pointer stream is interrupted. */
+export function recoverRouteSheetDrag(height: number, heights: RouteSheetHeights): { snap: RouteSheetSnap; height: number } {
+  const snap = nearestRouteSheetSnap(height, heights);
+  return { snap, height: heights[snap] };
 }
 
 /** Positive velocity means an upward finger swipe; negative means downward. */

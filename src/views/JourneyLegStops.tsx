@@ -53,9 +53,9 @@ export function JourneyLegStops({
           style={{ backgroundColor: color }}
         />
         <time className="tabular-nums text-[var(--route-subtle)]">{stopTime(stop, index)}</time>
-        <span className={endpoint ? 'font-extrabold text-[var(--route-ink)]' : stop.skipped ? 'text-[var(--route-subtle)] line-through decoration-rose-500/70' : 'text-[var(--route-muted)]'}>
-          {shortPlace(stop.name)}
-          {stop.skipped ? <strong className="ml-1 text-rose-600 no-underline dark:text-rose-300">· ПРОПУСКАЄТЬСЯ</strong> : index === 0 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ПОСАДКА</strong> : index === stops.length - 1 ? <strong className="ml-1 text-[var(--mg-blue-ink)]">· ВИСАДКА</strong> : null}
+        <span className={`mg-route-stop-copy ${endpoint ? 'font-extrabold text-[var(--route-ink)]' : stop.skipped ? 'text-[var(--route-subtle)] line-through decoration-rose-500/70' : 'text-[var(--route-muted)]'}`}>
+          <span className="mg-route-stop-name" title={shortPlace(stop.name)}>{shortPlace(stop.name)}</span>
+          {stop.skipped ? <strong className="mg-route-stop-badge text-rose-600 no-underline dark:text-rose-300">· ПРОПУСКАЄТЬСЯ</strong> : index === 0 ? <strong className="mg-route-stop-badge text-[var(--mg-blue-ink)]">· ПОСАДКА</strong> : index === stops.length - 1 ? <strong className="mg-route-stop-badge text-[var(--mg-blue-ink)]">· ВИСАДКА</strong> : null}
         </span>
       </>;
 

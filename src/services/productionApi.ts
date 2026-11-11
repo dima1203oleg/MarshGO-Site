@@ -8,6 +8,7 @@ import {
   type RealtimeSocket,
   type RealtimeStatus,
 } from './realtimeChannel';
+import { withAuthRefreshLock } from './authRefreshLock';
 import type { TransitZoneGeometry, VehiclePriority } from '../map/transportVisualZones';
 
 export interface TransitArrival {
@@ -221,7 +222,7 @@ export type ApiTransportCity = {
 export type ApiTransitAvailability = Record<string, { available: boolean; cities: string[] }>;
 export type ApiMobilityAvailability = { modes: ApiRentalAvailability[]; transit: ApiTransitAvailability };
 export type ApiRentalAvailability = { mode: 'bike' | 'scooter' | 'moped' | 'carsharing'; available: boolean; cities: string[] };
-export type ApiProvider = { id: string; name: string; available: boolean; cities: string[]; sources: string[]; services: string[] };
+export type ApiProvider = { id: string; name: string; available: boolean; cities: string[]; sources: string[]; services: string[]; availabilityStatus?: string; bookingAvailable?: boolean };
 export type ApiTransportProviders = { transportType: string; providers: ApiProvider[] };
 export type ApiNearbyAsset = { id: string; type: string; location: [number, number]; distanceM: number; providerName: string; batteryPercent?: number; rangeMeters?: number };
 export type ApiNearbyStation = { id: string; name: string; location: [number, number]; distanceM: number; providerName: string; availableAssets?: number; capacity?: number; returnAllowed?: boolean };
@@ -488,26 +489,6 @@ let accessToken: string | null = null;
 let refreshInFlight: Promise<{ user: ApiUser; accessToken: string }> | null = null;
 
 /**
- * The refresh cookie is httpOnly, so the page cannot read whether a session
- * exists. Without a local marker every cold start POSTed /auth/refresh and a
- * first-time visitor always got a 401 in the console. The marker is written
- * only after the server issued a session, cleared on logout and on a 401 from
- * refresh, and kept on network errors so a flaky link does not sign anyone out.
- */
-const SESSION_HINT_KEY = 'mg_session_hint';
-function readSessionHint(): boolean {
-  try { return window.localStorage.getItem(SESSION_HINT_KEY) === '1'; } catch { return false; }
-}
-function writeSessionHint(active: boolean): void {
-  try {
-    if (active) window.localStorage.setItem(SESSION_HINT_KEY, '1');
-    else window.localStorage.removeItem(SESSION_HINT_KEY);
-  } catch {
-    // Private mode or blocked storage: the hint is an optimisation, not a contract.
-  }
-}
-
-/**
  * Whether a bearer token is currently held. Anonymous browsing is a supported state, and endpoints
  * that require a session (live vehicle position) must not be polled until one exists.
  */
@@ -558,21 +539,19 @@ async function requestEnvelope<T>(path: string, init: RequestInit = {}, retryAut
     // link does not sign anyone out.
     const ownsSession = () => tokenUsed === accessToken;
     try {
-      refreshInFlight ??= requestEnvelope<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false)
+      refreshInFlight ??= withAuthRefreshLock(() => requestEnvelope<{ user: ApiUser; accessToken: string }>('/auth/refresh', { method: 'POST' }, false))
         .then((refreshed) => {
           if (ownsSession()) {
             accessToken = refreshed.data.accessToken;
-            writeSessionHint(true);
           }
           return refreshed.data;
         })
         .finally(() => { refreshInFlight = null; });
       await refreshInFlight;
       return requestEnvelope<T>(path, init, false);
-    } catch (error) {
+    } catch {
       if (!ownsSession()) return requestEnvelope<T>(path, init, false);
       accessToken = null;
-      if (error instanceof ProductionApiError && error.status === 401) writeSessionHint(false);
     }
   }
   if (!response.ok) {
@@ -652,22 +631,23 @@ function getRealtimeChannel(): RealtimeChannel<ApiRealtimeEvent> {
 
 export const productionApi = {
   async restoreSession(): Promise<ApiUser | null> {
-    // No marker means this browser never received a session here, so asking the
-    // server would only produce an expected 401. A marker without a cookie still
-    // costs one request; the 401 path below clears it.
-    if (!readSessionHint()) return null;
+    // The refresh cookie is HttpOnly, so only the server can determine whether
+    // this browser has a session. A 401 is an ordinary anonymous state.
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 8_000);
     try {
-      const session = await request<{ user: ApiUser; accessToken: string }>('/auth/refresh', {
+      const session = await withAuthRefreshLock(() => request<{ user: ApiUser; accessToken: string }>('/auth/refresh', {
         method: 'POST',
         signal: controller.signal,
-      });
+      }));
       accessToken = session.accessToken;
-      writeSessionHint(true);
       return session.user;
     } catch (error) {
-      if (error instanceof ProductionApiError && error.status === 401) writeSessionHint(false);
+      if (error instanceof ProductionApiError && error.status === 401) {
+        accessToken = null;
+        // No session is a normal anonymous state (including first-time visits).
+        return null;
+      }
       throw error;
     } finally {
       window.clearTimeout(timeoutId);
@@ -679,8 +659,13 @@ export const productionApi = {
       body: JSON.stringify({ email, password }),
     });
     accessToken = session.accessToken;
-    writeSessionHint(true);
     return session.user;
+  },
+  requestPasswordReset(email: string) {
+    return request<{ sent: true; message: string }>('/auth/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
   },
   async register(input: { email: string; password: string; displayName: string; phone?: string }) {
     const session = await request<{ user: ApiUser; accessToken: string }>('/auth/register', {
@@ -688,7 +673,6 @@ export const productionApi = {
       body: JSON.stringify(input),
     });
     accessToken = session.accessToken;
-    writeSessionHint(true);
     return session.user;
   },
   async requestOtp(phone: string, displayName: string) {
@@ -701,14 +685,13 @@ export const productionApi = {
       method: 'POST', body: JSON.stringify({ phone, code }),
     });
     accessToken = session.accessToken;
-    writeSessionHint(true);
     return session.user;
   },
   async logout() {
-    try { await request('/auth/logout', { method: 'POST' }); } finally { accessToken = null; writeSessionHint(false); }
+    try { await request('/auth/logout', { method: 'POST' }); } finally { accessToken = null; }
   },
   async logoutAll() {
-    try { await request('/auth/logout-all', { method: 'POST' }); } finally { accessToken = null; writeSessionHint(false); }
+    try { await request('/auth/logout-all', { method: 'POST' }); } finally { accessToken = null; }
   },
   offers(params: { origin: string; destination: string; date: string; seats: number; originCoordinates?: [number, number]; destinationCoordinates?: [number, number] }) {
     const query = new URLSearchParams({ origin: params.origin, destination: params.destination, date: params.date, seats: String(params.seats) });

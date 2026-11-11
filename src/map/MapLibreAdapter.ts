@@ -8,7 +8,7 @@ import { transitDirectionOffsetPx } from './MapAdapter';
 import { mapStyleTokens } from './style/tokens';
 import { Protocol } from 'pmtiles';
 import type { ExpressionSpecification, FillLayerSpecification, LineLayerSpecification } from '@maplibre/maplibre-gl-style-spec';
-import { VEHICLE_PRIORITY_TOKENS, ZONE_GLOW_TOKENS, ZONE_LINE_TOKENS, priorityLevelOf, zoneArrowsFor, zoneFeaturesFor, type TransitZone, type VehiclePriorityLevel } from './transportVisualZones';
+import { STOP_DETAIL_MIN_ZOOM, VEHICLE_PRIORITY_TOKENS, ZONE_GLOW_TOKENS, ZONE_LINE_TOKENS, priorityLevelOf, zoneArrowsFor, passengerZoneFeaturesFor, type TransitZone, type VehiclePriorityLevel } from './transportVisualZones';
 import { isBasemapConfigured, PERSPECTIVE_PITCH, satelliteAttribution, satelliteTiles, styleForLayer, type MapLayer, type MapPerspective } from './mapMode';
 import { TransportLayerController, type TransportLayerId } from './transportLayers';
 import { getMapDisplayPreferences, type MapDisplayPreferences } from './mapLayerPreferences';
@@ -21,6 +21,7 @@ import { ROUTE_EMPHASIS_TOKENS, ROUTE_RENDER_TOKENS, SEGMENT_REVEAL_TOKENS, rout
 import { measureProjectedFocus } from './routeFocusMeasurement';
 import { cameraForRotatedPoints, cameraMoveEffort } from './routeCameraFocus';
 import { shouldGlideVehicle, interpolateVehicleCoordinate, vehicleDistanceMeters, vehicleGlideDuration } from './vehicleMotion';
+import { isValidCoordinate, sanitizeLineCoordinates } from './lineGeometry';
 
 const pmtilesProtocol = new Protocol();
 let pmtilesProtocolRegistered = false;
@@ -679,6 +680,9 @@ export class MapLibreAdapter implements MapAdapter {
       id: 'marshgo-waypoints',
       type: 'circle',
       source: 'marshgo-waypoints',
+      // Pickup, drop-off and transfer points remain visible at every scale.
+      // Intermediate stops use their own zoom-gated layer below.
+      filter: ['!=', ['get', 'kind'], 'STOP'],
       paint: {
         'circle-radius': [
           'interpolate', ['linear'], ['zoom'],
@@ -713,6 +717,34 @@ export class MapLibreAdapter implements MapAdapter {
           10, ['match', ['get', 'kind'], 'STOP', 0.8, 'TRANSFER', 2, 2.5],
           14, ['match', ['get', 'kind'], 'STOP', 1.5, 'TRANSFER', 2.5, 3],
         ] as unknown as ExpressionSpecification,
+      },
+    });
+    if (!this.map.getLayer('marshgo-waypoints-stops')) this.map.addLayer({
+      id: 'marshgo-waypoints-stops',
+      type: 'circle',
+      source: 'marshgo-waypoints',
+      minzoom: STOP_DETAIL_MIN_ZOOM,
+      filter: ['==', ['get', 'kind'], 'STOP'],
+      paint: {
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          10, 1.5,
+          13, 2.5,
+          16, 4.5,
+        ],
+        'circle-opacity': [
+          'interpolate', ['linear'], ['zoom'],
+          10, 0.45,
+          13, 0.75,
+          15, 1.0,
+        ],
+        'circle-color': '#F8FAFC',
+        'circle-stroke-color': '#475569',
+        'circle-stroke-width': [
+          'interpolate', ['linear'], ['zoom'],
+          10, 0.8,
+          14, 1.5,
+        ],
       },
     });
     if (!this.map.getLayer('marshgo-transit-zone-arrows')) this.map.addLayer({
@@ -830,15 +862,18 @@ export class MapLibreAdapter implements MapAdapter {
   }
 
   setRoute(points: Coordinate[]) {
-    this.route = points;
+    this.route = sanitizeLineCoordinates(points);
     this.routeSegments = null;
     this.clearRouteSegmentDiagnostics();
-    this.map.getContainer().dataset.marshgoRoutePointCount = String(points.length);
-    this.map.getContainer().dataset.marshgoRouteSegmentCount = String(points.length >= 2 ? 1 : 0);
+    this.map.getContainer().dataset.marshgoRoutePointCount = String(this.route.length);
+    this.map.getContainer().dataset.marshgoRouteSegmentCount = String(this.route.length >= 2 ? 1 : 0);
     this.updateRouteSource();
   }
   setRouteSegments(segments: ColoredRouteSegment[]) {
-    this.routeSegments = segments.filter(segment => segment.coordinates.length >= 2);
+    this.routeSegments = segments.flatMap(segment => {
+      const coordinates = sanitizeLineCoordinates(segment.coordinates);
+      return coordinates.length >= 2 ? [{ ...segment, coordinates }] : [];
+    });
     this.route = this.routeSegments.flatMap(segment => segment.coordinates);
     this.updateRouteSegmentDiagnostics();
     this.map.getContainer().dataset.marshgoRoutePointCount = String(this.route.length);
@@ -892,7 +927,7 @@ export class MapLibreAdapter implements MapAdapter {
     return true;
   }
   focusCoordinates(points: Coordinate[], padding: RouteFitPadding = {}, maxZoom = 15) {
-    if (points.length === 0) return;
+    if (points.length === 0 || !points.every(isValidCoordinate)) return;
     this.cameraMode = 'FREE';
     this.lastFitPoints = points;
     this.fitCoordinates(points, padding, maxZoom);
@@ -914,7 +949,8 @@ export class MapLibreAdapter implements MapAdapter {
       this.restoreRevealOpacity();
       this.revealFaded = false;
     }
-    if (coordinates.length < 2) {
+    const validCoordinates = sanitizeLineCoordinates(coordinates);
+    if (validCoordinates.length < 2) {
       lineSource.setData({ type: 'FeatureCollection', features: [] });
       headSource?.setData({ type: 'FeatureCollection', features: [] });
       return;
@@ -922,10 +958,10 @@ export class MapLibreAdapter implements MapAdapter {
     lineSource.setData({
       type: 'Feature',
       properties: { modeColor: color },
-      geometry: { type: 'LineString', coordinates },
+      geometry: { type: 'LineString', coordinates: validCoordinates },
     });
-    if (headSource && coordinates.length > 0) {
-      const tip = coordinates[coordinates.length - 1]!;
+    if (headSource) {
+      const tip = validCoordinates.at(-1)!;
       headSource.setData({
         type: 'Feature',
         properties: { modeColor: color },
@@ -984,9 +1020,14 @@ export class MapLibreAdapter implements MapAdapter {
       })) });
       return;
     }
+    if (this.route.length < 2) {
+      source.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
     source.setData({ type: 'Feature', properties: { selected: true, dimmed: false }, geometry: { type: 'LineString', coordinates: this.route } });
   }
   setVehicle(point: Coordinate, heading?: number | null) {
+    if (!isValidCoordinate(point)) return;
     this.vehicle = point;
     if (typeof heading === 'number' && Number.isFinite(heading)) this.heading = heading;
     const source = this.map.getSource('marshgo-vehicle') as maplibregl.GeoJSONSource | undefined;
@@ -997,6 +1038,7 @@ export class MapLibreAdapter implements MapAdapter {
 
   /** A separate marker for an exact, timestamp-verified public-transport journey position. */
   setLiveTransitPosition(position: LiveTransitPosition | null) {
+    if (position && !isValidCoordinate(position.coordinates)) position = null;
     if (!position) {
       this.cancelLiveTransitGlide();
       this.liveTransitMarker?.remove();
@@ -1072,7 +1114,7 @@ export class MapLibreAdapter implements MapAdapter {
    */
   setJourneyLabels(labels: MapAnnotation[] | null) {
     // Keep the last feed so a later camera settle can re-place the same labels.
-    this.journeyLabelInput = (labels ?? []).filter(label => label.coordinates.every(Number.isFinite));
+    this.journeyLabelInput = (labels ?? []).filter(label => isValidCoordinate(label?.coordinates));
     this.applyJourneyLabels();
   }
 
@@ -1212,7 +1254,30 @@ export class MapLibreAdapter implements MapAdapter {
 
   /** Draw the selected public-transit line context and its fresh fleet as batched GeoJSON. */
   setFocusedTransitOverlay(overlay: FocusedTransitMapOverlay | null) {
-    this.focusedTransitOverlay = overlay;
+    this.focusedTransitOverlay = overlay ? {
+      ...overlay,
+      lineRoutes: overlay.lineRoutes.flatMap(route => {
+        const coordinates = sanitizeLineCoordinates(route.coordinates);
+        if (coordinates.length < 2) return [];
+        const beforeBoarding = sanitizeLineCoordinates(route.zones?.beforeBoarding);
+        const passengerSegment = sanitizeLineCoordinates(route.zones?.passengerSegment);
+        const afterAlighting = sanitizeLineCoordinates(route.zones?.afterAlighting);
+        // If the provider supplied zone metadata, its passenger slice is the
+        // authority for a focused overlay. Never fall back to the full route
+        // after a malformed B shape, which would expose unvalidated A/C geometry.
+        if (route.zones && passengerSegment.length < 2) return [];
+        // A full line without a verified passenger slice cannot be displayed as the ride.
+        if (!route.zones && route.geometryScope !== 'leg_only') return [];
+        const zones = route.zones ? {
+          ...route.zones,
+          beforeBoarding: beforeBoarding.length >= 2 ? beforeBoarding : null,
+          passengerSegment,
+          afterAlighting: afterAlighting.length >= 2 ? afterAlighting : null,
+        } : route.zones;
+        return [{ ...route, coordinates, zones }];
+      }),
+      vehicles: overlay.vehicles.filter(vehicle => isValidCoordinate(vehicle.coordinates)),
+    } : null;
     this.updateFocusedTransitOverlay();
   }
 
@@ -1224,7 +1289,7 @@ export class MapLibreAdapter implements MapAdapter {
     const overlay = this.focusedTransitOverlay;
     const modeColor = overlay?.color ?? '#327FC3';
     const routes = (overlay?.lineRoutes ?? []).filter(route => route.coordinates.length >= 2);
-    const zonesForRoute = routes.map(route => zoneFeaturesFor(route.zones, route.geometryScope));
+    const zonesForRoute = routes.map(route => passengerZoneFeaturesFor(route.zones, route.geometryScope));
     lineSource?.setData({ type: 'FeatureCollection', features: routes.map((route, index) => ({
       type: 'Feature' as const,
       properties: {
@@ -1302,7 +1367,7 @@ export class MapLibreAdapter implements MapAdapter {
     });
   }
   setWaypoints(points: RouteWaypoint[]) {
-    this.waypoints = points;
+    this.waypoints = points.filter(point => isValidCoordinate(point?.coordinate));
     this.updateWaypointsSource();
   }
   private updateWaypointsSource() {
@@ -1320,7 +1385,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.fitCoordinates(points, overrides, 15);
   }
   private fitCoordinates(points: Coordinate[], overrides: RouteFitPadding, maxZoom: number) {
-    if (points.length === 0) return;
+    if (points.length === 0 || !points.every(isValidCoordinate)) return;
     const lngs = points.map((point) => point[0]); const lats = points.map((point) => point[1]);
     // Full-screen navigation reserves room for its overlays; small previews must scale the padding down or MapLibre rejects the fit.
     const { clientWidth, clientHeight } = this.map.getContainer();
@@ -1449,6 +1514,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.transport?.setDisplayPreferences(preferences);
   }
   focus(point: Coordinate, zoom = 13, padding?: RouteFitPadding) {
+    if (!isValidCoordinate(point)) return;
     this.cameraMode = 'FREE';
     this.lastFitPoints = [point];
     this.markCameraRequest();
@@ -1496,6 +1562,10 @@ export class MapLibreAdapter implements MapAdapter {
     }
     this.map.setPaintProperty('marshgo-waypoints', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'STOP', '#F8FAFC', 'TRANSFER', '#FFFFFF', 'SELF_LOCATION', '#0878F9', 'OTHER_LOCATION', '#8B5CF6', colors.route]);
     this.map.setPaintProperty('marshgo-waypoints', 'circle-stroke-color', ['match', ['get', 'kind'], 'STOP', '#475569', 'TRANSFER', '#327FC3', 'SELF_LOCATION', '#FFFFFF', 'OTHER_LOCATION', '#FFFFFF', '#FFFFFF']);
+    if (this.map.getLayer('marshgo-waypoints-stops')) {
+      this.map.setPaintProperty('marshgo-waypoints-stops', 'circle-color', '#F8FAFC');
+      this.map.setPaintProperty('marshgo-waypoints-stops', 'circle-stroke-color', '#475569');
+    }
     if (this.map.getLayer('marshgo-waypoints-halo')) {
       this.map.setPaintProperty('marshgo-waypoints-halo', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'TRANSFER', '#327FC3', 'SELF_LOCATION', '#327FC3', 'OTHER_LOCATION', '#327FC3', colors.route]);
     }

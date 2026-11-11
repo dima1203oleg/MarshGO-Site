@@ -122,6 +122,17 @@ test('keeps a server-fabricated straight walking line dashed, not solid', () => 
   assert.equal(model.routeSegments[0]?.approximate, true);
 });
 
+test('uses geometry accuracy metadata to keep an estimated walking shape dashed', () => {
+  const model = buildJourneyRouteMapModel(legs([{
+    id: 'estimated-transfer', mode: 'WALK', source: 'gtfs-static', routeAccuracy: 'STRAIGHT_LINE_ESTIMATE',
+    origin: { coordinates: [24, 49.8] }, destination: { coordinates: [24.01, 49.81] },
+    routeGeometry: [[24, 49.8], [24.01, 49.81]],
+  }]));
+
+  assert.equal(model.routeSegments[0]?.approximate, true);
+  assert.equal(model.approximateWalkCount, 1);
+});
+
 test('shows a walking leg without provider geometry as a dashed endpoint estimate', () => {
   const model = buildJourneyRouteMapModel(legs([{
     id: 'missing-walk-shape', mode: 'WALK', source: 'osrm-foot-route',
@@ -146,6 +157,17 @@ test('keeps a routed walking leg solid', () => {
 
   assert.equal(model.approximateWalkCount, 0);
   assert.equal(model.routeSegments[0]?.approximate, undefined);
+});
+
+test('does not present walking geometry as exact without route evidence', () => {
+  const model = buildJourneyRouteMapModel(legs([{
+    id: 'unverified-walk', mode: 'WALK', source: 'walking-route',
+    origin: { coordinates: [24, 49.8] }, destination: { coordinates: [24.01, 49.81] },
+    routeGeometry: [[24, 49.8], [24.004, 49.804], [24.01, 49.81]],
+  }]));
+
+  assert.equal(model.routeSegments[0]?.approximate, true);
+  assert.equal(model.approximateWalkCount, 1);
 });
 
 test('marks legacy synthetic city-grid walking paths as approximate', () => {

@@ -90,6 +90,29 @@ test('marks boarding, alighting and both walks from confirmed itinerary fields',
   assert.equal(alighting?.detail, 'Залізничний вокзал');
 });
 
+test('a malformed walk shape does not place a label on a fabricated endpoint chord', () => {
+  const walk = journey.legs[0]!;
+  const malformed = {
+    ...journey,
+    legs: [{
+      ...walk,
+      routeGeometry: [[24.0138, 49.8086], [24.015, 49.8087], [200, 49.81], [24.0162, 49.8089]],
+    }],
+  } as unknown as ApiJourney;
+  const label = buildRouteMapAnnotations({ journey: malformed, live: null }).find(item => item.kind === 'WALK');
+  assert.equal(label, undefined);
+});
+
+test('a walk without route geometry does not invent a map label position', () => {
+  const walk = journey.legs[0]!;
+  const noShape = {
+    ...journey,
+    legs: [{ ...walk, routeGeometry: null }],
+  } as unknown as ApiJourney;
+  const label = buildRouteMapAnnotations({ journey: noShape, live: null }).find(item => item.kind === 'WALK');
+  assert.equal(label, undefined);
+});
+
 test('draws the whole published tram line with both termini and approach ETAs', () => {
   const labels = buildRouteMapAnnotations({ journey, live: liveWith() });
   const termini = labels.filter(label => label.kind === 'TERMINUS');

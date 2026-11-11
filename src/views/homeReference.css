@@ -1,0 +1,147 @@
+/* Owner-approved home reference. Scoped to HomeHero to preserve other screens. */
+@media (max-width: 639px) and (min-height: 731px) {
+  .home-hero--canonical { gap: 0; padding-inline: clamp(14px, 4vw, 19px); }
+  .home-hero--canonical .home-marshpass-promo {
+    min-height: clamp(180px, 21svh, 196px);
+    max-height: clamp(180px, 21svh, 196px);
+    padding: clamp(16px, 3vw, 23px);
+    border-radius: 24px;
+    box-shadow: inset 0 1px 1px color-mix(in srgb, var(--mg-ink-primary) 20%, transparent), 0 8px 26px color-mix(in srgb, var(--mg-navy) 38%, transparent);
+  }
+  .home-marshpass-promo__title { max-width: 65%; font-size: clamp(1.35rem, 5.2vw, 1.65rem); line-height: 1.04; }
+  .home-hero--canonical .home-marshpass-promo__description { max-width: 82%; font-size: 11px; line-height: 1.25; font-weight: 500; }
+  .home-hero--canonical .home-marshpass-promo__footer { padding-top: 5px; }
+  .home-hero--canonical .home-action-grid { gap: 10px; grid-template-rows: repeat(2, clamp(103px, 13svh, 120px)); }
+  .home-hero--canonical .home-action-card { justify-content: space-between; padding: 12px 15px; border-radius: 21px; }
+  .home-hero--canonical .home-action-icon { width: 38px; height: 38px; border-radius: 12px; }
+  .home-hero--canonical .home-action-card__title { font-size: clamp(.875rem, 3.6vw, 1rem); line-height: 1.05; }
+  .home-hero--canonical .home-action-card__subtitle { font-size: clamp(.7rem, 2.9vw, .8rem); font-weight: 500; }
+  .home-hero--canonical .home-popular-routes { margin-top: 14px; }
+  .home-hero--canonical .home-popular-routes__row { height: clamp(120px, 16svh, 145px); gap: 10px; }
+  .home-hero--canonical .home-popular-route { min-width: 0; border-radius: 18px; }
+  .home-hero--canonical .home-popular-route__label { font-size: clamp(.75rem, 3vw, .875rem); }
+}
+
+@media (max-width: 639px) {
+  .production-app.home-viewport-shell > nav[data-testid="global-bottom-navigation"] {
+    border-radius: 999px;
+  }
+  .production-app.home-viewport-shell .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
+    border-radius: 22px;
+  }
+}
+
+/* Decorative crops from the owner's reference; controls and labels stay live UI. */
+.home-hero--canonical .home-action-card__reference-art,
+.home-hero--canonical .home-marshpass-promo__reference-art,
+.home-hero--canonical .home-popular-route__reference-photo {
+  position: absolute;
+  pointer-events: none;
+  background-repeat: no-repeat;
+}
+.home-hero--canonical .home-marshpass-promo__reference-art {
+  z-index: 0;
+  top: 0;
+  right: 0;
+  width: auto;
+  aspect-ratio: 317 / 386;
+  height: 100%;
+  background-image: url('/images/home-art-pass.png');
+  background-size: 100% 100%;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 16%), linear-gradient(to bottom, #000 72%, transparent 79%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 16%), linear-gradient(to bottom, #000 72%, transparent 79%);
+  mask-composite: intersect;
+}
+.home-hero--canonical .home-marshpass-promo::after {
+  background:
+    radial-gradient(1.05rem 1.35rem at 0 40%, var(--mg-home-notch, #f2f7fb) 97%, transparent 102%),
+    radial-gradient(1.05rem 1.35rem at 100% 40%, var(--mg-home-notch, #f2f7fb) 97%, transparent 102%);
+}
+html.dark .home-canonical-banner > span.home-marshpass-promo__reference-art[aria-hidden="true"] {
+  background-image: url('/images/home-art-pass.png');
+  background-size: 100% 100%;
+}
+.home-hero--canonical .home-action-card__reference-art {
+  z-index: 1;
+  top: 0;
+  right: 0;
+  background-size: 100% 100%;
+}
+.home-action-card__reference-art--navigation {
+  width: auto;
+  aspect-ratio: 202 / 164;
+  height: 76%;
+  background-image: url('/images/home-art-navigation.png');
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 26%), linear-gradient(to bottom, #000 80%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 26%), linear-gradient(to bottom, #000 80%, transparent 100%);
+  mask-composite: intersect;
+}
+.home-action-card__reference-art--publish {
+  width: auto;
+  aspect-ratio: 128 / 180;
+  height: 82%;
+  background-image: url('/images/home-art-publish.png');
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 22%), linear-gradient(to bottom, #000 84%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 22%), linear-gradient(to bottom, #000 84%, transparent 100%);
+  mask-composite: intersect;
+}
+.home-action-card__reference-art--transport {
+  width: auto;
+  aspect-ratio: 115 / 123;
+  height: 66%;
+  top: 2%;
+  background-image: url('/images/home-art-transport.png');
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 28%), linear-gradient(to bottom, transparent 0, #000 7%, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 28%), linear-gradient(to bottom, transparent 0, #000 7%, #000 88%, transparent 100%);
+  mask-composite: intersect;
+}
+.home-action-card__reference-art--search {
+  width: auto;
+  aspect-ratio: 222 / 124;
+  height: 50%;
+  top: 5%;
+  background-image: url('/images/home-art-search.png');
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 26%), linear-gradient(to bottom, transparent 0, #000 9%, #000 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 26%), linear-gradient(to bottom, transparent 0, #000 9%, #000 100%);
+  mask-composite: intersect;
+}
+.home-hero--canonical .home-marshpass-promo__route,
+.home-hero--canonical .home-marshpass-promo__destination { display: none; }
+.home-hero--canonical .home-popular-route__reference-photo {
+  inset: 0;
+  background-size: cover;
+  background-position: 50% 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 70%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 70%);
+}
+.home-popular-route:nth-child(1) .home-popular-route__reference-photo { background-image: url('/images/home-photo-kyiv.png'); }
+.home-popular-route:nth-child(2) .home-popular-route__reference-photo { background-image: url('/images/home-photo-rivne.png'); }
+.home-popular-route:nth-child(3) .home-popular-route__reference-photo { background-image: url('/images/home-photo-ternopil.png'); }
+
+/* Dark home surfaces follow the owner-approved navy reference. */
+.production-app.home-viewport-shell { --mg-home-notch: #f2f7fb; }
+html:not(.dark) .home-hero--canonical .home-action-card__reference-art,
+html:not(.dark) .home-hero--canonical .home-marshpass-promo__reference-art { opacity: .3; }
+html.dark .production-app.home-viewport-shell {
+  --mg-home-notch: #0d1626;
+  background: radial-gradient(ellipse at 50% 0%, #14203a 0%, #090e20 55%, #070d1b 100%);
+}
+html.dark .production-app.home-viewport-shell .home-action-card {
+  background: linear-gradient(145deg, #1b2a43, #101a30);
+  border-color: rgba(160, 188, 226, .2);
+}
+html.dark .home-hero--canonical .home-marshpass-promo {
+  background: linear-gradient(140deg, #354761 0%, #253750 45%, #1a2b44 78%, #16273e 100%);
+  border-color: rgba(160, 188, 226, .22);
+}
+
+/* Desktop: keep the owner's wide column, but give popular cards room for their photos. */
+@media (min-width: 1024px) {
+  .home-hero--canonical .home-popular-routes__row { flex: 0 0 auto; height: clamp(120px, 18svh, 170px); }
+  .home-hero--canonical .home-popular-route { height: 100%; }
+}
