@@ -220,6 +220,13 @@ body {
   --mg-radius-sheet: 32px;
   --mg-radius-pill: 999px;
 
+  /* Responsive shell geometry (styles/responsive-shell.css): the desktop sidebar and
+     tablet rail are form-factor chrome, not theme ramps, so one value serves both
+     themes. Content keeps the 1280px reading column the desktop screens already use. */
+  --mg-shell-sidebar-w: 236px;
+  --mg-shell-rail-w: 76px;
+  --mg-shell-content-max: 1280px;
+
   /* Stacking. Each level carries the number the app already stacked with. */
   --mg-z-base: 1;
   --mg-z-raised: 2;
