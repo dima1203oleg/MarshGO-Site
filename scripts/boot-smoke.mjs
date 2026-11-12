@@ -155,9 +155,21 @@ async function desktopWorkspaceFailures(page, config) {
 
   const actionTracks = await page.locator('.home-action-grid').evaluate((element) => element.ownerDocument.defaultView.getComputedStyle(element).gridTemplateColumns);
   if (gridTracks(actionTracks) !== 4) failures.push(`Home action grid has ${gridTracks(actionTracks)} columns, expected 4 across`);
-  const actionTops = await page.locator('.home-action-card').evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().top)));
-  if (actionTops.length !== 4) failures.push(`expected 4 quick actions, found ${actionTops.length}`);
-  else if (new Set(actionTops).size !== 1) failures.push(`quick actions are not in one row (tops ${actionTops.join(', ')}) — the phone 2×2 stack leaked in`);
+  // Four distinct column positions prove 4-across; the tops only need to share one
+  // row band. The mg-stagger entrance animates translateY per card, so at measure
+  // time the tops differ by a few px — exact equality would false-fail mid-animation.
+  // A phone 2×2 stack would instead span >= one card height (150px) vertically.
+  const actionBoxes = await page.locator('.home-action-card').evaluateAll((cards) => cards.map((card) => {
+    const rect = card.getBoundingClientRect();
+    return { top: rect.top, left: rect.left };
+  }));
+  if (actionBoxes.length !== 4) failures.push(`expected 4 quick actions, found ${actionBoxes.length}`);
+  else {
+    const columns = new Set(actionBoxes.map((box) => Math.round(box.left))).size;
+    const topSpread = Math.max(...actionBoxes.map((box) => box.top)) - Math.min(...actionBoxes.map((box) => box.top));
+    if (columns !== 4) failures.push(`quick actions occupy ${columns} columns, expected 4 across`);
+    if (topSpread > 40) failures.push(`quick actions span ${Math.round(topSpread)}px vertically — not one row (the phone 2×2 stack leaked in)`);
+  }
 
   const routeStyle = await page.locator('.home-popular-routes__row').evaluate((element) => {
     const styles = element.ownerDocument.defaultView.getComputedStyle(element);
