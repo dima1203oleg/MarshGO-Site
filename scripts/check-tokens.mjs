@@ -28,12 +28,13 @@ function findSourceFiles(dir) {
   return results;
 }
 
-// 1. Collect all defined tokens from CSS files
-const cssFiles = [
+const files = findSourceFiles(srcDir);
+const cssFiles = new Set([
   join(srcDir, 'index.css'),
   join(srcDir, 'styles/motion.css'),
   join(srcDir, 'styles/feedback.css'),
-];
+  ...files.filter((file) => file.endsWith('.css')),
+]);
 
 const definedTokens = new Set();
 const definedRegex = /(--[a-zA-Z0-9_-]+)\s*:/g;
@@ -59,8 +60,6 @@ const RUNTIME_DYNAMIC_TOKENS = new Set([
   '--mg-label-tone',
 ]);
 
-// 2. Scan all files in src/ for referenced tokens
-const files = findSourceFiles(srcDir);
 const usedTokensWithLocations = new Map();
 const varRegex = /var\(\s*(--[a-zA-Z0-9_-]+)/g;
 
