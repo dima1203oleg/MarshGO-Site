@@ -37,6 +37,7 @@ import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
 import { ActiveJourneyNavigationStore } from '../navigation/ActiveJourneyNavigationStore';
 import { defaultKyivDateTime, formatKyivDateTimeInput, kyivDateTimeInputToDate, kyivDateTimeInputToIso } from '../domain/kyivTime';
 import { useProductionTabRouter } from '../routing/useProductionTabRouter';
+import { useFormFactor } from '../services/formFactor';
 import { pathForProductionEntity, resumesActiveJourneyFrom, type ProductionTab } from '../routing/productionRoutes';
 import { buildSearchRoute, parseSearchRoute } from '../routing/searchRouteState';
 import { activePlaceOptionId, moveActivePlaceIndex, placeSuggestionKeyAction } from '../routing/placeSuggestionKeyboard';
@@ -218,6 +219,8 @@ export function ProductionMarketplace() {
   const [counterDeparture, setCounterDeparture] = useState('');
   const [counterComment, setCounterComment] = useState('');
   const { tab, setTab, activateTab, route, locationKey, setRoutePath, notFound, goHome } = useProductionTabRouter();
+  // Called before every early return so the hook order stays stable (v41-hook-order gate).
+  const formFactor = useFormFactor();
   const [showResults, setShowResults] = useState(false);
   const [picker, setPicker] = useState<{ form: 'search' | 'offer' | 'demand'; field: 'origin' | 'destination' } | null>(null);
   const [profileSection, setProfileSection] = useState<ProfileSection | null>(null);
@@ -2323,7 +2326,7 @@ export function ProductionMarketplace() {
     { label: 'Опублікувати поїздку', hint: 'Маршрут, авто й ціна', icon: CarFront, pick: publishDriverTrip },
     { label: 'Знайти маршрут', hint: 'Усі види транспорту', icon: Search, pick: () => setTab('search') },
   ] as const).map((action) => { const Icon = action.icon; return <button key={action.label} type="button" onClick={() => { setShowCreateMenu(false); action.pick(); }} className="flex min-h-12 w-full items-center gap-3 rounded-xl bg-blue-50 p-3 text-left"><Icon className="shrink-0 text-blue-600" size={20}/><span className="min-w-0"><b className="block text-sm">{action.label}</b><small className="block text-[var(--mg-muted)]">{action.hint}</small></span></button>; })}</div><p className="mt-3 border-t border-slate-100 px-1 pt-3 text-xs font-bold uppercase tracking-wide text-slate-400">Пасажир</p><button type="button" onClick={() => { setShowCreateMenu(false); setSelectedDemand(null); setSelectedDemandIsOwned(false); setProposals([]); setProposalsUnavailable(false); setTab('demand'); }} className="mt-2 flex min-h-12 w-full items-center gap-3 rounded-xl bg-slate-50 p-3 text-left"><Compass className="shrink-0 text-slate-500" size={19}/><span className="min-w-0"><b className="block text-sm">Створити запит</b><small className="block text-[var(--mg-muted)]">Маршрут і ваш бюджет</small></span></button></section></div> : null;
-  const renderBottomTab = (item: (typeof tabItems)[number]) => { const Icon = item.icon; const active = tab === item.id || (tab === 'navigation' && item.id === 'home'); return <button key={item.id} aria-current={active ? 'page' : undefined} onClick={() => { setTab(item.id); if (item.id === 'home') setShowResults(false); setSelectedOffer(null); setSelectedBooking(null); setSelectedJourney(null); setSelectedRouteMap(null); setSelectedRouteGroup([]); setSelectedRouteRecommendation(undefined); setJourneyBookingLink(null); }} className={`flex w-full min-w-0 flex-col items-center gap-1 px-1 py-1 ${active ? 'text-[var(--mg-blue-ink)]' : 'text-[var(--mg-ink-secondary)]'}`}><Icon size={20} strokeWidth={active ? 2.5 : 2}/><span className="text-xs font-semibold">{item.label}</span></button>; };
+  const renderBottomTab = (item: (typeof tabItems)[number]) => { const Icon = item.icon; const active = tab === item.id || (tab === 'navigation' && item.id === 'home'); return <button key={item.id} aria-label={item.label} aria-current={active ? 'page' : undefined} onClick={() => { setTab(item.id); if (item.id === 'home') setShowResults(false); setSelectedOffer(null); setSelectedBooking(null); setSelectedJourney(null); setSelectedRouteMap(null); setSelectedRouteGroup([]); setSelectedRouteRecommendation(undefined); setJourneyBookingLink(null); }} className={`flex w-full min-w-0 flex-col items-center gap-1 px-1 py-1 ${active ? 'text-[var(--mg-blue-ink)]' : 'text-[var(--mg-ink-secondary)]'}`}><Icon size={20} strokeWidth={active ? 2.5 : 2}/><span className="text-xs font-semibold">{item.label}</span></button>; };
 
 
   const pickerPlace = !picker ? null : picker.form === 'search' ? (picker.field === 'origin' ? searchOriginPlace : searchDestinationPlace)
@@ -2364,7 +2367,7 @@ export function ProductionMarketplace() {
   const hideSharedHeader = tab === 'navigation' || Boolean(activeJourneyNavigation || selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
 
   const immersiveRouteView = Boolean(activeJourneyNavigation || selectedRouteMap);
-  return <main className={`production-app min-h-[100svh] bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[calc(5.3rem+env(safe-area-inset-bottom))]'}`}>
+  return <main data-formfactor={formFactor} className={`production-app min-h-[100svh] bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[calc(5.3rem+env(safe-area-inset-bottom))]'}`}>
     {!hideSharedHeader && header}
     {isOffline && !hideSharedHeader && <div className="mx-auto w-full max-w-xl px-5"><p role="status" aria-live="polite" data-testid="offline-notice" className="mg-fade flex items-start gap-2 rounded-2xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-tint)] px-3 py-2.5 text-xs font-semibold leading-snug text-[var(--mg-ink-secondary)]">
       <WifiOff size={15} aria-hidden="true" className="mt-px shrink-0"/>
