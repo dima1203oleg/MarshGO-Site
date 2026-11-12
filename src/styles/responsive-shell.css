@@ -40,9 +40,10 @@
   top: 0;
   z-index: var(--mg-z-sticky);
   width: 100%;
-  max-width: var(--mg-shell-content-max);
-  margin-inline: auto;
-  padding: 12px 32px;
+  max-width: none;
+  min-height: 72px;
+  margin-inline: 0;
+  padding: 14px 32px;
   border-bottom: 1px solid var(--mg-border-subtle);
   background: var(--mg-surface-glass);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
@@ -51,9 +52,9 @@
 
 [data-formfactor="desktop"].production-app:not(.route-immersive-shell) > .pt-1 {
   width: 100%;
-  max-width: var(--mg-shell-content-max);
-  margin-inline: auto;
-  padding: 24px 32px 32px;
+  max-width: none;
+  margin-inline: 0;
+  padding: 24px 32px 48px;
 }
 
 /* The bottom tab bar becomes a fixed, full-height labelled sidebar. */
@@ -151,9 +152,191 @@ html.dark [data-formfactor="desktop"] .app-tabbar-inner .app-create-button {
   outline-offset: 2px;
 }
 
-/* Home, search and results reuse the approved >=1024 compositions (12-column
-   search hero, two-column results list + map); the shell reset above only removes
-   the centred glass card so they span the full page beside the sidebar. */
+/* ============================================================
+   DESKTOP WORKSPACE: every canonical screen recomposed to fill the
+   viewport edge-to-edge beside the sidebar. No centred reading column,
+   no 1280px cap — the phone's max-w-xl stack becomes a wide multi-panel
+   desktop app. The immersive route map is excluded above and still owns
+   the viewport (canonical list-first, map-on-selection is preserved).
+   ============================================================ */
+
+/* Home — a wide dashboard: full-width hero band, four actions across,
+   three large destination photos across (the phone stacks all of these). */
+[data-formfactor="desktop"].production-app > .pt-1 > .home-hero--canonical {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 20px;
+  align-content: start;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .home-hero--canonical > .home-canonical-banner,
+[data-formfactor="desktop"] .home-hero--canonical > .home-marshpass-slot {
+  grid-column: 1 / -1;
+  min-height: 220px;
+  margin-bottom: 0;
+  padding: 32px;
+}
+[data-formfactor="desktop"] .home-marshpass-promo__title {
+  font-size: 2rem;
+}
+[data-formfactor="desktop"] .home-hero--canonical > .home-action-grid {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: none;
+  gap: 16px;
+}
+[data-formfactor="desktop"] .home-action-card {
+  min-height: 150px;
+}
+[data-formfactor="desktop"] .home-hero--canonical > .home-popular-routes {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+[data-formfactor="desktop"] .home-popular-routes__row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  overflow: visible;
+}
+[data-formfactor="desktop"] .home-popular-route {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: 200px;
+}
+
+/* Search — a wide command canvas: a full-bleed photo hero with a horizontal
+   command bar overlapping it (places left, when/who right, categories below). */
+[data-formfactor="desktop"].production-app > .pt-1 > .search-screen {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .search-screen > .home-intro {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: 320px;
+  margin: 0;
+  padding: 48px 48px 160px;
+}
+[data-formfactor="desktop"] .search-screen > .home-search-panel {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  z-index: var(--mg-z-base);
+  margin: -128px 0 0;
+  padding-inline: 32px;
+}
+[data-formfactor="desktop"] .journey-search-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  column-gap: 24px;
+  row-gap: 16px;
+  align-items: start;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding: 24px;
+}
+[data-formfactor="desktop"] .journey-search-card > .relative {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-trip-details:not(.search-trip-details--stack) {
+  grid-column: 2;
+  grid-row: 1;
+  margin-top: 0;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-trip-details--stack {
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: 0;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-custom-budget {
+  grid-column: 1 / -1;
+}
+[data-formfactor="desktop"] .journey-search-card > .transport-types-inline {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+[data-formfactor="desktop"] .journey-search-card .transport-mode-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-direct-only {
+  grid-column: 1;
+  margin-top: 0;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-submit {
+  grid-column: 2;
+  margin-top: 0;
+  align-self: stretch;
+}
+
+/* Results — a wide workspace of route cards, two across, with a sticky
+   command header. Selecting a card still opens the canonical immersive map. */
+[data-formfactor="desktop"].production-app:not(.route-immersive-shell) > .pt-1 > .journey-results {
+  display: block;
+  width: 100%;
+  max-width: none;
+  min-height: calc(100vh - 120px);
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .journey-results-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--mg-z-sticky);
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mg-border-subtle);
+  background: var(--mg-surface-glass);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+[data-formfactor="desktop"] .journey-results [data-testid="journey-results-list"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Trips — a wide board: the section card lists flow into multiple columns. */
+[data-formfactor="desktop"].production-app > .pt-1 > .trips-screen {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .trips-screen [role="tablist"] {
+  max-width: 760px;
+}
+[data-formfactor="desktop"] #trips-content > .space-y-3,
+[data-formfactor="desktop"] #trips-content section > .space-y-2,
+[data-formfactor="desktop"] #trips-content section > .space-y-2\.5 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+/* Profile — a two-column account board instead of a narrow vertical stack. */
+[data-formfactor="desktop"].production-app > .pt-1 > .profile-screen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .profile-screen > div:first-child {
+  grid-column: 1 / -1;
+}
 
 /* ============================================================
    TABLET (768–1099px): full-page app, icon-only left rail

@@ -125,6 +125,51 @@ async function responsiveShellFailures(page, config) {
   return failures;
 }
 
+/**
+ * Desktop workspace contract: the canonical Home must recompose into a wide
+ * dashboard (no centred max-w-xl column), with four quick actions in ONE row and
+ * three large destination photos across. This proves the desktop is a genuinely
+ * different full-screen layout, not a stretched phone stack. MOCK session only.
+ */
+async function desktopWorkspaceFailures(page, config) {
+  const failures = [];
+  const gridTracks = (value) => value.split(' ').filter((part) => part.length > 0).length;
+  const content = page.locator('main.production-app > .pt-1');
+  const contentStyle = await content.evaluate((element) => {
+    const styles = element.ownerDocument.defaultView.getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return { maxWidth: styles.maxWidth, width: rect.width, x: rect.x };
+  });
+  if (contentStyle.maxWidth !== 'none') failures.push(`desktop content maxWidth=${contentStyle.maxWidth}, expected none (the 1280px reading cap leaked in)`);
+  if (Math.abs(contentStyle.width - (config.viewport.width - config.expectedNavWidth)) > 2) failures.push(`desktop content width ${Math.round(contentStyle.width)}px != viewport minus sidebar (${config.viewport.width - config.expectedNavWidth}px)`);
+  if (contentStyle.x < config.expectedNavWidth - 1) failures.push(`desktop content starts at ${Math.round(contentStyle.x)}px, under the sidebar`);
+
+  const hero = page.locator('.home-hero--canonical');
+  if (await hero.count() !== 1) { failures.push('canonical Home hero did not render'); return failures; }
+  const heroStyle = await hero.evaluate((element) => {
+    const styles = element.ownerDocument.defaultView.getComputedStyle(element);
+    return { display: styles.display, maxWidth: styles.maxWidth };
+  });
+  if (heroStyle.display !== 'grid') failures.push(`Home hero display=${heroStyle.display}, expected grid`);
+  if (heroStyle.maxWidth !== 'none') failures.push(`Home hero maxWidth=${heroStyle.maxWidth}, expected none`);
+
+  const actionTracks = await page.locator('.home-action-grid').evaluate((element) => element.ownerDocument.defaultView.getComputedStyle(element).gridTemplateColumns);
+  if (gridTracks(actionTracks) !== 4) failures.push(`Home action grid has ${gridTracks(actionTracks)} columns, expected 4 across`);
+  const actionTops = await page.locator('.home-action-card').evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().top)));
+  if (actionTops.length !== 4) failures.push(`expected 4 quick actions, found ${actionTops.length}`);
+  else if (new Set(actionTops).size !== 1) failures.push(`quick actions are not in one row (tops ${actionTops.join(', ')}) — the phone 2×2 stack leaked in`);
+
+  const routeStyle = await page.locator('.home-popular-routes__row').evaluate((element) => {
+    const styles = element.ownerDocument.defaultView.getComputedStyle(element);
+    return { display: styles.display, columns: styles.gridTemplateColumns };
+  });
+  if (routeStyle.display !== 'grid') failures.push(`popular routes display=${routeStyle.display}, expected grid`);
+  if (gridTracks(routeStyle.columns) !== 3) failures.push(`popular routes has ${gridTracks(routeStyle.columns)} columns, expected 3 across`);
+  const routeHeights = await page.locator('.home-popular-route').evaluateAll((routes) => routes.map((route) => Math.round(route.getBoundingClientRect().height)));
+  if (routeHeights.some((height) => height < 180)) failures.push(`destination photos too short (${routeHeights.join(', ')}px), expected the 200px desktop tile`);
+  return failures;
+}
+
 const PORT = process.env.BOOT_SMOKE_PORT || '4188';
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
@@ -254,6 +299,15 @@ async function main() {
           anyFailure = true;
         } else {
           console.log(`  PASS: ${config.expectedFormFactor} shell — fixed left ${config.expectedFormFactor === 'desktop' ? 'sidebar' : 'rail'} (${config.expectedNavWidth}px), create leads, 4 named tabs >= 44px, content clears the navigation.`);
+        }
+        if (config.expectedFormFactor === 'desktop') {
+          const workspaceFailures = await desktopWorkspaceFailures(page, config).catch((err) => [`Desktop workspace probe failed: ${err.message}`]);
+          if (workspaceFailures.length > 0) {
+            console.error(`  FAIL: desktop workspace contract:\n    ${workspaceFailures.join('\n    ')}`);
+            anyFailure = true;
+          } else {
+            console.log('  PASS: desktop workspace — full-bleed content, Home dashboard with 4 actions in one row and 3 destination photos across.');
+          }
         }
       }
 

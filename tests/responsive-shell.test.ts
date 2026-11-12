@@ -106,9 +106,81 @@ test('desktop is a full-bleed page, not the centred glass card', () => {
   assert.match(shell, /background:\s*var\(--mg-canvas\)/);
   const header = bodyOf('[data-formfactor="desktop"].production-app:not(.route-immersive-shell) > .app-header');
   assert.match(header, /position:\s*sticky/);
+  assert.match(header, /max-width:\s*none/, 'the top bar spans the full width beside the sidebar, not a centred column');
+  assert.match(header, /margin-inline:\s*0/);
   const content = bodyOf('[data-formfactor="desktop"].production-app:not(.route-immersive-shell) > .pt-1');
-  assert.match(content, /max-width:\s*var\(--mg-shell-content-max\)/);
-  assert.match(content, /margin-inline:\s*auto/);
+  assert.match(content, /max-width:\s*none/, 'desktop content fills the viewport edge-to-edge — no 1280px reading-column cap');
+  assert.match(content, /margin-inline:\s*0/);
+  assert.match(content, /width:\s*100%/);
+});
+
+test('desktop Home is a wide dashboard, not the phone stack', () => {
+  const hero = bodyOf('[data-formfactor="desktop"].production-app > .pt-1 > .home-hero--canonical');
+  assert.match(hero, /display:\s*grid/);
+  assert.match(hero, /grid-template-columns:\s*repeat\(12, minmax\(0, 1fr\)\)/);
+  assert.match(hero, /max-width:\s*none/, 'Home fills the workspace, no max-w-xl column');
+  assert.match(hero, /margin-inline:\s*0/);
+  // The four quick actions sit in one row of four (the phone shows 2×2).
+  const actions = bodyOf('[data-formfactor="desktop"] .home-hero--canonical > .home-action-grid');
+  assert.match(actions, /grid-column:\s*1 \/ -1/);
+  assert.match(actions, /grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(actions, /grid-template-rows:\s*none/, 'the phone height-floor rows must not constrain the desktop cards');
+  assert.match(bodyOf('[data-formfactor="desktop"] .home-action-card'), /min-height:\s*150px/);
+  // Popular destinations become three large photos across instead of a horizontal scroller.
+  const routes = bodyOf('[data-formfactor="desktop"] .home-popular-routes__row');
+  assert.match(routes, /display:\s*grid/);
+  assert.match(routes, /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(routes, /overflow:\s*visible/, 'no horizontal scroll on desktop');
+  assert.match(bodyOf('[data-formfactor="desktop"] .home-popular-route'), /height:\s*200px/);
+});
+
+test('desktop Search is a horizontal command bar over a full-bleed hero', () => {
+  const screen = bodyOf('[data-formfactor="desktop"].production-app > .pt-1 > .search-screen');
+  assert.match(screen, /display:\s*grid/);
+  assert.match(screen, /max-width:\s*none/);
+  assert.match(bodyOf('[data-formfactor="desktop"] .search-screen > .home-intro'), /grid-column:\s*1 \/ -1/);
+  const panel = bodyOf('[data-formfactor="desktop"] .search-screen > .home-search-panel');
+  assert.match(panel, /grid-column:\s*1 \/ -1/);
+  assert.match(panel, /margin:\s*-128px 0 0/, 'the command bar overlaps the photo hero');
+  // The card itself splits into two columns: places left, when/who right.
+  const card = bodyOf('[data-formfactor="desktop"] .journey-search-card');
+  assert.match(card, /display:\s*grid/);
+  assert.match(card, /grid-template-columns:\s*minmax\(0, 1\.05fr\) minmax\(0, 1fr\)/);
+  assert.match(bodyOf('[data-formfactor="desktop"] .journey-search-card > .relative'), /grid-row:\s*1 \/ span 2/);
+  assert.match(bodyOf('[data-formfactor="desktop"] .journey-search-card > .search-trip-details:not(.search-trip-details--stack)'), /grid-column:\s*2/);
+  assert.match(bodyOf('[data-formfactor="desktop"] .journey-search-card > .search-trip-details--stack'), /grid-column:\s*2/);
+  // All twelve categories fit in one row of six (two rows), not the phone grid of four.
+  assert.match(bodyOf('[data-formfactor="desktop"] .journey-search-card .transport-mode-grid'), /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(bodyOf('[data-formfactor="desktop"] .journey-search-card > .search-submit'), /grid-column:\s*2/);
+});
+
+test('desktop Results, Trips and Profile become wide multi-column boards', () => {
+  const results = bodyOf('[data-formfactor="desktop"].production-app:not(.route-immersive-shell) > .pt-1 > .journey-results');
+  assert.match(results, /display:\s*block/);
+  assert.match(results, /max-width:\s*none/);
+  assert.match(bodyOf('[data-formfactor="desktop"] .journey-results-header'), /position:\s*sticky/);
+  assert.match(bodyOf('[data-formfactor="desktop"] .journey-results [data-testid="journey-results-list"]'), /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  const trips = bodyOf('[data-formfactor="desktop"].production-app > .pt-1 > .trips-screen');
+  assert.match(trips, /max-width:\s*none/);
+  const tripsBoard = rules.find((rule) => rule.selector.includes('#trips-content > .space-y-3'));
+  assert.ok(tripsBoard, 'the trips card board rule must exist');
+  assert.match(tripsBoard.body, /grid-template-columns:\s*repeat\(auto-fill, minmax\(360px, 1fr\)\)/);
+  const profile = bodyOf('[data-formfactor="desktop"].production-app > .pt-1 > .profile-screen');
+  assert.match(profile, /display:\s*grid/);
+  assert.match(profile, /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(profile, /max-width:\s*none/);
+});
+
+test('the desktop workspace hooks exist on the canonical screens', () => {
+  // These classNames are what the desktop CSS targets; without them the rules are dead.
+  assert.match(marketplace, /className="home-screen search-screen/);
+  assert.match(marketplace, /className="journey-results /);
+  assert.match(marketplace, /className="journey-results-header/);
+  assert.match(marketplace, /className="trips-screen /);
+  assert.match(marketplace, /className="profile-screen /);
+  assert.match(marketplace, /search-custom-budget/);
+  assert.match(marketplace, /search-direct-only/);
+  assert.match(marketplace, /id="trips-content"/);
 });
 
 test('tablet turns the tab bar into a fixed left icon rail with accessible names', () => {
