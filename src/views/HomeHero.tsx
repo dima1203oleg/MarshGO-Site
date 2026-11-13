@@ -68,9 +68,16 @@ export function HomeHero({
   useLayoutEffect(() => {
     const measure = () => {
       const element = root.current;
-      if (!element || window.innerWidth >= 1024) { setAvailableHeight(null); return; }
-      const top = element.getBoundingClientRect().top + window.scrollY;
+      if (!element) { setAvailableHeight(null); return; }
       const shell = element.closest('.production-app');
+      // The phone fit reserves the fixed BOTTOM tab bar. Tablet and desktop navigate
+      // from a fixed left rail whose top is 0, so the same measurement would reserve
+      // the whole viewport and squeeze Home into its 300px floor. Only the phone
+      // shell (data-formfactor="mobile", the default when the attribute is absent)
+      // keeps the height-fitting behaviour.
+      const formFactor = shell?.getAttribute('data-formfactor') ?? 'mobile';
+      if (window.innerWidth >= 1024 || formFactor !== 'mobile') { setAvailableHeight(null); return; }
+      const top = element.getBoundingClientRect().top + window.scrollY;
       const viewport = window.visualViewport?.height ?? window.innerHeight;
       const tabbar = shell?.querySelector<HTMLElement>('.app-tabbar');
       const tabbarTop = tabbar && getComputedStyle(tabbar).position === 'fixed'
