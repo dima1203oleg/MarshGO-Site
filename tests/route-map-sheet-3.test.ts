@@ -38,6 +38,12 @@ test('route streets and summary metrics keep compact side-by-side layouts', () =
   assert.match(routeScreen, /aria-label=\{`Вибрати сегмент: \$\{legLabel\(leg\)\}; \$\{originLabel\} до \$\{destinationLabel\}.*walkHint\.title/);
 });
 
+test('route summary clock starts at requested departure when waiting is included in duration', () => {
+  assert.match(routeScreen, /const summaryDepartureAt = journeySummaryDepartureAt\(journey\)/);
+  assert.match(routeScreen, /aria-label=\{`\$\{summaryDepartureAt \? formatTime\(summaryDepartureAt\)/);
+  assert.match(routeScreen, /<span>\{summaryDepartureAt \? formatTime\(summaryDepartureAt\) : '—'\}<\/span>/);
+});
+
 test('expanded route details use a 44px swipeable stage ribbon instead of a tall vertical ribbon', () => {
   assert.match(routeScreen, /mg-route-ribbon mg-route-ribbon--compact[^>]*role="list"/);
   assert.match(routeScreen, /mg-route-ribbon__copy[\s\S]*?mg-route-ribbon__label[\s\S]*?mg-route-ribbon__detail/);
@@ -261,7 +267,7 @@ test('the duplicated stage narration is gone and the sheet breathes without it',
   assert.match(routeScreen, /data-testid="route-map-expanded-toolbar"/, 'FULL keeps the route context, back action, and map layers visible above the sheet');
   assert.match(routeScreen, /route-map-context-pill[\s\S]*Маршрут · \{cleanStopName\(lastLeg\?\.destination\.name\)/, 'the map toolbar names the actual destination instead of repeating the app brand');
   assert.match(routeScreen, /<MapLayersControl overlays\/>/, 'the expanded map toolbar reuses the canonical layer control');
-  assert.match(routeScreen, /<Bookmark size=\{20\} fill=\{saved \? 'currentColor' : 'none'\}\/\>/, 'route saving uses the reference bookmark glyph');
+  assert.match(routeScreen, /<Bookmark size=\{20\} fill=\{saved \? 'currentColor' : 'none'\}\/>/, 'route saving uses the reference bookmark glyph');
   assert.match(routeScreen, /sheetSnap !== 'peek' && sheetSnap !== 'expanded'/, 'the expanded reference state keeps one primary CTA and removes the secondary map button');
   assert.match(routeScreen, /sheetSnap === 'expanded'[\s\S]*?<Navigation size=\{20\} fill="currentColor"/, 'the expanded primary CTA uses the navigation arrow');
   assert.match(routeScreen, /bg-\[var\(--route-card-alt\)\] text-\[var\(--route-ink\)\]/, 'transport glyph tiles share the restrained graphite palette');
