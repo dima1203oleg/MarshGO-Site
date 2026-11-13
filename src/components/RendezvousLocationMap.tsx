@@ -85,9 +85,9 @@ export function RendezvousLocationMap({ session, currentUserIsDriver, onArrived 
     if (!approaches) return [];
     return [
       approaches.driver.approach.status === 'ROUTED' && approaches.driver.approach.geometry
-        ? { id: 'driver-approach', coordinates: approaches.driver.approach.geometry, modeColor: '#2563eb' } : null,
+        ? { id: 'driver-approach', coordinates: approaches.driver.approach.geometry, modeColor: '#2563eb', isWalk: false } : null,
       approaches.passenger.approach.status === 'ROUTED' && approaches.passenger.approach.geometry
-        ? { id: 'passenger-approach', coordinates: approaches.passenger.approach.geometry, modeColor: '#7c3aed' } : null,
+        ? { id: 'passenger-approach', coordinates: approaches.passenger.approach.geometry, modeColor: '#7c3aed', isWalk: false } : null,
     ].filter((segment): segment is NonNullable<typeof segment> => Boolean(segment));
   }, [approaches]);
   const mapCoordinates = useMemo(() => {

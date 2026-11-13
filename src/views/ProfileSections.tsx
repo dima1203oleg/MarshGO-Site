@@ -4,6 +4,7 @@ import {
   Download, Trash2, AlertTriangle, PhoneCall, ExternalLink,
 } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { SensorySettingsPanel } from '../components/SensorySettingsPanel';
 import { productionApi, type ApiTransportCity, type ApiVehicle, type ApiVerificationRecord } from '../services/productionApi';
 
 export type ProfileSection = 'documents' | 'settings' | 'privacy' | 'safety' | 'help' | 'sources';
@@ -203,6 +204,7 @@ export function ProfileSections({
             <p className="mb-3 mt-0.5 text-xs text-slate-500 dark:text-slate-400">Світла, темна або як у системі.</p>
             <ThemeToggle variant="segmented" />
           </div>
+          <SensorySettingsPanel />
           <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[var(--mg-surface-tint)]">
             <b className="text-sm text-[var(--mg-ink-primary)] dark:text-white">Карта й навігація</b>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">

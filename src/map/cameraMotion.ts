@@ -63,15 +63,24 @@ export function cameraEasing(bezier: readonly [number, number, number, number] =
   };
 }
 
-/** MapLibre emits camera-start events for both programmatic moves and user input. */
-export function interruptCameraForUserGesture(
+/**
+ * MapLibre emits camera-start events for both programmatic moves and user input, and only real
+ * input carries an `originalEvent`, so that is the whole test for whose hand is on the camera.
+ * Ownership must be published on every gesture: a programmatic focus already leaves the camera in
+ * the free mode, and a screen that never hears about the second gesture keeps auto-refitting
+ * straight over the rider's own pan.
+ *
+ * Taking ownership deliberately does NOT stop the map. MapLibre already interrupts our animation
+ * the gesture-preserving way (`camera.stop(true)`) as soon as a handler is active, while a plain
+ * `map.stop()` also resets every handler and clears the recorded inertia — which kills the gesture
+ * that is still in progress: the pinch loses its two-finger state after its first frame, and a
+ * flick loses the momentum the rider just paid for.
+ */
+export function claimCameraForUserGesture(
   originalEvent: unknown,
-  cameraMode: string,
-  stopAnimation: () => void,
   enterManualMode: () => void,
 ): boolean {
   if (originalEvent === undefined || originalEvent === null) return false;
-  stopAnimation();
-  if (cameraMode !== 'FREE') enterManualMode();
+  enterManualMode();
   return true;
 }

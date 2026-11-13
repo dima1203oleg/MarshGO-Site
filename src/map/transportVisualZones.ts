@@ -3,8 +3,12 @@
 // Nothing here guesses geometry: a zone exists only when the server sliced the
 // exact line it also published.
 import type { Coordinate } from '../../shared/navigation/contracts';
+import { greatCircleDistanceMeters, interpolateGreatCircle, isValidCoordinate, sanitizeLineCoordinates } from './lineGeometry';
 
 export type TransitZone = 'A' | 'B' | 'C';
+
+/** Intermediate stop markers are noise at city overview scale; reveal them only on close inspection. */
+export const STOP_DETAIL_MIN_ZOOM = 12.5;
 
 export type TransitZoneGeometry = {
   boardingShapeIndex: number;
@@ -30,10 +34,12 @@ export type VehiclePriority = {
  * three zones keep their proportions at every scale instead of only at one zoom.
  */
 export const ZONE_LINE_TOKENS: Record<TransitZone, { width: [number, number]; opacity: number }> = {
-  A: { width: [2.5, 3.5], opacity: 0.45 },
-  B: { width: [6, 9], opacity: 1 },
-  C: { width: [2, 2.5], opacity: 0.25 },
+  A: { width: [1.5, 2.5], opacity: 0.4 },
+  B: { width: [5.5, 7.5], opacity: 1 },
+  C: { width: [1.25, 2], opacity: 0.2 },
 };
+
+export const ZONE_GLOW_TOKENS = { width: [8.5, 11.5] as [number, number], opacity: 0.2, blur: 3 } as const;
 
 /** L4 is at the stop, L3 arrives within three minutes, L2 approaches, L1 is the same line but irrelevant, L0 is background. */
 export const VEHICLE_PRIORITY_TOKENS: Record<VehiclePriorityLevel, { radius: number; haloRadius: number; opacity: number; haloOpacity: number; iconSize: number }> = {
@@ -54,13 +60,51 @@ export function zoneFeaturesFor(
   geometryScope: 'full_route' | 'leg_only' | undefined,
 ): Array<{ zone: TransitZone; coordinates: Coordinate[] }> {
   if (!zones) return [];
-  const features: Array<{ zone: TransitZone; coordinates: Coordinate[] }> = [
-    { zone: 'B', coordinates: zones.passengerSegment },
-  ];
+  const passenger = sanitizeLineCoordinates(zones.passengerSegment);
+  if (passenger.length < 2) return [];
+  const features: Array<{ zone: TransitZone; coordinates: Coordinate[] }> = [{ zone: 'B', coordinates: passenger }];
   if (geometryScope === 'leg_only') return features;
-  if (zones.beforeBoarding && zones.beforeBoarding.length >= 2) features.unshift({ zone: 'A', coordinates: zones.beforeBoarding });
-  if (zones.afterAlighting && zones.afterAlighting.length >= 2) features.push({ zone: 'C', coordinates: zones.afterAlighting });
-  return features.filter((feature) => feature.coordinates.length >= 2);
+  const before = sanitizeLineCoordinates(zones.beforeBoarding);
+  const after = sanitizeLineCoordinates(zones.afterAlighting);
+  if (before.length >= 2) features.unshift({ zone: 'A', coordinates: before });
+  if (after.length >= 2) features.push({ zone: 'C', coordinates: after });
+  return features;
+}
+
+/** Focused passenger view draws only the verified boarding-to-alighting slice. */
+export function passengerZoneFeaturesFor(
+  zones: TransitZoneGeometry | null | undefined,
+  geometryScope: 'full_route' | 'leg_only' | undefined,
+): Array<{ zone: TransitZone; coordinates: Coordinate[] }> {
+  return zoneFeaturesFor(zones, geometryScope).filter(feature => feature.zone === 'B');
+}
+
+/** Restrict passenger camera context to verified ridden geometry. */
+export function passengerContextLines(routes: ReadonlyArray<{
+  coordinates: Coordinate[];
+  geometryScope?: 'full_route' | 'leg_only';
+  zones?: TransitZoneGeometry | null;
+}>): Coordinate[][] {
+  return routes.flatMap(route => {
+    const line = sanitizeLineCoordinates(route.zones ? route.zones.passengerSegment : route.geometryScope === 'leg_only' ? route.coordinates : null);
+    return line.length >= 2 ? [line] : [];
+  });
+}
+
+/** Server marks at most three evidence-backed approaches; reject expired or malformed fixes. */
+export function focusedApproachVehicles<T extends { emphasized: boolean; updatedAt: string; coordinates: Coordinate }>(vehicles: readonly T[], now = Date.now()): T[] {
+  return vehicles.filter(vehicle => {
+    const stamp = Date.parse(vehicle.updatedAt);
+    const age = now - stamp;
+    return vehicle.emphasized === true && isValidCoordinate(vehicle.coordinates)
+      && Number.isFinite(stamp) && age >= -30_000 && age <= 90_000;
+  }).slice(0, 3);
+}
+
+/** Next time the focused fleet must be re-evaluated, or null when it is empty. */
+export function focusedFleetNextExpiry(vehicles: readonly { emphasized: boolean; updatedAt: string; coordinates: Coordinate }[], now: number): number | null {
+  const visible = focusedApproachVehicles(vehicles, now);
+  return visible.length ? Math.min(...visible.map(vehicle => Date.parse(vehicle.updatedAt) + 90_001)) : null;
 }
 
 export function priorityLevelOf(vehicle: { priority?: VehiclePriority | null; emphasized?: boolean }): VehiclePriorityLevel {
@@ -74,16 +118,6 @@ export type ZoneArrow = { coordinates: Coordinate; bearingDegrees: number; zone:
 
 const ARROW_SPACING_METERS = 320;
 const ARROW_MAX_PER_ZONE = 3;
-const EARTH_RADIUS_METERS = 6_371_000;
-
-function metersBetween(a: Coordinate, b: Coordinate): number {
-  const radians = Math.PI / 180;
-  const dLat = (b[1] - a[1]) * radians;
-  const dLon = (b[0] - a[0]) * radians;
-  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * radians) * Math.cos(b[1] * radians) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_METERS * Math.asin(Math.min(1, Math.sqrt(x)));
-}
-
 /** Compass bearing from a to b, so an arrow glyph pointing north rotates into the real travel direction. */
 function forwardBearingDegrees(a: Coordinate, b: Coordinate): number {
   const radians = Math.PI / 180;
@@ -98,12 +132,12 @@ function arrowAt(coordinates: readonly Coordinate[], distanceMeters: number): Om
   for (let index = 0; index < coordinates.length - 1; index += 1) {
     const from = coordinates[index]!;
     const to = coordinates[index + 1]!;
-    const length = metersBetween(from, to);
+    const length = greatCircleDistanceMeters(from, to);
     if (length === 0) continue;
     if (walked + length >= distanceMeters) {
       const ratio = (distanceMeters - walked) / length;
       return {
-        coordinates: [from[0] + (to[0] - from[0]) * ratio, from[1] + (to[1] - from[1]) * ratio],
+        coordinates: interpolateGreatCircle(from, to, ratio),
         bearingDegrees: forwardBearingDegrees(from, to),
       };
     }
@@ -122,10 +156,12 @@ export function zoneArrowsFor(zones: ReadonlyArray<{ zone: TransitZone; coordina
   for (const entry of zones) {
     if (entry.coordinates.length < 2) continue;
     let total = 0;
-    for (let index = 0; index < entry.coordinates.length - 1; index += 1) total += metersBetween(entry.coordinates[index]!, entry.coordinates[index + 1]!);
+    const coordinates = sanitizeLineCoordinates(entry.coordinates);
+    if (coordinates.length < 2) continue;
+    for (let index = 0; index < coordinates.length - 1; index += 1) total += greatCircleDistanceMeters(coordinates[index]!, coordinates[index + 1]!);
     const count = Math.min(ARROW_MAX_PER_ZONE, Math.floor(total / ARROW_SPACING_METERS));
     for (let i = 1; i <= count; i += 1) {
-      const arrow = arrowAt(entry.coordinates, (total * i) / (count + 1));
+      const arrow = arrowAt(coordinates, (total * i) / (count + 1));
       if (arrow) arrows.push({ ...arrow, zone: entry.zone });
     }
   }

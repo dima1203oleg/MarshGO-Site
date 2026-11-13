@@ -22,14 +22,37 @@ describe('home banner geometry and profile trust ink', () => {
     assert.match(banner, /overflow-hidden/);
     assert.match(banner, /onClick=\{onOpenTrips\}/);
     assert.match(source, /Твій шлях\. Один квиток\./);
+    assert.match(source, /Увесь міський і міжміський транспорт/);
+    assert.match(source, /home-marshpass-promo__barcode/);
+    assert.match(source, /home-marshpass-promo__destination/);
     assert.doesNotMatch(banner, /Куди завгодно|0% комісії|Отримати квиток/);
     assert.match(css(), /\.home-marshpass-promo::before/);
+    assert.match(css(), /\.home-marshpass-promo::after/);
     assert.match(css(), /\.home-marshpass-promo__route/);
+  });
+
+  it('keeps featured destinations aligned with their visible origin and search action', () => {
+    const source = hero();
+    assert.match(source, /origin: 'Львів', city: 'Київ'/);
+    assert.match(source, /aria-label=\{`Маршрут \$\{origin\} — \$\{city\}`\}/);
+    assert.match(source, /onSearchDestination\(city, origin\)/);
+    assert.match(marketplace(), /onSearchDestination=\{\(city, from\) => \{\s*const fromPlace = localCityPlace\(from\);\s*const destinationPlace = localCityPlace\(city\);\s*setOrigin\(fromPlace\?\.label \?\? from\);\s*setDestination\(destinationPlace\?\.label \?\? city\);\s*setSearchOriginPlace\(fromPlace\);\s*setSearchDestinationPlace\(destinationPlace\);/);
+    assert.match(css(), /\.home-popular-routes__row \{ flex: 0 0 auto; height: clamp\(7\.75rem, 16svh, 8\.6rem\); \}/);
+  });
+
+  it('keeps the five canonical destinations visible in a floating glass home tab bar', () => {
+    const source = marketplace();
+    for (const label of ['Головна', 'Пошук', 'Поїздки', 'Профіль']) assert.match(source, new RegExp(`label: '${label}'`));
+    assert.match(source, /aria-label="Створити поїздку або запит"/);
+    assert.match(css(), /\.production-app > nav\[data-testid="global-bottom-navigation"\][^{]*\{[^}]*border-radius: var\(--mg-radius-sheet\)/);
+    assert.doesNotMatch(source, /!immersiveRouteView && <nav data-testid="global-bottom-navigation"/);
+    assert.match(css(), /\.production-app > nav\[data-testid="global-bottom-navigation"\][^{]*\{[^}]*z-index: var\(--mg-z-nav-sheet\)/);
   });
 
   it('distributes tall-phone hero slack instead of leaving dead space above the tab bar', () => {
     const sheet = css();
-    assert.match(sheet, /\.home-marshpass-promo \{[^}]*flex-grow: 1;[^}]*max-height: 14rem;/, 'the promo must absorb slack but stay capped');
+    assert.match(sheet, /\.home-marshpass-promo \{[^}]*flex-grow: 1;[^}]*max-height: clamp\(11\.25rem, 21svh, 12\.25rem\);/, 'the promo must absorb slack while matching the reference height on tall iPhones');
+    assert.match(sheet, /\.home-action-grid \{ grid-template-rows: repeat\(2, clamp\(6\.5rem, 12\.5svh, 7\.25rem\)\); \}/, 'the 15 Pro Max action tiles must keep the reference proportions');
     assert.match(sheet, /\.home-popular-routes \{[^}]*flex-grow: 1;/, 'popular routes share the slack');
     assert.match(sheet, /\.home-popular-routes__row \{ flex: 1; \}/, 'the card row stretches inside the section');
     assert.match(sheet, /\.home-popular-route \{ height: auto; min-height: 4rem; \}/, 'cards stretch from a floor, not a fixed height');

@@ -81,7 +81,7 @@ export const transportModeRegistry: Record<TransportModeId, CanonicalVisual> = {
 const specialVisuals: Record<string, CanonicalVisual> = {
   WALK: visual('walk', 'Пішки', 'Пішки', 'Walking', PersonStanding, '#91A6BB'),
   WAIT: visual('wait', 'Очікування', 'Очікування', 'Waiting', Clock3, '#91A6BB'),
-  FERRY: visual('ferry', 'Пором', 'Пороми', 'Ferry', Waypoints, '#0891B2'),
+  FERRY: visual('ferry', 'Пором', 'Пороми', 'Ferry', Waypoints, '#327FC3'),
   FUNICULAR: visual('funicular', 'Фунікулер', 'Фунікулери', 'Funicular', TrainFront, '#64748B'),
 };
 

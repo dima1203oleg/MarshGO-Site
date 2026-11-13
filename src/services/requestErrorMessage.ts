@@ -13,6 +13,9 @@ const technicalBackendDetails = /\b(?:unsupported preference|HTTP\s*\d{3}|API|SQ
 const machineCode = /\b(?:[A-Z][A-Z0-9_]{2,}|[a-z]+(?:_[a-z0-9]+)+|[a-z]+[A-Z][A-Za-z0-9]*)\b/;
 
 export function requestErrorMessage(status: number, backendMessage?: string, errorCode?: string): string {
+  if (errorCode === 'password_reset_unavailable') {
+    return 'Відновлення пароля тимчасово недоступне. Спробуйте пізніше.';
+  }
   if (errorCode === 'sms_provider_unavailable') {
     return 'Вхід за SMS тимчасово не налаштовано. Спробуйте пізніше.';
   }

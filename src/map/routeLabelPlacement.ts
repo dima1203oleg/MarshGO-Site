@@ -24,7 +24,7 @@ const KIND_PRIORITY: Record<MapAnnotationKind, number> = {
 export type LabelScreenAnchor = 'center' | 'left' | 'right';
 export type LabelBox = { width: number; height: number };
 export type LabelRect = { left: number; top: number; right: number; bottom: number };
-export type PlacedJourneyLabel = { annotation: MapAnnotation; anchor: LabelScreenAnchor };
+export type PlacedJourneyLabel = { annotation: MapAnnotation; anchor: LabelScreenAnchor; offset?: [number, number] };
 
 export function labelPriority(kind: MapAnnotationKind): number {
   return KIND_PRIORITY[kind];
@@ -105,13 +105,38 @@ export function placeJourneyLabels(
     const anchor: LabelScreenAnchor = annotation.kind === 'BOARDING' || annotation.kind === 'ALIGHTING'
       ? edgeAnchorFor(point, box, viewport.width)
       : 'center';
-    return [{ annotation, anchor, rect: labelRectPx(point, box, anchor), priority: KIND_PRIORITY[annotation.kind], index }];
+    const isStopCallout = annotation.kind === 'BOARDING' || annotation.kind === 'ALIGHTING';
+    const anchorOptions: LabelScreenAnchor[] = isStopCallout || annotation.kind === 'ROUTE'
+      ? [...new Set([anchor, 'center', 'left', 'right'] as LabelScreenAnchor[])]
+      : [anchor];
+    const offsetOptions: Array<[number, number]> = isStopCallout
+      ? [[0, 0], [0, -34], [0, 34], [-28, 0], [28, 0]]
+      : [[0, 0]];
+    return [{ annotation, point, box, anchor, anchorOptions, offsetOptions, rect: labelRectPx(point, box, anchor), priority: KIND_PRIORITY[annotation.kind], index }];
   });
   candidates.sort((a, b) => a.priority - b.priority || a.index - b.index);
   const accepted: Array<{ rect: LabelRect; label: PlacedJourneyLabel; index: number }> = [];
   for (const candidate of candidates) {
-    if (accepted.some(item => rectsOverlap(item.rect, candidate.rect, minGapPx))) continue;
-    accepted.push({ rect: candidate.rect, label: { annotation: candidate.annotation, anchor: candidate.anchor }, index: candidate.index });
+    if (candidate.annotation.kind !== 'ROUTE'
+      && candidate.annotation.kind !== 'BOARDING'
+      && candidate.annotation.kind !== 'ALIGHTING') {
+      if (accepted.some(item => rectsOverlap(item.rect, candidate.rect, minGapPx))) continue;
+      accepted.push({ rect: candidate.rect, label: { annotation: candidate.annotation, anchor: candidate.anchor }, index: candidate.index });
+      continue;
+    }
+    const placement = candidate.offsetOptions.flatMap(offset => candidate.anchorOptions.map(anchor => ({
+      anchor,
+      offset,
+      rect: labelRectPx({ x: candidate.point.x + offset[0], y: candidate.point.y + offset[1] }, candidate.box, anchor),
+    }))).find(({ rect }) => rect.left >= 0 && rect.right <= viewport.width
+      && rect.top >= 0 && rect.bottom <= viewport.height
+      && !accepted.some(item => rectsOverlap(item.rect, rect, minGapPx)));
+    if (!placement) continue;
+    accepted.push({ rect: placement.rect, label: {
+      annotation: candidate.annotation,
+      anchor: placement.anchor,
+      ...(placement.offset[0] || placement.offset[1] ? { offset: placement.offset } : {}),
+    }, index: candidate.index });
   }
   // Feed order back out so the id-keyed DOM reconciliation never re-shuffles nodes.
   return accepted.sort((a, b) => a.index - b.index).map(item => item.label);

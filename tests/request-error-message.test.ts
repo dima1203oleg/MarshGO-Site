@@ -42,6 +42,13 @@ test('explains missing SMS configuration and delivery failure without exposing b
   );
 });
 
+test('explains unavailable password recovery without claiming that an email was sent', () => {
+  assert.equal(
+    requestErrorMessage(503, 'internal detail', 'password_reset_unavailable'),
+    'Відновлення пароля тимчасово недоступне. Спробуйте пізніше.',
+  );
+});
+
 test('shows restore failures but keeps an expired session silent', () => {
   assert.equal(authRestoreErrorMessage(new Error('Request failed (401)')), null);
   assert.equal(authRestoreErrorMessage(new Error('Request failed (403)')), null);

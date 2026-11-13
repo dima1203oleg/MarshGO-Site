@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./styles/motion.css";
 @import "./styles/feedback.css";
+@import "./styles/magnetic-domino.css";
 
 /* themeService owns the theme: it resolves "system" itself and writes html.dark.
    Tailwind's default `dark:` follows the OS instead, so an in-app light theme on
@@ -115,45 +116,59 @@ html.dark {
   --mg-callout-bg: rgba(255, 255, 255, .96);
   --mg-callout-ink: #10263D;
   --mg-callout-border: rgba(20, 36, 59, .16);
+  /* Compact density contract for the route-details sheet: one source for the
+     vertical rhythm so summary, ribbon, cards and CTA tighten together.
+     Geometry only — both themes inherit the same values. */
+  --mg-sheet-stack-gap: 4px;
+  --mg-sheet-card-pad-y: 4px;
+  --mg-sheet-card-pad-x: 6px;
+  --mg-sheet-summary-pad-top: 2px;
+  --mg-sheet-summary-pad-bottom: 4px;
+  --mg-sheet-endpoints-pad-bottom: 3px;
+  --mg-sheet-ribbon-height: 48px;
+  --mg-sheet-label-leading: 1.2;
+  --mg-sheet-cta-min-height: 52px;
   background-color: var(--route-canvas);
   color-scheme: light;
 }
+/* Graphite glass per the owner's route-details reference (2026-11-13): the
+   scoped route ramp moves off navy while the app-wide tokens stay untouched. */
 .route-map-screen[data-theme="dark"] {
-  --route-canvas: #071521;
-  --route-sheet: #10263D;
-  --route-sheet-start: #10263D;
-  --route-sheet-end: #0B1B2C;
-  --route-ink: #F5F8FC;
-  --route-muted: #AABFD1;
-  --route-subtle: #91A7BC;
-  --route-border: rgba(142, 180, 211, .20);
-  --route-card: #172B44;
-  --route-card-alt: #1D3B58;
-  --route-floating: rgba(16, 38, 61, .94);
-  --route-track: #3A76A4;
-  --route-timeline-divider: rgba(7, 21, 33, .7);
-  --route-community-surface: rgba(50, 127, 195, .16);
-  --route-footer: rgba(11, 27, 44, .98);
+  --route-canvas: #0A0D12;
+  --route-sheet: #14171D;
+  --route-sheet-start: #171B22;
+  --route-sheet-end: #11141A;
+  --route-ink: #F4F6FA;
+  --route-muted: #AAB2C0;
+  --route-subtle: #8C94A2;
+  --route-border: rgba(255, 255, 255, .10);
+  --route-card: #1E242D;
+  --route-card-alt: #262D38;
+  --route-floating: rgba(23, 27, 34, .94);
+  --route-track: #3E4653;
+  --route-timeline-divider: rgba(10, 13, 18, .7);
+  --route-community-surface: rgba(113, 199, 242, .12);
+  --route-footer: rgba(17, 20, 26, .98);
   --route-hover: rgba(255, 255, 255, .06);
-  --route-grabber: #54708A;
-  --route-sheet-shadow: 0 -24px 70px rgba(0, 0, 0, .38);
-  --route-brand-ink: #F5F8FC;
-  --route-ribbon-walk: #91A7BC;
+  --route-grabber: #5C6572;
+  --route-sheet-shadow: 0 -24px 70px rgba(0, 0, 0, .5);
+  --route-brand-ink: #F4F6FA;
+  --route-ribbon-walk: #8C94A2;
   --route-ribbon-ring: #EAF1FB;
-  --route-control-bg: rgba(16, 38, 61, .94);
+  --route-control-bg: rgba(23, 27, 34, .92);
   --route-control-active-bg: var(--mg-action);
   --route-control-active-ink: #FFFFFF;
-  --route-control-border: rgba(255, 255, 255, .09);
+  --route-control-border: rgba(255, 255, 255, .10);
   --route-scale-ink: #E8EEF8;
-  --mg-label-bg: rgba(16, 38, 61, .96);
-  --mg-label-ink: #F5F8FC;
-  --mg-label-muted: #AABFD1;
-  --mg-label-border: rgba(142, 180, 211, .22);
+  --mg-label-bg: rgba(23, 27, 34, .96);
+  --mg-label-ink: #F4F6FA;
+  --mg-label-muted: #AAB2C0;
+  --mg-label-border: rgba(255, 255, 255, .14);
   --mg-label-shadow: 0 10px 24px rgba(0, 0, 0, .36);
   --mg-label-caption-shadow: 0 1px 3px rgba(0, 0, 0, .8), 0 0 8px rgba(0, 0, 0, .6);
-  --mg-callout-bg: #172B44;
-  --mg-callout-ink: #F5F8FC;
-  --mg-callout-border: rgba(142, 180, 211, .24);
+  --mg-callout-bg: #1E242D;
+  --mg-callout-ink: #F4F6FA;
+  --mg-callout-border: rgba(255, 255, 255, .16);
   color-scheme: dark;
 }
 
@@ -219,6 +234,8 @@ body {
   --mg-radius-3xl: 28px;
   --mg-radius-sheet: 32px;
   --mg-radius-pill: 999px;
+  /* Shared tab bar: top padding, 2.9rem controls, border, bottom padding and fixed safe-area gap. */
+  --mg-global-nav-clearance: calc(3.5rem + max(.9rem, env(safe-area-inset-bottom, 0px) + env(safe-area-inset-bottom, 0px)));
 
   /* Responsive shell geometry (styles/responsive-shell.css): the desktop sidebar and
      tablet rail are form-factor chrome, not theme ramps, so one value serves both
@@ -293,7 +310,7 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
   position: absolute;
   z-index: 0;
   inset: 0;
-  background: radial-gradient(ellipse at 82% 26%, color-mix(in srgb, var(--mg-blue) 15%, transparent), transparent 52%);
+  background: radial-gradient(ellipse at 82% 26%, color-mix(in srgb, var(--mg-blue) 12%, transparent), transparent 52%);
   content: "";
   pointer-events: none;
 }
@@ -304,26 +321,24 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
   width: min(52%, 13rem);
   height: 75%;
   color: var(--mg-blue-ink);
-  opacity: .47;
+  opacity: .43;
   pointer-events: none;
   transform: translateY(-50%);
 }
 .home-marshpass-promo__route svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .home-marshpass-promo__route path {
   stroke: currentColor;
-  stroke-width: 1.5;
+  stroke-width: 2;
   stroke-linecap: round;
-  stroke-dasharray: 3 7;
-  /* Dashes drift toward the destination dot: the promo reads as a route, not a static squiggle. */
-  animation: mg-promo-route-drift 2.6s linear infinite;
+  filter: drop-shadow(0 0 2px color-mix(in srgb, currentColor 42%, transparent));
 }
-@keyframes mg-promo-route-drift {
-  to { stroke-dashoffset: -20; }
-}
+.home-marshpass-promo__route .home-marshpass-promo__contour { stroke-width: 1; opacity: .22; filter: none; }
 .home-marshpass-promo__route circle { fill: var(--mg-surface-primary); stroke: currentColor; stroke-width: 2; }
 .home-marshpass-promo__title { max-width: 78%; text-wrap: balance; }
+.home-marshpass-promo__description { max-width: 72%; }
 .home-marshpass-promo__footer { letter-spacing: .2em; }
-.home-marshpass-promo__caption { margin-inline: auto 1rem; max-width: 58%; overflow: hidden; color: var(--mg-ink-secondary); font-size: .75rem; font-weight: 600; letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
+.home-marshpass-promo__destination { position: absolute; z-index: 2; top: 17%; right: 8%; color: var(--mg-blue); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--mg-blue) 42%, transparent)); }
+.home-marshpass-promo__barcode { display: block; width: 3.8rem; height: 1.1rem; margin-right: .15rem; background: repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 3px, currentColor 3px 5px, transparent 5px 7px, currentColor 7px 8px, transparent 8px 10px); opacity: .78; }
 .home-marshpass-card--active { position: relative; background: linear-gradient(122deg, var(--mg-surface-primary), color-mix(in srgb, var(--mg-action) 9%, var(--mg-surface-primary))); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mg-ink-primary) 7%, transparent), var(--mg-card-shadow); }
 .home-marshpass-card--active::before { position: absolute; inset: 0; background: radial-gradient(ellipse at 96% 6%, color-mix(in srgb, var(--mg-blue) 13%, transparent), transparent 45%); content: ""; pointer-events: none; }
 .home-pass-preview__header, .home-pass-preview__brand, .home-pass-preview__status, .home-pass-preview__route, .home-pass-preview__footer, .home-pass-preview__driver { display: flex; align-items: center; }
@@ -353,7 +368,6 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
   .current-city-selector-trigger > svg:first-child { width: 13px; }
   .current-city-selector-trigger > svg:last-child { width: 11px; }
   .current-city-selector-label { max-width: 2rem; font-size: .6875rem; }
-  .home-marshpass-promo__caption { display: none; }
   .home-marshpass-promo__title { max-width: 84%; font-size: 1.2rem; }
   .home-pass-preview__status { padding-inline: .4rem; }
   .home-pass-preview__connector { flex-basis: 2.2rem; gap: .1rem; }
@@ -362,12 +376,33 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
 }
 .home-screen { padding-top: .35rem; }
 .transport-types-inline { margin-top: .7rem; }
-.transport-types-inline .transport-mode-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: .4rem;
+.transport-types-inline .transport-mode-grid--horizontal {
+  display: flex;
+  gap: .5rem;
+  margin-inline: -.2rem;
+  padding: .2rem .2rem .35rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mg-blue) transparent;
 }
-.transport-types-inline .transport-mode-grid button { min-height: 4.25rem; }
+.transport-types-inline .transport-mode-grid--horizontal > button {
+  flex: 0 0 4.65rem;
+  min-height: 4.25rem;
+  scroll-snap-align: start;
+}
+.transport-types-inline .transport-mode-grid--horizontal::-webkit-scrollbar { height: 4px; }
+.transport-types-inline .transport-mode-grid--horizontal::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--mg-blue); }
 .transport-mode-tile__label { text-wrap: balance; }
+.transport-mode-grid--horizontal .transport-mode-tile__label {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  line-height: 1.1;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 @media (max-width: 380px) {
   .transport-types-inline .transport-mode-tile__label { font-size: .625rem; letter-spacing: -.01em; }
 }
@@ -565,10 +600,22 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   display: flex;
   min-width: 0;
   overflow-x: auto;
+  /* Kinetic scrolling on iOS Safari; a chain flick has to coast and stay interruptible. */
+  -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
+  /* Mandatory snapping fights a momentum fling: the browser drags the row back to a tile boundary
+     while the rider is still mid-swipe, and it re-snap-hops when the last tile cannot line up. */
+  scroll-snap-type: x proximity;
   overscroll-behavior-x: contain;
+  /* A stage sliced in half by the edge of the row reads as a rendering bug, so the cut edge fades —
+     but only while content is genuinely hidden there, which the component publishes as flags. */
+  --mg-fade-x-start: 0px;
+  --mg-fade-x-end: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--mg-fade-x-start), #000 calc(100% - var(--mg-fade-x-end)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--mg-fade-x-start), #000 calc(100% - var(--mg-fade-x-end)), transparent 100%);
 }
+.journey-segment-tiles[data-fade-start="true"] { --mg-fade-x-start: 1.5rem; }
+.journey-segment-tiles[data-fade-end="true"] { --mg-fade-x-end: 1.5rem; }
 .journey-segment-tile {
   min-width: 0;
   flex: 1 0 0;
@@ -576,7 +623,12 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
   scroll-snap-align: start;
 }
 .journey-segment-tile:last-child { border-right: 0; }
-.journey-segment-tile--scroll { flex: 0 0 7.25rem; }
+/*
+ * A scrolled row has no reason to squeeze its stages: 7.25rem is the floor, not the width, so a
+ * name like «Трамвай №3» is never cut into «Трамвай …». max-content keeps the row honest and the
+ * 11rem ceiling stops one long feed label from pushing the rest of the chain off-screen.
+ */
+.journey-segment-tile--scroll { flex: 0 0 auto; min-width: 7.25rem; width: max-content; max-width: 11rem; }
 .journey-segment-tile-content,
 .journey-segment-tile-button {
   display: flex;
@@ -596,6 +648,7 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
 }
 .journey-segment-tile-button:hover { background: color-mix(in srgb, var(--mg-blue) 7%, transparent); }
 .journey-segment-tile-button:focus-visible { position: relative; z-index: var(--mg-z-base); outline: 2px solid var(--mg-blue); outline-offset: -2px; }
+.journey-segment-tile.is-active { z-index: var(--mg-z-raised); }
 .journey-segment-tile.is-active .journey-segment-tile-button { background: color-mix(in srgb, var(--mg-blue) 10%, transparent); }
 .journey-segment-tile-heading {
   display: flex;
@@ -651,50 +704,13 @@ html.dark .journey-results [aria-label="Режим пошуку маршруті
 }
 .journey-segment-tile-meta-value { font-weight: 700; }
 /*
- * The scroll cue is a floating 44 px button over the row's right edge. Padding the scroller only
- * added empty space *after the last tile*, so mid-scroll the button still covered a stage's time
- * and price («Пішки 2 хв» in a saved route). Reserve the gutter on the viewport instead: the
- * scrollport ends before the button, so no tile can ever paint underneath it.
+ * No floating control sits over this row. An overlay on the swipe lane both swallows the first
+ * fingers of a horizontal pan and steals the tap a rider meant for the stage underneath it.
  */
-.journey-segment-tiles-viewport:has(> .journey-segment-scroll-cue) { padding-right: 2.9rem; }
-/*
- * A stage chip sliced in half by the viewport edge reads as a rendering bug. The fade says the row
- * continues; it lifts at the end of the row, where nothing is sliced anymore.
- */
-.journey-segment-tiles-viewport:not([data-cue-at-end="true"]) .journey-segment-tiles:has(+ .journey-segment-scroll-cue) {
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.4rem), transparent 100%);
-  mask-image: linear-gradient(to right, #000 calc(100% - 2.4rem), transparent 100%);
-}
-.journey-segment-scroll-cue {
-  position: absolute;
-  z-index: var(--mg-z-raised);
-  top: 50%;
-  right: -.25rem;
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  transform: translateY(-50%);
-  place-items: center;
-  border-radius: var(--mg-radius-pill);
-  color: #526174;
-  pointer-events: auto;
-}
-.journey-segment-scroll-cue > span {
-  display: grid;
-  width: 1.65rem;
-  height: 1.65rem;
-  place-items: center;
-  border: 1px solid #d9e2ec;
-  border-radius: var(--mg-radius-pill);
-  background: rgba(255,255,255,.97);
-  box-shadow: 0 2px 8px rgba(20,49,87,.12);
-}
 html.dark .journey-segment-tile { border-color: var(--mg-border-subtle); }
 html.dark .journey-segment-tile-heading { color: var(--mg-ink-primary); }
 html.dark .journey-segment-tile-icon[data-icon-mode="WALK"] { color: var(--mg-ink-primary) !important; }
 html.dark .journey-segment-tile-meta { color: var(--mg-ink-secondary); }
-html.dark .journey-segment-scroll-cue { color: var(--mg-ink-secondary); }
-html.dark .journey-segment-scroll-cue > span { border-color: var(--mg-border-medium); background: var(--mg-surface-primary); }
 /*
  * At 320 px five section labels cannot share one row, so the strip scrolls. A label cut
  * mid-word at either edge («ивні») reads as a clipped render; fade the scrolled edges
@@ -745,7 +761,6 @@ html.dark .journey-result-transfer-badge,
 html.dark .journey-result-save-visual { border-color: #223C52; }
 html.dark .journey-result-save-button { background-color: transparent; }
 .journey-result-action-badge[data-strategy] { background-color: var(--mg-blue-tint); color: var(--mg-blue-ink); }
-.journey-result-card-content > .journey-segment-strip .journey-segment-scroll-cue { right: -.3rem; }
 .journey-result-card-content .journey-result-duration {
   max-width: 100%;
   overflow: hidden;
@@ -911,8 +926,8 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .search-screen .journey-search-card > .relative > [role="group"] { min-height: 3.65rem; padding-block: .55rem; }
   .search-screen .journey-search-card .search-trip-details { gap: .4rem; margin-top: .5rem; }
   .search-screen .transport-types-inline { margin-top: .55rem; }
-  .search-screen .transport-types-inline .transport-mode-grid { gap: .35rem; }
-  .search-screen .transport-types-inline .transport-mode-grid button { min-height: 3.9rem; }
+  .search-screen .transport-types-inline .transport-mode-grid--horizontal { gap: .4rem; }
+  .search-screen .transport-types-inline .transport-mode-grid--horizontal > button { min-height: 3.9rem; }
   .search-screen .journey-search-card .search-submit { min-height: 2.8rem; margin-top: .65rem; padding-block: .7rem; }
 }
 
@@ -928,6 +943,12 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .production-app { padding-bottom: 1.5rem; }
   .app-header { position: relative; background: transparent; backdrop-filter: none; }
   .app-tabbar { position: sticky; margin: 1rem auto; width: min(100% - 2rem, 36rem); border: 1px solid var(--mg-line); border-radius: 1.25rem; }
+}
+
+.production-app.route-immersive-shell > .app-tabbar {
+  position: fixed;
+  inset: auto 0 0;
+  margin: 0 auto;
 }
 
 /* Desktop is a wider presentation of the same production screens used by the
@@ -1523,10 +1544,21 @@ html.dark .coverage-details[open] { border-color: var(--mg-border-medium); }
 .search-trip-details button[aria-label$="пасажирів"] { position: relative; }
 .search-trip-details button[aria-label$="пасажирів"]::after { content: ''; position: absolute; top: -6px; bottom: -6px; left: -10px; right: -10px; }
 
-/* Bottom navigation: the selected tab lifts instead of only changing colour. */
+/* Bottom navigation: the selected tab pops like a dock icon — press squash,
+   inflate, settle — as tap feedback; the tab remounts its icon on every tap so
+   even re-tapping the active tab replays the pop. */
 .app-tabbar-inner button { transition: background-color var(--mg-dur-fast) var(--mg-ease-standard), color var(--mg-dur-fast) var(--mg-ease-standard); }
 .app-tabbar-inner button svg { transition: transform var(--mg-dur-base) var(--mg-ease-entrance); }
 .app-tabbar-inner button[aria-current="page"] svg { transform: translateY(-1px) scale(1.08); }
+@keyframes mg-tab-icon-dock-pop {
+  0% { transform: translateY(0) scale(.9); }
+  42% { transform: translateY(-.18rem) scale(1.22); }
+  72% { transform: translateY(.04rem) scale(.98); }
+  100% { transform: translateY(-1px) scale(1.08); }
+}
+.app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg {
+  animation: mg-tab-icon-dock-pop var(--mg-dur-slow) var(--mg-ease-entrance) both;
+}
 .app-tabbar-inner button:active svg { transform: scale(.9); }
 
 /* Small print carries real information, so it must not fall below AA in either theme. */
@@ -1541,7 +1573,7 @@ html.dark .production-app .dark\:text-slate-400 { color: #A9BACD; }
 .home-canonical-banner { min-height: clamp(10rem, 20svh, 11.75rem); }
 /* The promo absorbs leftover hero height so the tab bar never floats over dead space;
    the cap keeps it a banner, not a poster, on tall phones (iPhone 16 / 15 Pro Max). */
-.home-marshpass-promo { flex-grow: 1; max-height: 14rem; }
+.home-marshpass-promo { flex-grow: 1; max-height: clamp(11.25rem, 21svh, 12.25rem); }
 .home-action-grid { flex: 0 0 auto; grid-template-rows: repeat(2, clamp(6.2rem, 12.5svh, 6.8rem)); gap: .5rem; }
 /* A single navy surface family keeps all four actions calm; hierarchy comes from blue glyphs
    and the primary search action, while labels stay high-contrast ink. */
@@ -1648,7 +1680,9 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
   .home-canonical-banner { min-height: 8rem; padding: .7rem; }
   .home-action-grid { grid-template-rows: repeat(2, 5.9rem); }
   .home-trip-card { min-height: 4.25rem; padding-block: .6rem; }
-  .home-popular-routes { display: none; }
+  .home-popular-routes { display: flex; flex: 0 0 auto; }
+  .home-popular-routes__row { flex: 0 0 auto; height: clamp(5rem, 13svh, 6.5rem); }
+  .home-popular-route { height: 100%; min-height: 0; }
 }
 @media (max-width: 639px) and (max-height: 620px) {
   .home-canonical-banner { min-height: 5.75rem; padding: .5rem; }
@@ -1670,6 +1704,24 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
   .home-action-grid { grid-template-rows: repeat(2, 9rem); }
   .home-popular-route { height: 5rem; }
 
+  .production-app.route-immersive-shell {
+    display: block;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .route-map-screen [data-testid="active-navigation-sheet"] {
+    inset-inline-start: 1.5rem;
+    inset-inline-end: auto;
+    width: 460px;
+    max-width: 460px;
+    border-radius: var(--mg-radius-sheet);
+  }
   /* Desktop side-by-side layout: map on the right, floating sheet on the left */
   .route-map-screen > header {
     inset-inline-start: 1.5rem;
@@ -1695,6 +1747,30 @@ html.dark .app-tabbar { border-color: var(--mg-line); }
 }
 
 /* Driver puck on the navigation map (Apple-Maps-like arrow with a soft accuracy halo). */
+.mg-route-scout {
+  --route-scout-color: var(--mg-blue);
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: var(--route-scout-color);
+  filter: drop-shadow(0 1px 5px var(--route-scout-color));
+  transition: opacity var(--mg-dur-fast) var(--mg-ease-exit);
+}
+.mg-route-scout__arrow {
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+  transition: transform var(--mg-dur-fast) var(--mg-ease-exit);
+}
+.mg-route-scout__arrow path { fill: currentColor; stroke: #FFFFFF; stroke-width: 1.4; stroke-linejoin: round; }
+.mg-route-scout.is-fading { opacity: 0; }
+.mg-route-scout.is-fading .mg-route-scout__arrow { transform: scale(.72); }
+@media (prefers-reduced-motion: reduce) {
+  .mg-route-scout, .mg-route-scout__arrow { transition: none; }
+}
+
 .marshgo-puck { position: relative; width: 44px; height: 44px; }
 .marshgo-puck__arrow { position: relative; width: 44px; height: 44px; filter: drop-shadow(0 4px 10px rgba(9, 35, 69, .4)); }
 .marshgo-puck__halo { position: absolute; inset: -16px; border-radius: 9999px; background: radial-gradient(circle, rgba(23, 137, 244, .25) 0%, rgba(23, 137, 244, 0) 70%); animation: marshgo-puck-pulse 2.2s cubic-bezier(0.2, 0, 0, 1) infinite; }
@@ -1914,20 +1990,40 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 .route-mode-chip__icon { color: #fff; }
 .route-mode-chip:active { transform: scale(.99); }
 
+/*
+ * Seven stages cannot share 358 px, so the ribbon is its own horizontal scroller: native
+ * overflow, no wrap, and the platform's own momentum — a hand-rolled drag would have to re-learn
+ * velocity, rubber-banding and interruptibility that the browser already does. Top padding keeps
+ * the pill's 44 px hit bleed inside the clip box; anything clipped there is not tappable.
+ */
 .mg-route-ribbon {
   display: flex;
   align-items: flex-start;
   gap: .5rem;
+  flex-wrap: nowrap;
+  min-width: 0;
+  padding-block-start: 9px;
+  overflow-x: auto;
+  /* Kinetic scrolling on iOS Safari; a chain flick has to coast and stay interruptible. */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .mg-route-ribbon__item {
   display: flex;
-  flex: 1 1 0%;
+  /*
+   * Proportional widths used to be `1 1 0%`, which squeezed every stage into its share of the
+   * scrollport and cut «Тролейбус» into «Тролей…». In a scroller the row can carry the width
+   * instead: basis auto keeps each name whole, grow still spreads a short chain across the full
+   * row so the canonical ribbon reads as one bar, and the ceiling stops one long feed label from
+   * eating the whole scrollport. min-width is the floor under a 40-second walk.
+   */
+  flex: 1 0 auto;
+  width: max-content;
   flex-direction: column;
   align-items: stretch;
   gap: .2rem;
-  /* Proportional widths must still leave room for the segment name under the
-     bar; without a floor a 40-second walk collapses to "П…". */
   min-width: 62px;
+  max-width: 11rem;
 }
 .mg-route-ribbon__pill {
   display: flex;
@@ -1947,6 +2043,12 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 }
 .mg-route-ribbon__pill:active { transform: scale(.97); }
 /*
+ * The default focus ring sits 2 px outside the box, which the scroll clip cuts in half at either
+ * end of the row. An inset ring is always fully painted, and keyboard focus auto-scrolls the
+ * stage into view because this is a real scroller.
+ */
+.mg-route-ribbon__pill:focus-visible { outline: 2px solid var(--mg-blue); outline-offset: -2px; }
+/*
  * The bar stays 26 px tall — that is the canonical ribbon — but a stage is a tap
  * action and the ergonomic floor is 44 px. Extend the button's hit area over its
  * own label and detail lines instead of inflating the bar and pushing the sheet
@@ -1963,7 +2065,7 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   color: var(--route-ink);
   font-size: 12.5px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: var(--mg-sheet-label-leading);
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1974,14 +2076,147 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   font-size: 12px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  line-height: var(--mg-sheet-label-leading);
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Route details use one compact, swipeable row; active navigation keeps the full ribbon. */
+.mg-route-ribbon--compact {
+  box-sizing: border-box;
+  align-items: center;
+  height: var(--mg-sheet-ribbon-height);
+  min-height: var(--mg-sheet-ribbon-height);
+  padding-block: 2px;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__item {
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 0;
+  max-width: 12rem;
+  flex-direction: row;
+  gap: 0;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__pill {
+  position: relative;
+  width: max-content;
+  max-width: 12rem;
+  height: 44px;
+  min-height: 44px;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: .45rem;
+  padding-inline: .55rem;
+  border-radius: 12px;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__pill::before {
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__label {
+  max-width: 7.5rem;
+  font-size: 11px;
+  line-height: 1.1;
+  text-align: left;
+}
+.mg-route-ribbon--compact .mg-route-ribbon__detail {
+  max-width: 7.5rem;
+  font-size: 10px;
+  line-height: 1.1;
+  text-align: left;
+}
+
+/* PEEK keeps the complete stage chain in a compact, native horizontal strip. */
+.route-peek-ribbon {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 3px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+.route-peek-ribbon__item {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: calc(100vw - 5rem);
+  transition: opacity var(--mg-dur-base) var(--mg-ease-standard);
+}
+.route-peek-ribbon__item.is-muted { opacity: .48; }
+.route-peek-ribbon__stage {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid var(--route-border);
+  border-radius: 13px;
+  background: var(--route-card-alt);
+  color: var(--route-ink);
+  text-align: left;
+  scroll-snap-align: start;
+}
+.route-peek-ribbon__stage.is-active {
+  border-color: color-mix(in srgb, var(--mg-blue) 60%, var(--route-border));
+  background: var(--route-card);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mg-blue) 28%, transparent);
+}
+.route-peek-ribbon__stage:focus-visible {
+  outline: 2px solid var(--mg-blue);
+  outline-offset: -2px;
+}
+.route-peek-ribbon__icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+}
+.route-peek-ribbon__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+.route-peek-ribbon__label {
+  max-width: 7.5rem;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.route-peek-ribbon__detail {
+  color: var(--route-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
 .mg-route-cta {
-  min-height: 52px;
+  min-height: var(--mg-sheet-cta-min-height);
   border-radius: 16px;
   /* Canonical action ramp: action blue fading into the graphite navy it sits on.
      No second brand hue — the primary action must read as MARSHGO, not as a
@@ -2001,6 +2236,102 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   touch-action: manipulation;
 }
 .route-sheet-peek-cta { min-height: 48px; }
+.route-sheet-endpoints {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px var(--mg-sheet-endpoints-pad-bottom);
+  color: var(--route-ink);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+.route-sheet-endpoints__name,
+.mg-route-endpoints__name {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.route-sheet-endpoints__name--end,
+.mg-route-endpoints__name--end { text-align: right; }
+.route-sheet-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  padding: var(--mg-sheet-summary-pad-top) 12px var(--mg-sheet-summary-pad-bottom);
+}
+.route-sheet-summary__metrics {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.route-sheet-summary__times {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+}
+.route-sheet-summary__detail {
+  flex: 0 0 auto;
+  color: var(--route-muted);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.route-sheet-summary__transfers {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.route-sheet-summary__transfer-short { display: none; }
+.route-sheet-summary__fare {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 3px;
+  line-height: 1.15;
+}
+.route-sheet-summary__caption {
+  max-width: 4.5rem;
+  overflow: hidden;
+  color: var(--route-muted);
+  font-size: 10px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-route-endpoints {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+}
+@media (max-width: 360px) {
+  .route-sheet-summary { gap: 5px; padding-right: 10px; padding-left: 10px; }
+  .route-sheet-summary__metrics { gap: 4px; }
+  .route-sheet-summary__times { gap: 2px; font-size: 14px; }
+  .route-sheet-summary__detail { font-size: 9px; }
+  .route-sheet-summary__transfer-full { display: none; }
+  .route-sheet-summary__transfer-short { display: inline; }
+  .route-sheet-summary__caption { max-width: 3rem; }
+  .route-sheet-endpoints { padding-right: 10px; padding-left: 10px; }
+}
 .mg-route-cta:active { transform: scale(.985); filter: brightness(1.06); }
 .mg-route-cta:disabled { opacity: .5; box-shadow: none; }
 .mg-route-cta:focus-visible { outline: 3px solid color-mix(in srgb, var(--mg-blue) 68%, transparent); outline-offset: 3px; }
@@ -2260,6 +2591,13 @@ html {
 
 /* The focused segment card keeps a slow halo; the rest recede via opacity. */
 .mg-route-segment { position: relative; }
+/* Dense list rhythm and card padding come from the sheet density tokens so the
+   whole details column tightens as one unit, not per-component literals. */
+/* minmax(0,1fr): the cards keep overflow visible so the rail node is not clipped,
+   which makes their automatic minimum size content-based; an auto grid track would
+   then grow past the sheet and push the row meta off-screen. */
+.mg-route-segment-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--mg-sheet-stack-gap); padding-block-start: 0; }
+.mg-route-segment__body { padding: var(--mg-sheet-card-pad-y) var(--mg-sheet-card-pad-x); }
 .mg-route-segment[data-active="true"]::after {
   content: '';
   position: absolute;
@@ -2285,6 +2623,40 @@ html {
 @keyframes mg-stops-reveal {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: none; }
+}
+
+/* One-shot answers to a tap: the rail node pulses when its segment is chosen,
+   the stop dot pings when its stop is chosen, the bookmark pops when saved.
+   Each runs once per state change; none of them loops. */
+.mg-route-segment[data-active="true"]::before {
+  animation: mg-node-pulse var(--mg-dur-slow) var(--mg-ease-entrance) 1 both;
+}
+@keyframes mg-node-pulse {
+  0% { transform: translateY(-50%) scale(1); }
+  45% { transform: translateY(-50%) scale(1.5); }
+  100% { transform: translateY(-50%) scale(1); }
+}
+.mg-journey-stop-dot { position: relative; }
+.mg-journey-stop-row[aria-pressed="true"] .mg-journey-stop-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--mg-blue);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: mg-stop-ping var(--mg-dur-slow) var(--mg-ease-standard) 1 both;
+}
+@keyframes mg-stop-ping {
+  0% { opacity: .8; transform: scale(.8); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+.route-save-toggle[aria-pressed="true"] svg {
+  animation: mg-bookmark-pop var(--mg-dur-base) var(--mg-ease-spring) 1 both;
+}
+@keyframes mg-bookmark-pop {
+  0% { transform: scale(.82); }
+  60% { transform: scale(1.14); }
+  100% { transform: scale(1); }
 }
 
 /* Reset control appears with a focused leg, so it announces itself once. */
@@ -2322,6 +2694,7 @@ html {
   .route-map-scale,
   .mg-route-ribbon__pill,
   .mg-route-cta,
+  .app-tabbar-inner button[aria-current="page"] svg,
   .route-header-back,
   .route-header-icon,
   .route-map-control {
@@ -2329,6 +2702,7 @@ html {
   }
   .route-map-screen > header,
   .route-map-screen > section[data-testid="route-bottom-sheet"],
+  .app-tabbar-inner button[aria-current="page"] svg,
   .route-details-head,
   .route-sheet-grabber__handle,
   .route-toast,
@@ -2338,6 +2712,9 @@ html {
   .search-submit:not(:disabled)::after,
   .route-address-summary > svg,
   .mg-route-segment,
+  .mg-route-segment[data-active="true"]::before,
+  .mg-journey-stop-row[aria-pressed="true"] .mg-journey-stop-dot::after,
+  .route-save-toggle[aria-pressed="true"] svg,
   .mg-route-stops,
   .mg-stagger {
     animation: none !important;
@@ -2389,4 +2766,281 @@ html {
     background: color-mix(in srgb, var(--mg-blue) 9%, var(--mg-surface-card));
     color: var(--mg-blue-ink);
   }
+}
+
+/* Owner's home reference: floating glass navigation, ticket-shaped pass promotion,
+   tactile two-by-two actions, and image-led destination cards. */
+.production-app.home-viewport-shell > .app-header {
+  border-bottom-color: transparent;
+  background: transparent;
+  padding-bottom: .35rem;
+}
+.production-app.home-viewport-shell .app-header-brand-copy p { display: none; }
+.production-app.home-viewport-shell .app-header-brand { gap: .55rem; }
+.production-app.home-viewport-shell .current-city-selector-trigger {
+  border-color: var(--mg-border-medium);
+  background: var(--mg-surface-glass);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--mg-navy) 12%, transparent);
+}
+.production-app.home-viewport-shell .app-header-icon-button {
+  border-color: var(--mg-border-medium);
+  background: var(--mg-surface-glass);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mg-ink-primary) 7%, transparent);
+}
+.home-marshpass-promo {
+  position: relative;
+  border-color: var(--mg-border-medium);
+  background:
+    radial-gradient(ellipse at 82% 38%, color-mix(in srgb, var(--mg-blue) 12%, transparent), transparent 42%),
+    linear-gradient(154deg, var(--mg-surface-secondary) 0%, var(--mg-surface-primary) 48%, color-mix(in srgb, var(--mg-action) 12%, var(--mg-surface-primary)) 100%);
+}
+.home-marshpass-promo::before {
+  background:
+    radial-gradient(ellipse at 79% -46%, transparent 43%, color-mix(in srgb, var(--mg-ink-primary) 5%, transparent) 44%, transparent 64%),
+    radial-gradient(ellipse at 100% 124%, color-mix(in srgb, var(--mg-blue) 10%, transparent), transparent 48%);
+}
+.home-marshpass-promo::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background:
+    radial-gradient(1.05rem 1.35rem at 0 49%, var(--mg-canvas) 97%, transparent 102%),
+    radial-gradient(1.05rem 1.35rem at 100% 49%, var(--mg-canvas) 97%, transparent 102%);
+  content: "";
+  pointer-events: none;
+}
+.home-marshpass-promo__route { z-index: 1; top: 48%; opacity: .75; }
+.home-marshpass-promo__eyebrow,
+.home-marshpass-promo__title,
+.home-marshpass-promo__description,
+.home-marshpass-promo__footer { z-index: 3; }
+.home-marshpass-promo__title { max-width: 70%; }
+.home-marshpass-promo__description { max-width: 70%; }
+.home-marshpass-promo__footer { border-color: var(--mg-border-medium); }
+.home-action-card { isolation: isolate; }
+.home-action-card::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 100% 8%, color-mix(in srgb, var(--mg-blue) 10%, transparent), transparent 48%),
+    linear-gradient(145deg, transparent 45%, color-mix(in srgb, var(--mg-blue) 4%, transparent));
+  content: "";
+  pointer-events: none;
+}
+.home-action-card__art { position: absolute; z-index: 1; pointer-events: none; }
+.home-action-card__art--route {
+  right: -5%; bottom: -2%; width: 75%; height: 90%; overflow: visible;
+  fill: none; stroke: color-mix(in srgb, var(--mg-blue) 58%, white); stroke-width: 1.25;
+  stroke-linecap: round; stroke-linejoin: round; opacity: .42;
+}
+.home-action-card__art--route path:first-child { stroke: color-mix(in srgb, var(--mg-blue) 24%, transparent); stroke-width: 7; }
+.home-action-card__art--route path:last-child { stroke-dasharray: 5 7; }
+.home-action-card__art--publish {
+  right: -9%; top: 8%; width: 70%; height: 112%; border: 1px solid color-mix(in srgb, var(--mg-blue) 13%, transparent);
+  border-radius: 48% 38% 0 55%; transform: rotate(-17deg); opacity: .9;
+  background: radial-gradient(ellipse at 65% 88%, transparent 45%, color-mix(in srgb, var(--mg-blue) 8%, transparent) 46%, transparent 68%);
+}
+.home-action-card__art--transport {
+  right: 0; bottom: 0; width: 70%; height: 100%; object-fit: cover;
+  object-position: 52% 100%; opacity: .72; mix-blend-mode: screen;
+  transform: scale(2.2); transform-origin: right bottom;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 31%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 31%);
+}
+.home-action-card__art--network {
+  right: 8%; top: 11%; width: 47%; height: 66%; overflow: visible;
+  fill: none; stroke: color-mix(in srgb, var(--mg-blue) 72%, white); stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round; opacity: .78;
+}
+.home-action-card__art--network circle { fill: var(--mg-ink-primary); stroke: var(--mg-blue); stroke-width: 2.2; }
+.home-popular-route {
+  border-color: var(--mg-border-subtle);
+  box-shadow: var(--mg-card-shadow);
+}
+.home-popular-route img { object-position: center 56%; }
+.home-popular-route__label { text-shadow: 0 1px 8px color-mix(in srgb, var(--mg-navy) 76%, transparent); }
+.production-app > nav[data-testid="global-bottom-navigation"] {
+  inset-inline: .5rem;
+  bottom: max(.45rem, env(safe-area-inset-bottom, 0px));
+  width: min(calc(100% - 1rem), 36rem);
+  margin-inline: auto;
+  border: 1px solid var(--mg-border-medium);
+  border-radius: var(--mg-radius-sheet);
+  background: var(--mg-surface-glass);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--mg-navy) 22%, transparent), inset 0 1px 0 color-mix(in srgb, var(--mg-ink-primary) 8%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  z-index: var(--mg-z-nav-sheet);
+}
+.production-app .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
+  box-shadow: inset 0 -2px 0 var(--mg-blue);
+}
+.production-app > nav[data-testid="global-bottom-navigation"] .app-tabbar-inner .app-create-button {
+  background: linear-gradient(145deg, var(--mg-blue), var(--mg-action));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--mg-blue) 30%, transparent), inset 0 1px 0 color-mix(in srgb, white 38%, transparent);
+}
+@media (max-width: 639px) and (min-height: 741px) {
+  .home-action-grid { grid-template-rows: repeat(2, clamp(6.5rem, 12.5svh, 7.25rem)); }
+  .home-popular-routes { flex: 0 0 auto; }
+  .home-popular-routes__row { flex: 0 0 auto; height: clamp(7.75rem, 16svh, 8.6rem); }
+  .home-popular-route { height: 100%; min-height: 0; }
+}
+@media (max-width: 639px) and (max-height: 730px) {
+  .home-popular-route { min-height: 0; }
+  .production-app > nav[data-testid="global-bottom-navigation"] { bottom: max(.3rem, env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-marshpass-promo__route path { animation: none; }
+}
+
+/* ── HyperFlight cinematic preview ───────────────────────────────────────────
+   «Далі» flies the real geometry; these styles own the transfer Glass Info,
+   the reverse-stage control and the in-flight CTA. Independent scale/translate
+   properties compose with the callout's inline positioning transform, so the
+   Smoke Dissolve never fights the anchor. */
+.mg-route-back {
+  min-height: var(--mg-sheet-cta-min-height);
+  border: 1px solid var(--route-border);
+  border-radius: 16px;
+  background: var(--route-card-alt);
+  color: var(--route-ink);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--route-ink) 7%, transparent);
+  transition: transform .16s var(--mg-ease-entrance), background-color .16s ease, opacity .16s ease;
+  touch-action: manipulation;
+}
+.mg-route-back:active { transform: scale(.94); }
+.mg-route-back:disabled { opacity: .45; cursor: not-allowed; }
+.mg-route-back:focus-visible { outline: 3px solid color-mix(in srgb, var(--mg-blue) 68%, transparent); outline-offset: 3px; }
+
+.mg-route-cta[data-flying="true"]:disabled { opacity: 1; cursor: progress; }
+.mg-route-cta[data-flying="true"] { animation: mg-flight-pulse 1.15s var(--mg-ease-standard) infinite; }
+@keyframes mg-flight-pulse {
+  0%, 100% { box-shadow: 0 10px 24px color-mix(in srgb, var(--mg-action) 34%, transparent), inset 0 1px 0 rgba(255, 255, 255, .22); }
+  50% { box-shadow: 0 12px 30px color-mix(in srgb, var(--mg-action) 52%, transparent), inset 0 1px 0 rgba(255, 255, 255, .34); }
+}
+
+.mg-glass-callout { transform-origin: 50% 100%; will-change: opacity, scale, filter; }
+.mg-glass-callout.is-entered { animation: mg-glass-enter var(--mg-dur-slow) var(--mg-ease-entrance) both; }
+.mg-glass-callout.is-exiting { animation: mg-smoke-dissolve calc(var(--mg-dur-slow) * 2) var(--mg-ease-exit) both; }
+@keyframes mg-glass-enter {
+  from { opacity: 0; scale: .86; filter: blur(6px); }
+  to { opacity: 1; scale: 1; filter: blur(0); }
+}
+@keyframes mg-smoke-dissolve {
+  0% { opacity: 1; scale: 1; filter: blur(0); translate: 0 0; }
+  100% { opacity: 0; scale: 1.14; filter: blur(11px); translate: 0 -12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-route-cta[data-flying="true"] { animation: none; }
+  .mg-glass-callout.is-entered, .mg-glass-callout.is-exiting { animation: none; }
+  .mg-glass-callout.is-exiting { opacity: 0; }
+}
+
+/* ── HyperFlight telemetry HUD ─────────────────────────────────────────────
+   A compact glass strip floating just above the sheet during the cinematic
+   preview. It counts down the real remaining distance and drives a velocity-
+   reactive progress bar. The flight's single rAF loop writes into these nodes
+   directly, so there is no per-frame React render. */
+.mg-flight-hud {
+  --flight-velocity: 0;
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  bottom: calc(var(--route-map-inset, 340px) + 14px);
+  z-index: 15;
+  width: min(320px, calc(100% - 2rem));
+  padding: .6rem .95rem .7rem;
+  border-radius: 18px;
+  border: 1px solid var(--route-border);
+  background: color-mix(in srgb, var(--route-sheet) 84%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: var(--route-sheet-shadow), inset 0 1px 0 color-mix(in srgb, var(--route-ink) 8%, transparent);
+  opacity: 0;
+  scale: .92;
+  filter: blur(6px);
+  pointer-events: none;
+  transition: opacity .28s var(--mg-ease-entrance), scale .28s var(--mg-ease-entrance), filter .28s var(--mg-ease-entrance);
+}
+.mg-flight-hud.is-live { opacity: 1; scale: 1; filter: blur(0); }
+.mg-flight-hud__row { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.mg-flight-hud__label { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--route-muted); }
+.mg-flight-hud__value { display: inline-flex; align-items: baseline; gap: .25rem; color: var(--route-ink); }
+.mg-flight-hud__value b { font-size: 21px; font-weight: 900; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+.mg-flight-hud__value i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--route-muted); }
+.mg-flight-hud__track { position: relative; height: 5px; margin-top: .55rem; border-radius: 9999px; background: var(--route-card-alt); box-shadow: inset 0 1px 2px color-mix(in srgb, var(--route-ink) 12%, transparent); }
+.mg-flight-hud__fill {
+  position: absolute; inset: 0; border-radius: inherit;
+  transform-origin: left center; transform: scaleX(0);
+  background: linear-gradient(90deg, var(--mg-blue), var(--mg-action));
+  box-shadow: 0 0 calc(4px + var(--flight-velocity, 0) * 16px) color-mix(in srgb, var(--mg-action) 55%, transparent);
+}
+.mg-flight-hud__head {
+  position: absolute; top: 50%; left: 0; width: 11px; height: 11px;
+  translate: -50% -50%;
+  scale: calc(.8 + var(--flight-velocity, 0) * .5);
+  border-radius: 9999px; background: #FFFFFF;
+  box-shadow: 0 0 calc(5px + var(--flight-velocity, 0) * 13px) color-mix(in srgb, var(--mg-action) 72%, transparent);
+}
+
+/* ── Journey progress rail ─────────────────────────────────────────────────
+   One slim segment per leg: passed legs settle to a muted fill, the active leg
+   glows in its mode colour and sweeps a light shimmer while the preview flies. */
+.mg-leg-rail { display: flex; gap: 4px; margin-top: .5rem; }
+.mg-leg-rail__seg {
+  --seg-color: var(--mg-blue);
+  position: relative; flex: 1; height: 4px; border-radius: 9999px; overflow: hidden;
+  background: var(--route-card-alt); border: 1px solid var(--route-border);
+  transition: background-color .3s ease, border-color .3s ease, box-shadow .3s ease;
+}
+.mg-leg-rail__seg.is-done { background: color-mix(in srgb, var(--seg-color, var(--mg-blue)) 42%, var(--route-card-alt)); border-color: transparent; }
+.mg-leg-rail__seg.is-active { background: var(--seg-color, var(--mg-blue)); border-color: transparent; box-shadow: 0 0 10px color-mix(in srgb, var(--seg-color, var(--mg-blue)) 50%, transparent); }
+.mg-leg-rail__seg.is-active.is-flying::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .75), transparent);
+  translate: -100% 0; animation: mg-leg-rail-sweep 1.1s linear infinite;
+}
+@keyframes mg-leg-rail-sweep { to { translate: 100% 0; } }
+
+/* ── Velocity-reactive scout glow ──────────────────────────────────────────
+   While HyperFlight owns the camera, the light marker gains a breathing comet
+   halo so the eye tracks it through the turn. Pure CSS — no extra JS loop. */
+[data-marshgo-cinematic-flight="true"] .mg-route-scout {
+  position: relative;
+  filter: drop-shadow(0 0 9px var(--route-scout-color)) drop-shadow(0 1px 4px var(--route-scout-color));
+}
+[data-marshgo-cinematic-flight="true"] .mg-route-scout::before {
+  content: ''; position: absolute; inset: -9px; z-index: -1; border-radius: 9999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--route-scout-color) 45%, transparent) 0%, transparent 70%);
+  animation: mg-scout-halo 1.15s var(--mg-ease-exit) infinite;
+}
+@keyframes mg-scout-halo { 0% { scale: .5; opacity: .9; } 100% { scale: 1.55; opacity: 0; } }
+
+/* ── Precision Docking sonar ───────────────────────────────────────────────
+   A map-anchored ripple at the exact boarding/alighting point. Three staggered
+   rings expand and fade around a settling core, marking where to board even as
+   the camera refits. Rendered as a MapLibre marker so it stays glued to the point. */
+.mg-dock-ripple { --ripple-color: var(--mg-blue); position: relative; width: 0; height: 0; pointer-events: none; }
+.mg-dock-ripple__ring {
+  position: absolute; left: 0; top: 0; width: 54px; height: 54px; margin: -27px 0 0 -27px;
+  border-radius: 9999px; border: 2px solid var(--ripple-color, var(--mg-blue));
+  opacity: 0; animation: mg-dock-ring 1.8s var(--mg-ease-exit) infinite;
+}
+.mg-dock-ripple__ring:nth-child(2) { animation-delay: .45s; }
+.mg-dock-ripple__ring:nth-child(3) { animation-delay: .9s; }
+.mg-dock-ripple__core {
+  position: absolute; left: 0; top: 0; width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  border-radius: 9999px; background: var(--ripple-color, var(--mg-blue));
+  box-shadow: 0 0 14px var(--ripple-color, var(--mg-blue));
+  animation: mg-dock-core 1.8s var(--mg-ease-entrance) both;
+}
+@keyframes mg-dock-ring { 0% { scale: .25; opacity: .95; } 70% { opacity: .35; } 100% { scale: 1.9; opacity: 0; } }
+@keyframes mg-dock-core { 0% { scale: 0; opacity: 0; } 25% { scale: 1.25; opacity: 1; } 60% { scale: 1; } 100% { scale: 1; opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-flight-hud { transition: none; }
+  .mg-leg-rail__seg.is-active.is-flying::after { animation: none; }
+  [data-marshgo-cinematic-flight="true"] .mg-route-scout::before { animation: none; opacity: 0; }
+  .mg-dock-ripple__ring, .mg-dock-ripple__core { animation: none; opacity: 0; }
 }

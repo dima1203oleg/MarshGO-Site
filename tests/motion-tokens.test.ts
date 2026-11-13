@@ -147,8 +147,8 @@ test('W2 (а): src/styles/motion.css підключено з src/index.css і м
 test('W2 (б): програмні виклики scrollIntoView та scrollTo у живих модулях враховують prefers-reduced-motion', () => {
   const files = [
     'src/views/JourneyRouteMapScreen.tsx',
-    'src/design-system/journey/JourneySegmentStrip.tsx',
     'src/components/DepartureDateTimePicker.tsx',
+    'src/components/OnboardingTour.tsx',
   ];
   for (const file of files) {
     const source = readFileSync(file, 'utf8');

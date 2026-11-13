@@ -25,6 +25,16 @@ test('search provider dialog does not repeat transport type controls', async () 
   assert.doesNotMatch(marketplace, /Обрати на мапі: \\{\(routePlaceField/, 'the duplicated wide map picker must be absent');
 });
 
+test('static bicycle points do not imply live inventory or booking', async () => {
+  const [panel, api] = await Promise.all([
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/components/TransportTypesPanel.tsx'), 'utf8'),
+    readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/services/productionApi.ts'), 'utf8'),
+  ]);
+  assert.match(api, /availabilityStatus\?: string; bookingAvailable\?: boolean/, 'the client retains availability and booking evidence');
+  assert.match(panel, /type\.id === 'bike' && providers\.some\(provider => provider\.availabilityStatus === 'UNKNOWN' \|\| provider\.bookingAvailable === false\)/, 'the caveat is driven by provider evidence');
+  assert.match(panel, /наявність велосипедів і бронювання не підтверджені/, 'customers are told that static points are not live inventory');
+});
+
 test('traveler surfaces keep technical search and map diagnostics out of the default design', async () => {
   const root = dirname(fileURLToPath(import.meta.url));
   const [panel, mapDetails, transportMap, marketplace, transportTypes, canonicalDesign] = await Promise.all([
@@ -179,7 +189,7 @@ test('journey search enters the results screen and shows a pending panel while p
 test('route sheet snap uses the motion tokens without leaving the style prop', async () => {
   const sheet = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/views/JourneyRouteMapScreen.tsx'), 'utf8');
   assert.doesNotMatch(sheet, /280ms cubic-bezier/, 'the sheet snap reverted to an off-system curve');
-  assert.match(sheet, /style=\{\{[\s\S]{0,120}transition: routeSheetTransition\(draggingRef\.current, reducedMotion\)/,
+  assert.match(sheet, /style=\{\{[\s\S]{0,240}transition: routeSheetTransition\(draggingRef\.current, reducedMotion\)/,
     'sheet snap must keep its transition in the React style prop, on the motion tokens');
 });
 
@@ -231,8 +241,7 @@ test('compact result strips prices and keeps unknown-fare detail and segment scr
     read('../src/views/cashFare.ts'),
     read('../src/views/JourneyRouteMapScreen.tsx'),
   ]);
-  assert.match(strip, /hidden >= 24/, 'the cue needs a floor a real stage chip can actually cross');
-  assert.doesNotMatch(strip, /clientWidth \+ 2/, 'the cue threshold drifted back to 2 px, where rounding alone triggers it');
+  assert.match(strip, /const scrolls = hidden > 10;/, 'the edge fade needs a floor a real stage chip can actually cross');
   assert.match(lip, /priceCaption\?: ReactNode;/, 'the shared lip needs one caption slot for unavailable prices');
   assert.match(fare, /тариф невідомий/, 'an unknown fare has to say why instead of showing a bare dash');
   assert.match(panel, /priceLabel: ''/, 'per-leg fares must not repeat under every segment on compact cards');
@@ -293,9 +302,9 @@ test('segment ribbon fades only while chips are actually sliced', async () => {
     readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/design-system/journey/JourneySegmentStrip.tsx'), 'utf8'),
     readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8'),
   ]);
-  assert.match(strip, /data-cue-at-end=\{scrollState\.atEnd \? 'true' : 'false'\}/,
-    'the viewport must expose whether the row is scrolled to its end');
-  assert.match(css, /\.journey-segment-tiles-viewport:not\(\[data-cue-at-end="true"\]\)[\s\S]{0,120}mask-image: linear-gradient\(to right/,
+  assert.match(strip, /element\.dataset\.fadeEnd = /,
+    'the scroller itself must expose whether the row is scrolled to its end');
+  assert.match(css, /\.journey-segment-tiles\[data-fade-end="true"\] \{ --mg-fade-x-end/,
     'the slice fade is CSS-driven and must lift at the end of the row');
 });
 
@@ -478,8 +487,8 @@ test('the search screen gives each field the width its value needs', async () =>
   const searchForm = marketplace.slice(searchFormStart, marketplace.indexOf('</form>', searchFormStart));
   const placeRows = [...searchForm.matchAll(/<div role="group" aria-label="(?:Початкова|Кінцева) точка"[\s\S]*?<\/div>/g)];
   assert.equal(placeRows.length, 2, 'the place rows left the shared group markup');
-  assert.equal((placeRows[0][0].match(/aria-label="Обрати на мапі"/g) || []).length, 0, 'the origin row keeps only its location action');
-  assert.equal((placeRows[1][0].match(/aria-label="Обрати на мапі"/g) || []).length, 1, 'the destination keeps the compact in-field map pin from the approved layout');
+  assert.match(placeRows[0][0], /aria-label="Обрати початкову точку на мапі"/, 'the origin can use map selection when geocoding is offline');
+  assert.equal((placeRows[1][0].match(/aria-label="Обрати кінцеву точку на мапі"/g) || []).length, 1, 'the destination keeps its compact in-field map pin');
   assert.equal((searchForm.match(/Обрати на мапі: \{\(routePlaceField/g) || []).length, 0, 'the redundant full-width map picker must stay out of the search card');
   assert.match(searchForm, /setPicker\(\{ form: 'search', field: 'destination' \}\)/, 'the compact destination map pin must fill the destination field');
   assert.match(searchForm, /\{destination \? <button type="button" aria-label="Очистити кінцеву точку"/, 'the entered destination keeps its clear action');
@@ -521,11 +530,13 @@ test('a place row only offers to clear a value that is actually there', async ()
     'the origin row must keep its empty-state job — the location arrow, not a dead ×');
   assert.match(originRow, /data-field-action=\{origin \? 'clear' : 'locate'\}/,
     'the origin slot must name the job it is doing, so the icon is never the only signal');
+  assert.match(originRow, /setPicker\(\{ form: 'search', field: 'origin' \}\)/,
+    'the origin row must retain a map-picker route when typed geocoding is unavailable');
   const destinationRow = rowFor('Кінцева точка');
   assert.notEqual(destinationRow, '', 'the destination row left the shared group markup');
   assert.match(destinationRow, /setPicker\(\{ form: 'search', field: 'destination' \}\)/,
     'the destination field retains its compact map pin action');
-  assert.match(destinationRow, /aria-label="Обрати на мапі" title="Обрати на мапі"/,
+  assert.match(destinationRow, /aria-label="Обрати кінцеву точку на мапі" title="Обрати на мапі"/,
     'the map pin remains accessible and clearly named');
   assert.match(destinationRow, /\{destination \? <button[\s\S]*?: <button/,
     'the same action slot switches from map selection to clearing once text exists');

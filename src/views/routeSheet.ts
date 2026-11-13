@@ -14,19 +14,37 @@ export const ROUTE_SHEET_LOGICAL_LABELS: Readonly<Record<RouteSheetSnap, RouteSh
 /**
  * Snap points match the approved 4-position route-sheet composition:
  * - peek (PEEK, 168–176 px) leaves the maximum map view with only handle,
- *   total duration, total fare, one-line stage chain, compact scale and CTA;
+ *   total duration, total fare, a swipeable stage ribbon and CTA;
  * - collapsed (COMPACT) keeps the departure/arrival summary, ribbon and CTA;
  * - half (MEDIUM) adds concise stage context while keeping the map interactive;
- * - expanded (FULL) shows scrollable per-segment details while leaving a
- *   top map strip.
+ * - expanded (FULL) shows scrollable per-segment details while preserving the
+ *   sheet-aware camera fit's map strip on standard mobile viewports.
  */
 export function routeSheetHeights(viewportHeight: number): RouteSheetHeights {
   const viewport = Number.isFinite(viewportHeight) ? Math.max(320, viewportHeight) : 844;
-  const expanded = Math.min(840, viewport * 0.9, Math.max(0, viewport - 172));
-  const half = Math.min(430, Math.max(300, viewport * 0.375));
-  const collapsed = Math.min(300, Math.max(240, Math.round(viewport * 0.29)), Math.max(180, half - 44));
+  const half = Math.min(430, Math.max(260, viewport * 0.375), viewport * 0.7);
+  const expanded = Math.max(half + 24, Math.min(840, viewport * 0.9, Math.max(0, viewport - 172)));
+  const collapsed = Math.min(300, Math.max(220, Math.round(viewport * 0.28)));
   const peek = Math.min(collapsed - 36, Math.max(168, Math.min(176, Math.round(viewport * 0.18))));
   return { peek, collapsed, half, expanded };
+}
+
+/** Fit the compact detent to its visible content while keeping all four snaps distinct. */
+export function fitCollapsedRouteSheetHeight(heights: RouteSheetHeights, contentHeight: number | null): number {
+  if (contentHeight === null || !Number.isFinite(contentHeight) || contentHeight <= 0) return heights.collapsed;
+  return Math.min(heights.collapsed, Math.max(200, heights.peek + 24, Math.ceil(contentHeight)));
+}
+
+/** Fit the medium detent to the route cards when they fit; long itineraries keep a scrollable list. */
+export function fitMediumRouteSheetHeight(heights: RouteSheetHeights, contentHeight: number | null): number {
+  if (contentHeight === null || !Number.isFinite(contentHeight) || contentHeight <= 0) return heights.half;
+  return Math.min(heights.half, Math.max(heights.collapsed + 24, Math.ceil(contentHeight)));
+}
+
+/** Keep the full detent large enough to remain distinct, but no taller than its content or viewport cap. */
+export function fitExpandedRouteSheetHeight(heights: RouteSheetHeights, contentHeight: number | null): number {
+  if (contentHeight === null || !Number.isFinite(contentHeight) || contentHeight <= 0) return heights.expanded;
+  return Math.min(heights.expanded, Math.max(heights.half + 24, Math.ceil(contentHeight)));
 }
 
 export function nearestRouteSheetSnap(
@@ -37,6 +55,12 @@ export function nearestRouteSheetSnap(
   return choices.reduce((nearest, candidate) =>
     Math.abs(heights[candidate] - height) < Math.abs(heights[nearest] - height) ? candidate : nearest,
   choices[0]!);
+}
+
+/** Recover a sheet left between snap points when its pointer stream is interrupted. */
+export function recoverRouteSheetDrag(height: number, heights: RouteSheetHeights): { snap: RouteSheetSnap; height: number } {
+  const snap = nearestRouteSheetSnap(height, heights);
+  return { snap, height: heights[snap] };
 }
 
 /** Positive velocity means an upward finger swipe; negative means downward. */

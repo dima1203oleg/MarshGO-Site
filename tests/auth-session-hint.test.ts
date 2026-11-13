@@ -3,12 +3,10 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import { ProductionApiError, productionApi } from '../src/services/productionApi';
 
 // The refresh cookie is httpOnly, so a cold start cannot read whether a session
-// exists. These tests pin the local marker that decides whether asking the
-// server is justified: no marker = no request, 401 = marker dropped, network
-// failure = marker kept (a flaky link must not sign the passenger out).
+// exists. Always ask the server: valid cookies restore, 401 means anonymous, and
+// network failure is surfaced without pretending the user signed out.
 
-type Call = { url: string; method: string };
-const storage = new Map<string, string>();
+type Call = { url: string; method: string; authorization: string | null };
 let calls: Call[] = [];
 let replies: Array<() => Response> = [];
 
@@ -19,21 +17,15 @@ function jsonResponse(body: unknown, status = 200): Response {
 const qaUser = { id: 'u1', display_name: 'Тест', phone_e164: '+380500000000', roles: ['passenger'], is_verified: true };
 
 beforeEach(() => {
-  storage.clear();
   calls = [];
   replies = [];
   (globalThis as unknown as { window: unknown }).window = {
-    localStorage: {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => { storage.set(key, value); },
-      removeItem: (key: string) => { storage.delete(key); },
-    },
     setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
     clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id),
     location: { href: 'https://example.test/' },
   };
   (globalThis as unknown as { fetch: unknown }).fetch = async (url: string, init?: RequestInit) => {
-    calls.push({ url: String(url), method: init?.method ?? 'GET' });
+    calls.push({ url: String(url), method: init?.method ?? 'GET', authorization: new Headers(init?.headers).get('authorization') });
     const reply = replies.shift();
     if (!reply) throw new Error(`unexpected request ${url}`);
     return reply();
@@ -46,36 +38,37 @@ afterEach(() => {
 });
 
 describe('cold-start session restore', () => {
-  it('does not ask the server for a session this browser never had', async () => {
+  it('checks the server even without a local session marker and treats 401 as anonymous', async () => {
+    replies.push(() => jsonResponse({ error: { code: 'unauthorized', message: 'No session' } }, 401));
     assert.equal(await productionApi.restoreSession(), null);
-    assert.deepEqual(calls, []);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /\/api\/v1\/auth\/refresh$/);
+    assert.equal(calls[0].method, 'POST');
   });
 
-  it('restores a session when the marker exists and drops the marker on a 401', async () => {
-    storage.set('mg_session_hint', '1');
+  it('restores a valid cookie without consulting local storage', async () => {
     replies.push(() => jsonResponse({ data: { user: qaUser, accessToken: 'token-1' } }));
     const restored = await productionApi.restoreSession();
     assert.equal(restored?.id, 'u1');
-    assert.equal(storage.get('mg_session_hint'), '1');
     assert.match(calls[0].url, /\/api\/v1\/auth\/refresh$/);
     assert.equal(calls[0].method, 'POST');
-
-    storage.set('mg_session_hint', '1');
-    replies.push(() => jsonResponse({ error: { code: 'unauthorized', message: 'No session' } }, 401));
-    await assert.rejects(
-      () => productionApi.restoreSession(),
-      (error: unknown) => error instanceof ProductionApiError && error.status === 401,
-    );
-    assert.equal(storage.has('mg_session_hint'), false, 'an expired cookie must not keep the marker alive');
   });
 
-  it('keeps the marker when the server is unreachable', async () => {
-    storage.set('mg_session_hint', '1');
+  it('clears the in-memory access token on 401', async () => {
+    replies.push(() => jsonResponse({ data: { user: qaUser, accessToken: 'token-1' } }));
+    await productionApi.restoreSession();
+    replies.push(() => jsonResponse({ error: { code: 'unauthorized', message: 'No session' } }, 401));
+    assert.equal(await productionApi.restoreSession(), null);
+    replies.push(() => jsonResponse({ error: { code: 'unauthorized', message: 'No session' } }, 401));
+    await assert.rejects(() => productionApi.me(), (error: unknown) => error instanceof ProductionApiError && error.status === 401);
+    assert.equal(calls[2]?.authorization, null);
+  });
+
+  it('surfaces a network failure without treating it as an anonymous session', async () => {
     replies.push(() => { throw new TypeError('Failed to fetch'); });
     await assert.rejects(
       () => productionApi.restoreSession(),
       (error: unknown) => error instanceof ProductionApiError,
     );
-    assert.equal(storage.get('mg_session_hint'), '1', 'a network failure is not a signed-out state');
   });
 });

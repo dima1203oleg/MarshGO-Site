@@ -139,7 +139,7 @@ export class RouteCameraController {
       ...this.padding,
       bearing: target.bearing ?? 0,
     };
-    this.adapter?.focusCoordinates?.(target.points, padding, SEGMENT_FOCUS_MAX_ZOOM);
+    this.adapter?.focusCoordinates?.(target.points, padding, SEGMENT_FOCUS_MAX_ZOOM, segmentId);
   }
 
   focusTransfer(transferId: string, coordinate: Coordinate, contextPoints: Coordinate[] = []) {
@@ -193,7 +193,7 @@ export class RouteCameraController {
         ...this.padding,
         bearing: options.segmentTarget.bearing ?? 0,
       };
-      this.adapter?.focusCoordinates?.(options.segmentTarget.points, padding, 17);
+      this.adapter?.focusCoordinates?.(options.segmentTarget.points, padding, 17, this.state.activeSegmentId ?? undefined);
       return;
     }
     // ROUTE_OVERVIEW

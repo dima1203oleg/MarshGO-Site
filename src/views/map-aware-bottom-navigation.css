@@ -1,0 +1,26 @@
+@media (max-width: 767px) {
+  .production-app > nav[data-testid="global-bottom-navigation"] {
+    transition:
+      transform var(--mg-dur-slow) var(--mg-ease-entrance),
+      opacity var(--mg-dur-fast) var(--mg-ease-standard);
+  }
+
+  .production-app.map-toolbar-map-context {
+    padding-bottom: 0;
+  }
+
+  .production-app > nav[data-testid="global-bottom-navigation"][data-map-context="true"] {
+    /* Active map guidance owns the whole viewport while the dock slides away. */
+    transform: translate3d(0, calc(100% + env(safe-area-inset-bottom, 0px)), 0) !important;
+    opacity: 0 !important;
+    visibility: hidden;
+    pointer-events: none !important;
+    will-change: transform, opacity;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .production-app > nav[data-testid="global-bottom-navigation"] {
+    transition: none;
+  }
+}

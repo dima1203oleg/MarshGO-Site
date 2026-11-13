@@ -1,6 +1,7 @@
 import {createRoot} from 'react-dom/client';
 import { ProductionMarketplace } from './views/ProductionMarketplace';
 import { isRideshareSimulatorRequest } from './demoEntry';
+import { sensory } from './sensory';
 import './index.css';
 import './styles/responsive-shell.css';
 import './services/theme';
@@ -19,6 +20,7 @@ if (
 ) {
   void import('./demoEntryView').then(({ mountRideshareDemo }) => mountRideshareDemo(rootElement));
 } else {
+  sensory.init();
   createRoot(rootElement).render(<ProductionMarketplace />);
 }
 Reflect.set(window, '__MARSHGO_BOOTED__', true);

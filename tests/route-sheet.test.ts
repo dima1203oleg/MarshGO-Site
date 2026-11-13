@@ -37,7 +37,7 @@ test('route sheet keeps four ordered detents (PEEK -> COMPACT -> MEDIUM -> FULL)
 test('slow release chooses the nearest snap and a quick swipe advances one snap across 4 detents', () => {
   const heights = routeSheetHeights(844);
   assert.equal(nearestRouteSheetSnap(heights.peek + 10, heights), 'peek');
-  assert.equal(nearestRouteSheetSnap(heights.half - 40, heights), 'collapsed');
+  assert.equal(nearestRouteSheetSnap(heights.collapsed + 10, heights), 'collapsed');
   assert.equal(nearestRouteSheetSnap(heights.half + 40, heights), 'half');
   assert.equal(nearestRouteSheetSnap(heights.expanded + 40, heights), 'expanded');
   assert.equal(settleRouteSheetSnap(heights.peek + 25, 0.8, heights, 0.45, heights.peek), 'collapsed');
