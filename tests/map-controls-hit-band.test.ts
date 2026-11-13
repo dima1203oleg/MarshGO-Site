@@ -10,13 +10,9 @@ const routeMap = readFileSync(new URL('../src/views/JourneyRouteMapScreen.tsx', 
  * as the sheet is raised — and raising it is exactly what tapping a stop list does. Every
  * tap in that band dragged the sheet instead of reaching a control, so the affordance lied.
  */
-test('the raised sheet cannot silently steal a tap from the map controls', () => {
-  const column = routeMap.slice(routeMap.indexOf('{/* Floating map controls'));
-  assert.ok(column.length > 0, 'floating controls column not found');
-  assert.match(column.slice(0, 900), /inert=\{sheetSnap === 'expanded'\}/,
-    'the control column must be inert while the expanded sheet overlaps it');
-  assert.match(column.slice(0, 900), /opacity-45/,
-    'an unavailable control must also look unavailable');
+test('floating map controls are omitted from the expanded reference composition', () => {
+  assert.match(routeMap, /\{sheetSnap !== 'expanded' && \(\s*<MapControlRail/,
+    'expanded details keep the map band clear; full controls return at smaller detents');
 });
 
 test('the grabber band that caused the collision is still the full-width sheet handle', () => {

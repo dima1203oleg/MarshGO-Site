@@ -138,7 +138,8 @@ test('CP2: without a browser storage the app degrades to no persistence', () => 
 test('CP2: navigation is entered, exited and logged out through the store, not only through state', () => {
   const source = readFileSync(path.resolve(import.meta.dirname, '../src/views/ProductionMarketplace.tsx'), 'utf8');
   assert.match(source, /onStartJourney=\{\(\) => startJourneyNavigation\(journey\)\}/);
-  assert.match(source, /const exitJourneyNavigation = \(\) => \{\s*activeJourneyStore\.clear\(\);/);
+  assert.match(source, /const exitJourneyNavigation = \(\) => \{\s*cancelJourneyStart\(\);\s*setJourneyInitialFix\(null\);\s*activeJourneyStore\.clear\(\);/);
+  assert.match(source, /onBookOffer=\{\(offerId, journeyId, journeyLegId\) => \{ cancelJourneyStart\(\); onClose\(\); void openJourneyOffer\(offerId, journeyId, journeyLegId\); \}\}/);
   assert.match(source, /initialLegIndex=\{restoredNavigationStage\.current\}/);
   // Both logout paths drop the pointer; the next account on this device sees nothing.
   const logoutBodies = source.split('new OfflineNavigationStore().clear();').slice(1, 3);

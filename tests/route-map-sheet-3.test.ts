@@ -21,7 +21,39 @@ const adapter = read('src/map/MapLibreAdapter.ts');
 
 test('peek sheet separates duration and fare while retaining a compact action', () => {
   assert.match(routeScreen, /data-testid="route-peek-summary-divider"/);
+  assert.match(routeScreen, /data-testid="route-peek-ribbon"/);
+  assert.match(routeScreen, /aria-label="Етапи маршруту — гортайте вбік"/);
+  assert.doesNotMatch(routeScreen, /data-testid="route-peek-chain"|data-testid="route-peek-scale"/);
   assert.match(routeScreen, /route-sheet-peek-cta/);
+});
+
+test('route streets and summary metrics keep compact side-by-side layouts', () => {
+  assert.match(routeScreen, /data-testid="route-sheet-endpoints"/);
+  assert.match(routeScreen, /data-testid="route-sheet-summary"[\s\S]*?route-sheet-summary__metrics/);
+  assert.match(routeScreen, /mg-route-endpoints__name--end/);
+  assert.match(css, /\.route-sheet-endpoints\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+13px\s+minmax\(0,\s*1fr\)/s);
+  assert.match(css, /\.route-sheet-summary\s*\{[^}]*display:\s*flex;/s);
+  assert.match(css, /\.mg-route-endpoints\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+12px\s+minmax\(0,\s*1fr\)/s);
+  assert.match(css, /route-sheet-summary__transfer-short/);
+  assert.match(routeScreen, /aria-label=\{`Вибрати сегмент: \$\{legLabel\(leg\)\}; \$\{originLabel\} до \$\{destinationLabel\}.*walkHint\.title/);
+});
+
+test('expanded route details use a 44px swipeable stage ribbon instead of a tall vertical ribbon', () => {
+  assert.match(routeScreen, /mg-route-ribbon mg-route-ribbon--compact[^>]*role="list"/);
+  assert.match(routeScreen, /mg-route-ribbon__copy[\s\S]*?mg-route-ribbon__label[\s\S]*?mg-route-ribbon__detail/);
+  assert.match(css, /\.mg-route-ribbon--compact\s*\{[^}]*height:\s*var\(--mg-sheet-ribbon-height\);[^}]*min-height:\s*var\(--mg-sheet-ribbon-height\);/s);
+  assert.match(css, /\.mg-route-ribbon--compact \.mg-route-ribbon__pill\s*\{[^}]*height:\s*44px;[^}]*min-height:\s*44px;/s);
+});
+
+test('small mobile route-sheet detents expose details without a tall empty half state', () => {
+  for (const height of [568, 844, 932]) {
+    const snaps = routeSheetHeights(height);
+    assert.ok(snaps.peek < snaps.collapsed && snaps.collapsed < snaps.half && snaps.half < snaps.expanded);
+    assert.ok(snaps.half <= Math.round(height * 0.5), `${height}px half detent should stay compact`);
+    assert.ok(height - snaps.expanded >= 96, `${height}px expanded state keeps a map strip`);
+  }
+  assert.equal(routeSheetHeights(568).collapsed, 220);
+  assert.equal(routeSheetHeights(568).half, 260);
 });
 
 const route: Coordinate[] = [[30.5, 50.4], [30.52, 50.45], [30.55, 50.5]];
@@ -191,9 +223,10 @@ test('transfer and walk hints live inside the sheet, not in floating map callout
   assert.doesNotMatch(routeScreen, /buildCalloutsForLeg|updateCalloutScreenPositions|setCallouts/,
     'the callout builders were the source of the overlapping ПЕРЕСАДКА/ПОЧАТОК ПІШКИ cards');
   assert.match(routeScreen, /data-testid="route-inline-transfer"/, 'a transfer needs a row between its two segment cards');
-  assert.match(routeScreen, /data-testid="route-walk-hint"/, 'a walk leg must say how it starts or transfers inside its own card');
+  assert.doesNotMatch(routeScreen, /data-testid="route-walk-hint"/, 'the redundant pill should not add a full row to every walk segment');
+  assert.match(routeScreen, /walkHint\.title/, 'the same route guidance remains in the segment accessible name');
   assert.match(routeScreen, /function inlineTransferHints\(/);
-  assert.match(routeScreen, /function walkHintFor\(/);
+  assert.match(routeScreen, /import \{ legLabel, walkHintFor \} from '\.\/journeyWalkHint'/, 'the sheet wires the subject-first walk hint helper');
   const cardsAt = routeScreen.indexOf('const renderSegmentCards');
   const transferAt = routeScreen.indexOf('data-testid="route-inline-transfer"');
   const screenRootAt = routeScreen.search(/return\s*\(\s*<(?:main|section)\b/);
@@ -204,19 +237,44 @@ test('transfer and walk hints live inside the sheet, not in floating map callout
     'the segment list must render those cards and their transfer rows');
 });
 
+test('route details show confirmed start, boarding and alighting anchors on the map', () => {
+  assert.match(routeScreen, /title: 'Старт'/, 'the map marks the real journey origin');
+  assert.match(routeScreen, /verifiedWalkToBoarding[\s\S]*?contextLines\.push\(verifiedWalkToBoarding\)/,
+    'initial focus includes the verified approach walk so its start anchor can remain visible');
+  assert.match(routeScreen, /points: \[\.\.\.target\.points, origin\]/,
+    'camera framing includes the verified journey-origin point without inventing connector geometry');
+  assert.match(routeScreen, /isValidCoordinate\(reportedOrigin\) \? reportedOrigin : verifiedWalkOrigin/,
+    'the start callout may fall back only to the confirmed walk geometry origin');
+  assert.match(routeScreen, /buildRouteMapAnnotations\(\{[\s\S]*?preferredLegId: activeSegmentId \?\? primaryLeg\?\.id[\s\S]*?focusedOnly: true/,
+    'boarding and alighting labels use the focused provider-backed transit leg');
+  assert.match(routeScreen, /annotation\.kind === 'BOARDING' \|\| annotation\.kind === 'ALIGHTING'/,
+    'map callouts avoid repeating walking guidance already available in the sheet');
+  assert.match(routeScreen, /\.map\(annotation => \(\{ \.\.\.annotation, tone: 'blue' as const \}\)\)/,
+    'the route anchors use the canonical cold-blue accent');
+  assert.match(routeScreen, /routeLabels=\{routeLabels\}/, 'the confirmed labels reach the existing MapLibre instance');
+});
+
 test('the duplicated stage narration is gone and the sheet breathes without it', () => {
   assert.doesNotMatch(routeScreen, /smart-step-guidance/, 'the pinned smart-step aside repeated what the active card already says');
   assert.doesNotMatch(routeScreen, /route-medium-stages/, 'the MEDIUM line repeated the ribbon labels and durations');
-  assert.match(routeScreen, /data-testid="route-show-on-map"/, 'FULL must offer one tap back to the map');
-  assert.match(routeScreen, /className="space-y-1 pt-0\.5"/, 'segment cards must use the compact one-step rhythm');
-  const pillAt = routeScreen.indexOf('data-testid="route-show-on-map"');
-  const pillBlock = routeScreen.slice(pillAt - 600, pillAt + 120);
-  assert.match(pillBlock, /top: 'max\(\.5rem, env\(safe-area-inset-top\)\)'/,
-    'the FULL-state pill lives in the strip padding instead of covering the fitted geometry');
+  assert.doesNotMatch(routeScreen, /data-testid="route-show-on-map"/, 'the expanded map band stays free of a duplicate map button');
+  assert.match(routeScreen, /data-testid="route-map-expanded-toolbar"/, 'FULL keeps the route context, back action, and map layers visible above the sheet');
+  assert.match(routeScreen, /route-map-context-pill[\s\S]*Маршрут · \{cleanStopName\(lastLeg\?\.destination\.name\)/, 'the map toolbar names the actual destination instead of repeating the app brand');
+  assert.match(routeScreen, /<MapLayersControl overlays\/>/, 'the expanded map toolbar reuses the canonical layer control');
+  assert.match(routeScreen, /<Bookmark size=\{20\} fill=\{saved \? 'currentColor' : 'none'\}\/\>/, 'route saving uses the reference bookmark glyph');
+  assert.match(routeScreen, /sheetSnap !== 'peek' && sheetSnap !== 'expanded'/, 'the expanded reference state keeps one primary CTA and removes the secondary map button');
+  assert.match(routeScreen, /sheetSnap === 'expanded'[\s\S]*?<Navigation size=\{20\} fill="currentColor"/, 'the expanded primary CTA uses the navigation arrow');
+  assert.match(routeScreen, /bg-\[var\(--route-card-alt\)\] text-\[var\(--route-ink\)\]/, 'transport glyph tiles share the restrained graphite palette');
+  const density = readFileSync(new URL('../src/views/routeSheetDensity.css', import.meta.url), 'utf8');
+  assert.match(density, /\.mg-route-segment-list::before[\s\S]*background: linear-gradient\(to bottom/, 'the route cards are joined by the reference timeline rail');
+  assert.match(density, /\.mg-route-segment\[data-active="true"\]::before[\s\S]*border-color: var\(--mg-blue\)/, 'the selected stage is identified by its timeline node');
+  assert.match(routeScreen, /className="mg-route-segment-list"/, 'segment cards must use the token-driven compact one-step rhythm');
+  assert.match(routeScreen, /onClick=\{\(\) => \{ showWholeRoute\(\); moveToSnap\('half'\); \}\}/,
+    'the pinned map action returns to the route without covering the expanded map band');
   assert.match(routeScreen, /topBarHeight: 100/,
     'the measured 102 px compact header must be reserved, not a nominal 84 px');
-  assert.match(routeScreen, /extraBottomInset: floatingChipVisible \? 58 : 0/,
-    'the camera must reserve the live chip above the sheet');
+  assert.match(routeScreen, /extraBottomInset: bottomNavigationInset \+ \(floatingChipVisible \? 58 : 0\)/,
+    'the camera must reserve the navigation inset and the live chip above the sheet');
 });
 
 test('the primary action uses the canonical blue–graphite ramp, never purple', () => {
@@ -225,7 +283,7 @@ test('the primary action uses the canonical blue–graphite ramp, never purple',
   assert.match(block, /var\(--mg-action\)/, 'the CTA must be built from the action token');
   assert.match(block, /var\(--mg-navy\)/, 'the graphite stop of the ramp must be the navy token');
   assert.doesNotMatch(block, /#A21CFF|#7C1BE3|#A855F7|#8845E8/i, 'the purple route CTA palette must not come back');
-  assert.match(block, /min-height: 52px;/, 'the compact CTA keeps a 44 px+ touch target');
+  assert.match(block, /min-height: var\(--mg-sheet-cta-min-height\);/, 'the compact CTA keeps a 44 px+ touch target');
   assert.match(block, /color-mix\(in srgb, var\(--mg-blue\) 68%, transparent\)/, 'the focus ring follows the accent token');
 
   // The app-wide touch-target floor is (0,2,1) and a single-class rule is (0,1,0):
@@ -242,9 +300,11 @@ test('the primary action uses the canonical blue–graphite ramp, never purple',
   assert.match(routeScreen, /bg-\[var\(--mg-action\)\]/, 'the community booking button must be a filled action control');
 });
 
-test('stop rows keep a dense but tappable 36 px rhythm', () => {
-  const rows = [...stops.matchAll(/min-h-(7|8|9|10)\b/g)].map(match => match[0]);
-  assert.ok(rows.length >= 2, 'both the button and static stop rows must declare their minimum height');
-  assert.ok(rows.every(row => row === 'min-h-9' || row === 'min-h-10'), `stop rows drifted off the 36–40 px band: ${rows.join(', ')}`);
-  assert.doesNotMatch(stops, /min-h-7\b/, 'the 28 px stop row is too short for a thumb');
+test('stop rows separate time, axis and wrapping name with a 44px interaction floor', () => {
+  const density = readFileSync(new URL('../src/views/routeSheetDensity.css', import.meta.url), 'utf8');
+  assert.equal((stops.match(/className=\{?`?"?mg-journey-stop-row/g) ?? []).length, 2, 'both static and interactive rows use the shared layout');
+  assert.match(density, /grid-template-columns: 44px 16px minmax\(0, 1fr\)/);
+  assert.match(density, /\.mg-journey-stop-row\s*\{[^}]*min-height: 34px/s);
+  assert.match(density, /button\.mg-journey-stop-row\s*\{ min-height: 44px;/);
+  assert.match(stops, /mg-journey-stop-axis/);
 });

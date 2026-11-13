@@ -74,6 +74,40 @@ test('boarding and alighting chips near an edge grow toward the map interior', (
   assert.equal(byId.get('walk:m'), 'center');
 });
 
+test('nearby boarding and alighting callouts stay readable with a small map-space offset', () => {
+  const labels = [
+    annotation({ id: 'boarding:near', kind: 'BOARDING', title: 'Посадка', detail: 'Кавалерідзе' }),
+    annotation({ id: 'alighting:near', kind: 'ALIGHTING', title: 'Висадка', detail: 'Театральна' }),
+  ];
+  const placed = placeJourneyLabels(labels, projector({
+    'boarding:near': { x: 170, y: 320 },
+    'alighting:near': { x: 205, y: 344 },
+  }), VIEWPORT);
+  assert.deepEqual(placed.map(item => item.annotation.id), ['boarding:near', 'alighting:near']);
+  const rectangles = placed.map(item => {
+    const point = projector({ [item.annotation.id]: item.annotation.id === 'boarding:near' ? { x: 170, y: 320 } : { x: 205, y: 344 } })(item.annotation)!;
+    const offset = item.offset ?? [0, 0];
+    return labelRectPx({ x: point.x + offset[0], y: point.y + offset[1] }, estimateLabelBoxPx(item.annotation), item.anchor);
+  });
+  assert.equal(rectangles.some((rect, index) => index > 0 && rectangles.slice(0, index).some(other =>
+    other.left - 4 < rect.right && rect.left - 4 < other.right && other.top - 4 < rect.bottom && rect.top - 4 < other.bottom,
+  )), false);
+  assert.ok(placed[1]?.offset, 'the second stop label moves enough to leave a clear gap');
+});
+
+test('a nearby route start callout shifts to the open side of the boarding chip', () => {
+  const labels = [
+    annotation({ id: 'journey-start', kind: 'ROUTE', title: 'Старт' }),
+    annotation({ id: 'boarding:leg', kind: 'BOARDING', title: 'Посадка' }),
+  ];
+  const placed = placeJourneyLabels(labels, projector({
+    'journey-start': { x: 145, y: 320 },
+    'boarding:leg': { x: 200, y: 320 },
+  }), VIEWPORT);
+  assert.deepEqual(placed.map(item => item.annotation.id), ['journey-start', 'boarding:leg']);
+  assert.equal(placed.find(item => item.annotation.id === 'journey-start')?.anchor, 'right');
+});
+
 test('edgeAnchorFor keeps a centred chip centred while it fits', () => {
   const box = { width: 120, height: 30 };
   assert.equal(edgeAnchorFor({ x: 195 }, box, 390), 'center');

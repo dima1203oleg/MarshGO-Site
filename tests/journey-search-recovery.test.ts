@@ -9,6 +9,7 @@ import {
   JOURNEY_EMPTY_PROVIDER_FAILURE_COPY,
   JOURNEY_SEARCH_UNAVAILABLE_COPY,
   journeyEmptyStateKind,
+  journeyNoRoutesCopy,
   journeySearchFailureKind,
 } from '../src/views/journeySearchRecovery';
 import { truncationNotices } from '../src/views/resultsDiagnostics';
@@ -61,6 +62,22 @@ describe('empty-results classification', () => {
   it('a healthy empty corridor stays a legitimate zero-result state', () => {
     assert.equal(journeyEmptyStateKind(emptyResult(completeness(false))), 'no-routes');
     assert.equal(journeyEmptyStateKind(emptyResult()), 'no-routes');
+  });
+
+  it('explains a healthy empty search without suggesting a broken search', () => {
+    assert.match(journeyNoRoutesCopy(emptyResult(completeness(false))), /не знайдено підтверджених поєднань маршрутів/);
+  });
+
+  it('explains when requested transport modes have no confirmed service', () => {
+    const result = emptyResult(completeness(false));
+    result.unsupportedPreferences.push('transportType:bus:no-routed-provider-in-corridor');
+    assert.match(journeyNoRoutesCopy(result), /частини обраних видів транспорту/);
+
+    const withUnavailableMode = emptyResult({
+      ...completeness(false),
+      modesUnavailable: [{ mode: 'bus', available: false, requested: true, reason: 'no_source' }],
+    });
+    assert.match(journeyNoRoutesCopy(withUnavailableMode), /частини обраних видів транспорту/);
   });
 });
 

@@ -1,6 +1,12 @@
 import type { Coordinate } from '../../shared/navigation/contracts';
 import type { CameraMoveEffort } from './cameraMotion';
 
+/** Use the measured point-cloud fit for an explicit bearing; zero is north-up, not “unchanged”. */
+export function shouldUsePointCloudFit(points: readonly Coordinate[], bearing: number | undefined): boolean {
+  return typeof bearing === 'number' && Number.isFinite(bearing)
+    && (bearing !== 0 || points.length >= 2);
+}
+
 /** Shortest absolute turn between two compass bearings, in degrees (0..180). */
 export function shortestBearingDelta(from: number, to: number): number {
   if (!Number.isFinite(from) || !Number.isFinite(to)) return 0;

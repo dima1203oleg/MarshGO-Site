@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { ArrowRight, BusFront, CheckCircle2, ChevronLeft, ChevronRight, CirclePlus, Navigation, QrCode, Search, ShieldCheck, Ticket } from 'lucide-react';
+import { ArrowRight, BusFront, CheckCircle2, ChevronLeft, ChevronRight, CirclePlus, MapPin, Navigation, QrCode, Search, ShieldCheck, Ticket } from 'lucide-react';
 import { selectHomeMarshPasses } from '../domain/marshPass';
 import { calculateHomeAvailableHeight } from './homeViewport';
+import './homeReference.css';
 
 type HomeTrip = {
   id: string;
@@ -25,9 +26,9 @@ const actions = [
 ] as const;
 
 const popularRoutes = [
-  { city: 'Київ', image: '/images/welcome-kyiv-v1.jpg' },
-  { city: 'Рівне', image: '/images/welcome-road.jpg' },
-  { city: 'Тернопіль', image: '/images/lviv_stop_banner.jpg' },
+  { origin: 'Львів', city: 'Київ' },
+  { origin: 'Львів', city: 'Рівне' },
+  { origin: 'Львів', city: 'Тернопіль' },
 ] as const;
 
 function formatDeparture(value: string): string {
@@ -52,7 +53,7 @@ export function HomeHero({
   onOpenTrips: () => void;
   onPublishTrip: () => void;
   onOpenMap: () => void;
-  onSearchDestination: (city: string) => void;
+  onSearchDestination: (city: string, origin: string) => void;
   trips?: HomeTrip[];
 }) {
   const root = useRef<HTMLElement | null>(null);
@@ -110,22 +111,27 @@ export function HomeHero({
       </button>
       {marshPasses.length > 1 && <div className="mt-1.5 flex items-center justify-center gap-3"><button type="button" aria-label="Попередній MarshPass" onClick={() => setPassIndex((index) => (index - 1 + marshPasses.length) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-slate-700 bg-slate-800 text-slate-100"><ChevronLeft size={16}/></button><span aria-live="polite" className="text-xs font-bold text-slate-300">{passIndex + 1} / {marshPasses.length}</span><button type="button" aria-label="Наступний MarshPass" onClick={() => setPassIndex((index) => (index + 1) % marshPasses.length)} className="mg-press-subtle grid h-11 w-11 place-items-center rounded-full border border-slate-700 bg-slate-800 text-slate-100"><ChevronRight size={16}/></button></div>}
     </section> : <button type="button" onClick={onOpenTrips} aria-label="Відкрити майбутні поїздки та квитки MarshPass" className="home-canonical-banner home-banner home-marshpass-card home-marshpass-promo mg-press-subtle relative mb-3 flex w-full shrink-0 flex-col justify-between overflow-hidden rounded-[var(--mg-radius-xl)] border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-primary)] p-4 text-left shadow-[var(--mg-card-shadow)]">
+      <span aria-hidden="true" className="home-marshpass-promo__reference-art"/>
       <span aria-hidden="true" className="home-marshpass-promo__route">
         <svg viewBox="0 0 220 96" fill="none" preserveAspectRatio="xMidYMid meet">
-          <path d="M8 76C46 76 53 25 92 25H116C151 25 151 70 187 70H211" />
-          <circle cx="10" cy="76" r="5" />
-          <circle cx="92" cy="25" r="5" />
-          <circle cx="210" cy="70" r="5" />
+          <path className="home-marshpass-promo__contour" d="M87 8C117 17 141 8 165 17C184 24 198 19 218 11M91 17C119 26 143 17 164 26C185 35 199 29 218 22M103 27C125 35 145 28 163 37C180 45 196 42 212 34" />
+          <path d="M12 77C43 77 49 31 80 31C110 31 111 55 136 55C156 55 168 31 181 20" />
+          <circle cx="12" cy="77" r="5" />
+          <circle cx="80" cy="31" r="3.5" />
+          <circle cx="136" cy="55" r="3.5" />
         </svg>
       </span>
+      <span className="home-marshpass-promo__destination" aria-hidden="true"><MapPin size={27} strokeWidth={2.5}/></span>
       <span className="home-marshpass-promo__eyebrow relative flex items-center gap-2 text-xs font-black tracking-[.16em] text-[var(--mg-ink-secondary)]"><span className="grid h-8 w-8 place-items-center rounded-xl bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]"><Ticket size={17}/></span>MARSH PASS</span>
       <span className="home-marshpass-promo__title relative block font-display text-[1.35rem] font-extrabold leading-tight text-[var(--mg-ink-primary)]">Твій шлях. Один квиток.</span>
-      <span className="home-marshpass-promo__footer relative flex items-center justify-between border-t border-dashed border-[var(--mg-border-subtle)] pt-2 text-xs font-bold tracking-[.28em] text-[var(--mg-ink-secondary)]"><span>MARSHGO</span><span className="home-marshpass-promo__caption">Квиток підтвердженої попутки</span></span>
+      <span className="home-marshpass-promo__description relative block text-xs font-medium leading-snug text-[var(--mg-ink-secondary)]">Увесь міський і міжміський транспорт<br/>в одному рішенні.</span>
+      <span className="home-marshpass-promo__footer relative flex items-center justify-between border-t border-dashed border-[var(--mg-border-subtle)] pt-2 text-xs font-bold tracking-[.28em] text-[var(--mg-ink-secondary)]"><span>MARSHGO</span><span className="home-marshpass-promo__barcode" aria-hidden="true"/></span>
     </button>}
 
     <div className="home-action-grid mg-stagger-list grid grid-cols-2 gap-2" aria-label="Швидкі дії">
       {actions.map(({ title, subtitle, tone, icon: Icon }, index) => <button key={tone} type="button" style={{ '--mg-stagger-i': index } as CSSProperties} onClick={() => runAction(tone)} className={`home-action-card home-action-card--${tone} mg-press relative flex min-h-[92px] flex-col items-start justify-center gap-2 overflow-hidden rounded-[var(--mg-radius-xl)] border p-3 text-left transition active:scale-[.98]`}>
         <span className="home-action-icon relative z-10 grid h-10 w-10 place-items-center rounded-2xl"><Icon size={20} strokeWidth={2.3}/></span>
+        <span aria-hidden="true" className={`home-action-card__reference-art home-action-card__reference-art--${tone}`}/>
         <span className="relative z-10 w-full">
           <span className="min-w-0"><span className="home-action-card__title block text-[14px] font-black leading-tight tracking-tight">{title}</span><span className="home-action-card__subtitle mt-0.5 block text-xs font-semibold leading-snug">{subtitle}</span></span>
         </span>
@@ -136,10 +142,10 @@ export function HomeHero({
     <section className="home-popular-routes mt-3 min-h-0" aria-labelledby="popular-routes-title">
       <div className="mb-2 flex items-center justify-between px-1"><h2 id="popular-routes-title" className="text-[15px] font-black text-[var(--mg-ink)]">Популярні напрямки</h2><button type="button" onClick={onSearchTrip} className="mg-press-subtle inline-flex min-h-11 items-center gap-1 text-[12px] font-bold text-blue-600">Показати всі <ChevronRight className="inline" size={13}/></button></div>
       <div className="home-popular-routes__row no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
-        {popularRoutes.map(({ city, image }) => <button key={city} type="button" onClick={() => onSearchDestination(city)} className="home-popular-route mg-press relative h-[68px] min-w-[108px] flex-1 overflow-hidden rounded-2xl border border-white/70 bg-slate-200 text-left shadow-sm">
-          <img src={image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover"/>
+        {popularRoutes.map(({ origin, city }) => <button key={city} type="button" aria-label={`Маршрут ${origin} — ${city}`} onClick={() => onSearchDestination(city, origin)} className="home-popular-route mg-press relative h-[68px] min-w-[108px] flex-1 overflow-hidden rounded-2xl border border-white/70 bg-slate-200 text-left shadow-sm">
+          <span aria-hidden="true" className="home-popular-route__reference-photo"/>
           <span className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/35 to-transparent"/>
-          <span className="absolute inset-x-2 bottom-2 flex items-end justify-between gap-1 text-[12px] font-extrabold leading-tight text-white">Львів → {city}<ChevronRight size={14} className="shrink-0"/></span>
+          <span className="home-popular-route__label absolute inset-x-2 bottom-2 flex items-end justify-between gap-1 text-[12px] font-extrabold leading-tight text-white"><span>{origin} →<br/>{city}</span><ChevronRight size={14} className="shrink-0"/></span>
         </button>)}
       </div>
     </section>

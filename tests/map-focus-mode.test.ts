@@ -15,9 +15,9 @@ test('normal navigation renders exactly the selected map layers', () => {
 
 test('segment focus highlights the selected leg and dims the rest of the itinerary', () => {
   const itinerary = [
-    { id: 'walk', coordinates: [[24, 49], [24.01, 49.01]] as [number, number][], modeColor: '#91A6BB' },
-    { id: 'minibus', coordinates: [[24.01, 49.01], [24.2, 49.2]] as [number, number][], modeColor: '#F43F7B' },
-    { id: 'carpool', coordinates: [[24.2, 49.2], [24.3, 49.3]] as [number, number][], modeColor: '#A855F7' },
+    { id: 'walk', coordinates: [[24, 49], [24.01, 49.01]] as [number, number][], modeColor: '#91A6BB', isWalk: true },
+    { id: 'minibus', coordinates: [[24.01, 49.01], [24.2, 49.2]] as [number, number][], modeColor: '#F43F7B', isWalk: false },
+    { id: 'carpool', coordinates: [[24.2, 49.2], [24.3, 49.3]] as [number, number][], modeColor: '#A855F7', isWalk: false },
   ];
 
   // Removing the other legs made the trip lose its shape on the map, so focus dims them instead.

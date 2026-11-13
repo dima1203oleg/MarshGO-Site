@@ -1,9 +1,11 @@
 import type { Coordinate } from '../../shared/navigation/contracts';
 import type { MapAnnotation } from '../map/MapAdapter';
+import { focusedApproachVehicles } from '../map/transportVisualZones';
 import type { ApiJourney, ApiJourneyLive } from '../services/productionApi';
 import { formatJourneyDistance, formatJourneyDuration } from './journeyResultPresentation';
 import { journeyLegLabel } from './journeyLegLabel';
 import { shortPlace } from './journeyStageNavigation';
+import { isValidCoordinate, lineMidpointByDistance, sanitizeLineCoordinates } from '../map/lineGeometry';
 
 type Leg = ApiJourney['legs'][number];
 type LiveSegment = ApiJourneyLive['segments'][number];
@@ -35,39 +37,7 @@ export function formatStopCount(value: number): string {
 }
 
 function validCoordinate(point: unknown): point is Coordinate {
-  return Array.isArray(point) && point.length === 2
-    && Number.isFinite(point[0]) && Number.isFinite(point[1]);
-}
-
-function midpoint(coordinates: readonly Coordinate[] | null | undefined): Coordinate | null {
-  if (!coordinates || coordinates.length < 2) return null;
-  let walked = 0;
-  const segments: number[] = [];
-  for (let index = 0; index < coordinates.length - 1; index += 1) {
-    const from = coordinates[index]!;
-    const to = coordinates[index + 1]!;
-    const length = Math.hypot(to[0] - from[0], to[1] - from[1]);
-    segments.push(length);
-    walked += length;
-  }
-  if (walked === 0) return coordinates[Math.floor(coordinates.length / 2)]!;
-  let target = walked / 2;
-  for (let index = 0; index < segments.length; index += 1) {
-    if (target <= segments[index]!) {
-      const ratio = segments[index] === 0 ? 0 : target / segments[index]!;
-      const from = coordinates[index]!;
-      const to = coordinates[index + 1]!;
-      return [from[0] + (to[0] - from[0]) * ratio, from[1] + (to[1] - from[1]) * ratio];
-    }
-    target -= segments[index]!;
-  }
-  return coordinates.at(-1)!;
-}
-
-function legGeometry(leg: Leg): Coordinate[] {
-  const geometry = Array.isArray(leg.routeGeometry) ? leg.routeGeometry.filter(validCoordinate) : [];
-  if (geometry.length >= 2) return geometry;
-  return [leg.origin.coordinates, leg.destination.coordinates].filter(validCoordinate);
+  return isValidCoordinate(point);
 }
 
 function routeLabel(leg: Leg, live: LiveSegment | undefined): string {
@@ -88,10 +58,14 @@ export function buildRouteMapAnnotations({
   journey,
   live,
   preferredLegId,
+  focusedOnly = false,
+  now,
 }: {
   journey: ApiJourney;
   live: ApiJourneyLive | null;
   preferredLegId?: string | null;
+  focusedOnly?: boolean;
+  now?: number;
 }): MapAnnotation[] {
   const annotations: MapAnnotation[] = [];
   const legs = journey.legs;
@@ -102,7 +76,10 @@ export function buildRouteMapAnnotations({
 
   legs.forEach((leg, index) => {
     if (leg.mode !== 'WALK') return;
-    const point = midpoint(legGeometry(leg));
+    // A fallback chord between endpoints is not a pedestrian path. If no
+    // validated walking geometry exists, omit its map label rather than place
+    // it over an unrelated street or building.
+    const point = lineMidpointByDistance(sanitizeLineCoordinates(leg.routeGeometry));
     if (!point) return;
     const first = index === 0;
     const last = index === legs.length - 1;
@@ -137,10 +114,10 @@ export function buildRouteMapAnnotations({
     });
   }
 
-  if (transit && liveSegment && liveLine) {
+  if (!focusedOnly && transit && liveSegment && liveLine) {
     const [terminusFrom, terminusTo] = directionTermini(liveLine.direction);
-    const before = liveLine.zones?.beforeBoarding;
-    const after = liveLine.zones?.afterAlighting;
+    const before = sanitizeLineCoordinates(liveLine.zones?.beforeBoarding);
+    const after = sanitizeLineCoordinates(liveLine.zones?.afterAlighting);
     if (liveLine.geometryScope !== 'leg_only') {
       if (before?.length && terminusFrom) {
         annotations.push({
@@ -151,7 +128,7 @@ export function buildRouteMapAnnotations({
           detail: shortPlace(terminusFrom),
           tone: 'neutral',
         });
-        const routePoint = midpoint(before);
+        const routePoint = lineMidpointByDistance(before);
         if (routePoint) annotations.push({ id: `route:before:${liveLine.id}`, kind: 'ROUTE', coordinates: routePoint, title: name, tone: 'purple' });
       }
       if (after?.length && terminusTo) {
@@ -163,13 +140,13 @@ export function buildRouteMapAnnotations({
           detail: shortPlace(terminusTo),
           tone: 'neutral',
         });
-        const routePoint = midpoint(after);
+        const routePoint = lineMidpointByDistance(after);
         if (routePoint) annotations.push({ id: `route:after:${liveLine.id}`, kind: 'ROUTE', coordinates: routePoint, title: name, tone: 'purple' });
       }
     }
   }
 
-  for (const vehicle of liveSegment?.vehicles ?? []) {
+  for (const vehicle of focusedOnly ? focusedApproachVehicles(liveSegment?.vehicles ?? [], now) : liveSegment?.vehicles ?? []) {
     if (!validCoordinate(vehicle.coordinates)) continue;
     const level = vehicle.priority?.level;
     const eta = typeof vehicle.etaSeconds === 'number' && Number.isFinite(vehicle.etaSeconds) && vehicle.etaSeconds > 0
