@@ -23,6 +23,7 @@ import {
   formatJourneyDurationTile,
   formatJourneyDistance,
   journeyRouteBadge,
+  journeySummaryDepartureAt,
 } from './journeyResultPresentation';
 import { journeyPriceDisplay, legPriceDisplay } from './cashFare';
 import {
@@ -184,6 +185,7 @@ export function JourneyRouteMapScreen({
   const timeline = useMemo(() => timelineFor(journey), [journey]);
   const firstLeg = journey.legs[0];
   const lastLeg = journey.legs.at(-1);
+  const summaryDepartureAt = journeySummaryDepartureAt(journey);
   const primaryLeg = useMemo(() => primaryTransitLeg(journey.legs), [journey.legs]);
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
@@ -1405,11 +1407,11 @@ export function JourneyRouteMapScreen({
                 className="route-sheet-summary shrink-0"
                 data-testid="route-sheet-summary"
                 role="group"
-                aria-label={`${firstLeg ? formatTime(firstLeg.departureAt) : 'Час невідомий'} — ${lastLeg ? formatTime(lastLeg.arrivalAt) : 'час невідомий'}, ${formatDuration(allDuration)}, ${formatSegmentCount(journey.legs.length)}, ${journey.transfers > 0 ? formatTransferCount(journey.transfers) : 'без пересадок'}, ціна ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`}
+                aria-label={`${summaryDepartureAt ? formatTime(summaryDepartureAt) : 'Час невідомий'} — ${lastLeg ? formatTime(lastLeg.arrivalAt) : 'час невідомий'}, ${formatDuration(allDuration)}, ${formatSegmentCount(journey.legs.length)}, ${journey.transfers > 0 ? formatTransferCount(journey.transfers) : 'без пересадок'}, ціна ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`}
               >
                 <span className="route-sheet-summary__metrics mg-pop mg-stagger" style={{ ['--mg-stagger-i' as string]: 0 }}>
                   <strong className="route-sheet-summary__times tabular-nums">
-                    <span>{firstLeg ? formatTime(firstLeg.departureAt) : '—'}</span>
+                    <span>{summaryDepartureAt ? formatTime(summaryDepartureAt) : '—'}</span>
                     <ArrowRight size={12} aria-hidden="true" className="shrink-0 text-[var(--route-muted)]"/>
                     <span>{lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}</span>
                   </strong>
