@@ -853,8 +853,10 @@ export const productionApi = {
   agreeProposal(proposalId: string) {
     return request<ApiProposal>(`/proposals/${proposalId}/agree`, { method: 'POST' });
   },
-  acceptProposal(proposalId: string) {
-    return request<ApiBooking>(`/proposals/${proposalId}/accept`, { method: 'POST' });
+  acceptProposal(proposalId: string, expectedRevision: number) {
+    return request<ApiBooking>(`/proposals/${proposalId}/accept`, {
+      method: 'POST', body: JSON.stringify({ expectedRevision }),
+    });
   },
   cancelDemand(demandId: string) {
     return request<{ id: string; status: string }>(`/demands/${demandId}/cancel`, { method: 'POST' });
