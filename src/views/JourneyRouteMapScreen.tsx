@@ -1432,8 +1432,8 @@ export function JourneyRouteMapScreen({
                     const walk = item.leg.mode === 'WALK';
                     return (
                       <div key={item.id} role="listitem" className={`mg-route-ribbon__item${activeSegmentId && !selected ? ' is-muted' : ''}`}>
-                        <button type="button" onClick={() => chooseSegment(item.id)} aria-pressed={selected} aria-label={`Вибрати етап: ${item.label}, ${item.detail}`} className={`mg-route-ribbon__pill mg-press-subtle${selected ? ' is-active' : ''}`} style={{ backgroundColor: walk ? 'var(--route-ribbon-walk)' : item.color }}>
-                          <TransportIcon mode={item.leg.mode} transportType={item.leg.transportType} size={16} strokeWidth={2.4}/>
+                        <button type="button" onClick={() => chooseSegment(item.id)} aria-pressed={selected} aria-label={`Вибрати етап: ${item.label}, ${item.detail}`} className={`mg-route-ribbon__pill mg-press-subtle${selected ? ' is-active' : ''}`} style={{ backgroundColor: 'var(--route-card)', borderColor: walk ? 'var(--route-ribbon-walk)' : item.color }}>
+                          <span className="shrink-0" style={{ color: walk ? 'var(--route-ribbon-walk)' : item.color }}><TransportIcon mode={item.leg.mode} transportType={item.leg.transportType} size={16} strokeWidth={2.4}/></span>
                           <span className="mg-route-ribbon__copy">
                             <span className="mg-route-ribbon__label">{item.label}</span>
                             <span className="mg-route-ribbon__detail">{item.detail}</span>
