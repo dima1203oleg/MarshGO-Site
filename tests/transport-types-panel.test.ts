@@ -27,6 +27,6 @@ describe('transport type selector', () => {
 
     const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
     assert.match(css, /\.transport-types-inline \.transport-mode-grid--horizontal\s*\{[^}]*overflow-x:\s*auto;[^}]*scroll-snap-type:\s*x mandatory;/);
-    assert.match(css, /\.transport-types-inline \.transport-mode-grid--horizontal\s*>\s*button\s*\{[^}]*scroll-snap-align:\s*start;/);
+    assert.match(css, /\.transport-types-inline \.transport-mode-grid--horizontal\s*>\s*button\s*\{[^}]*flex:\s*0 0 5rem;[^}]*scroll-snap-align:\s*start;/);
   });
 });

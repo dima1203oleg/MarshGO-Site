@@ -388,7 +388,7 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
   scrollbar-color: var(--mg-blue) transparent;
 }
 .transport-types-inline .transport-mode-grid--horizontal > button {
-  flex: 0 0 4.65rem;
+  flex: 0 0 5rem;
   min-height: 4.25rem;
   scroll-snap-align: start;
 }
