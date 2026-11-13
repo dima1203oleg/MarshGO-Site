@@ -1638,14 +1638,30 @@ export function ProductionMarketplace() {
   const confirmProposal = async (proposal: ApiProposal) => {
     setBusy(true);
     try {
-      await productionApi.acceptProposal(proposal.id);
+      await productionApi.acceptProposal(proposal.id, proposal.revision_number);
       sensory.emit({ type: 'BOOKING_CONFIRMED' });
       const refreshed = await refreshCommittedActionData([refreshBookings, refreshMyDemands]);
       setStatusMessage(refreshed
         ? 'Домовленість підтверджено, бронювання створено.'
         : 'Домовленість підтверджено. Список поїздок оновиться після повторного відкриття.');
       setSelectedDemand(null); setTab('trips');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити бронювання.'); sensory.emit({ type: 'ERROR_SOFT' }); }
+    } catch (error) {
+      sensory.emit({ type: 'ERROR_SOFT' });
+      if (error instanceof ProductionApiError && error.code === 'proposal_revision_changed') {
+        if (selectedDemand) {
+          try {
+            await viewDemand(selectedDemand, selectedDemandIsOwned);
+            setStatusMessage('Умови пропозиції змінилися. Перевірте оновлені ціну й час, перш ніж підтверджувати бронювання.');
+          } catch {
+            setStatusMessage('Умови пропозиції змінилися, але список не вдалося оновити. Оновіть заявку перед підтвердженням.');
+          }
+        } else {
+          setStatusMessage('Умови пропозиції змінилися. Відкрийте заявку ще раз і перевірте актуальні ціну й час.');
+        }
+      } else {
+        setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити бронювання.');
+      }
+    }
     finally { setBusy(false); }
   };
 
