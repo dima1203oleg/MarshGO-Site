@@ -50,3 +50,13 @@ test('summary pills pop once when details open', () => {
   assert.match(routeScreen, /route-sheet-summary__metrics mg-pop mg-stagger/);
   assert.match(routeScreen, /route-sheet-summary__fare mg-pop mg-stagger/);
 });
+
+test('compact ribbon text uses a surface instead of transport fill and stays opaque', () => {
+  assert.match(routeScreen, /backgroundColor: 'var\(--route-card\)', borderColor: walk \? 'var\(--route-ribbon-walk\)' : item\.color/);
+  assert.match(css, /\.mg-route-ribbon--compact \.mg-route-ribbon__item\.is-muted \{ opacity: 1; \}/);
+  for (const name of ['label', 'detail']) {
+    const rule = css.match(new RegExp(`\\.mg-route-ribbon--compact \\.mg-route-ribbon__${name} \\{([^}]+)\\}`))?.[1];
+    assert.ok(rule);
+    assert.doesNotMatch(rule, /font-size:/, 'compact text inherits the readable ribbon type scale');
+  }
+});

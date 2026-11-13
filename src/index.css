@@ -396,15 +396,10 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
 .transport-types-inline .transport-mode-grid--horizontal::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--mg-blue); }
 .transport-mode-tile__label { text-wrap: balance; }
 .transport-mode-grid--horizontal .transport-mode-tile__label {
-  display: -webkit-box;
-  overflow: hidden;
   white-space: normal;
-  line-height: 1.1;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-@media (max-width: 380px) {
-  .transport-types-inline .transport-mode-tile__label { font-size: .625rem; letter-spacing: -.01em; }
+  overflow-wrap: anywhere;
+  font-size: .75rem;
+  line-height: var(--mg-sheet-label-leading);
 }
 .transport-types-inline .transport-mode-grid button.transport-mode-tile--carpool { box-shadow: 0 0 0 1px var(--mg-action), var(--mg-card-shadow); }
 .home-screen .home-intro {
@@ -2108,7 +2103,9 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
   justify-content: flex-start;
   gap: .45rem;
   padding-inline: .55rem;
+  border: 1px solid;
   border-radius: 12px;
+  color: var(--route-ink);
 }
 .mg-route-ribbon--compact .mg-route-ribbon__pill::before {
   inset: 0;
@@ -2124,14 +2121,10 @@ html.dark .current-city-selector-trigger:hover { border-color: var(--mg-border-m
 }
 .mg-route-ribbon--compact .mg-route-ribbon__label {
   max-width: 7.5rem;
-  font-size: 11px;
-  line-height: 1.1;
   text-align: left;
 }
 .mg-route-ribbon--compact .mg-route-ribbon__detail {
   max-width: 7.5rem;
-  font-size: 10px;
-  line-height: 1.1;
   text-align: left;
 }
 
@@ -2588,6 +2581,7 @@ html {
 }
 .mg-route-ribbon__item { transition: opacity var(--mg-dur-base) var(--mg-ease-standard); }
 .mg-route-ribbon__item.is-muted { opacity: .48; }
+.mg-route-ribbon--compact .mg-route-ribbon__item.is-muted { opacity: 1; }
 
 /* The focused segment card keeps a slow halo; the rest recede via opacity. */
 .mg-route-segment { position: relative; }
