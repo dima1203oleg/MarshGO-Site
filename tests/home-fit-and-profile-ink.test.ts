@@ -36,7 +36,7 @@ describe('home banner geometry and profile trust ink', () => {
     assert.match(source, /origin: 'Львів', city: 'Київ'/);
     assert.match(source, /aria-label=\{`Маршрут \$\{origin\} — \$\{city\}`\}/);
     assert.match(source, /onSearchDestination\(city, origin\)/);
-    assert.match(marketplace(), /onSearchDestination=\{\(city, from\) => \{\s*setOrigin\(from\);\s*setDestination\(city\);/);
+    assert.match(marketplace(), /onSearchDestination=\{\(city, from\) => \{\s*const fromPlace = localCityPlace\(from\);\s*const destinationPlace = localCityPlace\(city\);\s*setOrigin\(fromPlace\?\.label \?\? from\);\s*setDestination\(destinationPlace\?\.label \?\? city\);\s*setSearchOriginPlace\(fromPlace\);\s*setSearchDestinationPlace\(destinationPlace\);/);
     assert.match(css(), /\.home-popular-routes__row \{ flex: 0 0 auto; height: clamp\(7\.75rem, 16svh, 8\.6rem\); \}/);
   });
 

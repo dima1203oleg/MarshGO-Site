@@ -57,7 +57,9 @@ test('summary, endpoints, ribbon, labels and CTA consume the density tokens', ()
 });
 
 test('the segment list and card bodies take their rhythm from the same tokens', () => {
-  assert.match(css, /\.mg-route-segment-list \{ display: grid; gap: var\(--mg-sheet-stack-gap\); padding-block-start: 0; \}/);
+  // minmax(0,1fr) is load-bearing: the cards keep overflow visible for the rail
+  // node, so an auto track would size to content and push row meta off-screen.
+  assert.match(css, /\.mg-route-segment-list \{ display: grid; grid-template-columns: minmax\(0, 1fr\); gap: var\(--mg-sheet-stack-gap\); padding-block-start: 0; \}/);
   assert.match(css, /\.mg-route-segment__body \{ padding: var\(--mg-sheet-card-pad-y\) var\(--mg-sheet-card-pad-x\); \}/);
   assert.match(routeScreen, /<ol className="mg-route-segment-list">/);
   assert.match(routeScreen, /className="mg-route-segment__body flex items-start gap-1\.5"/);
@@ -98,35 +100,55 @@ test('the sheet reserves the device safe area once and keeps a compact CTA edge'
   assert.doesNotMatch(routeScreen, /pb-\[max\(0\.75rem,env\(safe-area-inset-bottom\)\)\] pt-0\.5 mb-0\.5/, 'the old double bottom reserve must not come back');
 });
 
-test('phone route cards keep metrics and street names on compact single lines', () => {
-  assert.match(densityCss, /\.mg-route-segment__body > button > span:last-child > span:first-child\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*overflow:\s*hidden;/s, 'leg title and metrics stay on one row');
-  assert.match(densityCss, /\.mg-route-segment__body > button > span:last-child > span:first-child > b\s*\{[^}]*flex:\s*0 0 auto;[^}]*max-width:\s*50%;/s, 'route number/name keeps priority over truncated secondary metrics');
-  assert.match(densityCss, /\.mg-route-segment__body > button > span:last-child > span:first-child > span:last-child\s*\{[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;/s, 'long metrics truncate cleanly instead of adding a third row');
+test('phone route cards keep the transport title, duration and stop count in a compact row', () => {
+  assert.match(densityCss, /\.mg-route-segment__body > button > span:last-child > span:first-child\s*\{[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*2px 8px;/s, 'title and metrics have a visible gap and may wrap');
+  assert.match(densityCss, /span\.mg-route-leg-heading\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*justify-content:\s*space-between;/s, 'the main phone width keeps title and compact route metrics on one line');
+  assert.match(routeScreen, /mg-route-leg-title[\s\S]*mg-route-leg-meta[\s\S]*mg-route-leg-stop-count-short/, 'narrow phones retain the full transit title and provide a compact stop-count label');
+  assert.match(densityCss, /@media \(max-width: 360px\)[\s\S]*?\.mg-route-leg-title \{\s*flex:\s*1 1 100%;/s, 'very narrow phones allow the full title to take its own row instead of truncating it');
+  assert.doesNotMatch(densityCss, /span:first-child > b\s*\{[^}]*max-width:\s*50%/s, 'route names must not be cut in half');
   assert.match(densityCss, /@media \(max-width: 430px\)[\s\S]*?\.route-map-screen \[data-testid="route-bottom-sheet"\] \.route-sheet-endpoints\s*\{[^}]*position:\s*absolute;[^}]*clip:\s*rect\(0, 0, 0, 0\);/s, 'duplicate route-level street row is visually removed on phones while kept accessible');
-  assert.match(densityCss, /@media \(max-width: 380px\)\s*\{[^}]*\.mg-route-endpoints__name\s*\{[^}]*white-space:\s*nowrap;[^}]*text-overflow:\s*ellipsis;/s, 'very narrow phones keep endpoint names to one line');
+  assert.match(densityCss, /@media \(max-width: 380px\)[\s\S]*?\.mg-route-endpoints__name\s*\{[^}]*white-space:\s*nowrap;[^}]*text-overflow:\s*ellipsis;/s, 'very narrow phones keep endpoint names to one line');
   assert.match(densityCss, /\.mg-route-endpoints\s*\{\s*margin-top:\s*0;\s*line-height:\s*1;\s*column-gap:\s*2px;/, 'street names sit on a tighter line and closer together without changing the touch target');
   assert.match(densityCss, /\.mg-route-endpoints\s*\{[^}]*row-gap:\s*0;/s, 'street-name rows cannot acquire an extra vertical grid gap');
-  assert.match(densityCss, /\.mg-route-segment__body > button > span:last-child > span:first-child\s*\{[^}]*gap:\s*0;[^}]*line-height:\s*14px;/s, 'route metrics do not add vertical row gap above street names');
+  assert.match(densityCss, /\.mg-route-segment__body > button > span:last-child > span:first-child\s*\{[^}]*white-space:\s*normal;[^}]*line-height:\s*1\.3;/s, 'text remains readable at enlarged sizes');
   assert.match(routeScreen, /aria-label=\{liveStatusLabel\}[^>]*>[\s\S]*route-status-full[\s\S]*route-status-short/s, 'the compact status keeps its full accessible label');
-  assert.match(densityCss, /@media \(max-width: 430px\)\s*\{[^}]*route-status-full\s*\{\s*display:\s*none;\s*\}[^}]*route-status-short\s*\{\s*display:\s*inline;/s, 'phone status labels shorten to leave room for route times');
+  assert.match(densityCss, /@media \(max-width: 430px\)[\s\S]*?route-status-full\s*\{\s*display:\s*none;\s*\}[\s\S]*?route-status-short\s*\{\s*display:\s*inline;/s, 'phone status labels shorten to leave room for route times');
 });
 
-test('expanded details replace the duplicate stage ribbon with the selectable detail cards', () => {
-  assert.match(routeScreen, /sheetSnap === 'collapsed' && \(\s*<div data-testid="route-stage-ribbon"/, 'the ribbon remains in the compact state where detailed cards are hidden');
+test('details retain the magnetic stage ribbon and the selectable vertical detail cards', () => {
+  assert.match(routeScreen, /compactDominoRef = useMagneticDomino\(ribbonItems.length, sheetSnap !== 'peek'\)/, 'the shared ribbon is mounted for compact and detailed states');
+  assert.match(routeScreen, /ref=\{compactDominoRef\} data-testid="route-stage-ribbon" data-domino-pattern="ribbon" tabIndex=\{0\}/, 'the horizontal ribbon remains keyboard reachable');
   assert.match(routeScreen, /data-testid="route-segment-list"[\s\S]*?<ol className="mg-route-segment-list">/, 'the expanded list remains the detailed, selectable route chain');
   assert.match(routeScreen, /aria-label=\{`Вибрати сегмент:/, 'each detailed leg remains an accessible segment selector');
 });
 
 test('segment cards use only the 44 px interaction row for vertical height', () => {
-  assert.match(densityCss, /--mg-sheet-stack-gap:\s*1px;/, 'the gap between segment cards stays at one compact pixel');
-  assert.match(densityCss, /--mg-sheet-card-pad-y:\s*0px;/, 'the 44 px button does not get extra vertical padding');
+  assert.match(densityCss, /--mg-sheet-stack-gap:\s*4px;/, 'cards keep the compact 4 px separation shown in the route-details design');
+  assert.match(densityCss, /--mg-sheet-card-pad-y:\s*3px;/, 'cards have enough inner breathing room without wasting vertical space');
   assert.match(routeScreen, /className="mg-route-segment__body flex items-start gap-1\.5"/, 'the compact card keeps the existing content and control structure');
   assert.match(densityCss, /\.mg-route-segment__body > button\s*\{[^}]*min-height:\s*44px;/s, 'compaction preserves the comfortable touch target');
 });
 
+test('route details match the map, summary and paired actions hierarchy', () => {
+  assert.match(routeScreen, /className="route-details-title min-w-0 flex-1 truncate text-left font-black tracking-tight">Деталі маршруту/);
+  assert.match(densityCss, /route-sheet-summary__metrics,[\s\S]*?route-sheet-summary__fare\s*\{[^}]*min-height:\s*38px;[^}]*border-radius:\s*999px;/);
+  assert.match(routeScreen, /aria-label="Показати маршрут на карті"[\s\S]*?<span>На карті<\/span>/, 'the map CTA stays separate from starting GPS navigation');
+  assert.match(routeScreen, /sheetSnap !== 'peek' && \([\s\S]*?route-sheet-map-cta/, 'the paired map action appears in route details, not the tiny peek state');
+  assert.match(densityCss, /grid-template-columns:\s*minmax\(0, 1fr\) auto;/, 'the navigation CTA remains primary beside the map action');
+});
+
+test('selected journeys open in the reference details state and reveal only short stop lists', () => {
+  assert.match(routeScreen, /useState<RouteSheetSnap>\('expanded'\)/, 'the route opens with details visible beneath the map');
+  assert.match(routeScreen, /routeSheetHeights\(availableHeight\)\.expanded/, 'the initial expanded sheet preserves the navigation inset');
+  assert.match(routeScreen, /const initialExpandedStopsLeg = journey\.legs\.find\(leg =>\s*isScheduledRouteLeg\(leg\) && \(leg\.stops\?\.length \?\? 0\) > 0 && \(leg\.stops\?\.length \?\? 0\) <= 8,/s, 'a short verified timetable opens like the reference while long stop lists stay compact');
+  assert.match(routeScreen, /useState<string \| null>\(\(\) => initialExpandedStopsLeg\?\.id \?\? null\)/);
+  assert.match(routeScreen, /!mapAdapterReady \|\| mapStatus !== 'available'/, 'the route refit waits for map layers before choosing the initial zoom');
+  assert.match(routeScreen, /\}, \[[^\]]*mapAdapterReady[^\]]*mapPadding[^\]]*mapStatus[^\]]*routeFitKey[^\]]*segmentFocusKey[^\]]*sheetSnap[^\]]*\]\);/, 'map readiness reruns the first route fit after geometry focus is available');
+});
+
 test('expanded details and active navigation do not reserve a decorative tail below the last stage', () => {
   assert.match(routeScreen, /className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-0\.5" data-testid="route-segment-list"/, 'route details keep only a 2 px scroll tail');
-  assert.match(navigationScreen, /className="mt-1 shrink-0 px-5 pb-0\.5" data-testid="active-navigation-stages"/, 'active navigation keeps only a 4 px gap and 2 px stage-list tail');
+  assert.match(navigationScreen, /className="mt-2 shrink-0 px-4 pb-2" data-testid="active-navigation-stages"/, 'timeline uses 16px sides and a bounded 8px tail');
   assert.match(densityCss, /\.route-sheet-endpoints\s*\{\s*padding-bottom:\s*0;/, 'the endpoint line has no decorative bottom padding');
 });
 
@@ -138,24 +160,35 @@ test('compact and medium detents measure content and remove flex-created blue sp
   assert.match(routeScreen, /sheetSnap !== 'collapsed' && sheetSnap !== 'half'/, 'only content detents are dynamically compacted');
 });
 
+test('viewport tracking does not clear fitted sheet measurements on every snap recalculation', () => {
+  const viewportEffectStart = routeScreen.indexOf('const updateViewport = () =>');
+  const viewportEffectEnd = routeScreen.indexOf('const mapUnavailable =', viewportEffectStart);
+  const viewportEffect = routeScreen.slice(viewportEffectStart, viewportEffectEnd);
+  assert.ok(viewportEffectStart >= 0 && viewportEffectEnd > viewportEffectStart, 'the viewport listener remains a distinct effect');
+  assert.doesNotMatch(viewportEffect, /set(?:Collapsed|Medium|Expanded)ContentHeight\(null\)/, 'snap-model updates must not discard the measured content fit');
+  assert.doesNotMatch(viewportEffect, /\}, \[sheetSnap, snapHeight\]\);/, 'the resize listener must not be recreated when content measurements change');
+});
+
 test('active navigation trims redundant vertical gaps while retaining the shared compact sheet', () => {
-  assert.match(navigationScreen, /h1 className="truncate text-\[19px\] font-black leading-6/, 'the active leg title uses a compact but readable line box');
+  assert.match(navigationScreen, /h1 data-testid="active-nav-leg-title" className="truncate text-\[17px\] font-extrabold leading-6/, 'compact state keeps a readable title');
   const destinationRowStart = navigationScreen.indexOf('data-testid="active-nav-leg-destination"');
   const destinationRowEnd = navigationScreen.indexOf('</p>', destinationRowStart);
   const destinationRow = navigationScreen.slice(destinationRowStart, destinationRowEnd);
   assert.ok(destinationRow.includes('data-testid="active-nav-leg-meta"') && destinationRow.includes('{activeLegMeta(leg)}'), 'destination and leg metrics share one compact row');
   assert.doesNotMatch(navigationScreen, /<p className="text-xs font-semibold tabular-nums text-\[var\(--route-subtle\)\]">\{activeLegMeta\(leg\)\}<\/p>/, 'leg metrics do not consume a second vertical row');
-  assert.match(navigationScreen, /mx-5 mt-2 shrink-0 rounded-2xl border[^\"]* p-2/, 'the next-action card uses the compact sheet rhythm');
-  assert.match(navigationScreen, /className="mt-1 shrink-0 px-5 pb-0\.5" data-testid="active-navigation-stages"/, 'the route list removes excess section and footer spacing');
+  assert.match(navigationScreen, /data-testid="active-nav-next-hint"/, 'the next stage remains a thin service line');
+  assert.doesNotMatch(navigationScreen, /mx-5 mt-2 shrink-0 rounded-2xl border/, 'compact navigation has no duplicate instruction card');
+  assert.match(navigationScreen, /showTimeline && <div className="mt-2 shrink-0 px-4 pb-2" data-testid="active-navigation-stages"/, 'only HALF and EXPANDED render the full timeline');
   assert.match(navigationScreen, /className="mg-route-segment-list" aria-label=\{`Усі етапи маршруту:/, 'the route list keeps its accessible label without a duplicate visible heading');
-  assert.match(navigationScreen, /className="mb-0\.5 rounded-xl border[^\"]* px-3 py-0\.5 text-xs/, 'wait information stays a compact single-line row');
+  assert.match(navigationScreen, /className="flex min-h-7 items-center px-3 py-1 text-xs/, 'wait events stay thin rows without a separate card');
 });
 
 test('expanded active navigation uses selectable leg cards instead of duplicating the stage ribbon', () => {
-  assert.match(navigationScreen, /const showRibbon = sheetSnap === 'collapsed';/, 'the ribbon remains in the compact state where the detailed stage list is hidden');
+  assert.doesNotMatch(navigationScreen, /mg-route-ribbon__pill/, 'horizontal leg copies are not rendered beside the current leg');
+  assert.match(navigationScreen, /!showTimeline && <div/, 'the main current-leg card is hidden when the timeline is visible');
   assert.match(navigationScreen, /aria-label=\{`Етап \$\{index \+ 1\}: \$\{activeLegTitle\(item\)\}/, 'the remaining leg cards are still individually selectable');
-  assert.match(navigationScreen, /sheetSnap !== 'collapsed' && <div className="mt-1 shrink-0 px-5 pb-0\.5" data-testid="active-navigation-stages"/, 'expanded navigation still keeps its detailed stage list');
-  assert.match(navigationScreen, /Етап \{legIndex \+ 1\} з \{legs\.length\}\{journey\.transfers > 0 \? ` · \$\{formatTransferCount\(journey\.transfers\)\}` : ''\}/, 'the compact stage heading retains the transfer count');
+  assert.match(navigationScreen, /const showTimeline = sheetSnap === 'half' \|\| sheetSnap === 'expanded';/, 'the detailed list is exclusive to HALF and EXPANDED');
+  assert.match(navigationScreen, /activeNavigationStageLabel\(following, Boolean\(freshNavigationFix\), legIndex, legs\.length, journey\.transfers\)/, 'stage label follows GPS guidance, GPS wait, or preview mode');
   assert.match(navigationScreen, /<ol className="mg-route-segment-list" aria-label=\{`Усі етапи маршруту:/, 'the detailed list remains explicitly labelled for assistive technology');
   assert.doesNotMatch(navigationScreen, /<p className="mb-1 text-xs font-extrabold uppercase tracking-\[\.12em\] text-\[var\(--route-muted\)\]">Увесь маршрут/, 'the duplicate visible section heading no longer consumes a full line');
 });
@@ -169,10 +202,10 @@ test('expanded active navigation fits its measured content instead of stretching
 });
 
 test('static stop rows compact while selectable stops retain a 44px touch target', () => {
-  assert.match(densityCss, /\.mg-route-stops ol > li > div\s*\{[^}]*min-height:\s*24px;[^}]*padding-block:\s*0;/s, 'static stop rows stay readable without reserving extra vertical space');
-  assert.match(densityCss, /\.mg-route-stops ol > li > button\s*\{[^}]*min-height:\s*44px;/s, 'selectable stop rows retain the accessible touch target');
-  assert.match(densityCss, /\.mg-route-stop-name\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;/s, 'long stop names stay on one compact visual line');
-  assert.match(densityCss, /\.mg-route-stop-badge\s*\{[^}]*flex:\s*0 0 auto;[^}]*white-space:\s*nowrap;/s, 'boarding, alighting and skipped-stop labels remain visible when names truncate');
+  assert.match(densityCss, /\.mg-journey-stop-row\s*\{[^}]*grid-template-columns:\s*44px 16px minmax\(0, 1fr\);[^}]*min-height:\s*34px;/s, 'static stops use the three-column 34px rhythm');
+  assert.match(densityCss, /button\.mg-journey-stop-row\s*\{[^}]*min-height:\s*44px;/s, 'selectable stop rows retain the accessible touch target');
+  assert.match(densityCss, /\.mg-route-stop-name\s*\{[^}]*overflow-wrap:\s*anywhere;[^}]*white-space:\s*normal;/s, 'long stop names can wrap instead of disappearing');
+  assert.match(densityCss, /\.mg-route-stop-badge\s*\{[^}]*white-space:\s*nowrap;/s, 'boarding, alighting and skipped-stop labels remain intact');
   assert.match(readFileSync(new URL('../src/views/JourneyLegStops.tsx', import.meta.url), 'utf8'), /aria-label=\{`Зупинка: \$\{shortPlace\(stop\.name\)\}, час \$\{stopTime\(stop, index\)\}`\}/, 'the complete stop name and time remain available to assistive technology');
 });
 

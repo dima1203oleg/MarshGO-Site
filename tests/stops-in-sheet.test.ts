@@ -42,8 +42,9 @@ function assertInsideOneItem(source: string, itemOpen: string, panel: string, la
 test('the route sheet renders stops fused to their own segment card', () => {
   assertInsideOneItem(routeMap, 'data-testid="journey-route-segment"', 'mg-route-stops', 'route sheet');
 
-  // One state holds one open leg, and it starts closed — nothing pre-blooms.
-  assert.match(routeMap, /const \[stopsLegId, setStopsLegId\] = useState<string \| null>\(null\)/);
+  // One state holds one open leg. It starts on the reference's short verified
+  // timetable (≤8 stops, see bottom-sheet-density) and never pre-blooms a long one.
+  assert.match(routeMap, /const \[stopsLegId, setStopsLegId\] = useState<string \| null>\(\(\) => initialExpandedStopsLeg\?\.id \?\? null\)/);
   assert.doesNotMatch(routeMap, /expandedSegments/, 'the many-open Set that sprawled the sheet must stay gone');
   assert.match(routeMap, /const stopsOpen = stopsLegId === leg\.id/);
 
@@ -58,7 +59,8 @@ test('opening stops raises the sheet and brings that card into view', () => {
   assert.ok(start > 0, 'toggleStops must exist');
   const body = routeMap.slice(start, routeMap.indexOf('\n  };', start) + 5);
   assert.match(body, /nextStopsLegId\(stopsLegId, legId\)/);
-  assert.match(body, /moveToSnap\(stopsDetent\(\)\)/, 'a stop list at a short detent would be invisible');
+  assert.match(body, /moveToSnap\(stopsDetent\(\), true\)/, 'opening stops raises the sheet without a second sensory cue');
+  assert.match(body, /type: 'STOPS_EXPANDED'/, 'the stop action owns its feedback');
   assert.match(body, /scrollIntoView/, 'the opened card must come back into the visible window');
 });
 

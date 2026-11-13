@@ -63,16 +63,32 @@ export interface MapAdapter {
   setJourneyLabels?(labels: MapAnnotation[] | null): void;
   getScaleLabel?(maxPixels?: number): { label: string; widthPx: number } | null;
   focusRouteSegment?(id: string, padding?: RouteFitPadding): boolean;
-  focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number): void;
+  focusCoordinates?(points: Coordinate[], padding?: RouteFitPadding, maxZoom?: number, segmentId?: string): void;
   onRouteSegmentSelect: (id: string) => void;
   onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void;
   onCameraMove?: () => void;
+  /** Fires once when a programmatic camera flight settles (not on rider gestures or per-frame HyperFlight). */
+  onCameraSettled?: () => void;
   project?(coordinate: Coordinate): ScreenPoint | null;
-  revealSegmentProgress?(coordinates: Coordinate[], color: string): void;
+  revealSegmentProgress?(coordinates: Coordinate[], color: string, progress?: number): void;
   fadeSegmentReveal?(): void;
   clearSegmentReveal?(): void;
+  /** HyperFlight preview camera: per-frame jump along the real geometry, no GPS progress touched. */
+  setCinematicFlightActive?(active: boolean): void;
+  setCinematicCamera?(frame: { center: Coordinate; zoom: number; bearing: number; pitch: number }, padding?: RouteFitPadding): void;
+  getCameraZoom?(): number;
+  /** Living Route Ribbon: a travelling light pulse along the active leg's confirmed polyline. */
+  setRouteFlow?(flow: { coordinates: Coordinate[]; color: string; kind: 'walk' | 'transit' } | null): void;
+  /** Separate passed / active / next stages so the eye reads progress without opening the plan. */
+  setSegmentPhases?(phases: Record<string, 'passed' | 'active' | 'next'> | null): void;
+  /** Precision Docking sonar: a brief map-anchored ripple marking the exact boarding/alighting point. */
+  pingDock?(coordinate: Coordinate, color: string): void;
+  /** Fires only on the rider's own map gesture, so a cinematic preview can yield immediately. */
+  onCinematicInterrupt?: () => void;
   zoomBy?(delta: number): void;
   setVehicle(point: Coordinate, heading?: number | null): void;
+  clearVehicle?(): void;
+  setFollowPadding?(padding: RouteFitPadding | null): void;
   onCameraModeChange: (mode: CameraMode) => void;
   setWaypoints(points: RouteWaypoint[]): void;
   fitRoute(padding?: RouteFitPadding): void;

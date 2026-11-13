@@ -17,9 +17,12 @@ import { journeySegmentsForFocus, visibleJourneyWaypoints } from './focusMode';
 import { nearestRouteHitIds } from './routeHitTesting';
 import { placeJourneyLabels } from './routeLabelPlacement';
 import { cameraEasing, cameraMotionDuration, adaptiveCameraDuration, CAMERA_FOCUS_DURATION_MS, CAMERA_ZOOM_STEP_DURATION_MS, claimCameraForUserGesture } from './cameraMotion';
-import { ROUTE_EMPHASIS_TOKENS, ROUTE_RENDER_TOKENS, SEGMENT_REVEAL_TOKENS, routeArrowExpression, routeStrokeWidthExpression, walkGeometryTokens, walkWidthExpression, ROUTE_ARROW_TOKENS } from './routeGeometryTokens';
+import { ROUTE_EMPHASIS_TOKENS, ROUTE_RENDER_TOKENS, SEGMENT_REVEAL_TOKENS, routeArrowExpression, routeRevealGradient, routeFlowGradient, routeStrokeWidthExpression, walkGeometryTokens, walkWidthExpression, ROUTE_ARROW_TOKENS } from './routeGeometryTokens';
+import { prepareRoutePathSampler, type RoutePathSample } from './cinematicRouteEngine';
+import { bearingAlongLineAt } from './fleetMotion';
+import { interactionPreferences } from '../sensory/InteractionPreferences';
 import { measureProjectedFocus } from './routeFocusMeasurement';
-import { cameraForRotatedPoints, cameraMoveEffort } from './routeCameraFocus';
+import { cameraForRotatedPoints, cameraMoveEffort, shouldUsePointCloudFit } from './routeCameraFocus';
 import { shouldGlideVehicle, interpolateVehicleCoordinate, vehicleDistanceMeters, vehicleGlideDuration } from './vehicleMotion';
 import { isValidCoordinate, sanitizeLineCoordinates } from './lineGeometry';
 
@@ -224,6 +227,29 @@ function zoneArrowGlyph(): ImageData {
   return context.getImageData(0, 0, 44, 44);
 }
 
+/**
+ * A north-pointing rim chevron for a live vehicle. The transit pictogram stays
+ * upright (it is a front view); this separate glyph rotates by the real travel
+ * bearing so the badge reads its direction along the geometry without tilting.
+ */
+function fleetHeadingGlyph(): ImageData {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 64;
+  const context = canvas.getContext('2d');
+  if (!context) return new ImageData(64, 64);
+  context.lineJoin = 'round';
+  context.lineCap = 'round';
+  context.beginPath();
+  context.moveTo(32, 4); context.lineTo(41, 18); context.lineTo(32, 13); context.lineTo(23, 18);
+  context.closePath();
+  context.lineWidth = 6;
+  context.strokeStyle = '#0B2034';
+  context.stroke();
+  context.fillStyle = '#FFFFFF';
+  context.fill();
+  return context.getImageData(0, 0, 64, 64);
+}
+
 function priorityExpression(key: 'radius' | 'haloRadius' | 'opacity' | 'haloOpacity' | 'iconSize'): ExpressionSpecification {
   const value = (level: VehiclePriorityLevel) => VEHICLE_PRIORITY_TOKENS[level][key];
   return ['match', ['get', 'priorityLevel'],
@@ -239,10 +265,18 @@ export class MapLibreAdapter implements MapAdapter {
   private activeRouteSegmentId: string | null = null;
   /** The reveal layers fade out in place; the next reveal must restore their opacity first. */
   private revealFaded = false;
+  /** Keep confirmed geometry resident while line-progress paint reveals it on the GPU. */
+  private revealCoordinates: Coordinate[] | null = null;
+  private revealColor: string | null = null;
+  private revealPathSampler: ((progress: number) => RoutePathSample | null) | null = null;
+  private revealScoutMarker: maplibregl.Marker | null = null;
+  private dockPingMarker: maplibregl.Marker | null = null;
+  private dockPingTimer: number | null = null;
   private routeInteractionBound = false;
   private vehicle: Coordinate | null = null;
   private waypoints: RouteWaypoint[] = [];
   private cameraMode: CameraMode = 'OVERVIEW';
+  private followPadding: RouteFitPadding | null = null;
   private cameraRequestSequence = 0;
   private styleSwapSequence = 0;
   private theme: MapTheme = 'MARSHGO_LIGHT';
@@ -262,6 +296,14 @@ export class MapLibreAdapter implements MapAdapter {
   /** Last label feed; placement is recomputed from it whenever the camera settles. */
   private journeyLabelInput: MapAnnotation[] = [];
   private focusedTransitOverlay: FocusedTransitMapOverlay | null = null;
+  /** HyperFlight preview owns the camera per-frame; labels/measure pause so DOM markers are not rebuilt every frame. */
+  private cinematicFlightActive = false;
+  private routeFlow: { coordinates: Coordinate[]; color: string; kind: 'walk' | 'transit' } | null = null;
+  private routeFlowRaf: number | null = null;
+  private routeFlowPhase = 0;
+  private segmentPhases: Record<string, 'passed' | 'active' | 'next'> | null = null;
+  /** Rider's own gesture during a cinematic preview — the UI yields the camera immediately. */
+  onCinematicInterrupt?: () => void;
   /** Coordinates of the last camera fit, measured against the visible band after each settle. */
   private lastFitPoints: Coordinate[] = [];
   /** MapLibre's fitBounds consumes and drops its padding, so the intended band is recorded here. */
@@ -269,10 +311,13 @@ export class MapLibreAdapter implements MapAdapter {
   /** Lets the UI highlight the "my location" button while the camera follows the driver. */
   onCameraModeChange: (mode: CameraMode) => void = () => undefined;
   /** Trackpad and mouse-wheel input never arrives with an originalEvent on a camera event. */
-  private readonly wheelGestureListener = () => { this.setCameraModeInternal('FREE'); };
+  private readonly wheelGestureListener = () => { this.cameraFlightPending = false; this.setCameraModeInternal('FREE'); this.onCinematicInterrupt?.(); };
   onRouteSegmentSelect: (id: string) => void = () => undefined;
   onRouteSegmentAmbiguous?: (ids: string[], point: ScreenPoint) => void;
   onCameraMove?: () => void;
+  onCameraSettled?: () => void;
+  /** True between a programmatic fit/focus request and its settle; rider gestures clear it. */
+  private cameraFlightPending = false;
   private transportLayers: ReadonlySet<TransportLayerId> = new Set();
   /** Shown when a layer needs a closer zoom or fails to load. */
   onTransportHint: (message: string | null) => void = () => undefined;
@@ -281,7 +326,11 @@ export class MapLibreAdapter implements MapAdapter {
     this.theme = initialTheme;
     this.baseStyle = style;
     if (!pmtilesProtocolRegistered) { maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile); pmtilesProtocolRegistered = true; }
-    maplibregl.setWorkerUrl(mapLibreWorkerUrl);
+    // Vite injects its HMR client into `?worker&url` assets in dev. Safari/iOS
+    // rejects that transformed module worker when MapLibre starts a fresh map.
+    // Serve the package worker through the raw public symlink in dev; production
+    // keeps using Vite's emitted worker asset.
+    maplibregl.setWorkerUrl(import.meta.env.DEV ? '/marshgo-maplibre-worker.mjs' : mapLibreWorkerUrl);
     container.dataset.marshgoMapRenderer = 'maplibre';
     container.dataset.marshgoMapIdle = 'false';
     container.dataset.marshgoCameraRequestId = '0';
@@ -290,7 +339,17 @@ export class MapLibreAdapter implements MapAdapter {
     // Phones with dpr 2.5–3 shade 6–9× the pixels of a dpr-2 frame; the extra
     // sharpness is invisible under a map, the GPU cost is not.
     const pixelRatio = Math.min(typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1, 2);
-    this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', attributionControl: { compact: true }, center: [30.5234, 50.4501], zoom: 5, dragPan: true, touchZoomRotate: true, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false, pixelRatio });
+    // Headless/software-GL screenshots read the drawing buffer after present; with
+    // it cleared they capture a black canvas. Retain it in dev so QA and the served
+    // preview produce truthful captures; production keeps the cleared-buffer perf.
+    const preserveDrawingBuffer = Boolean(import.meta.env.DEV);
+    this.map = new maplibregl.Map({ container, style, logoPosition: 'bottom-left', attributionControl: { compact: true }, center: [30.5234, 50.4501], zoom: 5, dragPan: true, touchZoomRotate: true, pitchWithRotate: true, dragRotate: true, touchPitch: true, cooperativeGestures: false, pixelRatio, canvasContextAttributes: { preserveDrawingBuffer } });
+    // Dev-only QA handle so browser probes can introspect sources/layers/rendered
+    // features truthfully; never exposed in production builds.
+    if (import.meta.env.DEV) {
+      (window as unknown as { __mgMap?: maplibregl.Map }).__mgMap = this.map;
+      (container as HTMLElement & { __mgMap?: maplibregl.Map }).__mgMap = this.map;
+    }
     // MapLibre opens the compact attribution until the first drag, and the credit
     // only appears once the style/sources arrive. Collapse it as soon as those
     // land (idempotent); tapping the ⓘ still reveals the full attribution.
@@ -321,12 +380,16 @@ export class MapLibreAdapter implements MapAdapter {
       container.dataset.marshgoCameraPadding = `${pad.top},${pad.right},${pad.bottom},${pad.left}`;
       container.dataset.marshgoCameraSettledId = String(this.cameraRequestSequence);
       container.dataset.marshgoCameraMoving = 'false';
-      this.publishFocusMeasure();
+      if (this.cameraFlightPending && !this.cinematicFlightActive) {
+        this.cameraFlightPending = false;
+        this.onCameraSettled?.();
+      }
+      if (!this.cinematicFlightActive) this.publishFocusMeasure();
     });
     // Callout de-cluttering lives in screen space, so a zoom or pan changes which
     // labels compete for it. Recompute once per camera settle — never per frame;
     // the id-keyed reconciliation below keeps existing DOM nodes untouched.
-    this.map.on('moveend', () => { if (this.journeyLabelInput.length) this.applyJourneyLabels(); });
+    this.map.on('moveend', () => { if (this.journeyLabelInput.length && !this.cinematicFlightActive) this.applyJourneyLabels(); });
     this.map.on('load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; this.publish(this.basemapConfigured() ? 'available' : 'unconfigured'); });
     this.map.on('style.load', () => { this.installLayers(); container.dataset.marshgoMapReady = 'true'; if (this.basemapConfigured() && !this.map.getSource('marshgo-basemap') && this.status !== 'failed') this.publish('available'); });
     this.map.on('error', (event) => {
@@ -356,7 +419,7 @@ export class MapLibreAdapter implements MapAdapter {
     const userGesture = (event: { originalEvent?: unknown }) => {
       // Ownership only: MapLibre cancels an in-flight focus glide itself the moment a handler becomes
       // active, and a map.stop() here would reset the pinch and delete the flick's momentum.
-      claimCameraForUserGesture(event.originalEvent, () => this.setCameraModeInternal('FREE'));
+      claimCameraForUserGesture(event.originalEvent, () => { this.cameraFlightPending = false; this.setCameraModeInternal('FREE'); this.onCinematicInterrupt?.(); });
     };
     this.map.on('dragstart', userGesture);
     this.map.on('zoomstart', userGesture);
@@ -369,6 +432,7 @@ export class MapLibreAdapter implements MapAdapter {
 
   private markCameraRequest() {
     this.cameraRequestSequence += 1;
+    this.cameraFlightPending = true;
     this.map.getContainer().dataset.marshgoCameraRequestId = String(this.cameraRequestSequence);
   }
 
@@ -414,7 +478,9 @@ export class MapLibreAdapter implements MapAdapter {
       { center: [center.lng, center.lat], zoom: this.map.getZoom(), bearing: this.map.getBearing() },
       target,
     );
-    return this.motionDuration(adaptiveCameraDuration(baseMs, effort));
+    return interactionPreferences.get().cinematicCamera
+      ? this.motionDuration(adaptiveCameraDuration(baseMs, effort))
+      : 0;
   }
 
   private publish(status: MapStatus) { this.status = this.seenTileError && status === 'available' ? 'degraded' : status; this.onStatus(this.status); }
@@ -427,6 +493,12 @@ export class MapLibreAdapter implements MapAdapter {
     return dark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT';
   }
   private installLayers() {
+    // Style replacement recreates GeoJSON sources, so the next reveal must repopulate them.
+    this.revealCoordinates = null;
+    this.revealColor = null;
+    this.revealPathSampler = null;
+    this.removeRevealScout();
+    this.stopRouteFlow();
     const colors = mapStyleTokens[this.theme];
     const walk = walkGeometryTokens(this.theme);
     this.map.getContainer().dataset.marshgoMapLayer = this.layer;
@@ -434,8 +506,8 @@ export class MapLibreAdapter implements MapAdapter {
     if (this.perspective === '3d') this.install3DBuildings();
     else this.remove3DBuildings();
     if (!this.map.getSource('marshgo-route')) this.map.addSource('marshgo-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    if (!this.map.getSource('marshgo-route-reveal')) this.map.addSource('marshgo-route-reveal', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    if (!this.map.getSource('marshgo-route-reveal-head')) this.map.addSource('marshgo-route-reveal-head', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!this.map.getSource('marshgo-route-reveal')) this.map.addSource('marshgo-route-reveal', { type: 'geojson', lineMetrics: true, data: { type: 'FeatureCollection', features: [] } });
+    if (!this.map.getSource('marshgo-route-flow')) this.map.addSource('marshgo-route-flow', { type: 'geojson', lineMetrics: true, data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-vehicle')) this.map.addSource('marshgo-vehicle', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-waypoints')) this.map.addSource('marshgo-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     if (!this.map.getSource('marshgo-transit-context')) this.map.addSource('marshgo-transit-context', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -449,6 +521,7 @@ export class MapLibreAdapter implements MapAdapter {
     for (const [name, kind] of transitImages) if (!this.map.hasImage(name)) this.map.addImage(name, transitGlyph(kind), { pixelRatio: 2 });
     if (!this.map.hasImage('marshgo-zone-arrow')) this.map.addImage('marshgo-zone-arrow', zoneArrowGlyph(), { pixelRatio: 2 });
     if (!this.map.hasImage('marshgo-route-arrow')) this.map.addImage('marshgo-route-arrow', zoneArrowGlyph(), { pixelRatio: 2 });
+    if (!this.map.hasImage('marshgo-fleet-heading')) this.map.addImage('marshgo-fleet-heading', fleetHeadingGlyph(), { pixelRatio: 2 });
     const confirmedRouteFilter = ['all', ['!=', ['get', 'approximate'], true], ['!=', ['get', 'isWalk'], true]] as maplibregl.FilterSpecification;
     if (!this.map.getLayer('marshgo-transit-context')) this.map.addLayer({
       id: 'marshgo-transit-context', type: 'line', source: 'marshgo-transit-context',
@@ -524,7 +597,11 @@ export class MapLibreAdapter implements MapAdapter {
       paint: {
         'line-color': ['coalesce', ['get', 'modeColor'], colors.route],
         'line-width': routeStrokeWidthExpression('core'),
-        'line-opacity': ['case', ['==', ['get', 'dimmed'], true], ROUTE_EMPHASIS_TOKENS.dimmedOpacity, 1.0],
+        'line-opacity': ['case',
+          ['==', ['get', 'phase'], 'passed'], 0.28,
+          ['==', ['get', 'phase'], 'next'], 0.72,
+          ['==', ['get', 'dimmed'], true], ROUTE_EMPHASIS_TOKENS.dimmedOpacity,
+          1.0],
       },
     });
     // Direction chevrons ride the selected confirmed transit leg only; walking
@@ -549,7 +626,7 @@ export class MapLibreAdapter implements MapAdapter {
       source: 'marshgo-route-reveal',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['coalesce', ['get', 'modeColor'], colors.route],
+        'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, 'rgba(0,0,0,0)', 1, 'rgba(0,0,0,0)'],
         'line-width': ['interpolate', ['linear'], ['zoom'], 5, ROUTE_RENDER_TOKENS.revealGlowWidth[0], 15, ROUTE_RENDER_TOKENS.revealGlowWidth[1]],
         'line-opacity': ROUTE_RENDER_TOKENS.revealGlowOpacity,
         'line-opacity-transition': { duration: SEGMENT_REVEAL_TOKENS.fadeMs },
@@ -562,35 +639,23 @@ export class MapLibreAdapter implements MapAdapter {
       source: 'marshgo-route-reveal',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': '#FFFFFF',
+        'line-gradient': ['interpolate', ['linear'], ['line-progress'], 0, 'rgba(0,0,0,0)', 1, 'rgba(0,0,0,0)'],
         'line-width': ['interpolate', ['linear'], ['zoom'], 5, ROUTE_RENDER_TOKENS.revealCoreWidth[0], 15, ROUTE_RENDER_TOKENS.revealCoreWidth[1]],
         'line-opacity': 0.95,
         'line-opacity-transition': { duration: SEGMENT_REVEAL_TOKENS.fadeMs },
       },
     });
-    if (!this.map.getLayer('marshgo-route-reveal-head-glow')) this.map.addLayer({
-      id: 'marshgo-route-reveal-head-glow',
-      type: 'circle',
-      source: 'marshgo-route-reveal-head',
+    // Living Route Ribbon: a travelling light pulse on the active leg's real polyline.
+    if (!this.map.getLayer('marshgo-route-flow')) this.map.addLayer({
+      id: 'marshgo-route-flow',
+      type: 'line',
+      source: 'marshgo-route-flow',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, ROUTE_RENDER_TOKENS.revealHeadHaloRadius[0], 15, ROUTE_RENDER_TOKENS.revealHeadHaloRadius[1]],
-        'circle-color': ['coalesce', ['get', 'modeColor'], colors.route],
-        'circle-blur': 0.6,
-        'circle-opacity': 0.85,
-        'circle-opacity-transition': { duration: SEGMENT_REVEAL_TOKENS.fadeMs },
-      },
-    });
-    if (!this.map.getLayer('marshgo-route-reveal-head-core')) this.map.addLayer({
-      id: 'marshgo-route-reveal-head-core',
-      type: 'circle',
-      source: 'marshgo-route-reveal-head',
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, ROUTE_RENDER_TOKENS.revealHeadCoreRadius[0], 15, ROUTE_RENDER_TOKENS.revealHeadCoreRadius[1]],
-        'circle-color': '#FFFFFF',
-        'circle-opacity': 1,
-        'circle-opacity-transition': { duration: SEGMENT_REVEAL_TOKENS.fadeMs },
-        'circle-stroke-color': ['coalesce', ['get', 'modeColor'], colors.route],
-        'circle-stroke-width': ROUTE_RENDER_TOKENS.revealHeadStrokeWidth,
+        'line-gradient': routeFlowGradient('255,255,255', 0),
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 2.5, 15, 5.5],
+        'line-opacity': 0.9,
+        'line-blur': 1.4,
       },
     });
     if (!this.map.getLayer('marshgo-route-walking-estimate')) this.map.addLayer({
@@ -770,6 +835,19 @@ export class MapLibreAdapter implements MapAdapter {
         'circle-opacity': priorityExpression('opacity'), 'circle-stroke-color': '#FFFFFF',
         'circle-stroke-width': ['match', ['get', 'priorityLevel'], 'L4', 2.5, 'L3', 2.25, 'L2', 2, 1.25] as unknown as ExpressionSpecification },
     });
+    if (!this.map.getLayer('marshgo-transit-fleet-heading')) this.map.addLayer({
+      id: 'marshgo-transit-fleet-heading', type: 'symbol', source: 'marshgo-transit-fleet',
+      filter: ['!=', ['get', 'bearingDegrees'], null] as maplibregl.FilterSpecification,
+      layout: {
+        'icon-image': 'marshgo-fleet-heading',
+        'icon-size': ['*', priorityExpression('iconSize'), 1.95] as unknown as ExpressionSpecification,
+        'icon-rotate': ['get', 'bearingDegrees'] as unknown as ExpressionSpecification,
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: { 'icon-opacity': priorityExpression('opacity') },
+    });
     if (!this.map.getLayer('marshgo-transit-fleet-icon')) this.map.addLayer({
       id: 'marshgo-transit-fleet-icon', type: 'symbol', source: 'marshgo-transit-fleet',
       layout: { 'icon-image': ['get', 'iconName'], 'icon-size': priorityExpression('iconSize'),
@@ -926,8 +1004,11 @@ export class MapLibreAdapter implements MapAdapter {
     this.fitCoordinates(segment.coordinates, padding, 17);
     return true;
   }
-  focusCoordinates(points: Coordinate[], padding: RouteFitPadding = {}, maxZoom = 15) {
+  focusCoordinates(points: Coordinate[], padding: RouteFitPadding = {}, maxZoom = 15, segmentId?: string) {
     if (points.length === 0 || !points.every(isValidCoordinate)) return;
+    const container = this.map.getContainer();
+    if (segmentId && this.routeSegments?.some(segment => segment.id === segmentId)) container.dataset.marshgoFocusedRouteSegmentId = segmentId;
+    else delete container.dataset.marshgoFocusedRouteSegmentId;
     this.cameraMode = 'FREE';
     this.lastFitPoints = points;
     this.fitCoordinates(points, padding, maxZoom);
@@ -941,9 +1022,8 @@ export class MapLibreAdapter implements MapAdapter {
       return null;
     }
   }
-  revealSegmentProgress(coordinates: Coordinate[], color: string) {
+  revealSegmentProgress(coordinates: Coordinate[], color: string, progress = 1) {
     const lineSource = this.map.getSource('marshgo-route-reveal') as maplibregl.GeoJSONSource | undefined;
-    const headSource = this.map.getSource('marshgo-route-reveal-head') as maplibregl.GeoJSONSource | undefined;
     if (!lineSource) return;
     if (this.revealFaded) {
       this.restoreRevealOpacity();
@@ -952,49 +1032,155 @@ export class MapLibreAdapter implements MapAdapter {
     const validCoordinates = sanitizeLineCoordinates(coordinates);
     if (validCoordinates.length < 2) {
       lineSource.setData({ type: 'FeatureCollection', features: [] });
-      headSource?.setData({ type: 'FeatureCollection', features: [] });
+      this.revealCoordinates = null;
+      this.revealColor = null;
+      this.revealPathSampler = null;
+      this.removeRevealScout();
       return;
     }
-    lineSource.setData({
-      type: 'Feature',
-      properties: { modeColor: color },
-      geometry: { type: 'LineString', coordinates: validCoordinates },
-    });
-    if (headSource) {
-      const tip = validCoordinates.at(-1)!;
-      headSource.setData({
+    if (this.revealCoordinates !== coordinates || this.revealColor !== color) {
+      lineSource.setData({
         type: 'Feature',
         properties: { modeColor: color },
-        geometry: { type: 'Point', coordinates: tip },
+        geometry: { type: 'LineString', coordinates: validCoordinates },
       });
+      this.revealCoordinates = coordinates;
+      this.revealColor = color;
+      this.revealPathSampler = prepareRoutePathSampler(validCoordinates);
     }
+    // Paint-only updates avoid reparsing and resending the full GeoJSON on every frame.
+    if (this.map.getLayer('marshgo-route-reveal-glow')) this.map.setPaintProperty('marshgo-route-reveal-glow', 'line-gradient', routeRevealGradient(color, progress));
+    if (this.map.getLayer('marshgo-route-reveal-core')) this.map.setPaintProperty('marshgo-route-reveal-core', 'line-gradient', routeRevealGradient('#FFFFFF', progress));
+    const sample = this.revealPathSampler?.(progress);
+    if (sample) this.updateRevealScout(sample);
+  }
+  private updateRevealScout(sample: RoutePathSample) {
+    if (!this.revealScoutMarker) {
+      const element = document.createElement('div');
+      element.className = 'mg-route-scout';
+      element.setAttribute('aria-hidden', 'true');
+      element.innerHTML = '<svg viewBox="0 0 24 24" class="mg-route-scout__arrow"><path d="M12 2 20 21 12 16.5 4 21Z"/></svg>';
+      // addTo() runs _update() synchronously and reads the marker's lngLat, so the
+      // position must be set before the marker joins the map or the flight tick throws.
+      this.revealScoutMarker = new maplibregl.Marker({ element, anchor: 'center', rotationAlignment: 'map', pitchAlignment: 'map' })
+        .setLngLat(sample.coordinate)
+        .setRotation(sample.bearingDegrees)
+        .addTo(this.map);
+    }
+    const element = this.revealScoutMarker.getElement();
+    element.style.setProperty('--route-scout-color', this.revealColor ?? 'var(--mg-blue)');
+    element.classList.remove('is-fading');
+    this.revealScoutMarker.setLngLat(sample.coordinate).setRotation(sample.bearingDegrees);
+  }
+  private removeRevealScout() {
+    this.revealScoutMarker?.remove();
+    this.revealScoutMarker = null;
   }
   /** Fade the reveal in place (paint transitions) instead of popping it out of existence. */
   fadeSegmentReveal() {
     if (this.motionDuration(SEGMENT_REVEAL_TOKENS.fadeMs) === 0) { this.clearSegmentReveal(); return; }
     if (!this.map.getLayer('marshgo-route-reveal-glow')) return;
     this.revealFaded = true;
+    this.revealScoutMarker?.getElement().classList.add('is-fading');
     this.map.setPaintProperty('marshgo-route-reveal-glow', 'line-opacity', 0);
     this.map.setPaintProperty('marshgo-route-reveal-core', 'line-opacity', 0);
-    this.map.setPaintProperty('marshgo-route-reveal-head-glow', 'circle-opacity', 0);
-    this.map.setPaintProperty('marshgo-route-reveal-head-core', 'circle-opacity', 0);
   }
   private restoreRevealOpacity() {
     if (!this.map.getLayer('marshgo-route-reveal-glow')) return;
     this.map.setPaintProperty('marshgo-route-reveal-glow', 'line-opacity', ROUTE_RENDER_TOKENS.revealGlowOpacity);
     this.map.setPaintProperty('marshgo-route-reveal-core', 'line-opacity', 0.95);
-    this.map.setPaintProperty('marshgo-route-reveal-head-glow', 'circle-opacity', 0.85);
-    this.map.setPaintProperty('marshgo-route-reveal-head-core', 'circle-opacity', 1);
+    this.revealScoutMarker?.getElement().classList.remove('is-fading');
   }
   clearSegmentReveal() {
     const lineSource = this.map.getSource('marshgo-route-reveal') as maplibregl.GeoJSONSource | undefined;
-    const headSource = this.map.getSource('marshgo-route-reveal-head') as maplibregl.GeoJSONSource | undefined;
     if (lineSource) lineSource.setData({ type: 'FeatureCollection', features: [] });
-    if (headSource) headSource.setData({ type: 'FeatureCollection', features: [] });
+    this.revealCoordinates = null;
+    this.revealColor = null;
+    this.revealPathSampler = null;
+    this.removeRevealScout();
     if (this.revealFaded) {
       this.restoreRevealOpacity();
       this.revealFaded = false;
     }
+  }
+  /** HyperFlight owns the camera per-frame; pause label re-placement and focus measure so DOM markers are not rebuilt every frame. */
+  setCinematicFlightActive(active: boolean) {
+    this.cinematicFlightActive = active;
+    this.map.getContainer().dataset.marshgoCinematicFlight = active ? 'true' : 'false';
+    if (!active && this.journeyLabelInput.length) this.applyJourneyLabels();
+    if (active) this.cameraFlightPending = false;
+  }
+  getCameraZoom() { return this.map.getZoom(); }
+  /** Per-frame cinematic camera. jumpTo fires move/moveend (not movestart), so it never reads as a user gesture. */
+  setCinematicCamera(frame: { center: Coordinate; zoom: number; bearing: number; pitch: number }, padding?: RouteFitPadding) {
+    if (!isValidCoordinate(frame.center)) return;
+    this.map.jumpTo({
+      center: frame.center,
+      zoom: frame.zoom,
+      bearing: frame.bearing,
+      pitch: frame.pitch,
+      ...(padding ? { padding: { top: padding.top ?? 0, right: padding.right ?? 0, bottom: padding.bottom ?? 0, left: padding.left ?? 0 } } : {}),
+    });
+  }
+  setSegmentPhases(phases: Record<string, 'passed' | 'active' | 'next'> | null) {
+    this.segmentPhases = phases;
+    this.updateRouteSource();
+  }
+  /** Precision Docking sonar: a map-anchored ripple so the eye lands on the exact boarding point, even through the refit. */
+  pingDock(coordinate: Coordinate, color: string) {
+    if (!isValidCoordinate(coordinate)) return;
+    this.clearDockPing();
+    if (this.motionDuration(1900) === 0) return;
+    const element = document.createElement('div');
+    element.className = 'mg-dock-ripple';
+    element.setAttribute('aria-hidden', 'true');
+    element.style.setProperty('--ripple-color', color);
+    element.innerHTML = '<span class="mg-dock-ripple__ring"></span><span class="mg-dock-ripple__ring"></span><span class="mg-dock-ripple__ring"></span><span class="mg-dock-ripple__core"></span>';
+    this.dockPingMarker = new maplibregl.Marker({ element, anchor: 'center' }).setLngLat(coordinate).addTo(this.map);
+    this.dockPingTimer = window.setTimeout(() => this.clearDockPing(), 1900);
+  }
+  private clearDockPing() {
+    if (this.dockPingTimer !== null) { window.clearTimeout(this.dockPingTimer); this.dockPingTimer = null; }
+    this.dockPingMarker?.remove();
+    this.dockPingMarker = null;
+  }
+  /** Living Route Ribbon: a calm travelling light pulse along the active leg's confirmed polyline. */
+  setRouteFlow(flow: { coordinates: Coordinate[]; color: string; kind: 'walk' | 'transit' } | null) {
+    this.stopRouteFlow();
+    const source = this.map.getSource('marshgo-route-flow') as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+    const coordinates = flow ? sanitizeLineCoordinates(flow.coordinates) : [];
+    if (!flow || coordinates.length < 2 || !this.map.getLayer('marshgo-route-flow')) {
+      source.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
+    this.routeFlow = { ...flow, coordinates };
+    source.setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } });
+    const glow = flow.kind === 'walk' ? '125,211,252' : '255,255,255';
+    if (this.motionDuration(1000) === 0) {
+      this.map.setPaintProperty('marshgo-route-flow', 'line-gradient', routeFlowGradient(glow, 0.5, 0.5));
+      return;
+    }
+    this.routeFlowPhase = 0;
+    let last = performance.now();
+    let lastPaint = 0;
+    const tick = (now: number) => {
+      if (!this.routeFlow) return;
+      const delta = now - last;
+      last = now;
+      this.routeFlowPhase = (this.routeFlowPhase + delta / 1600) % 1;
+      // ~30 fps is indistinguishable from 60 for a soft pulse and halves the idle repaint cost.
+      if (now - lastPaint >= 33) {
+        lastPaint = now;
+        if (this.map.getLayer('marshgo-route-flow')) this.map.setPaintProperty('marshgo-route-flow', 'line-gradient', routeFlowGradient(glow, this.routeFlowPhase));
+      }
+      this.routeFlowRaf = requestAnimationFrame(tick);
+    };
+    this.routeFlowRaf = requestAnimationFrame(tick);
+  }
+  private stopRouteFlow() {
+    if (this.routeFlowRaf !== null) { cancelAnimationFrame(this.routeFlowRaf); this.routeFlowRaf = null; }
+    this.routeFlow = null;
   }
   /** Animated zoom step for the map chrome; MapLibre clamps at the style limits. */
   zoomBy(delta: number) {
@@ -1015,7 +1201,8 @@ export class MapLibreAdapter implements MapAdapter {
       source.setData({ type: 'FeatureCollection', features: mapSegments.map(segment => ({
         type: 'Feature' as const,
         properties: { modeColor: segment.modeColor, segmentId: segment.id ?? '', approximate: segment.approximate === true,
-          isWalk: segment.isWalk, selected: segment.selected, dimmed: segment.dimmed },
+          isWalk: segment.isWalk, selected: segment.selected, dimmed: segment.dimmed,
+          phase: this.segmentPhases?.[segment.id ?? ''] ?? null },
         geometry: { type: 'LineString' as const, coordinates: segment.coordinates },
       })) });
       return;
@@ -1137,17 +1324,18 @@ export class MapLibreAdapter implements MapAdapter {
     );
     container.dataset.marshgoJourneyLabelCount = String(placed.length);
     const seen = new Set<string>();
-    for (const { annotation: label, anchor } of placed) {
+    for (const { annotation: label, anchor, offset } of placed) {
       seen.add(label.id);
       // The anchor is part of the key: panning an end chip from one half of the
       // screen to the other legitimately rebuilds the marker with a new anchor.
-      const key = `${label.kind}:${label.tone ?? ''}:${label.title}:${label.detail ?? ''}:${label.coordinates[0].toFixed(5)},${label.coordinates[1].toFixed(5)}:${anchor}`;
+      const key = `${label.kind}:${label.tone ?? ''}:${label.title}:${label.detail ?? ''}:${label.coordinates[0].toFixed(5)},${label.coordinates[1].toFixed(5)}:${anchor}:${offset?.join(',') ?? '0,0'}`;
       const existing = this.journeyLabelMarkers.get(label.id);
       if (existing?.key === key) continue;
       existing?.marker.remove();
       const marker = new maplibregl.Marker({
         element: this.buildJourneyLabelElement(label),
         anchor,
+        offset: offset ?? [0, 0],
         pitchAlignment: 'viewport',
         rotationAlignment: 'viewport',
       }).setLngLat(label.coordinates).addTo(this.map);
@@ -1317,11 +1505,13 @@ export class MapLibreAdapter implements MapAdapter {
     arrowsSource?.setData({ type: 'FeatureCollection', features: arrowFeatures });
     const iconName = transitIconName(overlay?.transportType ?? 'bus');
     const fleetLevels = (overlay?.vehicles ?? []).map(vehicle => priorityLevelOf(vehicle));
+    const fleetLine = routes[0]?.coordinates ?? null;
     fleetSource?.setData({ type: 'FeatureCollection', features: (overlay?.vehicles ?? []).map((vehicle, index) => ({
       type: 'Feature' as const,
       properties: {
         id: vehicle.id, modeColor, iconName, emphasized: vehicle.emphasized,
         priorityLevel: fleetLevels[index] ?? 'L1', updatedAt: vehicle.updatedAt,
+        bearingDegrees: bearingAlongLineAt(vehicle.coordinates, fleetLine),
       },
       geometry: { type: 'Point' as const, coordinates: vehicle.coordinates },
     })).filter(feature => feature.geometry.coordinates.every(Number.isFinite)) });
@@ -1347,6 +1537,17 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.getContainer().dataset.marshgoVehicleHeading = this.heading === null ? '' : String(Math.round(this.heading));
   }
 
+  clearVehicle() {
+    this.vehicle = null;
+    this.heading = null;
+    this.marker?.remove();
+    this.marker = null;
+    const source = this.map.getSource('marshgo-vehicle') as maplibregl.GeoJSONSource | undefined;
+    source?.setData({ type: 'FeatureCollection', features: [] });
+  }
+
+  setFollowPadding(padding: RouteFitPadding | null) { this.followPadding = padding; }
+
   private setCameraModeInternal(mode: CameraMode) {
     this.cameraMode = mode;
     this.map.getContainer().dataset.marshgoCameraMode = mode;
@@ -1362,7 +1563,7 @@ export class MapLibreAdapter implements MapAdapter {
     this.map.easeTo({
       center: this.vehicle, zoom: Math.max(this.map.getZoom(), 17), pitch: tilt,
       bearing: this.heading ?? this.map.getBearing(),
-      padding: { top: Math.round(clientHeight * 0.32), bottom: Math.round(clientHeight * 0.08), left: 0, right: 0 },
+      padding: this.followPadding ? { top: this.followPadding.top ?? 0, bottom: this.followPadding.bottom ?? 0, left: this.followPadding.left ?? 0, right: this.followPadding.right ?? 0 } : { top: Math.round(clientHeight * 0.32), bottom: Math.round(clientHeight * 0.08), left: 0, right: 0 },
       duration: this.glideDuration(duration, { center: this.vehicle, zoom: Math.max(this.map.getZoom(), 17), bearing: this.heading ?? this.map.getBearing() }), easing: cameraEasing(), essential: true,
     });
   }
@@ -1417,7 +1618,10 @@ export class MapLibreAdapter implements MapAdapter {
       left: Math.min(maxSidePadding, overrides.left ?? Math.min(32, clientWidth * 0.1)),
     };
     this.lastFitPadding = padding;
-    if (typeof overrides.bearing === 'number' && Number.isFinite(overrides.bearing) && overrides.bearing !== 0) {
+    // A zero bearing is an explicit north-up request, not “keep the current
+    // bearing”. Overview fits must account for the point cloud at that bearing
+    // as well; otherwise a route can stay rotated/clipped after “show all”.
+    if (typeof overrides.bearing === 'number' && shouldUsePointCloudFit(points, overrides.bearing)) {
       this.fitRotatedCoordinates(points, padding, maxZoom, overrides.bearing);
       return;
     }
@@ -1449,6 +1653,7 @@ export class MapLibreAdapter implements MapAdapter {
       maxZoom,
     );
     if (!camera) return;
+    this.markCameraRequest();
     this.map.easeTo({
       center: camera.center,
       zoom: camera.zoom,
@@ -1555,11 +1760,6 @@ export class MapLibreAdapter implements MapAdapter {
       this.map.setPaintProperty('marshgo-route-walking-trail-halo', 'line-color', ['case', ['==', ['get', 'selected'], true], walk.haloSelected, walk.halo]);
       this.map.setPaintProperty('marshgo-route-walking-estimate', 'line-color', ['coalesce', ['get', 'modeColor'], walk.estimate]);
     }
-    if (this.map.getLayer('marshgo-route-reveal-glow')) {
-      this.map.setPaintProperty('marshgo-route-reveal-glow', 'line-color', ['coalesce', ['get', 'modeColor'], colors.route]);
-      this.map.setPaintProperty('marshgo-route-reveal-head-glow', 'circle-color', ['coalesce', ['get', 'modeColor'], colors.route]);
-      this.map.setPaintProperty('marshgo-route-reveal-head-core', 'circle-stroke-color', ['coalesce', ['get', 'modeColor'], colors.route]);
-    }
     this.map.setPaintProperty('marshgo-waypoints', 'circle-color', ['match', ['get', 'kind'], 'PICKUP', colors.pickup, 'DROPOFF', colors.dropoff, 'STOP', '#F8FAFC', 'TRANSFER', '#FFFFFF', 'SELF_LOCATION', '#0878F9', 'OTHER_LOCATION', '#8B5CF6', colors.route]);
     this.map.setPaintProperty('marshgo-waypoints', 'circle-stroke-color', ['match', ['get', 'kind'], 'STOP', '#475569', 'TRANSFER', '#327FC3', 'SELF_LOCATION', '#FFFFFF', 'OTHER_LOCATION', '#FFFFFF', '#FFFFFF']);
     if (this.map.getLayer('marshgo-waypoints-stops')) {
@@ -1579,6 +1779,9 @@ export class MapLibreAdapter implements MapAdapter {
   destroy() {
     this.map.getContainer().removeEventListener('wheel', this.wheelGestureListener);
     this.cancelLiveTransitGlide();
+    this.stopRouteFlow();
+    this.clearDockPing();
+    this.removeRevealScout();
     this.marker?.remove();
     this.liveTransitMarker?.remove();
     for (const { marker } of this.journeyLabelMarkers.values()) marker.remove();

@@ -24,6 +24,15 @@ export interface SmartStepSummary {
   transitBadge?: string;
 }
 
+export interface RoutePathSample {
+  coordinate: Coordinate;
+  /** Local direction of travel in degrees clockwise from north. */
+  bearingDegrees: number;
+  distanceAlongMeters: number;
+  totalDistanceMeters: number;
+  segmentIndex: number;
+}
+
 /** Computes great-circle distance between two coordinates in metres. */
 export function distanceMeters(a: Coordinate, b: Coordinate): number {
   const rad = Math.PI / 180;
@@ -35,6 +44,65 @@ export function distanceMeters(a: Coordinate, b: Coordinate): number {
   const sinDLon = Math.sin(dLon / 2);
   const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLon * sinDLon;
   return 6371000 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** Precompute confirmed polyline distances once and sample position/course by travelled distance. */
+export function prepareRoutePathSampler(input: readonly Coordinate[]): (progress: number) => RoutePathSample | null {
+  const coordinates = input.map(([longitude, latitude]) => [longitude, latitude] as Coordinate);
+  const segments = coordinates.slice(1).map((end, offset) => {
+    const start = coordinates[offset]!;
+    const lengthMeters = distanceMeters(start, end);
+    const meanLatitudeRadians = (start[1] + end[1]) * Math.PI / 360;
+    const east = (end[0] - start[0]) * Math.cos(meanLatitudeRadians);
+    const north = end[1] - start[1];
+    const bearingDegrees = (Math.atan2(east, north) * 180 / Math.PI + 360) % 360;
+    return { start, end, lengthMeters, bearingDegrees, index: offset };
+  });
+  const totalDistanceMeters = segments.reduce((sum, segment) => sum + segment.lengthMeters, 0);
+  const cumulativeEndMeters: number[] = [];
+  let accumulatedMeters = 0;
+  for (const segment of segments) {
+    accumulatedMeters += segment.lengthMeters;
+    cumulativeEndMeters.push(accumulatedMeters);
+  }
+
+  return (progress: number): RoutePathSample | null => {
+    if (coordinates.length === 0) return null;
+    const clampedProgress = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0;
+    if (totalDistanceMeters <= 0) {
+      return {
+        coordinate: [...coordinates[0]!] as Coordinate,
+        bearingDegrees: 0,
+        distanceAlongMeters: 0,
+        totalDistanceMeters: 0,
+        segmentIndex: 0,
+      };
+    }
+
+    const distanceAlongMeters = totalDistanceMeters * clampedProgress;
+    let segmentIndex = segments.findIndex((segment, index) =>
+      segment.lengthMeters > 0 && (distanceAlongMeters < cumulativeEndMeters[index]! || index === segments.length - 1),
+    );
+    if (segmentIndex < 0) {
+      for (let index = segments.length - 1; index >= 0; index--) {
+        if (segments[index]!.lengthMeters > 0) { segmentIndex = index; break; }
+      }
+    }
+    const segment = segments[segmentIndex]!;
+    const segmentStartMeters = segmentIndex === 0 ? 0 : cumulativeEndMeters[segmentIndex - 1]!;
+    const localProgress = Math.max(0, Math.min(1, (distanceAlongMeters - segmentStartMeters) / segment.lengthMeters));
+
+    return {
+      coordinate: [
+        segment.start[0] + (segment.end[0] - segment.start[0]) * localProgress,
+        segment.start[1] + (segment.end[1] - segment.start[1]) * localProgress,
+      ],
+      bearingDegrees: segment.bearingDegrees,
+      distanceAlongMeters,
+      totalDistanceMeters,
+      segmentIndex: segment.index,
+    };
+  };
 }
 
 /** Prepare segment lengths once for a cancellable route reveal. */

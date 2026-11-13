@@ -9,6 +9,7 @@ import {
   activeLegStatus,
   activeLegTitle,
   activeNavigationDestination,
+  activeNavigationStageLabel,
   activeNavigationStartIndex,
   formatStageCount,
   rideStopCount,
@@ -90,12 +91,14 @@ test('a stage is upcoming, under way or past only by its own timestamps', () => 
   assert.equal(activeLegPhase(leg, Date.parse('2026-11-02T08:21:00+02:00')), 'past');
 });
 
-test('the stage card asks to board before departure and to alight on the ride', () => {
+test('schedule guidance never claims boarding or completion for the passenger', () => {
   const leg = tram();
-  assert.equal(activeLegInstruction(leg, Date.parse('2026-11-02T08:05:00+02:00')), 'Сідайте на зупинці «Площа Ринок»');
-  assert.equal(activeLegInstruction(leg, Date.parse('2026-11-02T08:12:00+02:00')), 'Ви в дорозі · виходьте через 3 зупинки на «Соборна»');
-  assert.equal(activeLegInstruction(leg, Date.parse('2026-11-02T08:21:00+02:00')), 'Етап завершено');
+  assert.equal(activeLegInstruction(leg, Date.parse('2026-11-02T08:05:00+02:00')), 'Посадка на зупинці «Площа Ринок»');
+  assert.equal(activeLegInstruction(leg, Date.parse('2026-11-02T08:12:00+02:00')), 'За розкладом рейс у дорозі · висадка на «Соборна»');
+  assert.equal(activeLegInstruction(leg, Date.parse('2026-11-02T08:21:00+02:00')), 'За розкладом час прибуття минув');
   assert.equal(activeLegInstruction(walk(), Date.parse('2026-11-02T08:01:00+02:00')), 'Прямуйте до «Проспект Свободи»');
+  assert.equal(activeLegInstruction(walk(), Date.parse('2026-11-03T08:01:00+02:00')), 'Прямуйте до «Проспект Свободи»');
+  for (const at of ['07:50', '08:12', '08:21']) assert.doesNotMatch(activeLegInstruction(leg, Date.parse(`2026-11-02T${at}:00+02:00`)), /Ви в дорозі|завершено/);
 });
 
 test('walk stages carry no status badge; transit keeps the honest source label', () => {
@@ -129,4 +132,10 @@ test('passengers count stages in Ukrainian plurals, never graph segments', () =>
   assert.equal(formatStageCount(1), '1 етап');
   assert.equal(formatStageCount(3), '3 етапи');
   assert.equal(formatStageCount(5), '5 етапів');
+});
+
+test('the sheet label distinguishes GPS navigation, waiting for GPS and stage preview', () => {
+  assert.equal(activeNavigationStageLabel(true, true, 0, 4, 2), 'Навігація · етап 1 з 4 · 2 пересадки');
+  assert.equal(activeNavigationStageLabel(true, false, 2, 4), 'Очікуємо GPS · етап 3 з 4');
+  assert.equal(activeNavigationStageLabel(false, true, 1, 4), 'Перегляд · етап 2 з 4');
 });

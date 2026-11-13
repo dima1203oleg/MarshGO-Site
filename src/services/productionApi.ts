@@ -442,6 +442,7 @@ export type ApiStoredJourney = {
   }>;
 };
 export type GeoJsonCollection = { type: 'FeatureCollection'; features: Array<{ type: 'Feature'; properties: Record<string, unknown>; geometry: { type: string; coordinates: unknown } }> };
+export type ApiRouteProgressStatus = 'RELIABLE' | 'UNCERTAIN' | 'OFF_ROUTE';
 export type ApiNavigationSession = {
   id: string; state: 'active' | 'paused' | 'ended'; destination_name: string | null;
   route_distance_m: number | null; route_duration_s: number | null; route_version: number; opt_in: boolean;
@@ -450,6 +451,8 @@ export type ApiNavigationSession = {
   /** Turn-by-turn steps of the current route (absent on older servers). */
   maneuvers?: import('../../shared/navigation/contracts').Maneuver[];
   current_location: [number, number] | null; current_location_accuracy_m: number | null; current_location_at: string | null;
+  progress_status: ApiRouteProgressStatus | null; progress_ordinal: number | null; progress_fraction: number | null;
+  last_reliable_fix_at: string | null;
 };
 export type ApiNavigationMatch = {
   id: string; demand_id: string; status: 'suggested' | 'driver_interested' | 'passenger_confirmed' | 'dismissed' | 'expired';
@@ -823,8 +826,8 @@ export const productionApi = {
     );
   },
   navigationSession(id: string) { return request<ApiNavigationSession>(`/navigation/sessions/${id}`); },
-  sendNavigationLocation(id: string, input: { coordinates: [number, number]; accuracyMeters: number; capturedAt: string }) {
-    return request<{ accepted: boolean; onRoute: boolean; capturedAt: string }>(`/navigation/sessions/${id}/location`, {
+  sendNavigationLocation(id: string, input: { coordinates: [number, number]; accuracyMeters: number; capturedAt: string; headingDeg?: number }) {
+    return request<{ accepted: boolean; onRoute: boolean; capturedAt: string; progressStatus: ApiRouteProgressStatus | null; progressOrdinal: number | null; progressFraction: number | null }>(`/navigation/sessions/${id}/location`, {
       method: 'POST', body: JSON.stringify(input),
     });
   },

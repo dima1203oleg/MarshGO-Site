@@ -22,6 +22,7 @@ import { snapNavigationSheet, type NavigationSheetLevel } from '../navigation/na
 import { createNavigationShareUrl } from '../routing/navigationShare';
 import { navigationDestinationName } from '../navigation/destinationName';
 import { globalBottomNavigationInset, measureGlobalBottomNavigationInset } from './globalBottomNavigationInset';
+import { sensory } from '../sensory';
 
 function navigationErrorMessage(error: unknown, fallback: string) {
   if (!(error instanceof Error)) return fallback;
@@ -86,6 +87,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const [gpsMessage, setGpsMessage] = useState('');
   const [visible, setVisible] = useState(document.visibilityState === 'visible');
   const [clock, setClock] = useState(Date.now());
+  const progressBlocked = session?.progress_status === 'UNCERTAIN' || session?.progress_status === 'OFF_ROUTE';
+  const matchingGpsFresh = Boolean(session?.current_location_at && clock - new Date(session.current_location_at).getTime() <= 60_000);
   const [onRoute, setOnRoute] = useState<boolean | null>(null);
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   // Raw GPS position: the marker for a session without a route ("just drive"), where there is no route to match it to.
@@ -101,6 +104,13 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   const sheetRef = useRef<HTMLElement | null>(null);
   const [sheetHeight, setSheetHeight] = useState(0);
   const [bottomNavigationInset, setBottomNavigationInset] = useState(measureGlobalBottomNavigationInset);
+  // Driver-safe sensory mode while turn-by-turn navigation is active: decorative
+  // sounds yield, only essential confirmations (LIVE toggle, booking, errors) remain.
+  useEffect(() => {
+    if (!session) return;
+    sensory.setMode('driver-safe');
+    return () => sensory.setMode('interactive');
+  }, [session?.id]);
   useEffect(() => {
     const navigation = document.querySelector<HTMLElement>('[data-testid="global-bottom-navigation"]');
     const measure = () => {
@@ -254,7 +264,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     }).catch((error: unknown) => {
       const cached = offlineStoreRef.current?.readLatest();
       if (cached) {
-        setSession({ ...cached.session, current_location: null, current_location_accuracy_m: null, current_location_at: null });
+        setSession({ ...cached.session, current_location: null, current_location_accuracy_m: null, current_location_at: null,
+          progress_status: null, progress_ordinal: null, progress_fraction: null, last_reliable_fix_at: null });
         setMatchingEnabled(false);
         navigationStore.dispatch({ type: 'NAVIGATION_SESSION_RECONCILED', sessionId: cached.sessionId, route: cached.route, paused: cached.session.state === 'paused' });
         navigationStore.dispatch({ type: 'CONNECTIVITY_LOST' });
@@ -285,7 +296,7 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
   }, [session?.id, visible]);
 
   useEffect(() => {
-    if (!session || session.state !== 'active' || !matchingEnabled || !hasRoute(session) || navigationState.connectivity === 'OFFLINE' || !session.current_location_at || !visible) return;
+    if (!session || session.state !== 'active' || !matchingEnabled || !hasRoute(session) || progressBlocked || !matchingGpsFresh || navigationState.connectivity === 'OFFLINE' || !visible) return;
     let current = true;
     const refresh = () => productionApi.refreshNavigationMatches(session.id)
       .then((next) => { if (current) setMatches(next); })
@@ -293,13 +304,14 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     void refresh();
     const timer = window.setInterval(() => void refresh(), 60_000);
     return () => { current = false; window.clearInterval(timer); };
-  }, [session?.id, session?.state, matchingEnabled, Boolean(session && hasRoute(session)), Boolean(session?.current_location_at), visible, navigationState.connectivity]);
+  }, [session?.id, session?.state, session?.route_version, matchingEnabled, Boolean(session && hasRoute(session)), progressBlocked, matchingGpsFresh, visible, navigationState.connectivity]);
 
   useEffect(() => {
     if (!session || session.state !== 'active' || !('geolocation' in navigator)) return;
     let busySending = false;
+    let cancelled = false;
     const unsubscribe = locationProvider.current.subscribe((fix) => {
-      if (document.visibilityState !== 'visible' || busySending) return;
+      if (cancelled || document.visibilityState !== 'visible' || busySending) return;
       const previousFix = lastValidatedFixRef.current;
       if (isDuplicateLocationFix(fix, previousFix ?? undefined)) return;
       const checked = validateLocationFix(fix, Date.now(), lastValidatedFixRef.current ?? undefined);
@@ -321,8 +333,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       if (hasRoute(session)) {
         navigationStore.dispatch({ type: 'GPS_FIX_RECEIVED', fix: checked.fix });
         void mapMatchingProvider.current.match([checked.fix], { route: canonicalRoute(session) }).then((matched) => {
-          navigationStore.dispatch({ type: 'LOCATION_MATCHED', location: matched.location });
-        }).catch(() => setGpsMessage('Не вдалося прив’язати GPS до дорожнього маршруту.'));
+          if (!cancelled) navigationStore.dispatch({ type: 'LOCATION_MATCHED', location: matched.location });
+        }).catch(() => { if (!cancelled) setGpsMessage('Не вдалося прив’язати GPS до дорожнього маршруту.'); });
       }
       const now = Date.now();
       const last = lastSentRef.current;
@@ -337,27 +349,48 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       busySending = true;
       productionApi.sendNavigationLocation(session.id, {
         coordinates: [longitude, latitude], accuracyMeters: accuracy, capturedAt: fix.capturedAtClient,
+        headingDeg: (speed ?? 0) > 1 ? checked.fix.headingDegrees : undefined,
       }).then((result) => {
+        if (cancelled) return;
         lastSentRef.current = { lat: latitude, lon: longitude, at: now };
-        const deviation = offRouteGuardRef.current.observe(result.onRoute, now);
-        setOnRoute(deviation.confirmedOffRoute ? false : result.onRoute ? true : null);
-        if (deviation.requestReroute) navigationStore.dispatch({ type: 'ROUTE_DEVIATION_DETECTED' });
-        setGpsMessage(result.onRoute ? '' : deviation.confirmedOffRoute
-          ? 'Кілька GPS-точок підтвердили відхилення від маршруту. Перераховуємо безпечний шлях.'
-          : 'Перевіряємо відхилення GPS, щоб не перебудовувати маршрут через одиничний неточний сигнал.');
+        setSession((current) => !cancelled && current?.id === session.id && current.route_version === session.route_version && current.state === 'active' ? { ...current,
+          current_location_at: result.capturedAt, progress_status: result.progressStatus,
+          progress_ordinal: result.progressOrdinal, progress_fraction: result.progressFraction,
+        } : current);
+        if (result.progressStatus === 'UNCERTAIN') {
+          setOnRoute(null);
+          setGpsMessage('GPS не визначив однозначний напрямок на маршруті. Новий підбір призупинено до узгодженої точки; наявний інтерес збережено.');
+        } else {
+          const routeAligned = result.progressStatus !== 'OFF_ROUTE' && result.onRoute;
+          const deviation = offRouteGuardRef.current.observe(routeAligned, now);
+          setOnRoute(deviation.confirmedOffRoute ? false : routeAligned ? true : null);
+          if (deviation.requestReroute) navigationStore.dispatch({ type: 'ROUTE_DEVIATION_DETECTED' });
+          setGpsMessage(result.progressStatus === 'OFF_ROUTE'
+            ? 'GPS поза поточним маршрутом. Новий підбір призупинено; перевіряємо відхилення перед перебудовою.'
+            : routeAligned ? '' : deviation.confirmedOffRoute
+              ? 'Кілька GPS-точок підтвердили відхилення від маршруту. Перераховуємо шлях.'
+              : 'Перевіряємо відхилення GPS, щоб не перебудовувати маршрут через одиничний неточний сигнал.');
+        }
         void productionApi.activeNavigation().then((authoritative) => {
-          if (authoritative?.id === session.id) setSession(authoritative);
+          if (cancelled) return;
+          setSession((current) => !cancelled && current?.id === session.id && current.state === 'active'
+            && current.route_version === session.route_version && authoritative?.id === current.id
+            && (authoritative.route_version > current.route_version || (authoritative.route_version === current.route_version
+              && (Date.parse(authoritative.current_location_at ?? '') || 0) >= (Date.parse(current.current_location_at ?? '') || 0)))
+            ? authoritative : current);
         }).catch(() => undefined);
       }).catch((error: unknown) => {
+        if (cancelled) return;
         if (!navigator.onLine) navigationStore.dispatch({ type: 'CONNECTIVITY_LOST' });
         setGpsMessage(navigationErrorMessage(error, 'Не вдалося синхронізувати GPS. Чекаємо наступну точку.'));
       }).finally(() => { busySending = false; });
     });
     void locationProvider.current.start({ enableHighAccuracy: true, maximumAgeMs: 5_000, timeoutMs: 20_000 }).catch((error: unknown) => {
+      if (cancelled) return;
       setGpsMessage(error instanceof Error && error.message === 'GPS_PERMISSION_DENIED' ? 'Дозвіл на геолокацію вимкнений.' : 'GPS тимчасово недоступний. Навігація не рухатиме маркер без свіжого сигналу.');
     });
-    return () => { unsubscribe(); void locationProvider.current.stop(); };
-  }, [navigationStore, session?.id, session?.state, Boolean(session && hasRoute(session))]);
+    return () => { cancelled = true; unsubscribe(); void locationProvider.current.stop(); };
+  }, [navigationStore, session?.id, session?.state, session?.route_version, Boolean(session && hasRoute(session))]);
 
   // ---- Turn-by-turn guidance and voice ----
   const guidancePrepared = useMemo(() => session && hasRoute(session) && session.maneuvers?.length ? prepareGuidance(session.route!, session.maneuvers) : null,
@@ -546,7 +579,8 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
       setMatchingEnabled(next); setSession({ ...session, opt_in: next });
       if (!next) setMatches([]);
       setGpsMessage(next ? 'Пошук уздовж маршруту увімкнено за вашою згодою.' : 'Автоматичний пошук вимкнено.');
-    } catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося змінити налаштування підбору.')); }
+      sensory.emit({ type: 'CARPOOL_TOGGLE_CHANGED', enabled: next });
+    } catch (error) { setGpsMessage(navigationErrorMessage(error, 'Не вдалося змінити налаштування підбору.')); sensory.emit({ type: 'ERROR_SOFT' }); }
     finally { setMatchingBusy(false); }
   };
 
@@ -577,12 +611,23 @@ export function ProductionNavigation({ onBack, onOpenDemand, onSessionActiveChan
     finally { setMatchingBusy(false); }
   };
 
-  const matchingPanel = session ? <section className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-[#0B1730] dark:border-white/10 dark:bg-[var(--mg-surface-secondary)] dark:text-white">
-    <div className="flex items-center justify-between gap-3"><p className="min-w-0 text-sm font-bold">Підбирати пасажирів</p><button type="button" role="switch" aria-checked={matchingEnabled} aria-label="Пошук попутників уздовж маршруту" disabled={matchingBusy || !session.matching_vehicle_available} onClick={() => void toggleMatching()} className={`relative h-7 w-12 shrink-0 rounded-full transition ${matchingEnabled ? 'bg-emerald-500' : 'bg-slate-600'} disabled:opacity-45`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${matchingEnabled ? 'left-6' : 'left-1'}`}/></button></div>
+  const matchingPaused = !session || !hasRoute(session) || progressBlocked || !matchingGpsFresh || !visible || navigationState.connectivity === 'OFFLINE' || session.state === 'paused';
+  const matchingStatus = !matchingEnabled ? 'Пошук вимкнено · тільки за вашою згодою'
+    : !session || !hasRoute(session) ? 'Оберіть напрямок для пошуку вздовж маршруту'
+    : session.state === 'paused' ? 'Навігація на паузі · наявний інтерес збережено'
+    : !visible || navigationState.connectivity === 'OFFLINE' ? 'Немає активного зв’язку · новий підбір на паузі'
+    : !matchingGpsFresh ? 'Очікуємо свіжу GPS-точку · новий підбір на паузі'
+    : session.progress_status === 'UNCERTAIN' ? 'Напрямок GPS неоднозначний · новий підбір на паузі'
+    : session.progress_status === 'OFF_ROUTE' ? 'GPS поза маршрутом · новий підбір на паузі'
+    : session.progress_status === 'RELIABLE' ? 'GPS узгоджений · перевіряємо заявки вздовж дороги'
+    : 'Очікуємо підтвердження прогресу маршруту';
+  const matchingPanel = session ? <section className="mt-3 rounded-2xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] px-3 py-2.5 text-[var(--mg-ink-primary)]">
+    <div className="flex items-center justify-between gap-3"><p className="min-w-0 text-sm font-bold">Підбирати попутників</p><button type="button" role="switch" aria-checked={matchingEnabled} aria-label="Пошук попутників уздовж маршруту" aria-describedby="navigation-matching-status" disabled={matchingBusy || !session.matching_vehicle_available} onClick={() => void toggleMatching()} className="mg-press grid h-11 w-14 shrink-0 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)] disabled:opacity-45"><span aria-hidden="true" className={`relative h-7 w-12 rounded-full ${matchingEnabled ? 'bg-[var(--mg-action)]' : 'bg-[var(--mg-ink-muted)]'}`}><span className={`absolute top-1 left-0 h-5 w-5 rounded-full bg-[var(--mg-surface-primary)] shadow transition-transform duration-[var(--mg-dur-tap)] ease-[var(--mg-ease-standard)] ${matchingEnabled ? 'translate-x-6' : 'translate-x-1'}`}/></span></button></div>
+    <p id="navigation-matching-status" role="status" className="mt-1 flex items-start gap-2 rounded-xl bg-[var(--mg-surface-tint)] p-2.5 text-xs leading-5 text-[var(--mg-ink-secondary)]"><span aria-hidden="true" className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${matchingEnabled && !matchingPaused && session.progress_status === 'RELIABLE' ? 'mg-live-dot bg-[var(--mg-green)]' : 'bg-[var(--mg-ink-muted)]'}`}/>{matchingStatus}</p>
     {!session.matching_vehicle_available && <div className="mt-1.5 flex items-center justify-between gap-2 text-xs leading-4 text-amber-200"><span>Щоб шукати пасажирів під час руху, додайте авто.</span>{onAddVehicle && <button type="button" onClick={onAddVehicle} className="shrink-0 rounded-full bg-amber-300/15 px-3 py-1.5 text-xs font-bold text-amber-100">Додати авто</button>}</div>}
     {session.matching_vehicle_available && matchingEnabled && !hasRoute(session) && <p className="mt-2 rounded-xl bg-slate-50 p-2.5 text-xs leading-4 text-slate-700 dark:bg-[var(--mg-surface-primary)] dark:text-slate-300">Оберіть, куди їдете, — і ми почнемо шукати попутників уздовж маршруту.</p>}
     {matchingEnabled && <div className="mt-2 max-h-[20svh] space-y-2 overflow-y-auto pr-1">
-      <div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-200">{matches.length ? `Сумісні заявки · ${matches.length}` : 'Шукаємо вздовж дороги'}</p>{session.state === 'active' && <span className="text-xs text-slate-500 dark:text-slate-400">оновлення щохвилини</span>}</div>
+      <div className="flex items-center justify-between gap-2"><p className="text-xs font-bold uppercase tracking-wide text-[var(--mg-blue-ink)]">{matches.length ? `Сумісні заявки · ${matches.length}` : matchingPaused ? 'Новий підбір призупинено' : 'Шукаємо вздовж дороги'}</p>{session.state === 'active' && !matchingPaused && <span className="text-xs text-[var(--mg-ink-muted)]">оновлення щохвилини</span>}</div>
       {matches.map((match) => <article key={match.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[#0B1730] shadow-sm dark:border-white/10 dark:bg-[var(--mg-surface-primary)] dark:text-white">
         <div className="flex items-start justify-between gap-3"><div className="min-w-0"><b className="block truncate text-xs">{match.origin_name.split(',')[0]} → {match.destination_name.split(',')[0]}</b><p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{match.passenger_count} пас. · забрати орієнтовно {new Intl.DateTimeFormat('uk-UA',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Kyiv'}).format(new Date(match.pickup_eta))}</p></div><span className="shrink-0 text-right text-xs font-bold text-blue-700 dark:text-blue-300">+{(match.detour_distance_m/1000).toFixed(1)} км<br/>+{Math.round(match.detour_duration_s/60)} хв</span></div>
         <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{match.budget_minor === null ? 'Бюджет не вказаний' : `${new Intl.NumberFormat('uk-UA',{style:'currency',currency:'UAH',maximumFractionDigits:0}).format(match.budget_minor/100)} ${match.budget_type === 'per_seat' ? 'за місце' : 'за всіх'}`}{match.vehicle_make ? ` · ${match.vehicle_make} ${match.vehicle_model ?? ''}` : ''}</p>

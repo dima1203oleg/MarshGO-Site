@@ -10,20 +10,12 @@
   }
 
   .production-app > nav[data-testid="global-bottom-navigation"][data-map-context="true"] {
+    /* Active map guidance owns the whole viewport while the dock slides away. */
+    transform: translate3d(0, calc(100% + env(safe-area-inset-bottom, 0px)), 0) !important;
+    opacity: 0 !important;
+    visibility: hidden;
+    pointer-events: none !important;
     will-change: transform, opacity;
-  }
-
-  .production-app > nav[data-testid="global-bottom-navigation"][data-map-context="true"][data-map-visible="false"] {
-    transform: translate3d(0, calc(100% + env(safe-area-inset-bottom, 0px)), 0);
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  /* Keep the dock discoverable to keyboard and assistive-technology users. */
-  .production-app > nav[data-testid="global-bottom-navigation"][data-map-context="true"][data-map-visible="false"]:focus-within {
-    transform: translate3d(0, 0, 0);
-    opacity: 1;
-    pointer-events: auto;
   }
 }
 

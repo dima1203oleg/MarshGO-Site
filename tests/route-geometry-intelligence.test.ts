@@ -10,6 +10,7 @@ import {
   SEGMENT_REVEAL_TOKENS,
   WALK_GEOMETRY_TOKENS,
   routeArrowExpression,
+  routeRevealGradient,
   routeStrokeWidthExpression,
   walkGeometryTokens,
   walkWidthExpression,
@@ -47,6 +48,16 @@ test('the route stroke scale grows with zoom and keeps halo > casing > core at e
     assert.ok(ROUTE_STROKE_TOKENS.casing.normal[i]! > ROUTE_STROKE_TOKENS.core.normal[i]!);
   }
   assert.ok(ROUTE_EMPHASIS_TOKENS.dimmedOpacity > 0 && ROUTE_EMPHASIS_TOKENS.dimmedOpacity < 1);
+});
+
+test('route reveal is a bounded line-progress gradient over the original path', () => {
+  const start = routeRevealGradient('#2D8CFF', 0);
+  const middle = routeRevealGradient('#2D8CFF', 0.5);
+  const complete = routeRevealGradient('#2D8CFF', 1);
+  assert.deepEqual(start.slice(0, 3), ['interpolate', ['linear'], ['line-progress']]);
+  assert.ok(middle.includes(0.5), 'the midpoint reveals half the normalized route distance');
+  assert.equal(complete.at(-1), '#2D8CFF');
+  assert.ok(routeRevealGradient('#2D8CFF', 2).includes(1), 'progress clamps at the end of the route');
 });
 
 test('focused route geometry stays crisp at street zoom instead of becoming a broad glowing ribbon', () => {
@@ -196,8 +207,12 @@ test('every programmatic camera move shares the entrance easing', () => {
 });
 
 test('the reveal fades through paint transitions and restores opacity for the next run', () => {
-  assert.match(adapter, /'line-opacity-transition': \{ duration: SEGMENT_REVEAL_TOKENS\.fadeMs \}/);
-  assert.match(adapter, /'circle-opacity-transition': \{ duration: SEGMENT_REVEAL_TOKENS\.fadeMs \}/);
+  assert.equal(
+    adapter.match(/'line-opacity-transition': \{ duration: SEGMENT_REVEAL_TOKENS\.fadeMs \}/g)?.length,
+    2,
+    'glow and core route-reveal lines both need a paint fade',
+  );
+  assert.doesNotMatch(adapter, /'circle-opacity-transition': \{ duration: SEGMENT_REVEAL_TOKENS\.fadeMs \}/);
   assert.match(adapter, /fadeSegmentReveal\(\)/);
   assert.match(adapter, /restoreRevealOpacity\(\)/);
   assert.match(mapAdapterContract, /fadeSegmentReveal\?\(\): void/);
@@ -213,7 +228,9 @@ test('theme switches repaint the walking trail and reveal fallbacks', () => {
   assert.match(themeBody, /setPaintProperty\('marshgo-route-walking-trail', 'line-color'/);
   assert.match(themeBody, /setPaintProperty\('marshgo-route-walking-trail-halo', 'line-color'/);
   assert.match(themeBody, /setPaintProperty\('marshgo-route-walking-estimate', 'line-color'/);
-  assert.match(themeBody, /setPaintProperty\('marshgo-route-reveal-glow', 'line-color'/);
+  assert.match(adapter, /setPaintProperty\('marshgo-route-reveal-glow', 'line-gradient', routeRevealGradient/);
+  assert.match(adapter, /'marshgo-route-reveal', \{ type: 'geojson', lineMetrics: true/);
+  assert.doesNotMatch(adapter, /marshgo-route-reveal-head/);
 });
 
 test('the screen offers animated zoom controls with honest labels', () => {
@@ -235,4 +252,20 @@ test('the segment reveal runs on tokens and cleans up every timer', () => {
   assert.doesNotMatch(screen, /const duration = 850/);
   const cleanupAt = screen.indexOf('revealTimersRef.current.forEach(timer => window.clearTimeout(timer));\n      mapAdapter.current?.clearSegmentReveal?.();');
   assert.ok(cleanupAt > 0, 'unmount must clear reveal timers before clearing the reveal');
+});
+
+test('the route reveal scout follows the confirmed path and is removed with the reveal', () => {
+  assert.match(adapter, /this\.revealPathSampler = prepareRoutePathSampler\(validCoordinates\)/);
+  assert.match(adapter, /const sample = this\.revealPathSampler\?\.\(progress\);\s*if \(sample\) this\.updateRevealScout\(sample\)/);
+  assert.match(adapter, /new maplibregl\.Marker\(\{ element, anchor: 'center', rotationAlignment: 'map', pitchAlignment: 'map' \}\)/);
+  const clearAt = adapter.indexOf('clearSegmentReveal()');
+  const clearEnd = adapter.indexOf('\n  /** Animated zoom', clearAt);
+  assert.ok(clearAt > 0 && clearEnd > clearAt);
+  assert.match(adapter.slice(clearAt, clearEnd), /this\.removeRevealScout\(\)/);
+  const destroyAt = adapter.indexOf('destroy() {', clearEnd);
+  assert.ok(destroyAt > 0);
+  assert.match(adapter.slice(destroyAt, destroyAt + 280), /this\.removeRevealScout\(\)/);
+  const styles = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
+  assert.match(styles, /\.mg-route-scout\.is-fading\s*\{\s*opacity:\s*0/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.mg-route-scout, \.mg-route-scout__arrow\s*\{\s*transition:\s*none/);
 });

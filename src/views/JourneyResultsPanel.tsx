@@ -16,7 +16,8 @@ import { journeyPriceDisplay, legPriceDisplay, type JourneyPriceDisplay } from '
 import { strategyJourneys } from './journeyStrategySelection';
 import { groupJourneyDepartures, journeyGroupAlternatives } from './journeyDepartureGrouping';
 import { diagnosticsRequested, funnelLines, gtfsTruncationNotices, partialReasonNotices, splitResultNotices, truncationNotices } from './resultsDiagnostics';
-import { JOURNEY_EMPTY_PROVIDER_FAILURE_COPY, JOURNEY_EMPTY_PROVIDER_FAILURE_TITLE, journeyEmptyStateKind } from './journeySearchRecovery';
+import { JOURNEY_EMPTY_PROVIDER_FAILURE_COPY, JOURNEY_EMPTY_PROVIDER_FAILURE_TITLE, journeyEmptyStateKind, journeyNoRoutesCopy } from './journeySearchRecovery';
+import { sensory } from '../sensory';
 
 const FAVORITES_KEY = 'marshgo.saved-route-results.v1';
 
@@ -112,10 +113,15 @@ function RouteResultCard({ journey, alternatives, chosen, recommendation, onOpen
       window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
       setSaved(nextSaved);
       setAnnouncement(nextSaved ? 'Маршрут збережено на цьому пристрої' : 'Маршрут видалено зі збережених');
+      // Feedback follows the real write result: a soft pop only once the save landed.
+      sensory.emit({ type: 'FAVORITE_TOGGLED', saved: nextSaved });
     } catch {
       setAnnouncement('Не вдалося зберегти маршрут на цьому пристрої');
+      sensory.emit({ type: 'ERROR_SOFT' });
     }
   };
+
+  const open = () => { sensory.emit({ type: 'RESULT_SELECTED', journeyId: journey.id }); onOpen(journey, alternatives, recommendation); };
 
   return <article
     data-testid="journey-result-card"
@@ -124,7 +130,7 @@ function RouteResultCard({ journey, alternatives, chosen, recommendation, onOpen
     data-group-size={alternatives.length + 1}
     className={`journey-result-card mg-press-subtle relative isolate overflow-hidden rounded-[var(--mg-radius-lg)] border bg-[var(--mg-surface-card)] transition-all duration-[var(--mg-dur-fast)] ${chosen ? 'border-[var(--mg-action)] ring-1 ring-[var(--mg-action)] shadow-[0_4px_20px_rgba(11,99,214,.18)]' : 'border-[var(--mg-line)] hover:border-[var(--mg-action-subtle)] shadow-[0_3px_14px_rgba(30,64,110,.07)] dark:shadow-[0_4px_18px_rgba(0,0,0,.18)]'}`}
   >
-    <button type="button" aria-label={openLabel} onClick={() => onOpen(journey, alternatives, recommendation)} className="absolute inset-0 z-0 h-full w-full rounded-[var(--mg-radius-lg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+    <button type="button" aria-label={openLabel} onClick={open} className="absolute inset-0 z-0 h-full w-full rounded-[var(--mg-radius-lg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
       <span className="sr-only">Переглянути карту й деталі маршруту</span>
     </button>
     <div className="journey-result-card-content pointer-events-none relative z-10 p-1.5">
@@ -142,14 +148,14 @@ function RouteResultCard({ journey, alternatives, chosen, recommendation, onOpen
           <button type="button" aria-label={saved ? 'Видалити маршрут зі збережених' : 'Зберегти маршрут'} aria-pressed={saved} onClick={toggleSaved} onPointerDown={event => event.stopPropagation()} className="journey-result-save-button mg-press-subtle pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-transparent text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-slate-200 dark:hover:bg-slate-800" title={saved ? 'Збережено на цьому пристрої' : 'Зберегти маршрут'}>
             <span className={`journey-result-save-visual${saved ? ' mg-pop' : ''}`}><Heart size={19} fill={saved ? 'currentColor' : 'none'} className={saved ? 'text-rose-500' : ''} aria-hidden="true"/></span>
           </button>
-          <button type="button" data-testid="journey-result-details-button" aria-label={chosen ? `Обраний маршрут. ${openLabel}` : openLabel} onClick={() => onOpen(journey, alternatives, recommendation)} onPointerDown={event => event.stopPropagation()} className="journey-result-details-button mg-press-subtle pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-blue-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)] dark:text-[var(--mg-blue)]">
+          <button type="button" data-testid="journey-result-details-button" aria-label={chosen ? `Обраний маршрут. ${openLabel}` : openLabel} onClick={open} onPointerDown={event => event.stopPropagation()} className="journey-result-details-button mg-press-subtle pointer-events-auto relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-blue-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)] dark:text-[var(--mg-blue)]">
             {chosen ? <Check size={18} strokeWidth={2.6} aria-hidden="true"/> : <ChevronRight size={18} aria-hidden="true"/>}
           </button>
         </>}
         items={stripItems}
         ariaLabel="Послідовність етапів маршруту"
         className="pointer-events-none"
-        stripClassName="mt-0.5 pointer-events-none"
+        stripClassName="mt-0.5 pointer-events-auto"
       />
       <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
     </div>
@@ -277,13 +283,21 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
     {/* One row at every width: three stacked chips cost 151 px on a 320×568 screen, where the
         first card then never fits. The label sits above its own count, so even a 92 px track
         holds «Найдешевший» at the 12 px floor without breaking the word. */}
-    <div role="group" aria-label="Режим пошуку маршрутів" className="mb-2 grid max-w-md grid-cols-3 gap-1.5">
+    <div role="group" aria-label="Режим пошуку маршрутів" className="mg-domino-selection mb-2 grid max-w-md grid-cols-3 gap-1.5" style={{ '--domino-selected': Math.max(0, strategyConfig.findIndex(item => item.id === activeStrategy)) } as React.CSSProperties} onKeyDown={event => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+      const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : Math.max(0, Math.min(buttons.length - 1, index + (event.key === 'ArrowRight' ? 1 : -1)));
+      event.preventDefault();
+      buttons[next]?.focus();
+      buttons[next]?.click();
+    }}>
       {strategyConfig.map(({ id, label, Icon, tone }) => {
         const count = strategyCounts[id];
         const active = activeStrategy === id;
         const disabled = count === 0;
         const filled = active && !disabled;
-        return <button key={id} type="button" disabled={disabled} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => setActiveStrategy(id)} className={`mg-pill-switch mg-press-subtle flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed ${filled ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : `border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] ${active ? 'border-[var(--mg-action)]' : disabled ? 'opacity-70' : 'hover:border-[var(--mg-blue)]'}`}`}>
+        return <button key={id} type="button" disabled={disabled} aria-pressed={active} aria-label={`${label}${count ? `, ${formatRouteCount(count)}` : ', немає доступних маршрутів'}`} onClick={() => { if (id !== activeStrategy) sensory.emit({ type: 'SORT_CHANGED', strategy: id }); setActiveStrategy(id); }} className={`mg-pill-switch mg-press-subtle flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors disabled:cursor-not-allowed ${filled ? 'border-[var(--mg-action)] bg-[var(--mg-action)] text-white shadow-[0_5px_14px_rgba(11,99,214,.25)]' : `border-[var(--mg-line)] bg-[var(--mg-surface-tint)] text-[var(--mg-ink)] ${active ? 'border-[var(--mg-action)]' : disabled ? 'opacity-70' : 'hover:border-[var(--mg-blue)]'}`}`}>
           {/* A 320 px screen leaves 92 px per track: the icon only returns once the track can
               hold it beside the label, and both lines stay nowrap so no word breaks mid-glyph. */}
           <Icon size={16} className={`hidden min-[390px]:block shrink-0 ${filled ? 'text-white' : tone}`} aria-hidden="true"/>
@@ -347,7 +361,7 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
           <p className="font-bold text-slate-800 dark:text-white">{result.journeys.length ? 'У цьому режимі маршрутів немає' : 'За цими умовами маршрутів не знайдено'}</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{result.journeys.length
             ? 'Спробуйте інший режим або змініть умови пошуку.'
-            : 'Змініть час чи види транспорту та спробуйте ще раз.'}</p>
+            : journeyNoRoutesCopy(result)}</p>
         </>}
         {showDiagnostics && unavailable.length > 0 && <ul className="mx-auto mt-3 max-w-sm space-y-1.5 text-left">
           {unavailable.map(notice => <li key={notice.mode} className="flex gap-2 text-xs leading-4 text-slate-500 dark:text-slate-400">

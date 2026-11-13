@@ -1,7 +1,8 @@
 import type { ApiJourney } from '../services/productionApi';
+import { formatTransferCount } from '../map/journeyRouteModel';
 import { journeyLegLabel } from './journeyLegLabel';
 import { formatJourneyDistance, formatJourneyDuration } from './journeyResultPresentation';
-import { formatStopCount, isTransitLeg } from './routeMapAnnotations';
+import { isTransitLeg } from './routeMapAnnotations';
 
 export type ActiveLeg = ApiJourney['legs'][number];
 export type LegPhase = 'upcoming' | 'underway' | 'past';
@@ -97,18 +98,29 @@ export function formatStageCount(value: number): string {
   return `${count} ${noun}`;
 }
 
-/** One action line for the stage the passenger is on right now. */
+/** Keeps the sheet label aligned with the actual camera/session mode. */
+export function activeNavigationStageLabel(
+  following: boolean,
+  hasFreshFix: boolean,
+  stageIndex: number,
+  stageCount: number,
+  transfers = 0,
+): string {
+  const mode = following ? (hasFreshFix ? 'Навігація' : 'Очікуємо GPS') : 'Перегляд';
+  const index = Math.max(0, Math.floor(Number.isFinite(stageIndex) ? stageIndex : 0));
+  const count = Math.max(0, Math.floor(Number.isFinite(stageCount) ? stageCount : 0));
+  const transferLabel = transfers > 0 ? ` · ${formatTransferCount(transfers)}` : '';
+  return `${mode} · етап ${index + 1} з ${count}${transferLabel}`;
+}
+
 export function activeLegInstruction(leg: ActiveLeg, nowMs: number): string {
   const destination = shortPlace(leg.destination.name);
-  const phase = activeLegPhase(leg, nowMs);
-  if (phase === 'past') return 'Етап завершено';
   if (leg.mode === 'WALK') return `Прямуйте до «${destination}»`;
-  if (leg.mode === 'COMMUNITY') return `Сідайте в авто біля «${shortPlace(leg.origin.name)}»`;
-  if (phase === 'upcoming') return `Сідайте на зупинці «${shortPlace(leg.origin.name)}»`;
-  const ride = rideStopCount(leg);
-  return ride > 0
-    ? `Ви в дорозі · виходьте через ${formatStopCount(ride)} на «${destination}»`
-    : `Ви в дорозі · виходьте на «${destination}»`;
+  if (leg.mode === 'COMMUNITY') return `Зустріч біля «${shortPlace(leg.origin.name)}»`;
+  const phase = activeLegPhase(leg, nowMs);
+  if (phase === 'past') return 'За розкладом час прибуття минув';
+  if (phase === 'upcoming') return `Посадка на зупинці «${shortPlace(leg.origin.name)}»`;
+  return `За розкладом рейс у дорозі · висадка на «${destination}»`;
 }
 
 /** What follows the current stage, so the passenger never has to open the plan. */
