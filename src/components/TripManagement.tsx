@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CalendarClock, CarFront, Minus, Plus, Wallet, X } from 'lucide-react';
 import { productionApi, type ApiBookingChange, type ApiOffer, type ApiVehicle } from '../services/productionApi';
 import { formatKyivDateTimeInput, kyivDateTimeInputToIso } from '../domain/kyivTime';
+import { carpoolFareLabel } from '../domain/carpoolFare';
 
 const money = (minor: number, currency = 'UAH') => new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(minor / 100);
 const when = (iso: string) => new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(new Date(iso));
@@ -60,7 +61,7 @@ export function OfferEditSheet({ offer, vehicles, onClose, onDone }: { offer: Ap
       <div className="flex items-start justify-between gap-3"><div><p className="text-xs text-slate-500">{offer.origin_name} → {offer.destination_name}</p><h2 id="offer-edit-title" className="text-lg font-extrabold">Редагувати поїздку</h2></div>
         <button type="button" onClick={onClose} aria-label="Закрити" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100"><X size={17}/></button></div>
       {booked > 0 && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Заброньовано місць: {booked}. Вища ціна, зсув часу понад 30 хв або інше авто потребують згоди кожного пасажира; нижча ціна застосовується одразу.</p>}
-      <label className="mt-4 block text-xs font-bold text-slate-600"><span className="flex items-center gap-1.5"><Wallet size={14}/>Ціна за місце, грн</span>
+      <label className="mt-4 block text-xs font-bold text-slate-600"><span className="flex items-center gap-1.5"><Wallet size={14}/>Ціна {carpoolFareLabel(offer.fare_basis)}, грн</span>
         <input inputMode="decimal" value={price} onChange={(event) => setPrice(event.target.value)} className="mt-1.5 w-full rounded-xl bg-slate-50 px-3 py-3 text-sm font-bold outline-none"/></label>
       <label className="mt-3 block text-xs font-bold text-slate-600"><span className="flex items-center gap-1.5"><CalendarClock size={14}/>Відправлення (Київ)</span>
         <input type="datetime-local" value={departure} onChange={(event) => setDeparture(event.target.value)} className="mt-1.5 w-full rounded-xl bg-slate-50 px-3 py-3 text-sm font-bold outline-none"/></label>
@@ -98,7 +99,7 @@ export function PendingChangeCard({ change, currency, onDecided }: { change: Api
   const { summary } = change;
   const rows: Array<[string, string, string]> = [];
   if (summary.departure) rows.push(['Відправлення', when(summary.departure.old), when(summary.departure.new)]);
-  if (summary.price) rows.push(['Ціна за місце', money(summary.price.old, currency), money(summary.price.new, currency)]);
+  if (summary.price) rows.push(['Ціна', money(summary.price.old, currency), money(summary.price.new, currency)]);
   if (summary.vehicle) rows.push(['Автомобіль', summary.vehicle.old, summary.vehicle.new]);
   if (summary.seats) rows.push(['Місць у поїздці', String(summary.seats.old), String(summary.seats.new)]);
   const decide = async (accept: boolean) => {
