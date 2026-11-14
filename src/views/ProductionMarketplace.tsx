@@ -510,6 +510,7 @@ export function ProductionMarketplace() {
     setDate(parsed.date);
     setSeats(parsed.passengers);
     setJourneyDeparture(parsed.departure);
+    setJourneyArrivalBy(parsed.arrivalBy ?? null);
     setJourneyStrategy(parsed.strategy);
     setJourneyResult(null);
     if (parsed.mode === 'planner') {
@@ -987,7 +988,7 @@ export function ProductionMarketplace() {
       setJourneyResult(result); setShowResults(true);
       const searchPath = buildSearchRoute({
         origin: searchOriginPlace, destination: searchDestinationPlace, date, passengers: seats,
-        departure: journeyDeparture, strategy: journeyStrategy, mode: 'planner',
+        departure: journeyDeparture, arrivalBy: journeyArrivalBy ?? undefined, strategy: journeyStrategy, mode: 'planner',
       });
       hydratedSearchLocation.current = searchPath;
       setRoutePath(searchPath);
@@ -2245,6 +2246,7 @@ export function ProductionMarketplace() {
       </div>
       <p data-testid="journey-results-query" className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 px-1 text-xs font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">
         <span className="inline-flex items-center gap-1"><CalendarDays size={12} className="shrink-0" aria-hidden="true"/>{formatDate(journeyDeparture, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+        {journeyArrivalBy && <><span aria-hidden="true">·</span><span className="inline-flex items-center gap-1" title="Прибути до"><span className="sr-only">Прибути до</span><span aria-hidden="true">до</span>{formatDate(journeyArrivalBy, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></>}
         <span aria-hidden="true">·</span>
         <span className="min-w-0 truncate" title={filterSummary}>{filterSummary}</span>
         {journeyResult && <><span aria-hidden="true">·</span><span className="font-bold text-slate-700 dark:text-slate-200">{resultCountLabel}</span></>}
