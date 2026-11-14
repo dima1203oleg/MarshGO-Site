@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, ArrowRight, ChevronDown, Clock3, RotateCcw, Navigation } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Clock3, Navigation } from 'lucide-react';
 import { MarshGoMap } from '../map/MarshGoMap';
 import { MapLayersControl } from '../components/MapLayersControl';
 import { MapBasemapControl, MapControlRail, MapPerspectiveControl, MapVoiceControl, MapZoomControls } from '../components/MapInteractionControls';
@@ -54,9 +54,7 @@ import {
   cinematicCameraFrame,
   dockCameraFrame,
   flightDurationMs,
-  flightFractionAt,
-  flightVelocityAt,
-  reverseFlightPath,
+  createFlightPlayback,
   lerpBearing,
   TRANSFER_CALLOUT_TIMING,
 } from '../map/hyperFlightEngine';
@@ -98,8 +96,8 @@ export function JourneyActiveNavigation({
   const [navigationFix, setNavigationFix] = useState<LocationFix | null>(initialFix);
   const lastNavigationFix = useRef<LocationFix | null>(initialFix);
   const [gpsMessage, setGpsMessage] = useState(initialFix ? '' : 'Очікуємо GPS-позицію…');
-  const [following, setFollowing] = useState(true);
-  const cameraOwner = useRef<'stage' | 'preview' | 'user' | 'follow'>('follow');
+  const [following, setFollowing] = useState(Boolean(initialFix));
+  const cameraOwner = useRef<'stage' | 'preview' | 'user' | 'follow'>(initialFix ? 'follow' : 'stage');
 
   const leg = legs[Math.min(legIndex, Math.max(0, legs.length - 1))];
   const liveLeg = leg && isTransitLeg(leg) ? leg : undefined;
@@ -122,7 +120,8 @@ export function JourneyActiveNavigation({
   const fleetClock = useFocusedFleetClock(liveSegment?.vehicles);
   const mapAdapter = useRef<MapAdapter | null>(null);
   const perspectiveRef = useRef(getMapPerspective());
-  const flightRef = useRef<{ raf: number; cancelled: boolean; timers: number[] } | null>(null);
+  const flightRef = useRef<{ raf: number; cancelled: boolean; timers: number[]; pause(): void; play(): void; seek(fraction: number): void } | null>(null);
+  const continueFlightRef = useRef<(index: number) => void>(() => undefined);
   const telemetryRef = useRef<FlightTelemetryHandle | null>(null);
   const [isFlying, setIsFlying] = useState(false);
   const [transferCallout, setTransferCallout] = useState<CinematicCallout | null>(null);
@@ -332,6 +331,8 @@ export function JourneyActiveNavigation({
     [leg, confirmedSegments],
   );
 
+  const legFlightPath = useMemo(() => buildFlightPath(legSegment?.coordinates ?? []), [legSegment]);
+
   const focusData = useMemo(() => {
     const contextLines = passengerContextLines(liveSegment?.lineRoutes ?? []);
     const points = focusWhole
@@ -488,7 +489,7 @@ export function JourneyActiveNavigation({
     const adapter = mapAdapter.current;
     adapter?.setCinematicFlightActive?.(false);
     adapter?.fadeSegmentReveal?.();
-    telemetryRef.current?.end();
+    telemetryRef.current?.update(0);
     setIsFlying(false);
   }, [clearCallout]);
 
@@ -539,87 +540,129 @@ export function JourneyActiveNavigation({
     }, TRANSFER_CALLOUT_TIMING.enter);
   }, []);
 
-  /**
-   * HyperFlight preview: fly the real confirmed geometry of the current stage,
-   * turn by turn, and dock precisely at the next stage's start. «Далі» never
-   * touches GPS progress — it only previews the plan. «Назад» flies the previous
-   * stage in reverse. Unconfirmed geometry falls back to an honest instant switch.
-   */
-  const startFlight = useCallback((targetIndex: number, reverse: boolean) => {
+  const startFlight = useCallback((index: number, fraction = 0, autoplay = true) => {
     const adapter = mapAdapter.current;
-    const flyLeg = reverse ? legs[targetIndex] : legs[legIndex];
-    const targetLeg = legs[targetIndex];
-    const flyCoordinates = confirmedSegments.find(segment => segment.id === flyLeg?.id)?.coordinates ?? [];
-    let path = buildFlightPath(flyCoordinates);
-    if (!adapter || !path || !flyLeg || !targetLeg) { jumpToLeg(targetIndex); return; }
-    if (reverse) path = reverseFlightPath(path) ?? path;
-    const flownPath = path;
+    const flyLeg = legs[index];
+    const path = buildFlightPath(confirmedSegments.find(segment => segment.id === flyLeg?.id)?.coordinates ?? []);
+    if (!adapter || !path || !flyLeg) return;
     const kind = flyLeg.mode === 'WALK' ? 'walk' : 'transit';
-    const duration = flightDurationMs(flownPath.totalMeters, kind);
+    const clock = createFlightPlayback(flightDurationMs(path.totalMeters, kind), fraction);
     const color = journeyModeColor(flyLeg.mode, flyLeg.transportType);
-    const targetLabel = reverse ? 'Попередній етап' : targetLeg.mode === 'WALK' ? 'Піший перехід' : 'До посадки';
-    const targetCoordinates = confirmedSegments.find(segment => segment.id === targetLeg.id)?.coordinates ?? [];
-    const nextPath = buildFlightPath(targetCoordinates);
+    const nextLeg = legs[index + 1];
+    const nextPath = buildFlightPath(confirmedSegments.find(segment => segment.id === nextLeg?.id)?.coordinates ?? []);
+    const connected = Boolean(nextPath && distanceMeters(path.fractionPoint(1), nextPath.fractionPoint(0)) <= 5);
     const startZoom = adapter.getCameraZoom?.();
-    const bearingResponseMs = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mg-dur-fast'));
+    const responseMs = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mg-dur-fast'));
+    const transitionMs = reducedMotion ? 0 : Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mg-dur-slow'));
     const padding = isDesktop ? mapPadding : {
       ...mapPadding,
-      bottom: (sheetElement.current?.getBoundingClientRect().height ?? sheetHeightRef.current) + bottomNavigationInset + 24,
+      bottom: Math.min(sheetHeightRef.current + bottomNavigationInset + 24, viewportHeight - (mapPadding.top ?? 0) - 80),
     };
-    const connected = Boolean(nextPath && distanceMeters(flownPath.fractionPoint(1), nextPath.fractionPoint(0)) <= 5);
-    const points = [...flownPath.points];
-
+    const points = [...path.points];
     cancelFlight();
-    clearCallout();
     cameraOwner.current = 'preview';
+    setLegIndex(index);
+    adapter.setActiveRouteSegment?.(flyLeg.id);
     adapter.setCinematicFlightActive?.(true);
     adapter.clearSegmentReveal?.();
     adapter.setRouteFlow?.(null);
-    setIsFlying(true);
-    telemetryRef.current?.begin(flownPath.totalMeters, kind, targetLabel);
-    const flight = { cancelled: false, raf: 0, timers: [] as number[] };
-    flightRef.current = flight;
-    const start = performance.now();
-
-    const finish = () => {
-      if (flight.cancelled) return;
-      const dock = dockCameraFrame(flownPath, nextPath, kind, perspectiveRef.current);
-      adapter.setCinematicCamera?.(dock, padding);
-      adapter.revealSegmentProgress?.(points, color, 1);
-      adapter.pingDock?.(dock.marker, color);
-      telemetryRef.current?.update(1, 0);
-      telemetryRef.current?.end();
-      flight.timers.push(window.setTimeout(() => {
-        if (flight.cancelled) return;
-        adapter.fadeSegmentReveal?.();
-        adapter.setCinematicFlightActive?.(false);
-        setIsFlying(false);
-        setLegIndex(targetIndex);
-        showTransferCallout(targetLeg, dock.marker, connected);
-        flightRef.current = null;
-      }, TRANSFER_CALLOUT_TIMING.enter));
-    };
+    telemetryRef.current?.begin(path.totalMeters, `Перегляд · ${activeLegTitle(flyLeg)}`);
     let lastBearing: number | null = null;
-    let lastFrameAt = start;
-    const tick = (now: number) => {
-      if (flight.cancelled) return;
-      const elapsed = now - start;
-      const fraction = flightFractionAt(elapsed, duration);
-      const frame = cinematicCameraFrame(flownPath, fraction, { kind, startZoom, perspective: perspectiveRef.current });
-      frame.bearing = lastBearing === null ? frame.bearing : lerpBearing(lastBearing, frame.bearing, 1 - Math.exp(-(now - lastFrameAt) / bearingResponseMs));
+    let lastFrameAt = performance.now();
+    let playing = false;
+    const render = (now: number, transition = 0) => {
+      const sample = clock.sample(now);
+      const frame = cinematicCameraFrame(path, sample.fraction, { kind, startZoom, perspective: perspectiveRef.current });
+      if (!transition && lastBearing !== null) {
+        const delta = ((frame.bearing - lastBearing + 540) % 360) - 180;
+        const response = Math.min(1 - Math.exp(-(now - lastFrameAt) / responseMs), Math.abs(delta) > 0 ? 60 * (now - lastFrameAt) / 1000 / Math.abs(delta) : 1);
+        frame.bearing = lerpBearing(lastBearing, frame.bearing, response);
+      }
       lastBearing = frame.bearing;
       lastFrameAt = now;
-      adapter.setCinematicCamera?.(frame, padding);
-      adapter.revealSegmentProgress?.(points, color, fraction);
-      telemetryRef.current?.update(fraction, flightVelocityAt(elapsed, duration));
-      if (elapsed < duration) flight.raf = requestAnimationFrame(tick);
-      else finish();
+      adapter.setCinematicCamera?.(frame, padding, transition);
+      adapter.revealSegmentProgress?.(points, color, sample.fraction);
+      telemetryRef.current?.update(sample.fraction);
+      return sample;
     };
-    flight.raf = requestAnimationFrame(tick);
-  }, [legs, legIndex, confirmedSegments, mapPadding, isDesktop, bottomNavigationInset, cancelFlight, clearCallout, jumpToLeg, showTransferCallout]);
+    const pause = () => {
+      playing = false;
+      clock.pause(performance.now());
+      cancelAnimationFrame(flight.raf);
+      adapter.setCinematicFlightActive?.(false);
+      flight.timers.forEach(timer => window.clearTimeout(timer));
+      flight.timers.length = 0;
+      setIsFlying(false);
+    };
+    const tick = (now: number) => {
+      if (flight.cancelled || !playing) return;
+      const sample = render(now);
+      if (!sample.complete) { flight.raf = requestAnimationFrame(tick); return; }
+      pause();
+      const dock = dockCameraFrame(path, nextPath, kind, perspectiveRef.current);
+      adapter.pingDock?.(dock.marker, color);
+      if (connected && nextLeg) {
+        showTransferCallout(nextLeg, dock.marker, true);
+        flight.timers.push(window.setTimeout(() => {
+          if (!flight.cancelled) continueFlightRef.current(index + 1);
+        }, TRANSFER_CALLOUT_TIMING.enter));
+      }
+    };
+    const play = () => {
+      if (flight.cancelled || playing || reducedMotion) return;
+      flight.timers.forEach(timer => window.clearTimeout(timer));
+      flight.timers.length = 0;
+      if (clock.sample(performance.now()).complete) clock.seek(0, performance.now());
+      cameraOwner.current = 'preview';
+      adapter.setCinematicFlightActive?.(true);
+      render(performance.now(), transitionMs);
+      playing = true;
+      setIsFlying(true);
+      flight.timers.push(window.setTimeout(() => {
+        if (flight.cancelled || !playing) return;
+        lastFrameAt = performance.now();
+        clock.play(lastFrameAt);
+        flight.raf = requestAnimationFrame(tick);
+      }, transitionMs));
+    };
+    const flight = {
+      cancelled: false, raf: 0, timers: [] as number[], pause, play,
+      seek(value: number) {
+        pause();
+        cameraOwner.current = 'preview';
+        adapter.setCinematicFlightActive?.(true);
+        clock.seek(value, performance.now());
+        render(performance.now(), transitionMs);
+      },
+    };
+    flightRef.current = flight;
+    if (autoplay) play();
+    else flight.seek(fraction);
+  }, [legs, confirmedSegments, mapPadding, isDesktop, bottomNavigationInset, viewportHeight, reducedMotion, cancelFlight, showTransferCallout]);
+  useEffect(() => { continueFlightRef.current = index => startFlight(index); }, [startFlight]);
+
+  const pauseFlight = useCallback(() => {
+    flightRef.current?.pause();
+    cameraOwner.current = 'user';
+    setFollowing(false);
+    mapAdapter.current?.setCinematicFlightActive?.(false);
+    mapAdapter.current?.setCameraMode('FREE');
+  }, []);
+
+  useEffect(() => {
+    const pauseWhenHidden = () => { if (document.hidden) pauseFlight(); };
+    document.addEventListener('visibilitychange', pauseWhenHidden);
+    return () => document.removeEventListener('visibilitychange', pauseWhenHidden);
+  }, [pauseFlight]);
+
+  useEffect(() => {
+    if (flightRef.current || !leg) return;
+    const path = buildFlightPath(legSegment?.coordinates ?? []);
+    if (path) telemetryRef.current?.begin(path.totalMeters, `Перегляд · ${activeLegTitle(leg)}`);
+  }, [leg, legSegment, mapAdapterReady]);
 
   useEffect(() => () => { cancelFlight(); clearCallout(); }, [cancelFlight, clearCallout]);
-  useEffect(() => { if (reducedMotion && flightRef.current) cancelFlight(); }, [reducedMotion, cancelFlight]);
+  useEffect(() => { if (reducedMotion && flightRef.current) pauseFlight(); }, [reducedMotion, pauseFlight]);
 
   // Passed / active / next separation + the Living Route Ribbon pulse on the active stage.
   useEffect(() => {
@@ -630,7 +673,7 @@ export function JourneyActiveNavigation({
     legs.forEach((item, index) => { phases[item.id] = index === legIndex ? 'active' : 'next'; });
     adapter.setSegmentPhases?.(phases);
     const activeSegment = confirmedSegments.find(segment => segment.id === leg.id);
-    if (activeSegment && !isFlying) {
+    if (activeSegment && !flightRef.current) {
       adapter.setRouteFlow?.({ coordinates: activeSegment.coordinates, color: journeyModeColor(leg.mode, leg.transportType), kind: leg.mode === 'WALK' ? 'walk' : 'transit' });
     }
   }, [leg, legs, legIndex, confirmedSegments, mapAdapterReady, isFlying]);
@@ -656,20 +699,16 @@ export function JourneyActiveNavigation({
   const mapWarning = mapStatus === 'failed' ? mapStatusNote(mapStatus) : null;
   const liveLabel = liveJourneyRequestState === 'failed' ? 'За розкладом' : null;
 
-  const advance = () => {
-    if (isFlying) return;
-    haptic([8, 24, 8]);
-    if (isLast) { jumpToLeg(0); return; }
-    const next = Math.min(legs.length - 1, legIndex + 1);
-    if (reducedMotion || !mapAdapterReady) { jumpToLeg(next); return; }
-    startFlight(next, false);
+  const advance = () => jumpToLeg(isLast ? 0 : legIndex + 1);
+  const goBack = () => { if (legIndex > 0) jumpToLeg(legIndex - 1); };
+  const togglePlayback = () => {
+    if (isFlying) { flightRef.current?.pause(); return; }
+    if (flightRef.current) flightRef.current.play();
+    else startFlight(legIndex);
   };
-  const goBack = () => {
-    if (isFlying || legIndex === 0) return;
-    haptic(8);
-    const previous = legIndex - 1;
-    if (reducedMotion || !mapAdapterReady) { jumpToLeg(previous); return; }
-    startFlight(previous, true);
+  const seekPlayback = (fraction: number) => {
+    if (flightRef.current) flightRef.current.seek(fraction);
+    else startFlight(legIndex, fraction, false);
   };
 
   return <section
@@ -694,7 +733,7 @@ export function JourneyActiveNavigation({
         overlays
         theme={isDark ? 'MARSHGO_DARK' : 'MARSHGO_LIGHT'}
         onStatus={setMapStatus}
-        onAdapter={adapter => { mapAdapter.current = adapter; setMapAdapterReady(Boolean(adapter)); if (adapter) { adapter.setActiveRouteSegment?.(leg.id); adapter.onCinematicInterrupt = () => cancelFlight(); } }}
+        onAdapter={adapter => { mapAdapter.current = adapter; setMapAdapterReady(Boolean(adapter)); if (adapter) { adapter.setActiveRouteSegment?.(leg.id); adapter.onCinematicInterrupt = pauseFlight; } }}
         activeRouteSegmentId={leg.id}
         onRouteSegmentSelect={id => {
           const index = legs.findIndex(item => item.id === id);
@@ -705,19 +744,17 @@ export function JourneyActiveNavigation({
 
     {transferCallout && <GlassGuidanceCallouts callouts={[transferCallout]} onDismiss={clearCallout} visibleRect={{ left: 16, top: 128, right: window.innerWidth - 84, bottom: viewportHeight - sheetHeight - bottomNavigationInset - 16 }} />}
 
-    <FlightTelemetry ref={telemetryRef}/>
-
     <header className="absolute inset-x-0 top-0 z-10 mx-auto flex max-w-3xl flex-col gap-2 px-4 pb-2 pt-[max(.75rem,env(safe-area-inset-top))]">
       <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2">
         <button type="button" aria-label="Вийти з навігації до маршруту" onClick={onExit} className="route-header-back grid h-11 w-11 shrink-0 place-items-center rounded-full">
           <ArrowLeft size={20}/>
         </button>
         <div data-testid="active-nav-header-pill" className="mx-auto flex min-w-0 max-w-full flex-col items-center rounded-full border border-[var(--route-border)] px-3 py-1 text-center shadow-[var(--route-sheet-shadow)] backdrop-blur-md" style={{ backgroundColor: 'color-mix(in srgb, var(--route-sheet) 88%, transparent)' }}>
-          <p className="text-xs font-extrabold uppercase tracking-[.14em] text-[var(--route-muted)]">{following ? freshNavigationFix ? 'GPS-навігація' : 'Очікуємо GPS' : 'Перегляд маршруту'}</p>
+          {following && freshNavigationFix && <p className="text-xs font-semibold text-[var(--route-muted)]">GPS-навігація</p>}
           <p className="max-w-full truncate text-[16px] font-black leading-6 tracking-[-.02em] text-[var(--route-brand-ink)]">{destination}</p>
         </div>
       </div>
-      {!following && <button type="button" data-testid="journey-resume-navigation" disabled={!freshNavigationFix} onClick={resumeNavigation} className="mx-auto flex min-h-11 items-center gap-2 rounded-full border border-[var(--route-border)] bg-[var(--route-card)] px-4 text-xs font-extrabold text-[var(--route-ink)] disabled:opacity-50"><Navigation size={16}/>До навігації</button>}
+      {!following && freshNavigationFix && <button type="button" data-testid="journey-resume-navigation" onClick={resumeNavigation} className="mx-auto flex min-h-11 items-center gap-2 rounded-full border border-[var(--route-border)] bg-[var(--route-card)] px-4 text-xs font-extrabold text-[var(--route-ink)] disabled:opacity-50"><Navigation size={16}/>До навігації</button>}
       {(mapWarning || liveLabel) && <p role="status" className="mx-auto w-fit max-w-full truncate rounded-full bg-[var(--route-card)] px-3 py-1 text-xs font-semibold text-[var(--route-muted)]">{mapWarning || liveLabel}</p>}
       {showDiagnostics && mapStatus !== 'available' && <p data-testid="active-map-status-details" className="mx-auto mt-1 w-fit max-w-full text-center text-xs text-[var(--route-muted)]">{mapStatusDetail(mapStatus, 'journey')}</p>}
     </header>
@@ -793,7 +830,7 @@ export function JourneyActiveNavigation({
       <div data-testid="active-navigation-content" className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         <div className="shrink-0 px-4">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p aria-live="polite" aria-atomic="true" className={sheetSnap === 'peek' ? 'sr-only' : 'text-xs font-bold text-[var(--route-muted)]'}>
+            <p aria-live="polite" aria-atomic="true" className="sr-only">
               {activeNavigationStageLabel(following, Boolean(freshNavigationFix), legIndex, legs.length, journey.transfers)}
             </p>
             {status && sheetSnap !== 'peek' && <span className="rounded-full bg-[var(--route-card-alt)] px-2 py-0.5 text-xs font-semibold text-[var(--route-muted)]">{ACTIVE_LEG_STATUS_LABEL[status]}</span>}
@@ -807,11 +844,11 @@ export function JourneyActiveNavigation({
               <h1 data-testid="active-nav-leg-title" className="truncate text-[17px] font-extrabold leading-6">{sheetSnap === 'peek' ? shortPlace(leg.destination.name) : activeLegTitle(leg)}</h1>
               {sheetSnap !== 'peek' && <p data-testid="active-nav-leg-destination" className="text-xs font-semibold text-[var(--route-muted)]">до «{shortPlace(leg.destination.name)}» <span data-testid="active-nav-leg-meta" className="tabular-nums">· {activeLegMeta(leg)}</span></p>}
             </div>
-            {sheetSnap === 'peek' && (!freshNavigationFix || missingWalkGeometry) && <span className="shrink-0 text-xs font-semibold text-[var(--route-muted)]">{!freshNavigationFix ? 'GPS недоступний' : 'Геометрія неповна'}</span>}
+            {sheetSnap === 'peek' && ((following && !freshNavigationFix) || missingWalkGeometry) && <span className="shrink-0 text-xs font-semibold text-[var(--route-muted)]">{following && !freshNavigationFix ? 'GPS недоступний' : 'Геометрія неповна'}</span>}
           </div>}
           {showTimeline && <h1 className="sr-only">Маршрут до {destination}</h1>}
           {notice && sheetSnap !== 'peek' && <p role="status" data-testid="active-nav-notice" className="mt-1 text-[12px] font-semibold leading-4 text-[var(--route-muted)]">{notice}</p>}
-          {(gpsMessage || !freshNavigationFix) && <p role="status" data-testid="journey-gps-status" className={sheetSnap === 'peek' ? 'sr-only' : 'mt-1 text-[12px] font-semibold leading-4 text-[var(--route-muted)]'}>{gpsMessage || 'Чекаємо свіжий сигнал GPS.'}</p>}
+          {following && (gpsMessage || !freshNavigationFix) && <p role="status" data-testid="journey-gps-status" className={sheetSnap === 'peek' ? 'sr-only' : 'mt-1 text-[12px] font-semibold leading-4 text-[var(--route-muted)]'}>Позиція недоступна</p>}
         </div>
 
         {showAction && <div className="mt-1 shrink-0 px-4">
@@ -852,15 +889,7 @@ export function JourneyActiveNavigation({
       </div>
 
       <div className="shrink-0 px-4">
-        <div className="flex items-center gap-2">
-          {legIndex > 0 && <button type="button" onClick={goBack} disabled={isFlying} aria-label="Попередній етап" title="Попередній етап" className="mg-route-back grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
-            <ArrowLeft size={19} aria-hidden="true"/>
-          </button>}
-          <button type="button" onClick={advance} disabled={isFlying} data-flying={isFlying ? 'true' : 'false'} className="mg-route-cta flex min-w-0 flex-1 items-center justify-center gap-3">
-            {isLast ? <RotateCcw size={19} aria-hidden="true"/> : <ArrowRight size={20} aria-hidden="true"/>}
-            <span>{isFlying ? 'Переліт…' : isLast ? 'Переглянути спочатку' : 'Далі'}</span>
-          </button>
-        </div>
+        <FlightTelemetry ref={telemetryRef} playing={isFlying} enabled={mapAdapterReady && Boolean(legFlightPath)} reducedMotion={reducedMotion} first={legIndex === 0} last={isLast} onToggle={togglePlayback} onSeek={seekPlayback} onPrevious={goBack} onNext={advance}/>
       </div>
     </section>
   </section>;

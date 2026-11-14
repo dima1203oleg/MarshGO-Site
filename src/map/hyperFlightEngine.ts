@@ -65,7 +65,12 @@ export function buildFlightPath(coordinates: readonly Coordinate[]): FlightPath 
   const locate = (meters: number): { index: number; ratio: number } => {
     const target = Math.max(0, Math.min(total, meters));
     let index = 1;
-    while (index < cumulative.length - 1 && cumulative[index]! < target) index += 1;
+    let end = cumulative.length - 1;
+    while (index < end) {
+      const middle = (index + end) >>> 1;
+      if (cumulative[middle]! < target) index = middle + 1;
+      else end = middle;
+    }
     const start = cumulative[index - 1]!;
     const span = cumulative[index]! - start;
     return { index, ratio: span > 0 ? (target - start) / span : 0 };
@@ -115,7 +120,8 @@ export function reverseFlightPath(path: FlightPath): FlightPath | null {
 export function flightDurationMs(totalMeters: number, kind: FlightKind): number {
   const meters = Math.max(0, totalMeters);
   if (kind === 'walk') return Math.round(Math.max(1900, Math.min(5200, 1500 + meters / 26 * 1000)));
-  return Math.round(Math.max(2400, Math.min(7000, 1700 + meters / 115 * 1000)));
+  const intercityTime = meters > 10_000 ? Math.min(23_000, Math.log2(meters / 10_000) * 4000) : 0;
+  return Math.round(Math.max(2400, Math.min(7000, 1700 + meters / 115 * 1000)) + intercityTime);
 }
 
 // Trapezoidal velocity profile: accelerate, cruise, decelerate. The area under
@@ -145,6 +151,37 @@ export function flightVelocityAt(elapsedMs: number, durationMs: number): number 
   if (t < ACCEL) return PEAK * t / ACCEL;
   if (t < 1 - DECEL) return PEAK;
   return PEAK * (1 - (t - (1 - DECEL)) / DECEL);
+}
+
+export function createFlightPlayback(durationMs: number, initialFraction = 0) {
+  let elapsed = 0;
+  let startedAt: number | null = null;
+  const currentElapsed = (now: number) => Math.min(durationMs, elapsed + (startedAt === null ? 0 : Math.max(0, now - startedAt)));
+  const seek = (fraction: number, now: number) => {
+    let low = 0;
+    let high = durationMs;
+    for (let step = 0; step < 40; step += 1) {
+      const middle = (low + high) / 2;
+      if (flightFractionAt(middle, durationMs) < clamp01(fraction)) low = middle;
+      else high = middle;
+    }
+    elapsed = fraction <= 0 ? 0 : fraction >= 1 ? durationMs : (low + high) / 2;
+    if (startedAt !== null) startedAt = now;
+  };
+  seek(initialFraction, 0);
+  return {
+    play(now: number) { if (startedAt === null) startedAt = now; },
+    pause(now: number) { elapsed = currentElapsed(now); startedAt = null; },
+    seek,
+    sample(now: number) {
+      const time = currentElapsed(now);
+      return {
+        fraction: flightFractionAt(time, durationMs),
+        velocity: startedAt === null ? 0 : flightVelocityAt(time, durationMs),
+        complete: time >= durationMs,
+      };
+    },
+  };
 }
 
 export interface CinematicCameraFrame {
@@ -188,7 +225,8 @@ export function cinematicCameraFrame(path: FlightPath, fraction: number, options
   const accelPhase = clamp01(f / 0.22);
   const decelPhase = clamp01((f - 0.78) / 0.22);
   const zoomIn = lerp(startZoom, cruiseZoom(options.kind), easeOutCubic(accelPhase));
-  const zoom = lerp(zoomIn, dockZoom(options.kind), easeOutCubic(decelPhase));
+  const altitude = options.kind === 'transit' ? Math.min(8, Math.max(0, Math.log2(total / 1500)) * 0.8) : 0;
+  const zoom = lerp(zoomIn, dockZoom(options.kind), easeOutCubic(decelPhase)) - altitude * Math.sin(Math.PI * f) ** 2;
   // Pitch rises into the cruise and relaxes a little for a readable docking.
   const pitchIn = easeOutCubic(clamp01(f / 0.14));
   const pitchOut = easeOutCubic(decelPhase);
