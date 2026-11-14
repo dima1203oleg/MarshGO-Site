@@ -28,7 +28,6 @@ import { QrScanner } from '../components/QrScanner';
 import type { ProfileSection } from './ProfileSections';
 import { compactPlaceLabel, fullPlaceLabel } from '../domain/placeLabel';
 import { canAutoDetectCity, cityNameFromPlaceLabel, isCurrentCityRequest, loadCurrentCity, saveCurrentCity, type CurrentCity } from '../domain/currentCity';
-import { resolvePlaceAtCoordinates } from '../domain/mapPointSelection';
 import { ApiAccountDeletionRequest, ApiBlockedUser, ApiBooking, ApiDemand, ApiJourney, ApiJourneySearchResult, ApiJourneyStrategy, ApiMessage, ApiModerationCase, ApiNotification, ApiNotificationPage, ApiOffer, ApiPassengerNavigationMatch, ApiPlace, ApiProposal, ApiProposalRevision, ApiRescueResult, ApiRendezvous, ApiStoredJourney, ApiUser, ApiVehicle, ApiVehiclePhoto, ApiVerificationQueueItem, ApiVerificationRecord, ProductionApiError, productionApi } from '../services/productionApi';
 import { realtimeStatusLabel, realtimeStatusTone, type RealtimeStatus } from '../services/realtimeChannel';
 import { storedJourneyToApiJourney } from '../routing/storedJourneyView';
@@ -37,12 +36,15 @@ import { bookingFailureMessage, boardingFailureMessage, deepLinkFailureMessage, 
 import { refreshCommittedActionData } from './committedActionRefresh';
 import { OfflineNavigationStore } from '../navigation/OfflineNavigationStore';
 import { ActiveJourneyNavigationStore } from '../navigation/ActiveJourneyNavigationStore';
+import { WebGeolocationProvider, validateLocationFix } from '../platform/LocationProvider';
+import type { LocationFix } from '../../shared/navigation/contracts';
 import { defaultKyivDateTime, formatKyivDateTimeInput, kyivDateTimeInputToDate, kyivDateTimeInputToIso } from '../domain/kyivTime';
 import { useProductionTabRouter } from '../routing/useProductionTabRouter';
+import { captureJourneySearchReturnPath, resolveJourneyRouteBackTarget } from '../routing/journeySearchReturn';
 import { pathForProductionEntity, resumesActiveJourneyFrom, type ProductionTab } from '../routing/productionRoutes';
 import { buildSearchRoute, parseSearchRoute } from '../routing/searchRouteState';
 import { activePlaceOptionId, moveActivePlaceIndex, placeSuggestionKeyAction } from '../routing/placeSuggestionKeyboard';
-import { PLACE_SEARCH_UNAVAILABLE_COPY, placeSearchFailure, placeSearchPending, placeSearchResults, type PlaceSearchState } from '../services/placeSearchRecovery';
+import { PLACE_SEARCH_UNAVAILABLE_COPY, localCityPlace, localCityPlaceSuggestions, placeSearchFailure, placeSearchPending, placeSearchResults, type PlaceSearchState } from '../services/placeSearchRecovery';
 import { currentPlaceBias } from '../platform/placeBias';
 import { parseSharedNavigationDestination } from '../routing/navigationShare';
 import { navigationDestinationName } from '../navigation/destinationName';
@@ -50,6 +52,7 @@ import { JourneyResultsPanel, JourneySearchPending } from './JourneyResultsPanel
 import { JOURNEY_SEARCH_DEADLINE_MS, journeySearchAbortMessage } from './journeyResultPresentation';
 import { JOURNEY_SEARCH_UNAVAILABLE_COPY, journeySearchFailureKind } from './journeySearchRecovery';
 import { JourneyRouteMapScreen } from './JourneyRouteMapScreen';
+import { sensory } from '../sensory';
 import { JourneyActiveNavigation } from './JourneyActiveNavigation';
 const MobilityAdminPanel = lazy(() => import('./MobilityAdminPanel').then((module) => ({ default: module.MobilityAdminPanel })));
 const ProfileSections = lazy(() => import('./ProfileSections').then((module) => ({ default: module.ProfileSections })));
@@ -188,6 +191,8 @@ export function ProductionMarketplace() {
   const [proposalNavigationCandidateId, setProposalNavigationCandidateId] = useState<string | null>(null);
   const [counterTarget, setCounterTarget] = useState<ApiProposal | null>(null);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const createMenuRef = useRef<HTMLElement | null>(null);
+  const createMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [placeField, setPlaceField] = useState<'origin' | 'destination' | null>(null);
   const [placeSearch, setPlaceSearch] = useState<PlaceSearchState>(placeSearchPending);
   const [placeSearchBusy, setPlaceSearchBusy] = useState(false);
@@ -295,7 +300,13 @@ export function ProductionMarketplace() {
   const [pendingPlannerSearch, setPendingPlannerSearch] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<ApiOffer | null>(null);
   const [selectedJourney, setSelectedJourney] = useState<ApiStoredJourney | null>(null);
+  const journeySearchReturnPath = useRef<string | null>(null);
   const [activeJourneyNavigation, setActiveJourneyNavigation] = useState<ApiJourney | null>(null);
+  const [journeyInitialFix, setJourneyInitialFix] = useState<LocationFix | null>(null);
+  const journeyStartRequest = useRef(0);
+  const journeyStarting = useRef(false);
+  const [journeyStartPending, setJourneyStartPending] = useState(false);
+  useEffect(() => () => { journeyStartRequest.current++; }, []);
   const [journeyNotice, setJourneyNotice] = useState('');
   const activeJourneyStore = useMemo(() => new ActiveJourneyNavigationStore(), []);
   const pendingNavigationRestore = useRef<{ journeyId: string; legIndex: number } | null>(null);
@@ -547,36 +558,71 @@ export function ProductionMarketplace() {
     }).finally(() => setLoading(false));
   }, [refreshBlockedUsers, refreshBookings, refreshJourneys, refreshMyOffers, refreshPassengerNavigationMatches, refreshVehicles]);
 
-  // Starting navigation is one tap and one record. Nothing but the pointer is
-  // stored: no token, no coordinates, no GPS history, no price snapshot.
-  const startJourneyNavigation = (journey: ApiJourney) => {
-    restoredNavigationStage.current = null;
-    pendingNavigationRestore.current = null;
-    if (user) activeJourneyStore.write({ journeyId: journey.id, legIndex: 0, ownerUserId: user.id });
-    // The URL carries the journey so a reload or a relaunched PWA can ask the
-    // server for the same itinerary instead of sending the passenger back to
-    // an empty search box.
-    setRoutePath(pathForProductionEntity('journey', journey.id));
-    setActiveJourneyNavigation(journey);
+  const cancelJourneyStart = () => {
+    journeyStartRequest.current++;
+    journeyStarting.current = false;
+    setJourneyStartPending(false);
     setJourneyNotice('');
-    void activatePassengerJourney(productionApi, journey.id, journey.legs[0]?.id).then(async (outcome) => {
+  };
+
+  const startJourneyNavigation = async (journey: ApiJourney) => {
+    if (journeyStarting.current) return;
+    journeyStarting.current = true;
+    setJourneyStartPending(true);
+    const request = ++journeyStartRequest.current;
+    setJourneyNotice('Очікуємо точну GPS-позицію…');
+    try {
+      const fix = await new WebGeolocationProvider().getCurrentFix({ maximumAgeMs: 0, timeoutMs: 20_000 });
+      if (request !== journeyStartRequest.current) return;
+      const checked = validateLocationFix(fix, Date.now());
+      if (!checked.accepted) throw new Error(checked.code);
+      restoredNavigationStage.current = 0;
+      pendingNavigationRestore.current = null;
+      journeySearchReturnPath.current ??= captureJourneySearchReturnPath(window.location.pathname, window.location.search);
+      if (user) activeJourneyStore.write({ journeyId: journey.id, legIndex: 0, ownerUserId: user.id });
+      setJourneyInitialFix(checked.fix);
+      setRoutePath(pathForProductionEntity('journey', journey.id));
+      setActiveJourneyNavigation(journey);
+      setJourneyNotice('');
+      const outcome = await activatePassengerJourney(productionApi, journey.id, journey.legs[0]?.id);
+      if (request !== journeyStartRequest.current) return;
       if (!outcome.confirmed) {
         activeJourneyStore.clear();
         setJourneyNotice(outcome.message);
         return;
       }
       await refreshJourneys().catch(() => undefined);
-    });
+    } catch (error) {
+      if (request !== journeyStartRequest.current) return;
+      const code = error instanceof Error ? error.message : '';
+      setJourneyNotice(code === 'GPS_PERMISSION_DENIED'
+        ? 'Геолокацію вимкнено. Дозвольте доступ у браузері.'
+        : code === 'GPS_LOW_ACCURACY'
+          ? 'Слабкий сигнал GPS. Спробуйте надворі.'
+          : 'Немає свіжого сигналу GPS. Спробуйте ще раз.');
+    } finally {
+      if (request === journeyStartRequest.current) {
+        journeyStarting.current = false;
+        setJourneyStartPending(false);
+      }
+    }
   };
 
-  // Leaving navigation on purpose means the passenger is no longer riding it,
-  // so the pointer is dropped with the screen; a killed or backgrounded app
-  // never reaches this and still resumes.
   const exitJourneyNavigation = () => {
+    cancelJourneyStart();
+    setJourneyInitialFix(null);
     activeJourneyStore.clear();
     pendingNavigationRestore.current = null;
     restoredNavigationStage.current = null;
     setActiveJourneyNavigation(null);
+  };
+
+  const closeJourneyRoute = () => {
+    exitJourneyNavigation();
+    setSelectedJourney(null);
+    setSelectedRouteMap(null);
+    setSelectedRouteGroup([]);
+    setSelectedRouteRecommendation(undefined);
   };
 
   const keepActiveJourneyStage = (journeyId: string, legIndex: number) => {
@@ -696,6 +742,8 @@ export function ProductionMarketplace() {
     return () => { active = false; };
   }, [activateTab, activeJourneyStore, loadDemandProposals, loading, resumeActiveNavigation, route?.entityId, route?.kind, route?.tab, user?.id, user?.roles.join(',')]);
 
+  const heardProposalRevisionsRef = useRef<Map<string, number>>(new Map());
+
   useEffect(() => {
     if (!user) return;
     return productionApi.subscribeRealtime((event) => {
@@ -745,6 +793,20 @@ export function ProductionMarketplace() {
       if (user.roles.includes('passenger')) refreshes.push(refreshMyDemands());
       if (selectedDemand) refreshes.push(loadDemandProposals(selectedDemand.id).then((result) => {
         setProposals(result.proposals); setProposalsUnavailable(result.unavailable);
+        if (event.type !== 'proposal.created' && event.type !== 'proposal.countered') return;
+        const proposal = result.proposals.find(item => item.id === event.data.proposal_id);
+        if (!proposal || proposal.revision_number !== event.data.revision_number) return;
+        const heard = heardProposalRevisionsRef.current.get(proposal.id) ?? -1;
+        if (heard >= proposal.revision_number) return;
+        heardProposalRevisionsRef.current.set(proposal.id, proposal.revision_number);
+        if (heardProposalRevisionsRef.current.size > 128) {
+          const oldest = heardProposalRevisionsRef.current.keys().next().value;
+          if (oldest !== undefined) heardProposalRevisionsRef.current.delete(oldest);
+        }
+        const fromOtherParty = proposal.last_actor_role === 'driver'
+          ? proposal.driver_id !== user.id
+          : proposal.last_actor_role === 'passenger' && proposal.driver_id === user.id;
+        if (fromOtherParty) sensory.emit({ type: 'COUNTEROFFER_RECEIVED' });
       }));
       void Promise.all(refreshes).catch((error: unknown) => setStatusMessage(error instanceof Error ? error.message : 'Цінова пропозиція змінилася. Оновіть список.'));
     }, () => undefined);
@@ -981,7 +1043,10 @@ export function ProductionMarketplace() {
     const query = field === 'origin' ? origin.trim() : destination.trim();
     if (query.length < 3) { setStatusMessage('Введіть щонайменше 3 символи для пошуку місця.'); return; }
     setRoutePlaceField(field); setRoutePlaceSearch(placeSearchPending()); setPlaceSearchBusy(true); setStatusMessage('');
-    try { setRoutePlaceSearch(placeSearchResults(await productionApi.suggestPlaces(query, await currentPlaceBias()))); }
+    try {
+      const localCities = localCityPlaceSuggestions(query);
+      setRoutePlaceSearch(placeSearchResults(localCities.length ? localCities : await productionApi.suggestPlaces(query, await currentPlaceBias())));
+    }
     catch (error) {
       const next = placeSearchFailure(error);
       setRoutePlaceSearch(next);
@@ -1002,21 +1067,6 @@ export function ProductionMarketplace() {
     setPicker(null);
   };
 
-  const useMyLocationAsOrigin = async () => {
-    if (!navigator.geolocation) { setStatusMessage('Геолокація недоступна на цьому пристрої.'); return; }
-    setStatusMessage('');
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15_000 }));
-      const { place, addressResolved } = await resolvePlaceAtCoordinates(
-        position.coords.latitude,
-        position.coords.longitude,
-        (latitude, longitude) => productionApi.reverseGeocode(latitude, longitude),
-      );
-      setSearchOriginPlace(place); setOrigin(place.label); setRoutePlaceSearch(placeSearchPending()); setRoutePlaceField(null);
-      if (!addressResolved) setStatusMessage('GPS-точку встановлено за координатами. Адресу зараз не вдалося визначити.');
-    } catch (error) { setStatusMessage(error instanceof Error && error.message ? error.message : 'Не вдалося визначити місцезнаходження. Дозвольте геолокацію в браузері.'); }
-  };
-
   const chooseSearchPlace = (place: ApiPlace) => {
     if (routePlaceField === 'origin') { setSearchOriginPlace(place); setOrigin(place.label); }
     if (routePlaceField === 'destination') { setSearchDestinationPlace(place); setDestination(place.label); }
@@ -1031,6 +1081,12 @@ export function ProductionMarketplace() {
     const query = (routePlaceField === 'origin' ? origin : destination).trim();
     if (query.length < 3) {
       setRoutePlaceSearch(placeSearchPending());
+      setPlaceSearchBusy(false);
+      return;
+    }
+    const localCities = localCityPlaceSuggestions(query);
+    if (localCities.length) {
+      setRoutePlaceSearch(placeSearchResults(localCities));
       setPlaceSearchBusy(false);
       return;
     }
@@ -1064,9 +1120,30 @@ export function ProductionMarketplace() {
 
   useEffect(() => {
     if (!showCreateMenu) return undefined;
-    const onKeyDown = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape') setShowCreateMenu(false); };
+    const dialog = createMenuRef.current;
+    if (!dialog) return undefined;
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+    const focusFirst = () => (focusable()[0] ?? dialog).focus();
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') { setShowCreateMenu(false); return; }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      const first = items[0] ?? dialog;
+      const last = items[items.length - 1] ?? dialog;
+      const active = document.activeElement;
+      if (!dialog.contains(active)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); }
+      else if (event.shiftKey && active === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus(); }
+    };
+    const onFocusIn = (event: FocusEvent) => { if (!dialog.contains(event.target as Node)) focusFirst(); };
+    focusFirst();
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    document.addEventListener('focusin', onFocusIn);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('focusin', onFocusIn);
+      createMenuTriggerRef.current?.focus();
+    };
   }, [showCreateMenu]);
 
   const routePlaceKeyDown = (event: { key: string; preventDefault(): void }, field: 'origin' | 'destination') => {
@@ -1114,10 +1191,12 @@ export function ProductionMarketplace() {
       // Re-query the server so a second replacement is never offered with a
       // stale seat count until the passenger reloads the page.
       refreshRescueCandidates(bookings.filter(item => item.status === 'cancelled' && !item.current_user_is_driver));
+      sensory.emit({ type: 'BOOKING_CONFIRMED' });
       setBookingToConfirm(null);
       setSelectedOffer(null); setJourneyBookingLink(null); setTab('trips');
     } catch (error) {
       setStatusMessage(bookingFailureMessage(error));
+      sensory.emit({ type: 'ERROR_SOFT' });
       setBookingToConfirm(null);
       // A rejected or unanswered request may still have committed server-side,
       // and the seat count on screen is already known to be stale: reconcile
@@ -1181,7 +1260,8 @@ export function ProductionMarketplace() {
       }
       const ticket = await productionApi.bookingTicket(currentBooking.id);
       setVisibleBookingTicket({ bookingId: currentBooking.id, token: ticket.token });
-    } catch (error) { setStatusMessage(ticketFailureMessage(error)); setVisibleBookingTicket(null); }
+      sensory.emit({ type: 'MARSH_PASS_OPENED' });
+    } catch (error) { setStatusMessage(ticketFailureMessage(error)); setVisibleBookingTicket(null); sensory.emit({ type: 'ERROR_SOFT' }); }
     finally { setBusy(false); }
   };
 
@@ -1500,13 +1580,14 @@ export function ProductionMarketplace() {
     setBusy(true);
     try {
       await productionApi.createProposal(proposalTarget.id, { vehicleId: proposalVehicleId, priceMinor: amount, departureAt, comment: proposalComment, ...(proposalNavigationCandidateId ? { navigationCandidateId: proposalNavigationCandidateId } : {}) });
+      sensory.emit({ type: 'PRICE_OFFER_SENT' });
       const refreshed = await refreshCommittedActionData([refreshOpenDemands]);
       setProposalTarget(null); setProposalNavigationCandidateId(null);
       const proposalsRefreshed = await viewDemand(proposalTarget, false);
       setStatusMessage(refreshed && proposalsRefreshed
         ? 'Цінову пропозицію надіслано пасажиру.'
         : 'Пропозицію надіслано. Список оновиться після повторного відкриття.');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося надіслати пропозицію.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося надіслати пропозицію.'); sensory.emit({ type: 'ERROR_SOFT' }); }
     finally { setBusy(false); }
   };
 
@@ -1519,9 +1600,10 @@ export function ProductionMarketplace() {
     setBusy(true);
     try {
       await productionApi.counterProposal(counterTarget.id, { priceMinor: amount, departureAt, comment: counterComment });
+      sensory.emit({ type: 'PRICE_OFFER_SENT' });
       setCounterTarget(null); setStatusMessage('Зустрічну пропозицію збережено.');
       if (selectedDemand) await viewDemand(selectedDemand, selectedDemandIsOwned);
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити пропозицію.'); }
+    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося оновити пропозицію.'); sensory.emit({ type: 'ERROR_SOFT' }); }
     finally { setBusy(false); }
   };
 
@@ -1537,13 +1619,30 @@ export function ProductionMarketplace() {
   const confirmProposal = async (proposal: ApiProposal) => {
     setBusy(true);
     try {
-      await productionApi.acceptProposal(proposal.id);
+      await productionApi.acceptProposal(proposal.id, proposal.revision_number);
+      sensory.emit({ type: 'BOOKING_CONFIRMED' });
       const refreshed = await refreshCommittedActionData([refreshBookings, refreshMyDemands]);
       setStatusMessage(refreshed
         ? 'Домовленість підтверджено, бронювання створено.'
         : 'Домовленість підтверджено. Список поїздок оновиться після повторного відкриття.');
       setSelectedDemand(null); setTab('trips');
-    } catch (error) { setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити бронювання.'); }
+    } catch (error) {
+      sensory.emit({ type: 'ERROR_SOFT' });
+      if (error instanceof ProductionApiError && error.code === 'proposal_revision_changed') {
+        if (selectedDemand) {
+          try {
+            await viewDemand(selectedDemand, selectedDemandIsOwned);
+            setStatusMessage('Умови пропозиції змінилися. Перевірте оновлені ціну й час, перш ніж підтверджувати бронювання.');
+          } catch {
+            setStatusMessage('Умови пропозиції змінилися, але список не вдалося оновити. Оновіть заявку перед підтвердженням.');
+          }
+        } else {
+          setStatusMessage('Умови пропозиції змінилися. Відкрийте заявку ще раз і перевірте актуальні ціну й час.');
+        }
+      } else {
+        setStatusMessage(error instanceof Error ? error.message : 'Не вдалося підтвердити бронювання.');
+      }
+    }
     finally { setBusy(false); }
   };
 
@@ -1845,10 +1944,11 @@ export function ProductionMarketplace() {
   const mapToolbarContext = isMapToolbarContext({
     tab,
     activeJourneyNavigation: Boolean(activeJourneyNavigation),
+    journeyStartPending,
     selectedRouteMap: Boolean(selectedRouteMap),
     selectedJourney: Boolean(selectedJourney),
   });
-  const { visible: mapNavigationVisible, onMapEdgePointerDown } = useMapAwareBottomNavigation(mapToolbarContext);
+  const { visible: mapNavigationVisible } = useMapAwareBottomNavigation(mapToolbarContext);
 
   if (loading) return <main className="grid min-h-[100svh] place-items-center bg-[var(--mg-canvas)] text-sm text-slate-500">Завантажуємо захищену сесію…</main>;
   if (!user || showLogin) return (
@@ -1941,11 +2041,11 @@ export function ProductionMarketplace() {
 
   const searchForm = <form onSubmit={(event) => { event.preventDefault(); void searchJourney(); }} className="journey-search-card rounded-[1.7rem] border border-white bg-white p-3 shadow-[0_10px_28px_rgba(31,67,114,.08)] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:shadow-[0_10px_28px_rgba(0,0,0,.3)]">
     <div className="relative">
-      <div role="group" aria-label="Початкова точка" className="flex items-center gap-2 rounded-t-2xl bg-[var(--mg-surface-tint)] px-3 py-3"><MapPin size={19} className="shrink-0 text-blue-600"/><label className="min-w-0 flex-1"><small className="block text-xs text-[var(--mg-muted)]">Звідки</small><input required title={origin || undefined} value={origin} onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Будь ласка, вкажіть пункт відправлення')} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')} onFocus={() => setRoutePlaceField('origin')} onChange={(event) => {setOrigin(event.target.value);setSearchOriginPlace(null);setRoutePlaceField('origin');}} onKeyDown={(event) => routePlaceKeyDown(event, 'origin')} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто відправлення" role="combobox" aria-autocomplete="list" aria-expanded={routePlaceField === 'origin' && routePlaceSearch.suggestions.length > 0} aria-controls="route-place-origin-list" aria-activedescendant={activePlaceOptionId('route-place-origin-list', routePlaceActive)} /></label><button type="button" aria-label={origin ? 'Очистити початкову точку' : 'Визначити мою локацію'} title={origin ? 'Очистити' : 'Моя локація'} onClick={()=>{ if (origin) { setOrigin(''); setSearchOriginPlace(null); setRoutePlaceSearch(placeSearchPending()); return; } void useMyLocationAsOrigin(); }} data-field-action={origin ? 'clear' : 'locate'} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl search-field-action">{origin ? <X size={16}/> : <Navigation size={16}/>}</button></div>
+      <div role="group" aria-label="Початкова точка" className="flex items-center gap-2 rounded-t-2xl bg-[var(--mg-surface-tint)] px-3 py-3"><MapPin size={19} className="shrink-0 text-[var(--mg-blue)]"/><label className="min-w-0 flex-1"><small className="block text-xs text-[var(--mg-muted)]">Звідки</small><input required title={origin || undefined} value={origin} onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Будь ласка, вкажіть пункт відправлення')} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')} onFocus={() => setRoutePlaceField('origin')} onChange={(event) => {setOrigin(event.target.value);setSearchOriginPlace(null);setRoutePlaceField('origin');}} onKeyDown={(event) => routePlaceKeyDown(event, 'origin')} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто відправлення" role="combobox" aria-autocomplete="list" aria-expanded={routePlaceField === 'origin' && routePlaceSearch.suggestions.length > 0} aria-controls="route-place-origin-list" aria-activedescendant={activePlaceOptionId('route-place-origin-list', routePlaceActive)} /></label>{origin ? <button type="button" aria-label="Очистити початкову точку" title="Очистити" onClick={() => { setOrigin(''); setSearchOriginPlace(null); setRoutePlaceSearch(placeSearchPending()); }} data-field-action="clear" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl search-field-action"><X size={16}/></button> : <button type="button" aria-label="Обрати початкову точку на мапі" title="Обрати на мапі" onClick={() => { setRoutePlaceField(null); setRoutePlaceSearch(placeSearchPending()); setPicker({ form: 'search', field: 'origin' }); }} data-field-action="pick" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl search-field-action"><MapPin size={16}/></button>}</div>
       {routePlaceField==='origin'&&routePlaceSearch.suggestions.length>0&&<div role="listbox" id="route-place-origin-list" aria-label="Варіанти місць відправлення" className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:divide-[#1E3044] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]">{routePlaceSearch.suggestions.map((place,index)=><button key={place.providerId} type="button" role="option" id={`route-place-origin-list-option-${index}`} aria-selected={routePlaceActive===index} onClick={()=>chooseSearchPlace(place)} className={`block w-full px-3 py-2.5 text-left text-xs text-slate-800 hover:bg-blue-50 dark:text-slate-100 dark:hover:bg-[#16293D] ${routePlaceActive===index?'bg-blue-50 font-bold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200':''}`}>{place.label}</button>)}</div>}
       {routePlaceField==='origin'&&routePlaceSearch.unavailable&&placeUnavailableNotice(()=>void searchRoutePlace('origin'))}
       <div className="relative ml-[21px] h-4 border-l-2 border-dotted border-slate-300"><button type="button" onClick={() => { setOrigin(destination); setDestination(origin); setSearchOriginPlace(searchDestinationPlace); setSearchDestinationPlace(searchOriginPlace); setRoutePlaceSearch(placeSearchPending()); setRoutePlaceField(null); }} className="absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-blue-600 shadow-sm dark:bg-[var(--mg-surface-elevated)] dark:text-blue-400 dark:border dark:border-[#283e54]" aria-label="Поміняти місцями"><ArrowDownUp size={17}/></button></div>
-      <div role="group" aria-label="Кінцева точка" className="flex items-center gap-2 rounded-b-2xl bg-[var(--mg-surface-tint)] px-3 py-3"><MapPin size={19} className="shrink-0 text-rose-500"/><label className="min-w-0 flex-1"><small className="block text-xs text-[var(--mg-muted)]">Куди</small><input required title={destination || undefined} value={destination} onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Будь ласка, вкажіть пункт призначення')} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')} onFocus={() => setRoutePlaceField('destination')} onChange={(event) => {setDestination(event.target.value);setSearchDestinationPlace(null);setRoutePlaceField('destination');}} onKeyDown={(event) => routePlaceKeyDown(event, 'destination')} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто призначення" role="combobox" aria-autocomplete="list" aria-expanded={routePlaceField === 'destination' && routePlaceSearch.suggestions.length > 0} aria-controls="route-place-destination-list" aria-activedescendant={activePlaceOptionId('route-place-destination-list', routePlaceActive)} /></label>{destination ? <button type="button" aria-label="Очистити кінцеву точку" title="Очистити" onClick={() => { setDestination(''); setSearchDestinationPlace(null); setRoutePlaceSearch(placeSearchPending()); }} data-field-action="clear" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl search-field-action"><X size={16}/></button> : <button type="button" aria-label="Обрати на мапі" title="Обрати на мапі" onClick={() => { setRoutePlaceField(null); setRoutePlaceSearch(placeSearchPending()); setPicker({ form: 'search', field: 'destination' }); }} data-field-action="pick" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl search-field-action"><MapPin size={16}/></button>}</div>
+      <div role="group" aria-label="Кінцева точка" className="flex items-center gap-2 rounded-b-2xl bg-[var(--mg-surface-tint)] px-3 py-3"><MapPin size={19} className="shrink-0 text-[var(--mg-blue)]"/><label className="min-w-0 flex-1"><small className="block text-xs text-[var(--mg-muted)]">Куди</small><input required title={destination || undefined} value={destination} onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Будь ласка, вкажіть пункт призначення')} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')} onFocus={() => setRoutePlaceField('destination')} onChange={(event) => {setDestination(event.target.value);setSearchDestinationPlace(null);setRoutePlaceField('destination');}} onKeyDown={(event) => routePlaceKeyDown(event, 'destination')} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто призначення" role="combobox" aria-autocomplete="list" aria-expanded={routePlaceField === 'destination' && routePlaceSearch.suggestions.length > 0} aria-controls="route-place-destination-list" aria-activedescendant={activePlaceOptionId('route-place-destination-list', routePlaceActive)} /></label>{destination ? <button type="button" aria-label="Очистити кінцеву точку" title="Очистити" onClick={() => { setDestination(''); setSearchDestinationPlace(null); setRoutePlaceSearch(placeSearchPending()); }} data-field-action="clear" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl search-field-action"><X size={16}/></button> : <button type="button" aria-label="Обрати кінцеву точку на мапі" title="Обрати на мапі" onClick={() => { setRoutePlaceField(null); setRoutePlaceSearch(placeSearchPending()); setPicker({ form: 'search', field: 'destination' }); }} data-field-action="pick" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl search-field-action"><MapPin size={16}/></button>}</div>
       {routePlaceField==='destination'&&routePlaceSearch.suggestions.length>0&&<div role="listbox" id="route-place-destination-list" aria-label="Варіанти місць призначення" className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:divide-[#1E3044] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]">{routePlaceSearch.suggestions.map((place,index)=><button key={place.providerId} type="button" role="option" id={`route-place-destination-list-option-${index}`} aria-selected={routePlaceActive===index} onClick={()=>chooseSearchPlace(place)} className={`block w-full px-3 py-2.5 text-left text-xs text-slate-800 hover:bg-blue-50 dark:text-slate-100 dark:hover:bg-[#16293D] ${routePlaceActive===index?'bg-blue-50 font-bold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200':''}`}>{place.label}</button>)}</div>}
       {routePlaceField==='destination'&&routePlaceSearch.unavailable&&placeUnavailableNotice(()=>void searchRoutePlace('destination'))}
     </div>
@@ -2070,10 +2170,12 @@ export function ProductionMarketplace() {
     onPublishTrip={() => { setNavAutoStart(false); publishDriverTrip(); }}
     onOpenMap={() => { setNavAutoStart(false); setTab('map'); }}
     onSearchDestination={(city, from) => {
-      setOrigin(from);
-      setDestination(city);
-      setSearchOriginPlace(null);
-      setSearchDestinationPlace(null);
+      const fromPlace = localCityPlace(from);
+      const destinationPlace = localCityPlace(city);
+      setOrigin(fromPlace?.label ?? from);
+      setDestination(destinationPlace?.label ?? city);
+      setSearchOriginPlace(fromPlace);
+      setSearchDestinationPlace(destinationPlace);
       setNavAutoStart(false);
       setTab('search');
     }}
@@ -2126,7 +2228,7 @@ export function ProductionMarketplace() {
         {journeyResult && <><span aria-hidden="true">·</span><span className="font-bold text-slate-700 dark:text-slate-200">{resultCountLabel}</span></>}
       </p>
     </header>
-    {journeyResult ? <><JourneyResultsPanel result={journeyResult} chosenJourneyId={chosenJourneyId} onOpenMap={(journey, alternatives, recommendation) => { setChosenJourneyId(journey.id); setSelectedRouteMap(journey); setSelectedRouteGroup([journey, ...alternatives]); setSelectedRouteRecommendation(recommendation); }} onRetry={() => void searchJourney()}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt} onCancel={cancelJourneySearch}/> : carpoolSection}
+    {journeyResult ? <><JourneyResultsPanel result={journeyResult} chosenJourneyId={chosenJourneyId} onOpenMap={(journey, alternatives, recommendation) => { cancelJourneyStart(); setChosenJourneyId(journey.id); setSelectedRouteMap(journey); setSelectedRouteGroup([journey, ...alternatives]); setSelectedRouteRecommendation(recommendation); }} onRetry={() => void searchJourney()}/>{carpoolSection}</> : journeySearchStartedAt !== null ? <JourneySearchPending startedAt={journeySearchStartedAt} onCancel={cancelJourneySearch}/> : carpoolSection}
   </section>;
 
   const visibleBookings = route?.kind === 'booking' && route.entityId ? bookings.filter((booking) => booking.id === route.entityId) : bookings;
@@ -2280,7 +2382,7 @@ export function ProductionMarketplace() {
   const offerFormScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5">
     <div className="mb-4 flex items-center gap-3"><button onClick={()=>setTab('home')} className="grid h-11 w-11 place-items-center rounded-full bg-white"><ArrowLeft size={18}/></button><div><p className="text-xs text-slate-500">Попутки MARSHGO</p><h1 className="font-extrabold">Опублікувати поїздку</h1></div></div>
     <form onSubmit={publishOffer} className="space-y-3 rounded-[1.5rem] bg-white p-4 shadow-sm">
-      {([['origin','Звідки',offerOriginText,setOfferOriginText,offerOrigin],['destination','Куди',offerDestinationText,setOfferDestinationText,offerDestination]] as const).map(([field,label,value,setValue,selected])=><div key={field} className="rounded-xl bg-[var(--mg-surface-tint)] p-3"><label htmlFor={`offer-${field}`} className="block text-xs font-semibold text-[var(--mg-muted)]">{label}</label><div className="mt-1 flex items-center gap-2"><MapPin size={16} className={field==='origin'?'text-emerald-600':'text-rose-500'}/><input id={`offer-${field}`} required value={value} onChange={event=>{setValue(event.target.value);if(field==='origin')setOfferOrigin(null);else setOfferDestination(null);}} className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" placeholder="Пошук адреси або міста"/><button type="button" aria-label={`Знайти ${field==='origin'?'початкову точку':'пункт призначення'}`} title={`Знайти ${field==='origin'?'початкову точку':'пункт призначення'}`} onClick={()=>void searchOfferPlace(field)} disabled={placeSearchBusy} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-blue-700">{placeSearchBusy&&offerPlaceField===field?'…':<Search size={15}/>}</button><button type="button" aria-label={`Обрати ${field==='origin'?'початкову точку':'пункт призначення'} на мапі`} title={`Обрати ${field==='origin'?'початкову точку':'пункт призначення'} на мапі`} onClick={()=>setPicker({form:'offer',field})} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-[var(--mg-blue)]"><MapPin size={15}/></button></div>{selected&&<p className="mt-1 text-xs text-emerald-700">Місце підтверджено</p>}{offerPlaceField===field&&offerPlaceSearch.suggestions.length>0&&<div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:divide-[#1E3044] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]">{offerPlaceSearch.suggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseOfferPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs text-slate-800 hover:bg-blue-50 dark:text-slate-100 dark:hover:bg-[#16293D]">{place.label}</button>)}</div>}{offerPlaceField===field&&offerPlaceSearch.unavailable&&placeUnavailableNotice(()=>void searchOfferPlace(field))}</div>)}
+      {([['origin','Звідки',offerOriginText,setOfferOriginText,offerOrigin],['destination','Куди',offerDestinationText,setOfferDestinationText,offerDestination]] as const).map(([field,label,value,setValue,selected])=><div key={field} className="rounded-xl bg-[var(--mg-surface-tint)] p-3"><label htmlFor={`offer-${field}`} className="block text-xs font-semibold text-[var(--mg-muted)]">{label}</label><div className="mt-1 flex items-center gap-2"><MapPin size={16} className="text-[var(--mg-blue)]"/><input id={`offer-${field}`} required value={value} onChange={event=>{setValue(event.target.value);if(field==='origin')setOfferOrigin(null);else setOfferDestination(null);}} className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" placeholder="Пошук адреси або міста"/><button type="button" aria-label={`Знайти ${field==='origin'?'початкову точку':'пункт призначення'}`} title={`Знайти ${field==='origin'?'початкову точку':'пункт призначення'}`} onClick={()=>void searchOfferPlace(field)} disabled={placeSearchBusy} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-blue-700">{placeSearchBusy&&offerPlaceField===field?'…':<Search size={15}/>}</button><button type="button" aria-label={`Обрати ${field==='origin'?'початкову точку':'пункт призначення'} на мапі`} title={`Обрати ${field==='origin'?'початкову точку':'пункт призначення'} на мапі`} onClick={()=>setPicker({form:'offer',field})} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-[var(--mg-blue)]"><MapPin size={15}/></button></div>{selected&&<p className="mt-1 text-xs text-emerald-700">Місце підтверджено</p>}{offerPlaceField===field&&offerPlaceSearch.suggestions.length>0&&<div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:divide-[#1E3044] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]">{offerPlaceSearch.suggestions.map(place=><button key={place.providerId} type="button" onClick={()=>chooseOfferPlace(place)} className="block w-full px-3 py-2.5 text-left text-xs text-slate-800 hover:bg-blue-50 dark:text-slate-100 dark:hover:bg-[#16293D]">{place.label}</button>)}</div>}{offerPlaceField===field&&offerPlaceSearch.unavailable&&placeUnavailableNotice(()=>void searchOfferPlace(field))}</div>)}
       <label className="block rounded-xl bg-[var(--mg-surface-tint)] p-3 text-xs font-semibold text-[var(--mg-muted)]">Час відправлення · Київ<input required type="datetime-local" min={formatKyivDateTimeInput(new Date(Date.now()+60_000))} value={offerDeparture} onChange={event=>setOfferDeparture(event.target.value)} className="mt-1 block w-full bg-transparent text-sm font-bold text-slate-800 outline-none"/></label>
       <label className="block rounded-xl bg-[var(--mg-surface-tint)] p-3 text-xs font-semibold text-[var(--mg-muted)]">Перевірений автомобіль<select required value={offerVehicleId} onChange={event=>{setOfferVehicleId(event.target.value);const selected=vehicles.find(vehicle=>vehicle.id===event.target.value);if(selected)setOfferSeats(Math.min(offerSeats,selected.seat_count));}} className="mt-1 block w-full bg-transparent text-sm font-bold text-slate-800"><option value="">Оберіть авто</option>{publishableVehicles.map(vehicle=><option key={vehicle.id} value={vehicle.id}>{vehicle.make} {vehicle.model} · {vehicle.seat_count} місць</option>)}</select></label>
       {publishableVehicles.length===0&&<div className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">Для публікації потрібне перевірене авто зі справжнім фото. Додайте авто й фото в профілі та дочекайтеся перевірки документів.<button type="button" onClick={()=>setTab('profile')} className="ml-1 font-bold underline">Відкрити профіль</button></div>}
@@ -2293,7 +2395,7 @@ export function ProductionMarketplace() {
   const demandFormScreen = <div className="mx-auto w-full max-w-xl px-5 pb-5">
     <div className="mb-4 flex items-center gap-3"><button onClick={()=>setTab('home')} className="grid h-11 w-11 place-items-center rounded-full bg-white"><ArrowLeft size={18}/></button><div><p className="text-xs text-[var(--mg-muted)]">Запит на попутку</p><h1 className="font-extrabold">Шукаю поїздку</h1></div><button onClick={()=>{setSelectedDemand(null);setTab('my-demands');}} className="ml-auto text-xs font-bold text-[var(--mg-blue-ink)]">Мої заявки</button></div>
     <form onSubmit={publishDemand} className="space-y-3 rounded-[1.5rem] bg-white p-4 shadow-sm">
-      {([['origin','Звідки',demandOriginText,setDemandOriginText,demandOrigin],['destination','Куди',demandDestinationText,setDemandDestinationText,demandDestination]] as const).map(([field,label,value,setValue,selected])=><div key={field} className="rounded-xl bg-[var(--mg-surface-tint)] p-3"><label htmlFor={`demand-${field}`} className="block text-xs font-semibold text-[var(--mg-muted)]">{label}</label><div className="mt-1 flex items-center gap-2"><MapPin size={16} className={field==='origin'?'text-emerald-600':'text-rose-500'}/><input id={`demand-${field}`} required value={value} onChange={event=>{setValue(event.target.value);if(field==='origin')setDemandOrigin(null);else setDemandDestination(null);}} className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" placeholder="Пошук адреси або міста"/><button type="button" aria-label={`Знайти ${field==='origin'?'початкову точку':'пункт призначення'}`} title={`Знайти ${field==='origin'?'початкову точку':'пункт призначення'}`} onClick={()=>void searchPlace(field)} disabled={placeSearchBusy} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-blue-700">{placeSearchBusy&&placeField===field?'…':<Search size={15}/>}</button><button type="button" aria-label={`Обрати ${field==='origin'?'початкову точку':'пункт призначення'} на мапі`} title={`Обрати ${field==='origin'?'початкову точку':'пункт призначення'} на мапі`} onClick={()=>setPicker({form:'demand',field})} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-[var(--mg-blue)]"><MapPin size={15}/></button></div>{selected&&<p className="mt-1 text-xs text-emerald-700">Місце підтверджено</p>}{placeField===field&&placeSearch.suggestions.length>0&&<div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:divide-[#1E3044] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]">{placeSearch.suggestions.map(place=><button key={place.providerId} type="button" onClick={()=>choosePlace(place)} className="block w-full px-3 py-2.5 text-left text-xs text-slate-800 hover:bg-blue-50 dark:text-slate-100 dark:hover:bg-[#16293D]">{place.label}</button>)}</div>}{placeField===field&&placeSearch.unavailable&&placeUnavailableNotice(()=>void searchPlace(field))}</div>)}
+      {([['origin','Звідки',demandOriginText,setDemandOriginText,demandOrigin],['destination','Куди',demandDestinationText,setDemandDestinationText,demandDestination]] as const).map(([field,label,value,setValue,selected])=><div key={field} className="rounded-xl bg-[var(--mg-surface-tint)] p-3"><label htmlFor={`demand-${field}`} className="block text-xs font-semibold text-[var(--mg-muted)]">{label}</label><div className="mt-1 flex items-center gap-2"><MapPin size={16} className="text-[var(--mg-blue)]"/><input id={`demand-${field}`} required value={value} onChange={event=>{setValue(event.target.value);if(field==='origin')setDemandOrigin(null);else setDemandDestination(null);}} className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" placeholder="Пошук адреси або міста"/><button type="button" aria-label={`Знайти ${field==='origin'?'початкову точку':'пункт призначення'}`} title={`Знайти ${field==='origin'?'початкову точку':'пункт призначення'}`} onClick={()=>void searchPlace(field)} disabled={placeSearchBusy} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-blue-700">{placeSearchBusy&&placeField===field?'…':<Search size={15}/>}</button><button type="button" aria-label={`Обрати ${field==='origin'?'початкову точку':'пункт призначення'} на мапі`} title={`Обрати ${field==='origin'?'початкову точку':'пункт призначення'} на мапі`} onClick={()=>setPicker({form:'demand',field})} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-[var(--mg-blue)]"><MapPin size={15}/></button></div>{selected&&<p className="mt-1 text-xs text-emerald-700">Місце підтверджено</p>}{placeField===field&&placeSearch.suggestions.length>0&&<div className="mt-2 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:divide-[#1E3044] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]">{placeSearch.suggestions.map(place=><button key={place.providerId} type="button" onClick={()=>choosePlace(place)} className="block w-full px-3 py-2.5 text-left text-xs text-slate-800 hover:bg-blue-50 dark:text-slate-100 dark:hover:bg-[#16293D]">{place.label}</button>)}</div>}{placeField===field&&placeSearch.unavailable&&placeUnavailableNotice(()=>void searchPlace(field))}</div>)}
       <div className="grid grid-cols-2 gap-2"><label className="rounded-xl bg-[var(--mg-surface-tint)] p-3 text-xs font-semibold text-[var(--mg-muted)]">Не раніше<input required type="datetime-local" value={demandEarliest} onChange={event=>setDemandEarliest(event.target.value)} className="mt-1 block w-full bg-transparent text-xs font-bold text-slate-800 outline-none"/></label><label className="rounded-xl bg-[var(--mg-surface-tint)] p-3 text-xs font-semibold text-[var(--mg-muted)]">Не пізніше<input required type="datetime-local" value={demandLatest} onChange={event=>setDemandLatest(event.target.value)} className="mt-1 block w-full bg-transparent text-xs font-bold text-slate-800 outline-none"/></label></div>
       <div className="grid grid-cols-2 gap-2"><label className="rounded-xl bg-[var(--mg-surface-tint)] p-3 text-xs font-semibold text-[var(--mg-muted)]">Пасажири<select value={demandPassengers} onChange={event=>setDemandPassengers(Number(event.target.value))} className="mt-1 block w-full bg-transparent text-sm font-bold text-slate-800">{Array.from({length:8},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}</option>)}</select></label><label className="rounded-xl bg-[var(--mg-surface-tint)] p-3 text-xs font-semibold text-[var(--mg-muted)]">Бюджет, грн<input inputMode="decimal" value={demandBudget} onChange={event=>setDemandBudget(event.target.value)} className="mt-1 block w-full bg-transparent text-sm font-bold text-slate-800 outline-none" placeholder="Не вказано"/></label></div>
       <label className="block rounded-xl bg-[var(--mg-surface-tint)] p-3 text-xs font-semibold text-[var(--mg-muted)]">Тип бюджету<select value={demandBudgetType} onChange={event=>setDemandBudgetType(event.target.value as 'total_all'|'per_seat')} className="mt-1 block w-full bg-transparent text-xs font-bold text-slate-800"><option value="total_all">За всю поїздку</option><option value="per_seat">За одне місце</option></select></label>
@@ -2351,13 +2453,13 @@ export function ProductionMarketplace() {
     </div>
   );
 
-  const createMenu = showCreateMenu ? <div className="fixed inset-0 z-[var(--mg-z-overlay)] flex items-end justify-center bg-slate-950/35 p-3 sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowCreateMenu(false); }}><section role="dialog" aria-modal="true" aria-labelledby="create-menu-title" className="mg-rise w-full max-w-md rounded-[var(--mg-radius-2xl)] bg-white p-4 shadow-xl"><div className="mb-3 flex items-center justify-between"><h2 id="create-menu-title" className="font-extrabold">Швидкі дії</h2><button type="button" onClick={() => setShowCreateMenu(false)} aria-label="Закрити" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-600"><X size={20}/></button></div><div className="space-y-2">{([
+  const createMenu = showCreateMenu ? <div className="fixed inset-0 z-[var(--mg-z-modal)] flex items-end justify-center bg-slate-950/35 p-3 pt-[max(.75rem,env(safe-area-inset-top))] pb-[calc(var(--mg-global-nav-clearance)+1.25rem)] sm:items-center sm:pb-3" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowCreateMenu(false); }}><section ref={createMenuRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="create-menu-title" className="mg-rise max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem)] w-full max-w-md overflow-y-auto rounded-[var(--mg-radius-2xl)] bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl"><div className="mb-3 flex items-center justify-between"><h2 id="create-menu-title" className="font-extrabold">Швидкі дії</h2><button type="button" onClick={() => setShowCreateMenu(false)} aria-label="Закрити" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-600"><X size={20}/></button></div><div className="space-y-2">{([
     { label: 'Навігація', hint: 'Ведення до точки', icon: Navigation, pick: () => { setNavAutoStart(true); setTab('navigation'); } },
     { label: 'Карта транспорту', hint: 'Зупинки, лінії, рух', icon: BusFront, pick: () => setTab('map') },
     { label: 'Опублікувати поїздку', hint: 'Маршрут, авто й ціна', icon: CarFront, pick: publishDriverTrip },
     { label: 'Знайти маршрут', hint: 'Усі види транспорту', icon: Search, pick: () => setTab('search') },
-  ] as const).map((action) => { const Icon = action.icon; return <button key={action.label} type="button" onClick={() => { setShowCreateMenu(false); action.pick(); }} className="flex min-h-12 w-full items-center gap-3 rounded-xl bg-blue-50 p-3 text-left"><Icon className="shrink-0 text-blue-600" size={20}/><span className="min-w-0"><b className="block text-sm">{action.label}</b><small className="block text-[var(--mg-muted)]">{action.hint}</small></span></button>; })}</div><p className="mt-3 border-t border-slate-100 px-1 pt-3 text-xs font-bold uppercase tracking-wide text-slate-400">Пасажир</p><button type="button" onClick={() => { setShowCreateMenu(false); setSelectedDemand(null); setSelectedDemandIsOwned(false); setProposals([]); setProposalsUnavailable(false); setTab('demand'); }} className="mt-2 flex min-h-12 w-full items-center gap-3 rounded-xl bg-slate-50 p-3 text-left"><Compass className="shrink-0 text-slate-500" size={19}/><span className="min-w-0"><b className="block text-sm">Створити запит</b><small className="block text-[var(--mg-muted)]">Маршрут і ваш бюджет</small></span></button></section></div> : null;
-  const renderBottomTab = (item: (typeof tabItems)[number]) => { const Icon = item.icon; const active = tab === item.id || (tab === 'navigation' && item.id === 'home'); return <button key={item.id} aria-current={active ? 'page' : undefined} onClick={() => { setTabPopTick(tick => tick + 1); setTab(item.id); if (item.id === 'home') setShowResults(false); setSelectedOffer(null); setSelectedBooking(null); setSelectedJourney(null); setSelectedRouteMap(null); setSelectedRouteGroup([]); setSelectedRouteRecommendation(undefined); setJourneyBookingLink(null); }} className={`flex w-full min-w-0 flex-col items-center gap-1 px-1 py-1 ${active ? 'text-[var(--mg-blue-ink)]' : 'text-[var(--mg-ink-secondary)]'}`}><Icon key={`${item.id}-${tabPopTick}`} size={20} strokeWidth={active ? 2.5 : 2}/><span className="text-xs font-semibold">{item.label}</span></button>; };
+  ] as const).map((action) => { const Icon = action.icon; return <button key={action.label} type="button" onClick={() => { setShowCreateMenu(false); closeJourneyRoute(); action.pick(); }} className="flex min-h-12 w-full items-center gap-3 rounded-xl bg-blue-50 p-3 text-left"><Icon className="shrink-0 text-blue-600" size={20}/><span className="min-w-0"><b className="block text-sm">{action.label}</b><small className="block text-[var(--mg-muted)]">{action.hint}</small></span></button>; })}</div><p className="mt-3 border-t border-slate-100 px-1 pt-3 text-xs font-bold uppercase tracking-wide text-slate-400">Пасажир</p><button type="button" onClick={() => { setShowCreateMenu(false); closeJourneyRoute(); setSelectedDemand(null); setSelectedDemandIsOwned(false); setProposals([]); setProposalsUnavailable(false); setTab('demand'); }} className="mt-2 flex min-h-12 w-full items-center gap-3 rounded-xl bg-slate-50 p-3 text-left"><Compass className="shrink-0 text-slate-500" size={19}/><span className="min-w-0"><b className="block text-sm">Створити запит</b><small className="block text-[var(--mg-muted)]">Маршрут і ваш бюджет</small></span></button></section></div> : null;
+  const renderBottomTab = (item: (typeof tabItems)[number]) => { const Icon = item.icon; const active = tab === item.id || (tab === 'navigation' && item.id === 'home'); return <button key={item.id} aria-current={active ? 'page' : undefined} onClick={() => { closeJourneyRoute(); sensory.emit({ type: 'NAV_TAB_CHANGED', tab: item.id }); setTabPopTick(tick => tick + 1); setTab(item.id); if (item.id === 'home') setShowResults(false); setSelectedOffer(null); setSelectedBooking(null); setJourneyBookingLink(null); }} className={`flex w-full min-w-0 flex-col items-center gap-1 px-1 py-1 ${active ? 'text-[var(--mg-blue-ink)]' : 'text-[var(--mg-ink-secondary)]'}`}><Icon key={`${item.id}-${tabPopTick}`} size={20} strokeWidth={active ? 2.5 : 2}/><span className="text-xs font-semibold">{item.label}</span></button>; };
 
 
   const pickerPlace = !picker ? null : picker.form === 'search' ? (picker.field === 'origin' ? searchOriginPlace : searchDestinationPlace)
@@ -2370,13 +2472,13 @@ export function ProductionMarketplace() {
     key={journey.id}
     journey={journey}
     alternativeDepartures={alternatives.filter(alternative => alternative.id !== journey.id)}
-    onSelectAlternative={alternative => { setSelectedRouteMap(alternative); setSelectedRouteRecommendation(undefined); }}
+    onSelectAlternative={alternative => { cancelJourneyStart(); setSelectedRouteMap(alternative); setSelectedRouteRecommendation(undefined); }}
     recommendation={recommendation}
-    onBack={onClose}
-    onBookOffer={(offerId, journeyId, journeyLegId) => { onClose(); void openJourneyOffer(offerId, journeyId, journeyLegId); }}
-    // One tap: the selected itinerary becomes the active navigation map. The
-    // route screen stays behind it, so exiting restores the same journey and
-    // no destination is ever asked for again.
+    notice={journeyNotice}
+    backLabel={selectedJourney ? 'Назад до поїздок' : 'Назад до результатів'}
+    starting={journeyStartPending}
+    onBack={() => { cancelJourneyStart(); onClose(); }}
+    onBookOffer={(offerId, journeyId, journeyLegId) => { cancelJourneyStart(); onClose(); void openJourneyOffer(offerId, journeyId, journeyLegId); }}
     onStartJourney={() => startJourneyNavigation(journey)}
   />;
 
@@ -2385,10 +2487,22 @@ export function ProductionMarketplace() {
     notice={journeyNotice}
     onFinish={() => finishJourneyNavigation(activeJourneyNavigation.id)}
     initialLegIndex={restoredNavigationStage.current}
+    initialFix={journeyInitialFix}
     onStageChange={(legIndex) => keepActiveJourneyStage(activeJourneyNavigation.id, legIndex)}
     onExit={exitJourneyNavigation}
   />
-    : selectedRouteMap ? routeMapScreen(selectedRouteMap, () => { setSelectedRouteMap(null); setSelectedRouteGroup([]); setSelectedRouteRecommendation(undefined); }, selectedRouteGroup, selectedRouteRecommendation)
+    : selectedRouteMap ? routeMapScreen(selectedRouteMap, () => {
+      setSelectedRouteMap(null); setSelectedRouteGroup([]); setSelectedRouteRecommendation(undefined);
+      const backTarget = resolveJourneyRouteBackTarget(journeySearchReturnPath.current, selectedJourney !== null);
+      setSelectedJourney(null);
+      if (backTarget.kind === 'planner') {
+        journeySearchReturnPath.current = null;
+        setShowResults(true);
+        setRoutePath(backTarget.path);
+      } else if (backTarget.kind === 'trips') {
+        setTab('trips');
+      }
+    }, selectedRouteGroup, selectedRouteRecommendation)
     : selectedJourney ? routeMapScreen(storedJourneyToApiJourney(selectedJourney), () => { setSelectedJourney(null); setTab('trips'); })
     : selectedOffer ? <div className="mx-auto w-full max-w-xl px-5 pb-5"><div className="mb-4 flex items-center gap-3"><button onClick={()=>{setSelectedOffer(null);setJourneyBookingLink(null);setTab('search');}} className="grid h-11 w-11 place-items-center rounded-full bg-white shadow-sm"><ArrowLeft size={18}/></button><div><p className="text-xs text-slate-500">Деталі поїздки</p><h1 className="font-extrabold">{selectedOffer.origin_name.split(',')[0]} → {selectedOffer.destination_name.split(',')[0]}</h1></div></div><div className="mb-3"><Suspense fallback={null}><OfferRoutePreview offer={selectedOffer}/></Suspense></div><div className="mb-3 overflow-hidden rounded-[1.4rem]"><VehiclePhoto url={selectedOffer.vehicle_photo_url} alt={`Авто водія ${selectedOffer.driver_name}`}/></div><div className="rounded-[1.5rem] bg-white p-5 shadow-sm"><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">COMMUNITY · Попутка</span><div className="mt-5 grid grid-cols-2 gap-4"><div><small className="text-slate-400">Відправлення</small><p className="mt-1 text-xl font-extrabold">{formatDate(selectedOffer.departure_at,{hour:'2-digit',minute:'2-digit'})}</p><b>{selectedOffer.origin_name.split(',')[0]}</b></div><div className="text-right"><small className="text-slate-400">Прибуття</small><p className="mt-1 text-xl font-extrabold">{selectedOffer.arrival_at?formatDate(selectedOffer.arrival_at,{hour:'2-digit',minute:'2-digit'}):'—'}</p><b>{selectedOffer.destination_name.split(',')[0]}</b></div></div><div className="my-4 border-t border-slate-100"/><ol aria-label="Маршрут поїздки" className="relative ml-1 space-y-5 border-l-2 border-dashed border-[#BBD7FB] pl-5"><li className="relative"><span className="absolute -left-[1.72rem] top-1 h-3 w-3 rounded-full border-2 border-white bg-[var(--mg-action)] shadow"/><p className="text-sm font-extrabold text-[var(--mg-ink-primary)]">{formatDate(selectedOffer.departure_at,{hour:'2-digit',minute:'2-digit'})} · {selectedOffer.origin_name.split(',')[0]}</p><p className="text-xs text-slate-400">Посадка</p></li>{selectedOffer.distance_m&&selectedOffer.duration_s?<li className="text-xs font-semibold text-[var(--mg-muted)]">{(selectedOffer.distance_m/1000).toFixed(0)} км · {Math.floor(selectedOffer.duration_s/3600)} год {Math.round((selectedOffer.duration_s%3600)/60)} хв дорогою</li>:null}<li className="relative"><span className="absolute -left-[1.72rem] top-1 h-3 w-3 rounded-full border-2 border-white bg-[#EF4444] shadow"/><p className="text-sm font-extrabold text-[var(--mg-ink-primary)]">{selectedOffer.arrival_at?formatDate(selectedOffer.arrival_at,{hour:'2-digit',minute:'2-digit'}):'—'} · {selectedOffer.destination_name.split(',')[0]}</p><p className="text-xs text-slate-400">Висадка</p></li></ol><div className="my-4 border-t border-slate-100"/><p className="flex items-center gap-3 text-sm"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">{selectedOffer.driver_name.slice(0,1)}</span><span><b>{selectedOffer.driver_name}</b><small className="block text-[var(--mg-muted)]">{selectedOffer.review_count?`★ ${Number(selectedOffer.average_rating).toFixed(1)} · ${selectedOffer.review_count} відгуків`:'Новий водій'}</small></span></p><div className="mt-5 flex justify-between text-sm"><span className="text-slate-500">Вільні місця</span><b>{detailOfferBlocked?'—':selectedOffer.available_seats}</b></div>{detailOfferBlocked&&<p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-4 text-amber-800">{OFFER_NO_LONGER_BOOKABLE_TEXT}</p>}<div className="mt-3 flex justify-between text-sm"><span className="text-slate-500">Вартість за {seats} {seats===1?'місце':'місця'}</span><b className="text-lg">{formatMoney(selectedOffer.price_per_seat_minor*seats,selectedOffer.currency)}</b></div><p className="mt-1 text-right text-xs text-slate-400">MARSHGO Community · комісія платформи 0%</p><button data-testid="offer-book-button" data-offer-id={selectedOffer.id} disabled={busy||detailOfferBlocked||selectedOffer.available_seats<seats} title={detailOfferBlocked?'Ця поїздка більше недоступна для бронювання':selectedOffer.available_seats<seats?'Недостатньо вільних місць для такої кількості пасажирів':''} onClick={()=>{setStatusMessage('');setBookingToConfirm(selectedOffer);}} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 font-bold text-white disabled:opacity-50">{detailOfferBlocked?'Недоступно для бронювання':selectedOffer.available_seats<seats?'Недостатньо місць':'Забронювати місце'}<ArrowRight size={17}/></button></div></div> : tab==='navigation' ? null : tab==='map' ? <Suspense fallback={<div className="grid min-h-[100svh] place-items-center bg-[var(--mg-canvas)] text-sm text-slate-500">Завантажуємо карту…</div>}><TransportMapView onBack={()=>setTab('search')} cityName={currentCity.name} onCitySelected={(name)=>commitCurrentCity({name,source:'manual',verified:true})}/></Suspense> : tab==='home' ? (showResults ? resultsScreen : homeScreen) : tab==='search' ? (showResults ? resultsScreen : searchScreen) : tab==='trips' ? tripsScreen : tab==='chat' ? chatScreen : tab==='profile' ? (profileSection ? <Suspense fallback={profileSectionPending}><ProfileSections section={profileSection} onBack={()=>setProfileSection(null)} vehicles={vehicles} records={verificationRecords} onLogoutAll={logoutAllDevices} onExportData={downloadPersonalData} onRequestDeletion={()=>setConfirmDeletion(true)} onOpenSafetyReport={()=>{setProfileSection(null);setTab('trips');}}/></Suspense> : profileScreen) : tab==='admin' ? adminDashboard : tab==='demand' ? demandFormScreen : tab==='offer-new' ? offerFormScreen : tab==='requests' ? requestsScreen : myDemandsScreen;
 
@@ -2398,7 +2512,7 @@ export function ProductionMarketplace() {
   const hideSharedHeader = tab === 'navigation' || Boolean(activeJourneyNavigation || selectedRouteMap || selectedJourney || selectedOffer || (showResults && (tab === 'search' || tab === 'home')));
 
   const immersiveRouteView = Boolean(activeJourneyNavigation || selectedRouteMap);
-  return <main onPointerDownCapture={onMapEdgePointerDown} className={`production-app min-h-[100svh] bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[var(--mg-global-nav-clearance)]'} ${mapToolbarContext ? 'map-toolbar-map-context' : ''}`}>
+  return <main className={`production-app min-h-[100svh] bg-[var(--mg-canvas)] text-[var(--mg-ink-primary)] ${tab === 'home' && !showResults ? 'home-viewport-shell' : ''} ${immersiveRouteView ? 'route-immersive-shell' : 'pb-[var(--mg-global-nav-clearance)]'} ${mapToolbarContext ? 'map-toolbar-map-context' : ''}`}>
     {!hideSharedHeader && header}
     {isOffline && !hideSharedHeader && <div className="mx-auto w-full max-w-xl px-5"><p role="status" aria-live="polite" data-testid="offline-notice" className="mg-fade flex items-start gap-2 rounded-2xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-tint)] px-3 py-2.5 text-xs font-semibold leading-snug text-[var(--mg-ink-secondary)]">
       <WifiOff size={15} aria-hidden="true" className="mt-px shrink-0"/>
@@ -2413,9 +2527,9 @@ export function ProductionMarketplace() {
     {navigationOverlay}
     {navigationActive && tab !== 'navigation' && <button type="button" onClick={() => setTab('navigation')} aria-label="Повернутися до активної навігації" className="fixed right-3 z-[var(--mg-z-overlay)] flex items-center gap-2 rounded-full border border-blue-200 bg-white/95 px-3 py-2 text-xs font-bold text-blue-700 shadow-lg backdrop-blur" style={{ bottom: 'calc(var(--mg-global-nav-clearance) + .5rem)' }}><Navigation size={16}/>Навігація · Повернутися</button>}
     {pointPicker}
-    <nav data-testid="global-bottom-navigation" data-map-context={mapToolbarContext ? 'true' : undefined} data-map-visible={mapToolbarContext ? String(mapNavigationVisible) : undefined} aria-label="Основна навігація" className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl"><div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
+    <nav data-testid="global-bottom-navigation" data-map-context={mapToolbarContext ? 'true' : undefined} data-map-visible={mapToolbarContext ? String(mapNavigationVisible) : undefined} aria-hidden={!mapNavigationVisible} inert={!mapNavigationVisible} aria-label="Основна навігація" style={{ transform: mapNavigationVisible ? 'translateY(0)' : 'translateY(calc(100% + env(safe-area-inset-bottom)))', pointerEvents: mapNavigationVisible ? 'auto' : 'none' }} className="app-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pt-2 backdrop-blur-xl transition-transform duration-[var(--mg-dur-base)] ease-[var(--mg-ease-entrance)] motion-reduce:transition-none"><div className="app-tabbar-inner mx-auto grid w-full max-w-xl grid-cols-5 items-center px-1">
       {tabItems.slice(0, 2).map(renderBottomTab)}
-      <button onClick={() => setShowCreateMenu(true)} aria-label="Створити поїздку або запит" aria-haspopup="dialog" aria-expanded={showCreateMenu} className="app-create-button mg-press col-start-3 row-start-1 -mt-5 grid h-14 w-14 place-items-center justify-self-center rounded-full bg-[var(--mg-action)] text-white shadow-lg shadow-[#0B63D6]/30 transition-transform motion-safe:duration-[var(--mg-dur-fast)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><Plus size={25}/><span className="desktop-create-label">Створити</span></button>
+      <button ref={createMenuTriggerRef} onClick={() => { sensory.emit({ type: 'ACTION_DRAWER_OPENED' }); setShowCreateMenu(true); }} aria-label="Створити поїздку або запит" aria-haspopup="dialog" aria-expanded={showCreateMenu} className="app-create-button mg-press col-start-3 row-start-1 -mt-5 grid h-14 w-14 place-items-center justify-self-center rounded-full bg-[var(--mg-action)] text-white shadow-lg shadow-[#0B63D6]/30 transition-transform motion-safe:duration-[var(--mg-dur-fast)] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"><Plus size={25}/><span className="desktop-create-label">Створити</span></button>
       {tabItems.slice(2).map(renderBottomTab)}
     </div></nav>
     {createMenu}

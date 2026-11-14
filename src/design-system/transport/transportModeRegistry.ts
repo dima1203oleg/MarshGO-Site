@@ -1,6 +1,6 @@
 import {
-  ArrowLeftRight, Bike, BusFront, Car, Caravan, CarFront, CarTaxiFront, Clock3, createLucideIcon,
-  PersonStanding, TrainFront, TramFront, Waypoints,
+  ArrowLeftRight, Bike, BusFront, Car, Caravan, CarTaxiFront, Clock3, createLucideIcon,
+  PersonStanding, TrainFront, Waypoints,
   type LucideIcon,
 } from 'lucide-react';
 import type { TransportGroup, TransportModeId } from '../../domain/transportCatalog';
@@ -42,6 +42,29 @@ const Metro = createLucideIcon('Metro', [
   ['path', { d: 'M8.5 16.5v-4.5l3.5 3 3.5-3v4.5', key: 'metro-m' }],
 ]);
 
+/** Tram reads side-on with a pantograph touching the overhead wire and a rail below,
+ *  so it never collapses into the bus/tram front silhouettes at tile size. */
+const Tram = createLucideIcon('Tram', [
+  ['path', { d: 'M2 2.5h20', key: 'tram-wire' }],
+  ['path', { d: 'M12 2.5 9.5 6h5L12 2.5', key: 'tram-pantograph' }],
+  ['path', { d: 'M4 6h16v9H4z', key: 'tram-body' }],
+  ['path', { d: 'M7.5 9.5h3M13.5 9.5h3', key: 'tram-windows' }],
+  ['circle', { cx: '8', cy: '18', r: '1.6', key: 'tram-wheel-rear' }],
+  ['circle', { cx: '16', cy: '18', r: '1.6', key: 'tram-wheel-front' }],
+  ['path', { d: 'M3 21.5h18', key: 'tram-rail' }],
+]);
+
+/** Carpool is shared occupancy, not a vehicle class: two riders above one car body,
+ *  so it never reads as taxi (roof sign) or carsharing (plain side silhouette). */
+const Carpool = createLucideIcon('Carpool', [
+  ['circle', { cx: '7.5', cy: '4.5', r: '1.7', key: 'carpool-driver' }],
+  ['circle', { cx: '13', cy: '4.5', r: '1.7', key: 'carpool-passenger' }],
+  ['path', { d: 'M3 17v-3l2.5-4h9.5l3 4v3', key: 'carpool-body' }],
+  ['path', { d: 'M5.5 10.5 7 8h7l1.5 2.5', key: 'carpool-glass' }],
+  ['circle', { cx: '6.5', cy: '18.5', r: '1.6', key: 'carpool-wheel-rear' }],
+  ['circle', { cx: '14.5', cy: '18.5', r: '1.6', key: 'carpool-wheel-front' }],
+]);
+
 function visual(
   id: string,
   label: string,
@@ -67,9 +90,9 @@ export const transportModeRegistry: Record<TransportModeId, CanonicalVisual> = {
   bus: visual('bus', 'Автобус', 'Автобуси', 'Bus', BusFront, '#327FC3', 'Громадський транспорт'),
   marshrutka: visual('marshrutka', 'Маршрутка', 'Маршрутки', 'Minibus', Caravan, '#327FC3', 'Громадський транспорт'),
   trolleybus: visual('trolleybus', 'Тролейбус', 'Тролейбуси', 'Trolleybus', Trolleybus, '#327FC3', 'Громадський транспорт'),
-  tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', TramFront, '#327FC3', 'Громадський транспорт'),
+  tram: visual('tram', 'Трамвай', 'Трамваї', 'Tram', Tram, '#327FC3', 'Громадський транспорт'),
   metro: visual('metro', 'Метро', 'Метро', 'Metro', Metro, '#327FC3', 'Громадський транспорт'),
-  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', CarFront, '#327FC3', 'Спільні поїздки'),
+  carpool: visual('carpool', 'Попутка', 'Попутки', 'Carpool', Carpool, '#327FC3', 'Спільні поїздки'),
   taxi: visual('taxi', 'Таксі', 'Таксі', 'Taxi', CarTaxiFront, '#327FC3', 'Спільні поїздки'),
   train: visual('train', 'Поїзд', 'Поїзди', 'Train', TrainFront, '#327FC3', 'Залізниця'),
   bike: visual('bike', 'Велосипед', 'Велосипеди', 'Bicycle', Bike, '#327FC3', 'Мікромобільність'),
@@ -81,7 +104,7 @@ export const transportModeRegistry: Record<TransportModeId, CanonicalVisual> = {
 const specialVisuals: Record<string, CanonicalVisual> = {
   WALK: visual('walk', 'Пішки', 'Пішки', 'Walking', PersonStanding, '#91A6BB'),
   WAIT: visual('wait', 'Очікування', 'Очікування', 'Waiting', Clock3, '#91A6BB'),
-  FERRY: visual('ferry', 'Пором', 'Пороми', 'Ferry', Waypoints, '#0891B2'),
+  FERRY: visual('ferry', 'Пором', 'Пороми', 'Ferry', Waypoints, '#327FC3'),
   FUNICULAR: visual('funicular', 'Фунікулер', 'Фунікулери', 'Funicular', TrainFront, '#64748B'),
 };
 
