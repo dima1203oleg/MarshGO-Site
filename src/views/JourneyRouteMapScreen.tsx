@@ -48,6 +48,7 @@ import { nextStopsLegId, sheetNeedsRaiseForStops, stopsDetent } from './journeyS
 import { useFocusedFleetClock } from './useFocusedFleetClock';
 import './routeSheetDensity.css';
 import { calculateAdaptiveMapPadding } from '../map/mapViewportCoordinator';
+import { routeMapTapAction } from '../map/routeSegmentSelection';
 import { measureGlobalBottomNavigationInset } from './globalBottomNavigationInset';
 import { sensory } from '../sensory';
 import {
@@ -697,6 +698,22 @@ export function JourneyRouteMapScreen({
     }));
   }, [activeSegmentId, journey.legs, liveJourney?.segments, confirmedSegments, reducedMotion, routeLinePoints, showWholeRoute, visibleMapArea]);
 
+  // Map taps are for focusing a street segment. Clearing focus is reserved for
+  // the explicit whole-route action, so tapping the selected line never makes
+  // its geometry appear to disappear.
+  const focusSegmentFromMap = useCallback((id: string) => {
+    setMapSegmentChoices(null);
+    if (routeMapTapAction(activeSegmentId, id) === 'select') {
+      chooseSegment(id);
+      return;
+    }
+
+    const segment = confirmedSegments.find(item => item.id === id);
+    if (!segment) return;
+    const target = calculateSegmentFocusTarget(segment.coordinates, [], id, visibleMapArea);
+    cameraController.current?.focusSegment(id, target, routeLinePoints);
+  }, [activeSegmentId, chooseSegment, confirmedSegments, routeLinePoints, visibleMapArea]);
+
   const chooseTransfer = useCallback((hint: InlineTransferHint) => {
     if (activeTransferId === hint.id) {
       showWholeRoute();
@@ -1094,11 +1111,11 @@ export function JourneyRouteMapScreen({
             }
           }}
           activeRouteSegmentId={activeSegmentId}
-          onRouteSegmentSelect={id => chooseSegment(id)}
+          onRouteSegmentSelect={focusSegmentFromMap}
           onRouteSegmentAmbiguous={(ids, point) => {
             const validIds = ids.filter(id => journey.legs.some(leg => leg.id === id));
             if (validIds.length < 2) {
-              if (validIds[0]) chooseSegment(validIds[0]);
+              if (validIds[0]) focusSegmentFromMap(validIds[0]);
               return;
             }
             setMapSegmentChoices({
@@ -1120,7 +1137,7 @@ export function JourneyRouteMapScreen({
             const leg = journey.legs.find(item => item.id === id);
             if (!leg) return null;
             return (
-              <button key={id} type="button" onClick={() => chooseSegment(id)} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-sm font-bold hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
+              <button key={id} type="button" onClick={() => focusSegmentFromMap(id)} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-sm font-bold hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]">
                 <span className="truncate">{legLabel(leg)}</span>
                 <ArrowRight size={16} className="shrink-0 text-[var(--route-muted)]"/>
               </button>
