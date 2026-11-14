@@ -1,0 +1,695 @@
+# PR register (read-only gh queries)
+# generated: 2026-11-03T06:40:40Z
+
+########################## MarshGO-Site ##########################
+----- Site #50 -----
+PR 50  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/release-integration-20261102
+  head: qoder/api-401-single-retry
+  updated: 2026-11-03T03:59:22Z   changed=2  +138/-4
+  zones:
+    1 file(s)  src/services
+    1 file(s)  tests
+
+----- Site #49 -----
+PR 49  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/release-integration-20261102
+  head: qoder/home-quickactions-320
+  updated: 2026-11-03T03:19:10Z   changed=20  +928/-5
+  zones:
+    1 file(s)  src
+    1 file(s)  src/views
+    18 file(s)  docs/audit
+
+----- Site #48 -----
+PR 48  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: main
+  head: qoder/premium-8-surface-2
+  updated: 2026-11-03T02:35:41Z   changed=76  +2332/-1001
+  zones:
+    1 file(s)  .gitignore
+    1 file(s)  e2e
+    1 file(s)  package-lock.json
+    1 file(s)  package.json
+    1 file(s)  playwright.config.ts
+    1 file(s)  tests/fixtures
+    2 file(s)  src
+    2 file(s)  src/map
+    2 file(s)  tests/support
+    24 file(s)  src/views
+    31 file(s)  src/components
+    4 file(s)  src/design-system
+    5 file(s)  tests
+
+----- Site #47 -----
+PR 47  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/release-integration-20261102
+  head: qoder/site-ci-run-tests
+  updated: 2026-11-03T06:06:52Z   changed=3  +96/-2
+  zones:
+    1 file(s)  .github/workflows
+    1 file(s)  docs/audit
+    1 file(s)  src/views
+
+----- Site #46 -----
+PR 46  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/release-integration-20261102
+  head: qoder/premium-8-mobile-1
+  updated: 2026-11-02T23:47:09Z   changed=11  +794/-145
+  zones:
+    1 file(s)  src
+    1 file(s)  src/components
+    1 file(s)  src/design-system
+    1 file(s)  tests/fixtures
+    3 file(s)  src/views
+    4 file(s)  tests
+
+----- Site #45 -----
+PR 45  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/release-integration-20261102
+  head: qoder/premium-8-noise-1
+  updated: 2026-11-02T22:25:49Z   changed=7  +125/-29
+  zones:
+    1 file(s)  src
+    1 file(s)  tests
+    5 file(s)  src/views
+
+----- Site #44 -----
+PR 44  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/release-integration-20261102
+  head: qoder/premium-8-nav-1
+  updated: 2026-11-02T22:03:38Z   changed=4  +377/-6
+  zones:
+    1 file(s)  src/navigation
+    1 file(s)  tests
+    2 file(s)  src/views
+
+----- Site #43 -----
+PR 43  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/release-integration-20261102
+  head: qoder/premium-8-tokens-1
+  updated: 2026-11-02T21:39:13Z   changed=5  +394/-86
+  zones:
+    1 file(s)  src
+    1 file(s)  src/design-system
+    1 file(s)  tests/fixtures
+    2 file(s)  tests
+
+----- Site #42 -----
+PR 42  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/release-integration-20261102
+  head: qoder/cash-fare-ui-1
+  updated: 2026-11-02T20:39:28Z   changed=3  +89/-12
+  zones:
+    1 file(s)  src/services
+    1 file(s)  src/views
+    1 file(s)  tests
+
+----- Site #41 -----
+PR 41  [MERGED]  draft=false  mergeable=UNKNOWN
+  base: main
+  head: qoder/release-integration-20261102
+  updated: 2026-11-02T19:43:53Z   changed=240  +20983/-855
+  zones:
+    1 file(s)  .gitignore
+    1 file(s)  README.md
+    1 file(s)  index.html
+    1 file(s)  package-lock.json
+    1 file(s)  package.json
+    1 file(s)  public
+    1 file(s)  scripts
+    10 file(s)  docs
+    11 file(s)  src/domain
+    2 file(s)  docs/audit
+    23 file(s)  src/components
+    3 file(s)  src
+    30 file(s)  docs/design
+    7 file(s)  public/images
+    7 file(s)  src/design-system
+
+----- Site #40 -----
+PR 40  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/v41-ui-20261101
+  head: qoder/viz-engine-4-site-20261102
+  updated: 2026-11-02T19:34:12Z   changed=36  +3484/-386
+  zones:
+    1 file(s)  src
+    12 file(s)  src/views
+    13 file(s)  tests
+    2 file(s)  src/services
+    8 file(s)  src/map
+
+----- Site #39 -----
+PR 39  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/map-unconfigured-notice-20261102
+  head: qoder/home-fit-20261102
+  updated: 2026-11-02T06:11:40Z   changed=3  +39/-6
+  zones:
+    1 file(s)  src
+    1 file(s)  src/views
+    1 file(s)  tests
+
+----- Site #38 -----
+PR 38  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/v41-ui-20261101
+  head: qoder/map-unconfigured-notice-20261102
+  updated: 2026-11-02T05:16:16Z   changed=2  +20/-0
+  zones:
+    1 file(s)  src/views
+    1 file(s)  tests
+
+----- Site #37 -----
+PR 37  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/v41-ui-20261101
+  head: qoder/place-bias-20261102
+  updated: 2026-11-02T05:16:25Z   changed=5  +79/-9
+  zones:
+    1 file(s)  src/platform
+    1 file(s)  src/services
+    1 file(s)  tests
+    2 file(s)  src/views
+
+----- Site #36 -----
+PR 36  [MERGED]  draft=false  mergeable=UNKNOWN
+  base: main
+  head: qoder/v41-ui-20261101
+  updated: 2026-11-02T19:43:55Z   changed=215  +17755/-848
+  zones:
+    1 file(s)  .gitignore
+    1 file(s)  README.md
+    1 file(s)  index.html
+    1 file(s)  package-lock.json
+    1 file(s)  package.json
+    1 file(s)  public
+    1 file(s)  scripts
+    10 file(s)  docs
+    11 file(s)  src/domain
+    2 file(s)  docs/audit
+    23 file(s)  src/components
+    3 file(s)  src
+    30 file(s)  docs/design
+    7 file(s)  public/images
+    7 file(s)  src/design-system
+
+----- Site #35 -----
+PR 35  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/site-vehicle-quality-badge-20261031
+  head: qoder/site-ui-polish-20261031
+  updated: 2026-11-01T16:18:43Z   changed=59  +2180/-498
+  zones:
+    1 file(s)  index.html
+    1 file(s)  src
+    1 file(s)  src/domain
+    1 file(s)  src/routing
+    11 file(s)  tests
+    15 file(s)  src/components
+    16 file(s)  src/views
+    2 file(s)  src/services
+    5 file(s)  src/design-system
+    6 file(s)  src/map
+
+----- Site #34 -----
+PR 34  [MERGED]  draft=false  mergeable=UNKNOWN
+  base: main
+  head: qoder/site-vehicle-quality-badge-20261031
+  updated: 2026-11-02T19:43:55Z   changed=187  +15619/-714
+  zones:
+    1 file(s)  .gitignore
+    1 file(s)  README.md
+    1 file(s)  package-lock.json
+    1 file(s)  package.json
+    1 file(s)  public
+    1 file(s)  scripts
+    10 file(s)  docs
+    10 file(s)  src/domain
+    17 file(s)  src/components
+    2 file(s)  docs/audit
+    30 file(s)  docs/design
+    5 file(s)  src
+    6 file(s)  src/design-system
+    7 file(s)  public/images
+    7 file(s)  src/map
+
+----- Site #33 -----
+PR 33  [MERGED]  draft=false  mergeable=UNKNOWN
+  base: main
+  head: qoder/journey-deeplink-ratelimit-20261031
+  updated: 2026-11-02T19:43:55Z   changed=185  +15457/-714
+  zones:
+    1 file(s)  .gitignore
+    1 file(s)  README.md
+    1 file(s)  package-lock.json
+    1 file(s)  package.json
+    1 file(s)  public
+    1 file(s)  scripts
+    10 file(s)  docs
+    10 file(s)  src/domain
+    17 file(s)  src/components
+    2 file(s)  docs/audit
+    30 file(s)  docs/design
+    5 file(s)  src
+    6 file(s)  src/design-system
+    7 file(s)  public/images
+    7 file(s)  src/map
+
+----- Site #32 -----
+PR 32  [OPEN]  draft=true  mergeable=MERGEABLE
+  base: codex/site-strategy-rank-fallback-tests-20261028
+  head: codex/site-truncation-messages-20261029
+  updated: 2026-10-29T10:47:17Z   changed=3  +40/-4
+  zones:
+    1 file(s)  src/services
+    1 file(s)  src/views
+    1 file(s)  tests
+
+----- Site #31 -----
+PR 31  [OPEN]  draft=true  mergeable=MERGEABLE
+  base: codex/site-strategy-rank-contract-20261028
+  head: codex/site-strategy-rank-fallback-tests-20261028
+  updated: 2026-10-28T18:19:37Z   changed=1  +80/-4
+  zones:
+    1 file(s)  tests
+
+----- Site #30 -----
+PR 30  [OPEN]  draft=true  mergeable=MERGEABLE
+  base: codex/site-partial-warning-20261027
+  head: codex/site-strategy-rank-contract-20261028
+  updated: 2026-10-28T14:05:24Z   changed=2  +87/-1
+  zones:
+    1 file(s)  src/views
+    1 file(s)  tests
+
+----- Site #29 -----
+PR 29  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: codex/map-layers-reference-layout-20261024
+  head: codex/site-partial-warning-20261027
+  updated: 2026-10-27T03:43:00Z   changed=1  +27/-0
+  zones:
+    1 file(s)  tests
+
+########################## MarshGO-Server ##########################
+----- Server #76 -----
+PR 76  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: main
+  head: qoder/cp6-journey-activation-20261103
+  updated: 2026-11-03T06:04:51Z   changed=4  +297/-1
+  zones:
+    1 file(s)  package.json
+    1 file(s)  scripts
+    1 file(s)  server
+    1 file(s)  tests
+
+----- Server #75 -----
+PR 75  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: main
+  head: qoder/cash-fare-api-1
+  updated: 2026-11-02T20:39:46Z   changed=7  +145/-16
+  zones:
+    1 file(s)  server
+    1 file(s)  server/journey
+    1 file(s)  server/mobility
+    1 file(s)  tests/helpers
+    3 file(s)  tests
+
+----- Server #74 -----
+PR 74  [MERGED]  draft=false  mergeable=UNKNOWN
+  base: main
+  head: qoder/release-integration-20261102
+  updated: 2026-11-02T19:45:21Z   changed=232  +35963/-674
+  zones:
+    1 file(s)  .dockerignore
+    1 file(s)  .env.example
+    1 file(s)  .github/workflows
+    1 file(s)  .gitignore
+    1 file(s)  CODEX_PROGRESS.md
+    1 file(s)  Dockerfile
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  README.md
+    1 file(s)  TRANSPORT_PROVIDER_REGISTRY.json
+    1 file(s)  docker-compose.yml
+    1 file(s)  eslint.config.js
+    1 file(s)  package-lock.json
+    1 file(s)  package.json
+    1 file(s)  server/cache
+    14 file(s)  docs
+    2 file(s)  server/auth
+    20 file(s)  server/migrations
+    24 file(s)  server/journey
+    4 file(s)  docs/data
+    5 file(s)  server
+    8 file(s)  scripts
+    9 file(s)  docs/audit
+
+----- Server #73 -----
+PR 73  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/viz-engine-4-server-20261102
+  head: qoder/m5-p10-completeness-20261102
+  updated: 2026-11-02T17:11:51Z   changed=9  +496/-35
+  zones:
+    2 file(s)  server
+    3 file(s)  server/journey
+    4 file(s)  tests
+
+----- Server #72 -----
+PR 72  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/qr-attestation-evidence-20261102
+  head: qoder/viz-engine-4-server-20261102
+  updated: 2026-11-02T09:39:03Z   changed=4  +420/-17
+  zones:
+    1 file(s)  server
+    1 file(s)  tests
+    2 file(s)  server/journey
+
+----- Server #71 -----
+PR 71  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: codex/server-canonical-rc-20261030
+  head: qoder/eslint-mjs-globals-20261102
+  updated: 2026-11-02T06:23:08Z   changed=6  +43/-25
+  zones:
+    1 file(s)  eslint.config.js
+    1 file(s)  package.json
+    1 file(s)  scripts
+    3 file(s)  tests
+
+----- Server #70 -----
+PR 70  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: codex/server-canonical-rc-20261030
+  head: qoder/place-suggest-locality-20261102
+  updated: 2026-11-02T06:19:14Z   changed=34  +5007/-129
+  zones:
+    1 file(s)  Dockerfile
+    1 file(s)  TRANSPORT_PROVIDER_REGISTRY.json
+    1 file(s)  eslint.config.js
+    1 file(s)  scripts
+    1 file(s)  server/cache
+    17 file(s)  tests
+    2 file(s)  docs
+    3 file(s)  server
+    3 file(s)  server/mobility
+    4 file(s)  server/journey
+
+----- Server #69 -----
+PR 69  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: codex/server-canonical-rc-20261030
+  head: qoder/health-source-version-20261102
+  updated: 2026-11-02T03:38:25Z   changed=1  +4/-3
+  zones:
+    1 file(s)  server/mobility
+
+----- Server #68 -----
+PR 68  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: codex/server-canonical-rc-20261030
+  head: qoder/ci-integration-gate-20261102
+  updated: 2026-11-02T03:02:24Z   changed=5  +40/-24
+  zones:
+    1 file(s)  package.json
+    1 file(s)  scripts
+    3 file(s)  tests
+
+----- Server #67 -----
+PR 67  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: codex/server-canonical-rc-20261030
+  head: qoder/roles-single-source-20261102
+  updated: 2026-11-02T02:47:40Z   changed=2  +118/-7
+  zones:
+    1 file(s)  server
+    1 file(s)  tests
+
+----- Server #66 -----
+PR 66  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/qr-attestation-evidence-20261102
+  head: qoder/image-oci-label-20261102
+  updated: 2026-11-02T02:02:44Z   changed=1  +14/-1
+  zones:
+    1 file(s)  Dockerfile
+
+----- Server #65 -----
+PR 65  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/uploads-perm-fix-20261101
+  head: qoder/qr-attestation-evidence-20261102
+  updated: 2026-11-02T00:51:54Z   changed=1  +208/-0
+  zones:
+    1 file(s)  tests
+
+----- Server #64 -----
+PR 64  [MERGED]  draft=false  mergeable=UNKNOWN
+  base: main
+  head: qoder/uploads-perm-fix-20261101
+  updated: 2026-11-02T19:45:23Z   changed=222  +34674/-658
+  zones:
+    1 file(s)  .dockerignore
+    1 file(s)  .env.example
+    1 file(s)  .github/workflows
+    1 file(s)  .gitignore
+    1 file(s)  CODEX_PROGRESS.md
+    1 file(s)  Dockerfile
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  README.md
+    1 file(s)  TRANSPORT_PROVIDER_REGISTRY.json
+    1 file(s)  docker-compose.yml
+    1 file(s)  package-lock.json
+    1 file(s)  package.json
+    1 file(s)  server/cache
+    14 file(s)  docs
+    2 file(s)  server/auth
+    22 file(s)  server/journey
+    23 file(s)  server/migrations
+    4 file(s)  docs/data
+    5 file(s)  server
+    8 file(s)  scripts
+    9 file(s)  docs/audit
+
+----- Server #63 -----
+PR 63  [MERGED]  draft=false  mergeable=UNKNOWN
+  base: main
+  head: qoder/search-latency-20261031
+  updated: 2026-11-02T19:45:23Z   changed=220  +34586/-658
+  zones:
+    1 file(s)  .dockerignore
+    1 file(s)  .env.example
+    1 file(s)  .github/workflows
+    1 file(s)  .gitignore
+    1 file(s)  CODEX_PROGRESS.md
+    1 file(s)  Dockerfile
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  README.md
+    1 file(s)  TRANSPORT_PROVIDER_REGISTRY.json
+    1 file(s)  docker-compose.yml
+    1 file(s)  package-lock.json
+    1 file(s)  package.json
+    1 file(s)  server/cache
+    14 file(s)  docs
+    2 file(s)  server/auth
+    22 file(s)  server/journey
+    23 file(s)  server/migrations
+    4 file(s)  docs/data
+    5 file(s)  server
+    8 file(s)  scripts
+    9 file(s)  docs/audit
+
+----- Server #62 -----
+PR 62  [MERGED]  draft=false  mergeable=UNKNOWN
+  base: main
+  head: qoder/transport-journey-20261031
+  updated: 2026-11-02T19:45:23Z   changed=218  +34052/-658
+  zones:
+    1 file(s)  .dockerignore
+    1 file(s)  .env.example
+    1 file(s)  .github/workflows
+    1 file(s)  .gitignore
+    1 file(s)  CODEX_PROGRESS.md
+    1 file(s)  Dockerfile
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  README.md
+    1 file(s)  TRANSPORT_PROVIDER_REGISTRY.json
+    1 file(s)  docker-compose.yml
+    1 file(s)  package-lock.json
+    1 file(s)  package.json
+    1 file(s)  server/cache
+    14 file(s)  docs
+    2 file(s)  server/auth
+    22 file(s)  server/journey
+    23 file(s)  server/migrations
+    4 file(s)  docs/data
+    5 file(s)  server
+    8 file(s)  scripts
+    9 file(s)  docs/audit
+
+########################## MarshGO (root) ##########################
+----- Root #14 -----
+PR 14  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/checkpoint-20261031
+  head: qoder/studio-config-20261102
+  updated: 2026-11-02T20:50:33Z   changed=8  +213/-0
+  zones:
+    1 file(s)  .qoder
+    3 file(s)  .agents/skills
+    4 file(s)  .qoder/hooks
+
+----- Root #13 -----
+PR 13  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: qoder/checkpoint-20261031
+  head: qoder/release-manifest-20261102
+  updated: 2026-11-02T20:20:10Z   changed=5  +225/-20
+  zones:
+    1 file(s)  CODEX_PROGRESS.md
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  RELEASE_MANIFEST.json
+    2 file(s)  ops/docker
+
+----- Root #12 -----
+PR 12  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: main
+  head: qoder/checkpoint-20261031
+  updated: 2026-11-02T19:48:49Z   changed=677  +93605/-2583
+  zones:
+    1 file(s)  .codex
+    1 file(s)  .dockerignore
+    1 file(s)  .env.example
+    1 file(s)  .gitignore
+    1 file(s)  .gitleaks.toml
+    1 file(s)  .gitleaksignore
+    1 file(s)  .nvmrc
+    1 file(s)  AGENTS.md
+    1 file(s)  CODEX_PROGRESS.md
+    1 file(s)  CURRENT_REPOSITORY_STATE.md
+    1 file(s)  DEPLOYMENT_RUNBOOK.md
+    1 file(s)  Dockerfile.api
+    1 file(s)  Dockerfile.web
+    1 file(s)  HOME_SERVER_DEPLOYMENT.md
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  OWNER_ACTIONS_REQUIRED.md
+    1 file(s)  PRODUCTION_ACCEPTANCE_REPORT.md
+    1 file(s)  README.md
+    1 file(s)  READY_FOR_SERVER_DEPLOYMENT.md
+    1 file(s)  RELEASE_MANIFEST.json
+    1 file(s)  RELEASE_STATUS.md
+    1 file(s)  ROLLBACK_RUNBOOK.md
+    1 file(s)  STAGING_DEPLOYMENT_REPORT.md
+    1 file(s)  bun.lock
+    1 file(s)  capacitor.config.ts
+    1 file(s)  compose.production.yml
+    1 file(s)  comprehensive_audit.mjs
+    1 file(s)  docker-compose.yml
+    13 file(s)  .agents/skills
+    2 file(s)  .codex/agents
+    2 file(s)  .github/workflows
+    2 file(s)  deploy
+    53 file(s)  docs
+
+----- Root #11 -----
+PR 11  [OPEN]  draft=false  mergeable=CONFLICTING
+  base: qoder/checkpoint-20261031
+  head: qoder/dr-restore-keyfix-20261102
+  updated: 2026-11-02T02:31:26Z   changed=2  +14/-0
+  zones:
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  ops/scripts
+
+----- Root #10 -----
+PR 10  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: main
+  head: qoder/v41-docs-20261101
+  updated: 2026-11-01T21:41:18Z   changed=674  +92099/-2583
+  zones:
+    1 file(s)  .codex
+    1 file(s)  .dockerignore
+    1 file(s)  .env.example
+    1 file(s)  .gitignore
+    1 file(s)  .gitleaksignore
+    1 file(s)  .nvmrc
+    1 file(s)  AGENTS.md
+    1 file(s)  CODEX_PROGRESS.md
+    1 file(s)  CURRENT_REPOSITORY_STATE.md
+    1 file(s)  DEPLOYMENT_RUNBOOK.md
+    1 file(s)  Dockerfile.api
+    1 file(s)  Dockerfile.web
+    1 file(s)  HOME_SERVER_DEPLOYMENT.md
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  OWNER_ACTIONS_REQUIRED.md
+    1 file(s)  PRODUCTION_ACCEPTANCE_REPORT.md
+    1 file(s)  README.md
+    1 file(s)  READY_FOR_SERVER_DEPLOYMENT.md
+    1 file(s)  RELEASE_MANIFEST.json
+    1 file(s)  RELEASE_STATUS.md
+    1 file(s)  ROLLBACK_RUNBOOK.md
+    1 file(s)  STAGING_DEPLOYMENT_REPORT.md
+    1 file(s)  bun.lock
+    1 file(s)  capacitor.config.ts
+    1 file(s)  compose.production.yml
+    1 file(s)  comprehensive_audit.mjs
+    1 file(s)  docker-compose.yml
+    13 file(s)  .agents/skills
+    2 file(s)  .codex/agents
+    2 file(s)  .github/workflows
+    2 file(s)  deploy
+    54 file(s)  docs
+
+----- Root #9 -----
+PR 9  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: main
+  head: coord/qoder-github-handoff-20261101
+  updated: 2026-11-01T18:52:16Z   changed=678  +92167/-2583
+  zones:
+    1 file(s)  .codex
+    1 file(s)  .dockerignore
+    1 file(s)  .env.example
+    1 file(s)  .gitignore
+    1 file(s)  .gitleaksignore
+    1 file(s)  .nvmrc
+    1 file(s)  AGENTS.md
+    1 file(s)  CODEX_PROGRESS.md
+    1 file(s)  CURRENT_REPOSITORY_STATE.md
+    1 file(s)  DEPLOYMENT_RUNBOOK.md
+    1 file(s)  Dockerfile.api
+    1 file(s)  Dockerfile.web
+    1 file(s)  HOME_SERVER_DEPLOYMENT.md
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  OWNER_ACTIONS_REQUIRED.md
+    1 file(s)  PRODUCTION_ACCEPTANCE_REPORT.md
+    1 file(s)  README.md
+    1 file(s)  READY_FOR_SERVER_DEPLOYMENT.md
+    1 file(s)  RELEASE_MANIFEST.json
+    1 file(s)  RELEASE_STATUS.md
+    1 file(s)  ROLLBACK_RUNBOOK.md
+    1 file(s)  STAGING_DEPLOYMENT_REPORT.md
+    1 file(s)  bun.lock
+    1 file(s)  capacitor.config.ts
+    1 file(s)  compose.production.yml
+    1 file(s)  comprehensive_audit.mjs
+    1 file(s)  docker-compose.yml
+    13 file(s)  .agents/skills
+    2 file(s)  .codex/agents
+    2 file(s)  .github/workflows
+    2 file(s)  deploy
+    54 file(s)  docs
+
+----- Root #8 -----
+PR 8  [OPEN]  draft=false  mergeable=MERGEABLE
+  base: codex/production-finalization-20261014
+  head: qoder/checkpoint-20261031
+  updated: 2026-11-02T18:14:28Z   changed=46  +12028/-221
+  zones:
+    1 file(s)  .codex
+    1 file(s)  .gitleaks.toml
+    1 file(s)  AGENTS.md
+    1 file(s)  CODEX_PROGRESS.md
+    1 file(s)  NEXT_ACTIONS.md
+    1 file(s)  RELEASE_MANIFEST.json
+    1 file(s)  ROLLBACK_RUNBOOK.md
+    1 file(s)  bun.lock
+    1 file(s)  compose.production.yml
+    1 file(s)  deploy
+    1 file(s)  docs/design
+    1 file(s)  eslint.config.js
+    1 file(s)  package.json
+    1 file(s)  scripts
+    2 file(s)  .codex/agents
+    2 file(s)  ops/nginx
+    2 file(s)  src/views
+    3 file(s)  docs/audit
+    3 file(s)  ops/docker
+    5 file(s)  ops/scripts
+    6 file(s)  docs
+    9 file(s)  .agents/skills
+
