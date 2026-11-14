@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { routeMapTapAction } from '../src/map/routeSegmentSelection';
 
-const routeScreen = readFileSync(new URL('../views/JourneyRouteMapScreen.tsx', import.meta.url), 'utf8');
+const routeScreen = readFileSync(new URL('../src/views/JourneyRouteMapScreen.tsx', import.meta.url), 'utf8');
 
 test('tapping the active route segment on the map keeps its focus', () => {
   assert.equal(routeMapTapAction('walk-1', 'walk-1'), 'focus');
