@@ -70,6 +70,7 @@ export type ApiOffer = {
   duration_s: number | null;
   route_source: string | null;
   price_per_seat_minor: number;
+  fare_basis?: 'PER_SEAT' | 'TOTAL_ALL';
   currency: string;
   available_seats: number;
   total_seats: number;
@@ -713,7 +714,7 @@ export const productionApi = {
   rejectBookingChange(id: string) { return request<{ id: string; status: 'rejected' }>(`/booking-changes/${id}/reject`, { method: 'POST' }); },
   createOffer(input: {
     vehicleId: string; originName: string; destinationName: string; origin: [number, number]; destination: [number, number];
-    departureAt: string; pricePerSeatMinor: number; seats: number;
+    departureAt: string; pricePerSeatMinor: number; seats: number; fareBasis?: 'PER_SEAT' | 'TOTAL_ALL';
   }) {
     return request<{ id: string; origin_name: string; destination_name: string; departure_at: string; status: string }>(
       '/offers', { method: 'POST', body: JSON.stringify(input) },
