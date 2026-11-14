@@ -956,6 +956,7 @@ export function ProductionMarketplace() {
     }
     if (!origin.trim() || !destination.trim()) { setStatusMessage('Вкажіть початок і кінець маршруту.'); return; }
     if (!searchOriginPlace || !searchDestinationPlace) { setStatusMessage('Щоб побудувати маршрут, оберіть обидві точки зі списку підказок.'); return; }
+    if (transportSelection.active.length === 0) { setStatusMessage('Оберіть хоча б один вид транспорту — без нього маршрут не побудувати.'); return; }
     const departure = kyivDateTimeInputToDate(journeyDeparture);
     if (!departure || departure.getTime() <= Date.now()) {
       setStatusMessage('Час відправлення вже минув — оберіть майбутню годину у вікні «Час маршруту».');
