@@ -7,9 +7,9 @@ export function isMapToolbarContext(input: {
   selectedRouteMap: boolean;
   selectedJourney: boolean;
 }): boolean {
-  // Route details retain the global dock as shown in the canonical screen.
-  // Hide it only while guidance is starting/running or a standalone map tab is open.
-  if (input.activeJourneyNavigation || input.journeyStartPending) return true;
+  // Any selected journey map is immersive: keep the map and its route sheet
+  // clear of the global dock while details, preview, or GPS guidance is open.
+  if (input.activeJourneyNavigation || input.journeyStartPending || input.selectedRouteMap || input.selectedJourney) return true;
   return input.tab === 'map' || input.tab === 'navigation';
 }
 

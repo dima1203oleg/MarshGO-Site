@@ -9,22 +9,24 @@ import {
 test('standalone map and navigation screens tuck away the global dock', () => {
   assert.equal(isMapToolbarContext({ tab: 'map', activeJourneyNavigation: false, journeyStartPending: false, selectedRouteMap: false, selectedJourney: false }), true);
   assert.equal(isMapToolbarContext({ tab: 'navigation', activeJourneyNavigation: false, journeyStartPending: false, selectedRouteMap: false, selectedJourney: false }), true);
+  for (const tab of ['home', 'search', 'trips', 'profile']) {
+    assert.equal(isMapToolbarContext({ tab, activeJourneyNavigation: false, journeyStartPending: false, selectedRouteMap: false, selectedJourney: false }), false);
+  }
   for (const tab of ['home', 'search', 'trips', 'map', 'navigation']) {
     assert.equal(isMapToolbarContext({ tab, activeJourneyNavigation: true, journeyStartPending: false, selectedRouteMap: false, selectedJourney: false }), true);
   }
   assert.equal(isMapToolbarContext({ tab: 'home', activeJourneyNavigation: false, journeyStartPending: false, selectedRouteMap: false, selectedJourney: false }), false);
 });
 
-test('route details retain the dock while start-pending and active navigation tuck it away', () => {
+test('selected route maps, stage previews, and active navigation tuck away the dock', () => {
   for (const context of [
     { tab: 'trips', activeJourneyNavigation: false, journeyStartPending: false, selectedRouteMap: true, selectedJourney: false },
     { tab: 'trips', activeJourneyNavigation: false, journeyStartPending: false, selectedRouteMap: false, selectedJourney: true },
   ]) {
-    assert.equal(isMapToolbarContext(context), false);
-    assert.equal(shouldShowGlobalBottomNavigation(isMapToolbarContext(context)), true);
+    assert.equal(isMapToolbarContext(context), true);
+    assert.equal(shouldShowGlobalBottomNavigation(isMapToolbarContext(context)), false);
   }
   assert.equal(isMapToolbarContext({ tab: 'trips', activeJourneyNavigation: true, journeyStartPending: false, selectedRouteMap: false, selectedJourney: false }), true);
-  assert.equal(isMapToolbarContext({ tab: 'trips', activeJourneyNavigation: false, journeyStartPending: false, selectedRouteMap: true, selectedJourney: false }), false);
   const startPending = isMapToolbarContext({ tab: 'trips', activeJourneyNavigation: false, journeyStartPending: true, selectedRouteMap: true, selectedJourney: false });
   assert.equal(startPending, true);
   assert.equal(shouldShowGlobalBottomNavigation(startPending), false);
