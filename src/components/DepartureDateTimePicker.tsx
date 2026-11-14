@@ -113,7 +113,7 @@ export function DepartureDateTimePicker({ open, value, onChange, onClose, title 
   const relativeLabel = (value: string) => value === today ? 'Сьогодні' : value === addDays(today, 1) ? 'Завтра' : dateLabel(value, { day: 'numeric', month: 'long' });
   const commit = () => { onChange(`${date}T${pad(hour)}:${pad(minute)}`); onClose(); };
 
-  return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/65 px-3 pt-4 backdrop-blur-sm sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+  return <div className="fixed inset-0 z-[var(--mg-z-modal)] flex items-end justify-center bg-slate-950/65 px-3 pt-4 backdrop-blur-sm sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section role="dialog" aria-modal="true" aria-labelledby="departure-picker-title" className="max-h-[94dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-blue-900/50 bg-[#071a31] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 text-white shadow-2xl sm:rounded-[2rem]">
       <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-600"/>
       <header className="flex items-center justify-between"><button type="button" onClick={onClose} aria-label="Закрити вибір дати й часу" className="grid h-11 w-11 place-items-center rounded-full bg-[#102847] text-slate-300"><X size={19}/></button><h2 id="departure-picker-title" className="text-base font-extrabold">{title}</h2><span className="w-11"/></header>
