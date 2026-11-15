@@ -1,5 +1,6 @@
 import { NETWORK_ERROR_CODE } from './requestErrorMessage';
 import type { ApiPlace } from './productionApi';
+import { UKRAINE_CITIES } from '../domain/ukraineCities';
 
 export type PlaceSearchState = {
   suggestions: ApiPlace[];
@@ -8,6 +9,34 @@ export type PlaceSearchState = {
 
 export const PLACE_SEARCH_UNAVAILABLE_COPY =
   'Не вдалося знайти місце. Спробуйте ще раз або виберіть точку на мапі.';
+
+function normalizeCityQuery(value: string): string {
+  return value.trim().toLocaleLowerCase('uk-UA')
+    .replace(/^(?:м\.?|місто)\s*/u, '')
+    .replace(/,?\s*(?:україна|ukraine)$/u, '')
+    .replace(/[,.]/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+/** A truthful coarse fallback for city names, using the same reference points as the map picker. */
+export function localCityPlace(query: string): ApiPlace | null {
+  const normalized = normalizeCityQuery(query);
+  if (!normalized) return null;
+  const city = UKRAINE_CITIES.find((candidate) => normalizeCityQuery(candidate.name) === normalized);
+  if (!city) return null;
+  return {
+    label: `${city.name} · центр міста`,
+    latitude: city.lat,
+    longitude: city.lng,
+    providerId: `marshgo:city-reference:${city.id}`,
+  };
+}
+
+export function localCityPlaceSuggestions(query: string): ApiPlace[] {
+  const place = localCityPlace(query);
+  return place ? [place] : [];
+}
 
 /**
  * Structural match on ProductionApiError's public shape (status/code) instead of importing the

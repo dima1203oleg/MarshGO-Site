@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, LocateFixed, X } from 'lucide-react';
-import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { resolveMapAssets } from '../map/mapConfig';
 import { themeService } from '../services/theme';
 import { productionApi, type ApiPlace } from '../services/productionApi';

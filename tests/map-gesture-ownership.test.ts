@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
 import { RouteCameraController, shouldShowRecenterButton, type RouteCameraState } from '../src/map/routeCameraController';
 import type { MapAdapter } from '../src/map/MapAdapter';
 import { claimCameraForUserGesture } from '../src/map/cameraMotion';
@@ -59,6 +62,39 @@ test('the explicit recenter returns the camera to the whole route and ends manua
   assert.equal(controller.getState().mode, 'ROUTE_OVERVIEW');
   assert.deepEqual(calls, ['activeSegment:null', 'focusCoordinates:3']);
   assert.equal(shouldShowRecenterButton(controller.getState()), false);
+});
+
+test('segment focus and sheet refit carry the same explicit segment identity', () => {
+  const ids: Array<string | undefined> = [];
+  const adapter = { focusCoordinates: (_points: unknown, _padding: unknown, _zoom: unknown, id?: string) => ids.push(id) } as unknown as MapAdapter;
+  const controller = new RouteCameraController({ adapter });
+  const target = { points: routePoints, bearing: 0, key: 'leg-3' };
+  controller.focusSegment('leg-3', target);
+  controller.syncOnSnapSettled({ routePoints, segmentTarget: target });
+  controller.showOverview(routePoints);
+  assert.deepEqual(ids, ['leg-3', 'leg-3', undefined]);
+});
+
+test('adapter coordinate focus replaces stale segment diagnostics and clears them on overview', () => {
+  const source = readFileSync(new URL('../src/map/MapLibreAdapter.ts', import.meta.url), 'utf8');
+  const ast = ts.createSourceFile('MapLibreAdapter.ts', source, ts.ScriptTarget.Latest, true);
+  const declaration = ast.statements.find(ts.isClassDeclaration)!;
+  const method = declaration.members.find(member => ts.isMethodDeclaration(member) && member.name.getText(ast) === 'focusCoordinates')!;
+  const code = ts.transpileModule(`class AdapterMethods { ${method.getText(ast)} } exports.AdapterMethods = AdapterMethods;`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const dataset: Record<string, string> = { marshgoFocusedRouteSegmentId: 'leg-1' };
+  const fits: unknown[] = [];
+  const exports: { AdapterMethods?: new () => Record<string, unknown> } = {};
+  runInNewContext(code, { exports, isValidCoordinate: () => true });
+  const adapter = Object.assign(new exports.AdapterMethods!(), {
+    map: { getContainer: () => ({ dataset }) },
+    routeSegments: [{ id: 'leg-3', coordinates: routePoints }],
+    fitCoordinates: (...args: unknown[]) => fits.push(args),
+  }) as unknown as { focusCoordinates: (points: typeof routePoints, padding: object, zoom: number, id?: string) => void };
+  adapter.focusCoordinates(routePoints, {}, 17, 'leg-3');
+  assert.equal(dataset.marshgoFocusedRouteSegmentId, 'leg-3');
+  adapter.focusCoordinates(routePoints, {}, 15);
+  assert.equal(dataset.marshgoFocusedRouteSegmentId, undefined);
+  assert.equal(fits.length, 2, 'diagnostics do not add a camera movement');
 });
 
 test('choosing a stage from manual mode focuses it instead of staying put', () => {

@@ -29,6 +29,15 @@ export function journeyEmptyStateKind(result: ApiJourneySearchResult): JourneyEm
   return result.completeness?.transitSearchFailed ? 'provider-failure' : 'no-routes';
 }
 
+/** Explain the honest zero-result case without exposing provider/debug details. */
+export function journeyNoRoutesCopy(result: ApiJourneySearchResult): string {
+  const requestedModeUnavailable = result.unsupportedPreferences.some(token => token.startsWith('transportType:'))
+    || result.completeness?.modesUnavailable?.some(mode => mode.requested) === true;
+  return requestedModeUnavailable
+    ? 'Для частини обраних видів транспорту поки немає підтверджених рейсів у цьому напрямку. Спробуйте інший час або змініть набір транспорту.'
+    : 'На вибраний час не знайдено підтверджених поєднань маршрутів. Змініть дату чи час і спробуйте ще раз.';
+}
+
 export const JOURNEY_SEARCH_UNAVAILABLE_COPY =
   'Пошук тимчасово недоступний. Ваші точки збережено — спробуйте ще раз.';
 

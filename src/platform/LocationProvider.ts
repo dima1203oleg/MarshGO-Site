@@ -25,14 +25,26 @@ export class WebGeolocationProvider implements LocationProvider {
   private watchId: number | null = null;
   private state: LocationProviderStatus = 'IDLE';
   private listeners = new Set<(fix: LocationFix) => void>();
+  private statusListeners = new Set<(status: LocationProviderStatus) => void>();
+  private setStatus(status: LocationProviderStatus) {
+    this.state = status;
+    for (const listener of this.statusListeners) listener(status);
+  }
+  subscribeStatus(listener: (status: LocationProviderStatus) => void) {
+    this.statusListeners.add(listener);
+    return () => { this.statusListeners.delete(listener); };
+  }
   async start(options: LocationOptions = {}) {
-    if (!('geolocation' in navigator)) { this.state = 'UNAVAILABLE'; throw new Error('GPS_UNAVAILABLE'); }
+    if (!('geolocation' in navigator)) { this.setStatus('UNAVAILABLE'); throw new Error('GPS_UNAVAILABLE'); }
     if (this.watchId !== null) return;
-    this.state = 'ACTIVE';
+    this.setStatus('ACTIVE');
     this.watchId = navigator.geolocation.watchPosition((position) => {
       const parsed = this.toFix(position);
-      if (parsed.success) for (const listener of this.listeners) listener(parsed.data);
-    }, (error) => { this.state = error.code === error.PERMISSION_DENIED ? 'PERMISSION_DENIED' : 'UNAVAILABLE'; }, {
+      if (parsed.success) {
+        if (this.state !== 'ACTIVE') this.setStatus('ACTIVE');
+        for (const listener of this.listeners) listener(parsed.data);
+      }
+    }, (error) => { this.setStatus(error.code === error.PERMISSION_DENIED ? 'PERMISSION_DENIED' : 'UNAVAILABLE'); }, {
       enableHighAccuracy: options.enableHighAccuracy ?? true, maximumAge: options.maximumAgeMs ?? 5000, timeout: options.timeoutMs ?? 20000,
     });
   }
@@ -53,7 +65,7 @@ export class WebGeolocationProvider implements LocationProvider {
       headingDegrees: position.coords.heading ?? undefined, speedMps: position.coords.speed ?? undefined,
       capturedAtClient, source: 'gps' });
   }
-  async stop() { if (this.watchId !== null) navigator.geolocation.clearWatch(this.watchId); this.watchId = null; this.state = 'IDLE'; }
+  async stop() { if (this.watchId !== null) navigator.geolocation.clearWatch(this.watchId); this.watchId = null; this.setStatus('IDLE'); }
   subscribe(listener: (fix: LocationFix) => void) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   status() { return this.state; }
 }

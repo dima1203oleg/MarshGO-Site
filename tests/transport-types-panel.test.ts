@@ -25,6 +25,8 @@ describe('TransportTypesPanel corridor-aware selection', () => {
     const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
     assert.match(css, /\.transport-types-inline \.transport-mode-grid--compact\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/,
       'the mobile selector is a four-column board, so twelve categories fill three rows');
+    assert.match(css, /\.home-screen\.search-screen \.transport-mode-grid--compact\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/,
+      'the desktop override keeps the same 4×3 board instead of widening it to eight columns');
     assert.doesNotMatch(css, /\.transport-mode-grid--compact\s*\{[^}]*overflow-x:\s*auto;/,
       'no category may hide behind horizontal scrolling');
     assert.match(css, /\.transport-mode-grid--compact \.transport-mode-tile__label\s*\{[^}]*white-space:\s*nowrap;[^}]*font-size:\s*\.75rem;/,

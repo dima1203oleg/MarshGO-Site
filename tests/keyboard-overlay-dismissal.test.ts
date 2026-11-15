@@ -13,9 +13,12 @@ test('MapPointPicker closes on Escape and uses canonical dark-theme surfaces', (
   assert.match(picker, /text-\[var\(--mg-ink-primary\)\]/);
 });
 
-test('journey route map closes on Escape through its supplied back action', () => {
+test('journey route map Escape dismisses the topmost layer before leaving the screen', () => {
   const routeMap = source('src/views/JourneyRouteMapScreen.tsx');
-  assert.match(routeMap, /event\.key === 'Escape'\) onBack\(\)/);
+  assert.match(routeMap, /if \(event\.key !== 'Escape'\) return;/);
+  assert.match(routeMap, /if \(mapSegmentChoices\) \{ setMapSegmentChoices\(null\); return; \}/);
+  assert.match(routeMap, /if \(previewLegIndex !== null\) \{ cancelPreview\(\); return; \}/);
+  assert.match(routeMap, /onBack\(\);/);
   assert.match(routeMap, /window\.addEventListener\('keydown', handleKeyDown\)/);
   assert.match(routeMap, /window\.removeEventListener\('keydown', handleKeyDown\)/);
 });

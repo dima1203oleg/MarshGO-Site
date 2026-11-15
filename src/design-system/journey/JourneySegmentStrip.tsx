@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import { useMagneticDomino } from '../../components/useMagneticDomino';
 import { TransportIcon } from '../transport/TransportIcon';
 
 export type JourneySegmentStripItem = {
@@ -29,7 +30,7 @@ export function JourneySegmentStrip({
   onSelect?: (id: string) => void;
   className?: string;
 }) {
-  const scroller = useRef<HTMLDivElement>(null);
+  const scroller = useMagneticDomino(items.length);
   const usesHorizontalTiles = items.length > 4;
 
   useEffect(() => {
@@ -97,7 +98,7 @@ export function JourneySegmentStrip({
       />)}
     </div>
     <div className="journey-segment-tiles-viewport">
-      <div ref={scroller} className="journey-segment-tiles journey-result-segments no-scrollbar" role="list" aria-label={ariaLabel}>
+      <div ref={scroller} className="journey-segment-tiles journey-result-segments mg-domino no-scrollbar" data-domino-pattern="ribbon" tabIndex={0} role="list" aria-label={ariaLabel}>
         {items.map(item => {
           const selected = activeItemId === item.id;
           const tileClass = 'journey-segment-tile' + (usesHorizontalTiles ? ' journey-segment-tile--scroll' : '');

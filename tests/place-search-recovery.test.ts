@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   PLACE_SEARCH_UNAVAILABLE_COPY,
   isPlaceProviderUnavailable,
+  localCityPlace,
+  localCityPlaceSuggestions,
   placeSearchFailure,
   placeSearchPending,
   placeSearchResults,
@@ -69,6 +71,19 @@ test('normal suggestions pass through untouched', () => {
   const state = placeSearchResults([place, second]);
   assert.equal(state.unavailable, false);
   assert.deepEqual(state.suggestions, [place, second]);
+});
+
+test('city-name fallback returns an explicit city-center point from the canonical map directory', () => {
+  assert.deepEqual(localCityPlace('Львів'), {
+    label: 'Львів · центр міста', latitude: 49.8397, longitude: 24.0297,
+    providerId: 'marshgo:city-reference:lviv',
+  });
+  assert.deepEqual(localCityPlace('м. Київ, Україна'), {
+    label: 'Київ · центр міста', latitude: 50.4501, longitude: 30.5234,
+    providerId: 'marshgo:city-reference:kyiv',
+  });
+  assert.equal(localCityPlace('вул. Хрещатик, Київ'), null, 'street searches still require a geocoder');
+  assert.deepEqual(localCityPlaceSuggestions('Рівне').map((place) => place.label), ['Рівне · центр міста']);
 });
 
 test('unavailable copy offers a clear retry or map-selection fallback', () => {

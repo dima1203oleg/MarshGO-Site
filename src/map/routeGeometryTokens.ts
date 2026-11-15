@@ -114,3 +114,32 @@ export function routeArrowExpression(kind: 'spacing' | 'size'): ExpressionSpecif
 
 /** One motion language with the camera: entrance easing, then a graceful fade instead of a pop. */
 export const SEGMENT_REVEAL_TOKENS = { durationMs: 850, holdMs: 400, fadeMs: 260 } as const;
+
+/** GPU line-progress reveal: preserve the provider polyline and reveal its travelled fraction. */
+export function routeRevealGradient(color: string, progress: number): ExpressionSpecification {
+  const value = Math.max(0, Math.min(1, Number.isFinite(progress) ? progress : 0));
+  if (value >= 1) return ['interpolate', ['linear'], ['line-progress'], 0, color, 1, color];
+  const visibleUntil = Math.max(0.001, value);
+  const fadeEnd = Math.min(1, visibleUntil + 0.002);
+  if (fadeEnd >= 1) return ['interpolate', ['linear'], ['line-progress'], 0, color, visibleUntil, color, 1, 'rgba(0,0,0,0)'];
+  return ['interpolate', ['linear'], ['line-progress'], 0, color, visibleUntil, color, fadeEnd, 'rgba(0,0,0,0)', 1, 'rgba(0,0,0,0)'];
+}
+
+/**
+ * Living Route Ribbon — a soft light pulse that travels start→end along the
+ * active leg. Circular distance keeps the flow continuous across the wrap, so
+ * there is no visible reset jump; eight stops keep the per-frame paint cheap.
+ * `glowRgb` is the pulse colour ("255,255,255" transit, sky-blue for walking).
+ */
+export function routeFlowGradient(glowRgb: string, phase: number, intensity = 0.85): ExpressionSpecification {
+  const head = ((phase % 1) + 1) % 1;
+  const samples = [0, 0.14, 0.28, 0.42, 0.57, 0.71, 0.85, 1];
+  const stops: Array<number | string> = [];
+  for (const sample of samples) {
+    const linear = Math.abs(sample - head);
+    const distance = Math.min(linear, 1 - linear);
+    const glow = Math.exp(-(distance * distance) / (2 * 0.07 * 0.07));
+    stops.push(sample, `rgba(${glowRgb},${(glow * intensity).toFixed(3)})`);
+  }
+  return ['interpolate', ['linear'], ['line-progress'], ...stops] as unknown as ExpressionSpecification;
+}

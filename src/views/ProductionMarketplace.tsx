@@ -504,6 +504,7 @@ export function ProductionMarketplace() {
     setDate(parsed.date);
     setSeats(parsed.passengers);
     setJourneyDeparture(parsed.departure);
+    setJourneyArrivalBy(parsed.arrivalBy ?? null);
     setJourneyStrategy(parsed.strategy);
     setJourneyResult(null);
     if (parsed.mode === 'planner') {
@@ -981,7 +982,7 @@ export function ProductionMarketplace() {
       setJourneyResult(result); setShowResults(true);
       const searchPath = buildSearchRoute({
         origin: searchOriginPlace, destination: searchDestinationPlace, date, passengers: seats,
-        departure: journeyDeparture, strategy: journeyStrategy, mode: 'planner',
+        departure: journeyDeparture, arrivalBy: journeyArrivalBy ?? undefined, strategy: journeyStrategy, mode: 'planner',
       });
       hydratedSearchLocation.current = searchPath;
       setRoutePath(searchPath);
@@ -2040,7 +2041,7 @@ export function ProductionMarketplace() {
   </header>;
 
   const searchForm = <form onSubmit={(event) => { event.preventDefault(); void searchJourney(); }} className="journey-search-card rounded-[1.7rem] border border-white bg-white p-3 shadow-[0_10px_28px_rgba(31,67,114,.08)] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)] dark:shadow-[0_10px_28px_rgba(0,0,0,.3)]">
-    <div className="relative">
+    <div className="search-route-fields relative">
       <div role="group" aria-label="Початкова точка" className="flex items-center gap-2 rounded-t-2xl bg-[var(--mg-surface-tint)] px-3 py-3"><MapPin size={19} className="shrink-0 text-[var(--mg-blue)]"/><label className="min-w-0 flex-1"><small className="block text-xs text-[var(--mg-muted)]">Звідки</small><input required title={origin || undefined} value={origin} onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('Будь ласка, вкажіть пункт відправлення')} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity('')} onFocus={() => setRoutePlaceField('origin')} onChange={(event) => {setOrigin(event.target.value);setSearchOriginPlace(null);setRoutePlaceField('origin');}} onKeyDown={(event) => routePlaceKeyDown(event, 'origin')} className="w-full bg-transparent text-sm font-bold outline-none" placeholder="Місто відправлення" role="combobox" aria-autocomplete="list" aria-expanded={routePlaceField === 'origin' && routePlaceSearch.suggestions.length > 0} aria-controls="route-place-origin-list" aria-activedescendant={activePlaceOptionId('route-place-origin-list', routePlaceActive)} /></label>{origin ? <button type="button" aria-label="Очистити початкову точку" title="Очистити" onClick={() => { setOrigin(''); setSearchOriginPlace(null); setRoutePlaceSearch(placeSearchPending()); }} data-field-action="clear" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl search-field-action"><X size={16}/></button> : <button type="button" aria-label="Обрати початкову точку на мапі" title="Обрати на мапі" onClick={() => { setRoutePlaceField(null); setRoutePlaceSearch(placeSearchPending()); setPicker({ form: 'search', field: 'origin' }); }} data-field-action="pick" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl search-field-action"><MapPin size={16}/></button>}</div>
       {routePlaceField==='origin'&&routePlaceSearch.suggestions.length>0&&<div role="listbox" id="route-place-origin-list" aria-label="Варіанти місць відправлення" className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:divide-[#1E3044] dark:border-[var(--mg-border-subtle)] dark:bg-[var(--mg-surface-primary)]">{routePlaceSearch.suggestions.map((place,index)=><button key={place.providerId} type="button" role="option" id={`route-place-origin-list-option-${index}`} aria-selected={routePlaceActive===index} onClick={()=>chooseSearchPlace(place)} className={`block w-full px-3 py-2.5 text-left text-xs text-slate-800 hover:bg-blue-50 dark:text-slate-100 dark:hover:bg-[#16293D] ${routePlaceActive===index?'bg-blue-50 font-bold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200':''}`}>{place.label}</button>)}</div>}
       {routePlaceField==='origin'&&routePlaceSearch.unavailable&&placeUnavailableNotice(()=>void searchRoutePlace('origin'))}
@@ -2054,14 +2055,14 @@ export function ProductionMarketplace() {
      * 52 px of place text on a 390 px screen, which is what cut «Аеропорт, Торгмаш…» mid-word, so the
      * map picker moved here and names the field it fills instead of hiding behind an icon.
      */}
-        <div className={`search-trip-details mt-2 grid grid-cols-2 gap-2${journeyArrivalBy ? ' search-trip-details--armed' : ''}`}>
+        <div className={`search-trip-details search-trip-controls mt-2 grid grid-cols-2 gap-2${journeyArrivalBy ? ' search-trip-details--armed' : ''}`}>
       <button type="button" aria-label="Вибрати дату й час відправлення" onClick={() => setDeparturePickerOpen(true)} className="trip-tile min-w-0 text-left"><Clock3 size={16} className="shrink-0 text-emerald-600"/><span className="min-w-0"><small>З</small><span className="trip-tile__value block truncate">{new Intl.DateTimeFormat('uk-UA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Kyiv'}).format(kyivDateTimeInputToDate(journeyDeparture) ?? new Date())}</span></span></button>
       <div className={`trip-tile min-w-0 ${journeyArrivalBy ? 'justify-between' : ''}`}>
         <button type="button" aria-label="Вибрати дату й час прибуття" onClick={() => { if (!journeyArrivalBy) setJourneyArrivalBy(`${journeyDeparture.slice(0, 10)}T20:00`); setArrivalPickerOpen(true); }} className="flex min-w-0 flex-1 items-center gap-2 text-left"><CalendarDays size={16} className={`shrink-0 ${journeyArrivalBy ? 'text-blue-600' : 'text-slate-400'}`}/><span className="min-w-0"><small>По</small><span className="trip-tile__value block truncate">{journeyArrivalBy ? new Intl.DateTimeFormat('uk-UA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Kyiv'}).format(kyivDateTimeInputToDate(journeyArrivalBy) ?? new Date()) : 'Без обмеження'}</span></span></button>
         {journeyArrivalBy && <button type="button" aria-label="Скасувати обмеження прибуття" onClick={() => setJourneyArrivalBy(null)} className="grid size-11 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"><X size={17}/></button>}
       </div>
     </div>
-    <div className="search-trip-details search-trip-details--stack mt-2 grid grid-cols-2 gap-2">
+    <div className="search-trip-details search-trip-details--stack search-party-controls mt-2 grid grid-cols-2 gap-2">
       <div className="trip-tile trip-tile--stepper min-w-0 justify-between">
         <span className="flex min-w-0 items-center gap-2"><Users size={16} className="shrink-0 text-slate-500"/><span className="min-w-0"><small>Пасажири</small><span className="trip-tile__value block" aria-live="polite">{passengersLabel(seats)}</span></span></span>
         <span className="flex shrink-0 items-center gap-1"><button type="button" onClick={() => setSeats(Math.max(1,seats-1))} disabled={seats<=1} className="size-11 rounded-[.85rem] text-slate-600 transition active:scale-95 disabled:opacity-30" aria-label="Менше пасажирів"><Minus size={17}/></button><button type="button" onClick={() => setSeats(Math.min(8,seats+1))} disabled={seats>=8} className="size-11 rounded-[.85rem] text-blue-600 transition active:scale-95 disabled:opacity-30" aria-label="Більше пасажирів"><Plus size={17}/></button></span>
@@ -2087,7 +2088,7 @@ export function ProductionMarketplace() {
         </select>
       </label>
     </div>
-    {customJourneyBudgetOpen && <div className="mt-2 min-w-0 rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] p-3">
+    {customJourneyBudgetOpen && <div className="search-budget-controls mt-2 min-w-0 rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] p-3">
       <label className="block min-w-0 text-xs font-semibold text-[var(--mg-ink-secondary)]" htmlFor="custom-journey-budget">Власний бюджет, грн
         <input id="custom-journey-budget" type="number" inputMode="numeric" min={1} max={MAX_JOURNEY_BUDGET_UAH} step={1} value={customJourneyBudgetDraft} onChange={(event) => setCustomJourneyBudgetDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); applyCustomJourneyBudget(); } }} aria-describedby="custom-journey-budget-hint" className="mt-1 min-h-11 w-full rounded-xl border border-[var(--mg-border-medium)] bg-[var(--mg-surface-primary)] px-3 text-base font-bold text-[var(--mg-ink-primary)] focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)]" placeholder="Наприклад, 450" />
         <small id="custom-journey-budget-hint" className="mt-1 block text-[var(--mg-ink-muted)]">Ціла сума від 1 до {MAX_JOURNEY_BUDGET_UAH.toLocaleString('uk-UA')} грн. Попереднє значення збережеться, доки не застосуєте нове.</small>
@@ -2097,9 +2098,11 @@ export function ProductionMarketplace() {
         <button type="button" onClick={applyCustomJourneyBudget} disabled={parseJourneyBudgetUah(customJourneyBudgetDraft) === null} className="min-h-11 shrink-0 rounded-xl bg-[var(--mg-action)] px-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Застосувати</button>
       </div>
     </div>}
-    <TransportTypesPanel compact selection={transportSelection} groups={providerGroups} onChange={changeTransportSelection}
-      onManageProviders={() => setTransportPickerOpen(true)}/>
-    <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] px-3 py-1.5">
+    <div className="search-mode-controls">
+      <TransportTypesPanel compact selection={transportSelection} groups={providerGroups} onChange={changeTransportSelection}
+        onManageProviders={() => setTransportPickerOpen(true)}/>
+    </div>
+    <label className="search-transfer-control mt-2 flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-secondary)] px-3 py-1.5">
       <input type="checkbox" checked={journeyDirectOnly} onChange={(event) => setJourneyDirectOnly(event.target.checked)} className="size-5 shrink-0 accent-[var(--mg-action)]" />
       <span className="shrink-0 text-xs font-bold text-[var(--mg-ink-primary)]">Без пересадок</span>
       <span className="ml-auto min-w-0 truncate text-xs font-semibold text-[var(--mg-ink-secondary)]">один вид транспорту</span>
@@ -2223,6 +2226,7 @@ export function ProductionMarketplace() {
       </div>
       <p data-testid="journey-results-query" className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 px-1 text-xs font-semibold leading-4 tabular-nums text-slate-500 dark:text-slate-400">
         <span className="inline-flex items-center gap-1"><CalendarDays size={12} className="shrink-0" aria-hidden="true"/>{formatDate(journeyDeparture, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+        {journeyArrivalBy && <><span aria-hidden="true">·</span><span className="inline-flex items-center gap-1" title="Прибути до"><span className="sr-only">Прибути до</span><span aria-hidden="true">до</span>{formatDate(journeyArrivalBy, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></>}
         <span aria-hidden="true">·</span>
         <span className="min-w-0 truncate" title={filterSummary}>{filterSummary}</span>
         {journeyResult && <><span aria-hidden="true">·</span><span className="font-bold text-slate-700 dark:text-slate-200">{resultCountLabel}</span></>}

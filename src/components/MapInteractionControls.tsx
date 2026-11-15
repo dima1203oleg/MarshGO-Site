@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type MouseEventHandler, type ReactNode } from 'react';
 import { Globe, Minus, Plus, Volume2, VolumeX } from 'lucide-react';
 import type { MapAdapter } from '../map/MapAdapter';
 import { getMapLayer, getMapPerspective, satelliteBasemapAvailable, setMapLayer, setMapPerspective, subscribeMapLayer, subscribeMapPerspective, type MapLayer, type MapPerspective } from '../map/mapMode';
@@ -52,14 +52,15 @@ export function MapVoiceControl({ enabled, onToggle }: { enabled?: boolean; onTo
 }
 
 /** The one vertical control rail used by the full-screen, interactive map views. */
-export function MapControlRail({ children, className = '', style, label = 'Керування картою', inert = false }: {
+export function MapControlRail({ children, className = '', style, label = 'Керування картою', inert = false, onClickCapture }: {
   children: ReactNode;
   className?: string;
   style?: CSSProperties;
   label?: string;
   inert?: boolean;
+  onClickCapture?: MouseEventHandler<HTMLDivElement>;
 }) {
-  return <div role="group" aria-label={label} className={`flex flex-col items-center gap-2 ${className}`} style={style} inert={inert}>{children}</div>;
+  return <div role="group" aria-label={label} className={`flex flex-col items-center gap-2 ${className}`} style={style} inert={inert} onClickCapture={onClickCapture}>{children}</div>;
 }
 
 /** Shared 2D/3D camera control, with its preference owned by mapMode. */
