@@ -87,7 +87,7 @@ export function MapPointPicker({ title, initial, onConfirm, onClose }: Props) {
       .catch((error: unknown) => setMessage(geolocationFailureMessage(typeof error === 'object' && error !== null && 'code' in error ? Number((error as { code: unknown }).code) : undefined)));
   };
 
-  return <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[80] flex flex-col bg-white dark:bg-[var(--mg-canvas)]">
+  return <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[var(--mg-z-modal)] flex flex-col bg-white dark:bg-[var(--mg-canvas)]">
     <div ref={container} className="relative min-h-0 flex-1" data-testid="point-picker-map">
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full"><svg width="38" height="48" viewBox="0 0 38 48"><path d="M19 0C8.5 0 0 8.3 0 18.6 0 32 19 48 19 48s19-16 19-29.4C38 8.3 29.5 0 19 0z" fill="#1789F4" stroke="#fff" strokeWidth="2.5"/><circle cx="19" cy="18" r="6.5" fill="#fff"/></svg></div>
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-[9] h-2 w-5 -translate-x-1/2 rounded-full bg-black/20 blur-[2px]"/>

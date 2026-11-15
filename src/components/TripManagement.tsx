@@ -55,7 +55,7 @@ export function OfferEditSheet({ offer, vehicles, onClose, onDone }: { offer: Ap
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Не вдалося скасувати поїздку.'); setBusy(false); }
   };
 
-  return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
+  return <div className="fixed inset-0 z-[var(--mg-z-modal)] flex items-end justify-center bg-slate-950/50 p-3 sm:items-center">
     <section role="dialog" aria-modal="true" aria-labelledby="offer-edit-title" className="max-h-[92svh] w-full max-w-md overflow-y-auto rounded-[1.7rem] bg-white p-5 shadow-2xl">
       <div className="flex items-start justify-between gap-3"><div><p className="text-xs text-slate-500">{offer.origin_name} → {offer.destination_name}</p><h2 id="offer-edit-title" className="text-lg font-extrabold">Редагувати поїздку</h2></div>
         <button type="button" onClick={onClose} aria-label="Закрити" className="grid h-11 w-11 place-items-center rounded-full bg-slate-100"><X size={17}/></button></div>

@@ -75,7 +75,7 @@ export function CurrentCitySelector({ city, onSelect, onLocate, locating, locati
       <span className="current-city-selector-label min-w-0 truncate text-xs font-bold">{city.name || 'Обрати місто'}</span>
       <ChevronDown size={13} className="shrink-0 text-[var(--mg-ink-secondary)]" aria-hidden="true" />
     </button>
-    {open && <div className="fixed inset-0 z-[var(--mg-z-picker-scrim)] flex items-end justify-center bg-slate-950/55 px-2 pt-[max(.5rem,env(safe-area-inset-top))] backdrop-blur-sm sm:items-center sm:p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+    {open && <div className="fixed inset-0 z-[var(--mg-z-modal)] flex items-end justify-center bg-slate-950/55 px-2 pt-[max(.5rem,env(safe-area-inset-top))] backdrop-blur-sm sm:items-center sm:p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
       <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="current-city-title" className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[var(--mg-radius-3xl)] border border-[var(--mg-border-subtle)] bg-[var(--mg-surface-primary)] text-[var(--mg-ink-primary)] shadow-2xl sm:rounded-[var(--mg-radius-3xl)]">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--mg-border-subtle)] px-4 py-3">
           <div><h2 id="current-city-title" className="font-extrabold">Місто поруч</h2><p className="text-xs text-[var(--mg-ink-secondary)]">Для карти й міських підказок</p></div>
