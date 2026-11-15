@@ -6,6 +6,7 @@ import {
   flightDurationMs,
   flightFractionAt,
   flightVelocityAt,
+  createFlightPlayback,
   cinematicCameraFrame,
   dockCameraFrame,
   calloutStageAt,
@@ -106,7 +107,8 @@ test('hyperFlight — adaptive duration: walk slower/closer, transit faster, bot
   assert.equal(flightDurationMs(0, 'walk'), 1900);
   assert.equal(flightDurationMs(100_000, 'walk'), 5200);
   assert.equal(flightDurationMs(0, 'transit'), 2400);
-  assert.equal(flightDurationMs(100_000, 'transit'), 7000);
+  assert.ok(flightDurationMs(100_000, 'transit') > 20_000);
+  assert.ok(flightDurationMs(500_000, 'transit') <= 30_000);
   assert.ok(flightDurationMs(300, 'walk') > flightDurationMs(300, 'transit'));
   assert.ok(flightDurationMs(50, 'walk') > flightDurationMs(20, 'walk'));
   assert.ok(flightDurationMs(3000, 'transit') > flightDurationMs(500, 'transit'));
@@ -133,6 +135,33 @@ test('hyperFlight — trapezoidal profile: exact endpoints, monotonic, continuou
   assert.ok(flightVelocityAt(duration * 0.05, duration) < flightVelocityAt(duration * 0.4, duration));
   assert.ok(flightVelocityAt(duration * 0.95, duration) < flightVelocityAt(duration * 0.4, duration));
   assert.ok(flightFractionAt(duration * 0.5, duration) > 0.45);
+});
+
+test('hyperFlight — playback pauses, resumes and seeks in both directions without elapsed-time jumps', () => {
+  const player = createFlightPlayback(4000);
+  player.play(100);
+  const beforePause = player.sample(1100).fraction;
+  player.pause(1100);
+  assert.equal(player.sample(99_000).fraction, beforePause);
+  assert.equal(player.sample(99_000).velocity, 0);
+  player.play(99_000);
+  assert.equal(player.sample(99_000).fraction, beforePause);
+  assert.ok(player.sample(99_100).fraction > beforePause);
+  player.pause(99_100);
+  player.seek(0.8, 99_200);
+  assert.ok(Math.abs(player.sample(99_200).fraction - 0.8) < 1e-9);
+  player.seek(0.2, 99_300);
+  assert.ok(Math.abs(player.sample(99_300).fraction - 0.2) < 1e-9);
+  player.play(99_400);
+  player.seek(0.6, 99_500);
+  assert.ok(Math.abs(player.sample(99_500).fraction - 0.6) < 1e-9);
+  assert.ok(player.sample(99_600).fraction > 0.6);
+  player.seek(1, 100_000);
+  assert.equal(player.sample(100_000).complete, true);
+  assert.equal(player.sample(100_000).fraction, 1);
+  player.seek(0, 100_100);
+  assert.equal(player.sample(100_100).complete, false);
+  assert.equal(player.sample(100_100).fraction, 0);
 });
 
 test('hyperFlight — camera rides the geometry, looks ahead, eases zoom and pitch', () => {
@@ -163,6 +192,22 @@ test('hyperFlight — camera rides the geometry, looks ahead, eases zoom and pit
     assert.ok(Number.isFinite(frame.zoom) && frame.zoom >= 13 && frame.zoom <= 18.5);
     assert.ok(frame.pitch >= 27 && frame.pitch <= 66);
     assert.ok(frame.bearing >= 0 && frame.bearing < 360);
+  }
+});
+
+test('hyperFlight — intercity cruise gains altitude without losing departure and arrival detail', () => {
+  const long = buildFlightPath([[24.02, 49.84], [30.52, 50.45]])!;
+  const urban = cinematicCameraFrame(path(), 0.5, { kind: 'transit' });
+  const middle = cinematicCameraFrame(long, 0.5, { kind: 'transit' });
+  const end = cinematicCameraFrame(long, 1, { kind: 'transit' });
+  assert.ok(middle.zoom < 12, `intercity cruise must not run at street zoom: ${middle.zoom}`);
+  assert.ok(urban.zoom > middle.zoom + 3);
+  assert.ok(end.zoom > middle.zoom + 3);
+  assert.ok(flightDurationMs(long.totalMeters, 'transit') > flightDurationMs(2000, 'transit'));
+  for (let fraction = 0.001; fraction <= 1; fraction += 0.001) {
+    const a = cinematicCameraFrame(long, fraction - 0.001, { kind: 'transit', startZoom: 7 });
+    const b = cinematicCameraFrame(long, fraction, { kind: 'transit', startZoom: 7 });
+    assert.ok(Math.abs(b.zoom - a.zoom) < 0.15, 'zoom is continuous');
   }
 });
 

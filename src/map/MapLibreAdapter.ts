@@ -1105,16 +1105,18 @@ export class MapLibreAdapter implements MapAdapter {
   }
   /** HyperFlight owns the camera per-frame; pause label re-placement and focus measure so DOM markers are not rebuilt every frame. */
   setCinematicFlightActive(active: boolean) {
+    if (this.cinematicFlightActive && !active) this.map.stop();
     this.cinematicFlightActive = active;
     this.map.getContainer().dataset.marshgoCinematicFlight = active ? 'true' : 'false';
     if (!active && this.journeyLabelInput.length) this.applyJourneyLabels();
     if (active) this.cameraFlightPending = false;
   }
   getCameraZoom() { return this.map.getZoom(); }
-  /** Per-frame cinematic camera. jumpTo fires move/moveend (not movestart), so it never reads as a user gesture. */
-  setCinematicCamera(frame: { center: Coordinate; zoom: number; bearing: number; pitch: number }, padding?: RouteFitPadding) {
+  // Zero duration drives playback frames; explicit seeks ease to their new position.
+  setCinematicCamera(frame: { center: Coordinate; zoom: number; bearing: number; pitch: number }, padding?: RouteFitPadding, durationMs = 0) {
     if (!isValidCoordinate(frame.center)) return;
-    this.map.jumpTo({
+    this.map.easeTo({
+      duration: this.motionDuration(durationMs),
       center: frame.center,
       zoom: frame.zoom,
       bearing: frame.bearing,

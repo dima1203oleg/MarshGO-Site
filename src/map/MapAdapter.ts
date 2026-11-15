@@ -75,7 +75,7 @@ export interface MapAdapter {
   clearSegmentReveal?(): void;
   /** HyperFlight preview camera: per-frame jump along the real geometry, no GPS progress touched. */
   setCinematicFlightActive?(active: boolean): void;
-  setCinematicCamera?(frame: { center: Coordinate; zoom: number; bearing: number; pitch: number }, padding?: RouteFitPadding): void;
+  setCinematicCamera?(frame: { center: Coordinate; zoom: number; bearing: number; pitch: number }, padding?: RouteFitPadding, durationMs?: number): void;
   getCameraZoom?(): number;
   /** Living Route Ribbon: a travelling light pulse along the active leg's confirmed polyline. */
   setRouteFlow?(flow: { coordinates: Coordinate[]; color: string; kind: 'walk' | 'transit' } | null): void;

@@ -59,13 +59,13 @@ describe('home banner geometry and profile trust ink', () => {
     assert.match(hero(), /home-popular-routes__row no-scrollbar flex/, 'the row keeps its stretch hook');
   });
 
-  it('transport tile labels wrap instead of truncating mid-word', () => {
+  it('transport tile labels keep one line without truncating mid-word', () => {
     const panel = readFileSync('src/components/TransportTypesPanel.tsx', 'utf8');
     assert.doesNotMatch(panel, /truncate/, 'truncate cut «Маршрутка»/«Тролейбус» mid-word on 390px tiles');
-    assert.match(panel, /transport-mode-tile__label w-full font-bold/, 'the label keeps its full-width wrap hook');
-    const labelRule = css().match(/\.transport-mode-grid--horizontal \.transport-mode-tile__label \{([^}]+)\}/)?.[1];
+    assert.match(panel, /transport-mode-tile__label w-full font-bold/, 'the label keeps its full-width hook');
+    const labelRule = css().match(/\.transport-mode-grid--compact \.transport-mode-tile__label \{([^}]+)\}/)?.[1];
     assert.ok(labelRule);
-    assert.match(labelRule, /overflow-wrap: anywhere;/);
+    assert.match(labelRule, /white-space: nowrap;/);
     assert.match(labelRule, /font-size: \.75rem;/);
     assert.doesNotMatch(labelRule, /overflow: hidden|line-clamp/);
     assert.doesNotMatch(css(), /\.transport-types-inline \.transport-mode-tile__label \{ font-size: \.625rem;/);

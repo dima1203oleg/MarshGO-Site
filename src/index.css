@@ -376,30 +376,23 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
 }
 .home-screen { padding-top: .35rem; }
 .transport-types-inline { margin-top: .7rem; }
-.transport-types-inline .transport-mode-grid--horizontal {
-  display: flex;
-  gap: .5rem;
-  margin-inline: -.2rem;
-  padding: .2rem .2rem .35rem;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
-  scrollbar-color: var(--mg-blue) transparent;
+.transport-types-inline .transport-mode-grid--compact {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .4rem;
 }
-.transport-types-inline .transport-mode-grid--horizontal > button {
-  flex: 0 0 5rem;
-  min-height: 4.25rem;
-  scroll-snap-align: start;
+.transport-types-inline .transport-mode-grid--compact > button {
+  min-height: 4rem;
+  padding-inline: .125rem;
 }
-.transport-types-inline .transport-mode-grid--horizontal::-webkit-scrollbar { height: 4px; }
-.transport-types-inline .transport-mode-grid--horizontal::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--mg-blue); }
 .transport-mode-tile__label { text-wrap: balance; }
-.transport-mode-grid--horizontal .transport-mode-tile__label {
-  white-space: normal;
-  overflow-wrap: anywhere;
+/* Twelve categories stay on one 4×3 board: labels keep a single line at the 12 px
+   typography floor, so the grid never scrolls sideways nor breaks words mid-tile. */
+.transport-mode-grid--compact .transport-mode-tile__label {
+  white-space: nowrap;
   font-size: .75rem;
-  line-height: var(--mg-sheet-label-leading);
+  line-height: 1.15;
+  letter-spacing: -.025em;
 }
 .transport-types-inline .transport-mode-grid button.transport-mode-tile--carpool { box-shadow: 0 0 0 1px var(--mg-action), var(--mg-card-shadow); }
 .home-screen .home-intro {
@@ -413,8 +406,7 @@ html.dark .app-header > div:first-child strong { color: var(--mg-ink-primary); }
 }
 /* A place row has one trailing control, and it has to read as what it is: an action that fills the
    field, or a ghost that empties it. Both states use tokens so the theme owns the contrast. */
-.journey-search-card button.search-field-action[data-field-action="pick"],
-.journey-search-card button.search-field-action[data-field-action="locate"] {
+.journey-search-card button.search-field-action[data-field-action="pick"] {
   border: 1px solid var(--mg-border-medium);
   background-color: var(--mg-blue-tint);
   color: var(--mg-blue-ink);
@@ -921,8 +913,8 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .search-screen .journey-search-card > .relative > [role="group"] { min-height: 3.65rem; padding-block: .55rem; }
   .search-screen .journey-search-card .search-trip-details { gap: .4rem; margin-top: .5rem; }
   .search-screen .transport-types-inline { margin-top: .55rem; }
-  .search-screen .transport-types-inline .transport-mode-grid--horizontal { gap: .4rem; }
-  .search-screen .transport-types-inline .transport-mode-grid--horizontal > button { min-height: 3.9rem; }
+  .search-screen .transport-types-inline .transport-mode-grid--compact { gap: .35rem; }
+  .search-screen .transport-types-inline .transport-mode-grid--compact > button { min-height: 4rem; }
   .search-screen .journey-search-card .search-submit { min-height: 2.8rem; margin-top: .65rem; padding-block: .7rem; }
 }
 
@@ -932,6 +924,17 @@ html.dark .app-tabbar button[aria-current="page"] { color: var(--mg-blue-ink); }
   .search-screen .journey-search-card > .relative > [role="group"] { padding-block: .45rem; }
   .search-screen .transport-types-inline { margin-top: .45rem; }
   .search-screen .journey-search-card .search-submit { margin-top: .5rem; }
+}
+
+/* Narrowest phones: reclaim page/card padding so all twelve labels stay on one line
+   at the 12 px floor inside the 4×3 board; the header pills wrap instead of overflowing. */
+@media (max-width: 360px) {
+  .home-screen.search-screen { padding-inline: .35rem; }
+  .search-screen .journey-search-card { padding: .3rem; }
+  .transport-types-inline > div:first-of-type { flex-wrap: wrap; row-gap: .25rem; }
+  .search-screen .transport-types-inline .transport-mode-grid--compact { gap: .2rem; }
+  .search-screen .transport-types-inline .transport-mode-grid--compact > button { padding-inline: 0; }
+  .transport-mode-grid--compact .transport-mode-tile__label { letter-spacing: -.05em; }
 }
 
 @media (min-width: 640px) {
@@ -2931,52 +2934,29 @@ html {
   .mg-glass-callout.is-exiting { opacity: 0; }
 }
 
-/* ── HyperFlight telemetry HUD ─────────────────────────────────────────────
-   A compact glass strip floating just above the sheet during the cinematic
-   preview. It counts down the real remaining distance and drives a velocity-
-   reactive progress bar. The flight's single rAF loop writes into these nodes
-   directly, so there is no per-frame React render. */
+/* Preview progress is updated by the flight clock without per-frame React renders. */
 .mg-flight-hud {
-  --flight-velocity: 0;
-  position: absolute;
-  left: 50%;
-  translate: -50% 0;
-  bottom: calc(var(--route-map-inset, 340px) + 14px);
-  z-index: 15;
-  width: min(320px, calc(100% - 2rem));
-  padding: .6rem .95rem .7rem;
-  border-radius: 18px;
-  border: 1px solid var(--route-border);
-  background: color-mix(in srgb, var(--route-sheet) 84%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  backdrop-filter: blur(18px) saturate(150%);
-  box-shadow: var(--route-sheet-shadow), inset 0 1px 0 color-mix(in srgb, var(--route-ink) 8%, transparent);
-  opacity: 0;
-  scale: .92;
-  filter: blur(6px);
-  pointer-events: none;
-  transition: opacity .28s var(--mg-ease-entrance), scale .28s var(--mg-ease-entrance), filter .28s var(--mg-ease-entrance);
+  --flight-progress: 0%;
+  width: 100%;
+  min-width: 0;
+  color: var(--route-ink);
 }
-.mg-flight-hud.is-live { opacity: 1; scale: 1; filter: blur(0); }
 .mg-flight-hud__row { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
-.mg-flight-hud__label { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--route-muted); }
-.mg-flight-hud__value { display: inline-flex; align-items: baseline; gap: .25rem; color: var(--route-ink); }
-.mg-flight-hud__value b { font-size: 21px; font-weight: 900; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
-.mg-flight-hud__value i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--route-muted); }
-.mg-flight-hud__track { position: relative; height: 5px; margin-top: .55rem; border-radius: 9999px; background: var(--route-card-alt); box-shadow: inset 0 1px 2px color-mix(in srgb, var(--route-ink) 12%, transparent); }
-.mg-flight-hud__fill {
-  position: absolute; inset: 0; border-radius: inherit;
-  transform-origin: left center; transform: scaleX(0);
-  background: linear-gradient(90deg, var(--mg-blue), var(--mg-action));
-  box-shadow: 0 0 calc(4px + var(--flight-velocity, 0) * 16px) color-mix(in srgb, var(--mg-action) 55%, transparent);
-}
-.mg-flight-hud__head {
-  position: absolute; top: 50%; left: 0; width: 11px; height: 11px;
-  translate: -50% -50%;
-  scale: calc(.8 + var(--flight-velocity, 0) * .5);
-  border-radius: 9999px; background: #FFFFFF;
-  box-shadow: 0 0 calc(5px + var(--flight-velocity, 0) * 13px) color-mix(in srgb, var(--mg-action) 72%, transparent);
-}
+.mg-flight-hud__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75rem; font-weight: 600; color: var(--route-muted); }
+.mg-flight-hud__value { display: inline-flex; align-items: baseline; gap: .25rem; color: var(--route-ink); white-space: nowrap; }
+.mg-flight-hud__value b { font-size: .875rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mg-flight-hud__value i { font-style: normal; font-size: .75rem; color: var(--route-muted); }
+.mg-flight-hud__controls { display: flex; align-items: center; gap: .25rem; }
+.mg-flight-hud__button { display: grid; place-items: center; flex: 0 0 2.75rem; min-height: 2.75rem; border-radius: var(--mg-radius-pill); color: var(--route-ink); }
+.mg-flight-hud__button:disabled { opacity: .45; }
+.mg-flight-hud__play { background: var(--mg-action); color: var(--route-control-active-ink); }
+.mg-flight-hud__button:focus-visible, .mg-flight-hud__range:focus-visible { outline: 2px solid var(--mg-blue); outline-offset: 2px; }
+.route-map-screen .mg-flight-hud__range { flex: 1; min-width: 0; width: 100%; height: 2.75rem; margin: 0 .25rem; appearance: none; background: transparent; cursor: pointer; touch-action: pan-y; }
+.mg-flight-hud__range::-webkit-slider-runnable-track { height: .25rem; border-radius: 1rem; background: linear-gradient(to right, var(--mg-blue) var(--flight-progress), var(--route-track) var(--flight-progress)); }
+.mg-flight-hud__range::-moz-range-track { height: .25rem; border-radius: 1rem; background: var(--route-track); }
+.mg-flight-hud__range::-moz-range-progress { height: .25rem; background: var(--mg-blue); }
+.mg-flight-hud__range::-webkit-slider-thumb { appearance: none; width: 1rem; height: 1rem; margin-top: -.375rem; border-radius: 50%; background: var(--mg-blue); }
+.mg-flight-hud__range::-moz-range-thumb { width: 1rem; height: 1rem; border: 0; border-radius: 50%; background: var(--mg-blue); }
 
 /* ── Journey progress rail ─────────────────────────────────────────────────
    One slim segment per leg: passed legs settle to a muted fill, the active leg
