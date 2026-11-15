@@ -22,7 +22,8 @@ describe('home banner geometry and profile trust ink', () => {
     assert.match(banner, /overflow-hidden/);
     assert.match(banner, /onClick=\{onOpenTrips\}/);
     assert.match(source, /Твій шлях\. Один квиток\./);
-    assert.match(source, /Увесь міський і міжміський транспорт/);
+    assert.match(source, /Квиток підтвердженої попутки/);
+    assert.doesNotMatch(source, /Увесь міський і міжміський транспорт/);
     assert.match(source, /home-marshpass-promo__barcode/);
     assert.match(source, /home-marshpass-promo__destination/);
     assert.doesNotMatch(banner, /Куди завгодно|0% комісії|Отримати квиток/);

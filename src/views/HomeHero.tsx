@@ -124,7 +124,7 @@ export function HomeHero({
       <span className="home-marshpass-promo__destination" aria-hidden="true"><MapPin size={27} strokeWidth={2.5}/></span>
       <span className="home-marshpass-promo__eyebrow relative flex items-center gap-2 text-xs font-black tracking-[.16em] text-[var(--mg-ink-secondary)]"><span className="grid h-8 w-8 place-items-center rounded-xl bg-[var(--mg-blue-tint)] text-[var(--mg-blue-ink)]"><Ticket size={17}/></span>MARSH PASS</span>
       <span className="home-marshpass-promo__title relative block font-display text-[1.35rem] font-extrabold leading-tight text-[var(--mg-ink-primary)]">Твій шлях. Один квиток.</span>
-      <span className="home-marshpass-promo__description relative block text-xs font-medium leading-snug text-[var(--mg-ink-secondary)]">Увесь міський і міжміський транспорт<br/>в одному рішенні.</span>
+      <span className="home-marshpass-promo__description relative block text-xs font-medium leading-snug text-[var(--mg-ink-secondary)]">Квиток підтвердженої попутки<br/>завжди під рукою.</span>
       <span className="home-marshpass-promo__footer relative flex items-center justify-between border-t border-dashed border-[var(--mg-border-subtle)] pt-2 text-xs font-bold tracking-[.28em] text-[var(--mg-ink-secondary)]"><span>MARSHGO</span><span className="home-marshpass-promo__barcode" aria-hidden="true"/></span>
     </button>}
 
