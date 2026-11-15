@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MARSHGO Design 3.0 — прототип (ДЕМО · НЕ LIVE)</title>
+<style>
+:root{--r-card:18px;--r-sheet:22px}
+[data-theme=light]{--canvas:#F6F8FC;--surface:#fff;--raised:#EFF4FA;--ink:#0B1C2D;--ink2:#50647D;--border:#D6E1EE;--brand:#005BDE;--onbrand:#fff;--tint:#E8F1FF;--warn:#9A5900;--danger:#B5213B;--ok:#19704B;--focus:#005BDE;--map:#E4ECF5}
+[data-theme=dark]{--canvas:#0B1420;--surface:#152333;--raised:#1C2B3D;--ink:#F3F7FC;--ink2:#A8BED5;--border:#34475D;--brand:#71B5FF;--onbrand:#0B1420;--tint:#193756;--warn:#FFC36D;--danger:#FF8894;--ok:#55D5A0;--focus:#A8D0FF;--map:#0F1C2B}
+/* concept overrides */
+[data-concept=A][data-theme=light]{--canvas:#EDEFF3;--surface:#fff;--raised:#E3E6EC;--ink:#10151C;--brand:#1F4FB8}
+[data-concept=A][data-theme=dark]{--canvas:#111418;--surface:#1B1F25;--raised:#252A32;--map:#161A20}
+[data-concept=B]{--r-card:20px}
+[data-concept=C]{--r-card:16px}
+[data-concept=C][data-theme=light]{--tint:#ECE8FF}
+[data-concept=C][data-theme=dark]{--tint:#2A2060}
+*{box-sizing:border-box;margin:0}
+body{font:500 16px/24px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#888;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px;min-height:100vh}
+.ctl{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.ctl button{min-height:44px;min-width:44px;padding:0 14px;border-radius:999px;border:2px solid #fff;background:#222;color:#fff;font:600 14px system-ui;cursor:pointer}
+.ctl button[aria-pressed=true]{background:#fff;color:#000}
+#phone{position:relative;width:min(430px,100%);height:min(900px,calc(100vh - 80px));min-height:560px;background:var(--canvas);border-radius:32px;overflow:hidden;box-shadow:0 20px 60px #0006;display:flex;flex-direction:column}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+button{font:inherit;color:inherit;cursor:pointer}
+.screen{flex:1;overflow:auto;padding:16px 16px 8px;display:none;position:relative}
+.screen.on{display:block}
+header.top{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.logo{font-weight:800;font-size:20px;letter-spacing:.5px;flex:1}
+.logo i{color:var(--brand);font-style:normal}
+.chip{min-height:48px;padding:0 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-weight:600;font-size:14px}
+.ibtn{width:48px;height:48px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:20px}
+.hero{border-radius:24px;padding:20px;background:linear-gradient(135deg,var(--brand),var(--tint));color:var(--onbrand);margin-bottom:16px}
+[data-concept=C] .hero{background:linear-gradient(135deg,#5B3DF5,#0099CC)}
+[data-concept=A] .hero{background:linear-gradient(135deg,#1B2430,#1F4FB8)}
+[data-concept=B] .hero{background:var(--tint);color:var(--ink);border:1px solid var(--border)}
+.hero h2{font-size:24px;line-height:30px;font-weight:700;color:inherit}
+.hero p{font-size:14px;line-height:20px;margin-top:4px;opacity:.95}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{min-height:112px;border-radius:var(--r-card);border:1px solid var(--border);background:var(--surface);padding:16px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;text-align:left;transition:transform .11s}
+.tile:active{transform:scale(.97)}
+.tile .ic{font-size:28px}.tile b{font-size:16px;line-height:22px}
+.tile.pri{background:var(--brand);color:var(--onbrand);border-color:var(--brand)}
+h1{font-size:24px;line-height:30px;font-weight:700;margin-bottom:12px}
+.field{display:flex;align-items:center;gap:12px;min-height:56px;padding:0 16px;border-radius:14px;border:1px solid var(--border);background:var(--surface);margin-bottom:8px}
+.field input{flex:1;border:0;background:none;color:var(--ink);font:inherit;min-height:48px}
+.dot{width:14px;height:14px;border-radius:50%}
+.swap{display:block;margin:0 auto 8px}
+.modes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.mode{min-height:76px;border-radius:14px;border:2px solid var(--border);background:var(--surface);font-size:14px;line-height:18px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px}
+.mode[aria-pressed=true]{border-color:var(--brand);background:var(--tint)}
+.mode[aria-disabled=true]{opacity:.6;border-style:dashed}
+.mode small{font-size:12px;line-height:14px;color:var(--ink2)}
+.cta{width:100%;min-height:56px;border-radius:999px;border:0;background:var(--brand);color:var(--onbrand);font-weight:700;font-size:16px}
+.note{font-size:14px;line-height:20px;color:var(--ink2);margin:8px 0}
+.demo{display:inline-block;font:700 12px/16px system-ui;padding:2px 8px;border-radius:999px;background:var(--raised);color:var(--ink2);border:1px solid var(--border)}
+/* results */
+#results{padding:0;overflow:hidden}
+#map{position:absolute;inset:0;background:var(--map)}
+#map svg{width:100%;height:100%}
+#sheet{position:absolute;left:0;right:0;bottom:0;height:100%;background:var(--surface);border-radius:var(--r-sheet) var(--r-sheet) 0 0;box-shadow:0 -8px 30px #0003;transform:translateY(66%);will-change:transform;display:flex;flex-direction:column;touch-action:none}
+#sheet.anim{transition:transform .28s cubic-bezier(.2,.9,.3,1)}
+.handle{padding:10px 0 6px;display:flex;justify-content:center;min-height:48px;align-items:center}
+.handle span{width:44px;height:5px;border-radius:3px;background:var(--border)}
+.sheetbody{padding:0 16px 16px;overflow:auto;flex:1;touch-action:pan-y}
+.sorts{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.sorts button{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-weight:600;font-size:14px}
+.sorts button[aria-pressed=true]{background:var(--brand);color:var(--onbrand);border-color:var(--brand)}
+.card{border:2px solid var(--border);border-radius:var(--r-card);padding:16px;margin-bottom:12px;background:var(--surface);width:100%;text-align:left;display:block}
+.card[aria-pressed=true]{border-color:var(--brand);background:var(--tint)}
+.big{font-size:28px;line-height:32px;font-weight:800;display:flex;gap:12px;align-items:baseline}
+.big .sep{color:var(--border)}
+.thread{display:flex;gap:2px;margin:12px 0 8px;height:28px}
+.seg{border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;min-width:30px;overflow:hidden;color:#fff;border:0;padding:0}
+.seg.walk{background:repeating-linear-gradient(90deg,var(--ink2) 0 6px,transparent 6px 10px);color:var(--ink)}
+.seg.wait{background:var(--raised);color:var(--ink);border:1px dashed var(--ink2)}
+.seg.bus{background:#005BDE}.seg.tram{background:#C2410C}.seg.car{background:#19704B}.seg.metro{background:#6D28D9}
+.seg[aria-pressed=true]{outline:3px solid var(--focus)}
+.meta{font-size:14px;line-height:20px;color:var(--ink2)}
+.state{display:inline-block;font-size:12px;line-height:16px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid currentColor;margin-right:4px}
+.s-live{color:var(--ok)}.s-est{color:var(--warn)}.s-sch{color:var(--ink2)}.s-na{color:var(--danger)}
+.detail ol{padding-left:20px;margin:8px 0}.detail li{padding:6px 0;font-size:16px}
+/* nav HUD */
+.hud{position:absolute;left:12px;right:12px;bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:12px 16px;box-shadow:0 8px 24px #0003;display:none;z-index:5}
+.hud.on{display:block}
+.hudtop{position:absolute;left:12px;right:12px;top:12px;background:var(--ink);color:var(--canvas);border-radius:var(--r-card);padding:12px 16px;display:none;z-index:5;font-weight:700}
+.hudtop.on{display:block}
+nav.tabs{display:grid;grid-template-columns:repeat(5,1fr);background:var(--surface);border-top:1px solid var(--border);padding:4px 4px calc(4px + env(safe-area-inset-bottom));z-index:10}
+nav.tabs button{min-height:56px;border:0;background:none;font-size:12px;line-height:16px;font-weight:600;color:var(--ink2);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px}
+nav.tabs button[aria-current=page]{color:var(--brand);background:var(--tint)}
+nav.tabs .plus{color:var(--onbrand)}nav.tabs .plus span{width:48px;height:48px;border-radius:999px;background:var(--brand);display:flex;align-items:center;justify-content:center;font-size:26px}
+.back{display:none;margin:0 16px 8px;min-height:48px;border-radius:999px;border:0;background:var(--brand);color:var(--onbrand);font-weight:700}
+.back.on{display:block}
+.banner{padding:8px 12px;border-radius:12px;font-size:14px;line-height:20px;font-weight:600;margin-bottom:8px;background:var(--raised);border:1px solid var(--border)}
+.banner.off{border-color:var(--danger);color:var(--danger)}
+.pass{border-radius:20px 20px 20px 4px;border:2px solid var(--brand);padding:16px;background:var(--surface);margin-top:12px}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}#sheet.anim{transition-duration:.01ms}}
+</style>
+</head>
+<body data-concept="B" data-theme="light" id="root">
+<div class="ctl" role="toolbar" aria-label="Керування прототипом">
+ <button data-c="A" aria-pressed="false">A Graphite</button>
+ <button data-c="B" aria-pressed="true">B Clarity</button>
+ <button data-c="C" aria-pressed="false">C Pulse</button>
+ <button id="theme" aria-pressed="false">Dark</button>
+ <button id="offline" aria-pressed="false">Offline</button>
+ <button id="gps" aria-pressed="true">GPS</button>
+ <button id="rm" aria-pressed="false">Reduce motion</button>
+</div>
+<div id="phone" role="application" aria-label="Прототип MARSHGO">
+ <div id="banners" style="padding:0 16px"></div>
+ <section class="screen on" id="home" aria-label="Головна">
+  <header class="top"><div class="logo">MARSH<i>GO</i></div><button class="chip">Львів ▾</button><button class="ibtn" aria-label="Чат">💬</button><button class="ibtn" aria-label="Сповіщення">🔔</button></header>
+  <div class="hero"><h2>Їдьте разом — швидше й дешевше</h2><p>Попутки з підтвердженням сервера. Квиток MarshPass — лише для попуток.</p></div>
+  <div class="grid2">
+   <button class="tile pri" data-go="nav"><span class="ic">🧭</span><b>Навігація</b></button>
+   <button class="tile" data-go="publish"><span class="ic">🚗</span><b>Опублікувати поїздку</b></button>
+   <button class="tile" data-go="transit"><span class="ic">🗺️</span><b>Карта транспорту</b></button>
+   <button class="tile" data-go="search"><span class="ic">🔎</span><b>Знайти маршрут</b></button>
+  </div>
+  <p class="note"><span class="demo">ДЕМО · НЕ LIVE</span> Усі дані — умовні.</p>
+ </section>
+ <section class="screen" id="search" aria-label="Пошук">
+  <h1>Пошук маршруту</h1>
+  <label class="field"><span class="dot" style="background:#005BDE"></span><input aria-label="Звідки" placeholder="Звідки" value="пл. Ринок"></label>
+  <button class="chip swap" aria-label="Поміняти місцями">⇅</button>
+  <label class="field"><span class="dot" style="background:#E5384F"></span><input aria-label="Куди" placeholder="Куди" value="Аеропорт Львів"></label>
+  <div class="grid2" style="margin-bottom:8px"><label class="field" style="margin:0">📅<input type="date" aria-label="Дата"></label><label class="field" style="margin:0">🕐<input type="time" aria-label="Час" value="08:30"></label></div>
+  <div class="modes" id="modes" role="group" aria-label="Види транспорту"></div>
+  <p class="note" id="modeNote">Оберіть один або кілька видів. «Пішки» — сегмент маршруту.</p>
+  <button class="cta" id="find">Знайти маршрут</button>
+ </section>
+ <section class="screen" id="results" aria-label="Результати">
+  <div id="map" aria-label="Карта (демо)"><svg viewBox="0 0 430 900" preserveAspectRatio="xMidYMid slice"><g id="routes"></g><circle cx="90" cy="150" r="9" fill="#005BDE" stroke="#fff" stroke-width="3"/><circle cx="340" cy="400" r="9" fill="#E5384F" stroke="#fff" stroke-width="3"/><g id="vehicle"></g></svg></div>
+  <div class="hudtop" id="hudtop">↱ Через 200 м — вул. Городоцька</div>
+  <div class="hud" id="hud"><b id="hudEta">Прибуття 09:06 · 36 хв</b><div class="meta">Далі: посадка Автобус 24 · 1.2 км</div><button class="chip" id="endnav" style="margin-top:8px;width:100%">Завершити навігацію</button></div>
+  <div id="sheet" class="anim" aria-label="Результати та деталі">
+   <div class="handle" id="handle" role="slider" tabindex="0" aria-label="Висота панелі" aria-valuemin="0" aria-valuemax="3" aria-valuenow="1"><span></span></div>
+   <div class="sheetbody" id="sheetbody"></div>
+  </div>
+ </section>
+ <section class="screen" id="trips" aria-label="Поїздки">
+  <h1>Мої поїздки</h1>
+  <div class="pass"><span class="demo">ДЕМО · НЕ LIVE</span><h2 style="margin-top:8px;font-size:20px">MarshPass</h2><p class="meta">Лише квиток попутки. Статус: <span class="state s-est">Очікує підтвердження сервера</span></p><p class="meta">Посадка: пл. Ринок · 08:30 · Водій: Андрій · QR недоступний (сервер не підтримує)</p><button class="cta" style="margin-top:12px" data-go="results">Навігація до посадки</button></div>
+ </section>
+ <section class="screen" id="profile" aria-label="Профіль"><h1>Профіль</h1><p class="note">Демо-екран. Тема й концепція перемикаються зверху.</p></section>
+ <section class="screen" id="publish" aria-label="Публікація"><h1>Опублікувати поїздку</h1><p class="note">Крок 1 з 3: маршрут. Довгі форми розбиваємо на кроки; чернетка зберігається, лише якщо це підтримує сервер.</p><button class="cta" disabled style="opacity:.5">Далі (заповніть маршрут)</button></section>
+ <section class="screen" id="nav" aria-label="Навігація"><h1>Навігація</h1><p class="note">Оберіть маршрут у пошуку, потім «Розпочати».</p><button class="cta" data-go="search">Знайти маршрут</button></section>
+ <section class="screen" id="transit" aria-label="Карта транспорту"><h1>Карта транспорту</h1><p class="note">Без GPS-даних транспорт не рухається: показано лише «За розкладом».</p><span class="demo">ДЕМО · НЕ LIVE</span></section>
+ <button class="back" id="back">↩ Повернутися до навігації</button>
+ <nav class="tabs" aria-label="Основна навігація">
+  <button data-tab="home" aria-current="page">🏠<span>Головна</span></button>
+  <button data-tab="search">🔍<span>Пошук</span></button>
+  <button class="plus" data-tab="publish" aria-label="Опублікувати або створити запит"><span>＋</span></button>
+  <button data-tab="trips">🧳<span>Поїздки</span></button>
+  <button data-tab="profile">👤<span>Профіль</span></button>
+ </nav>
+</div>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const root=document.body;
+const MODES=[["🚗","Попутка"],["🚐","Маршрутка"],["🚌","Автобус"],["🚕","Таксі"],["🚋","Трамвай"],["🚎","Тролейбус"],["🚇","Метро"],["🚆","Поїзд"],["🚲","Велосипед"],["🛴","Самокат"],["🚙","Каршеринг"],["🚐","Трансфер"]];
+const selected=new Set();
+$("#modes").innerHTML=MODES.map(([i,n])=>{const dis=n==="Метро";return `<button class="mode" aria-pressed="false" ${dis?'aria-disabled="true"':''} data-m="${n}"><span style="font-size:24px">${i}</span>${n}${dis?'<small>Недоступно</small>':''}</button>`}).join("");
+$("#modes").onclick=e=>{const b=e.target.closest(".mode");if(!b)return;const n=b.dataset.m;
+ if(n==="Метро"){$("#modeNote").textContent="Метро у Львові відсутнє — вид недоступний.";return}
+ selected.has(n)?selected.delete(n):selected.add(n);b.setAttribute("aria-pressed",selected.has(n));
+ $("#modeNote").textContent=selected.size?`Обрано: ${[...selected].join(", ")}`:"Оберіть один або кілька видів. «Пішки» — сегмент маршруту."};
+// concept/theme
+$$("[data-c]").forEach(b=>b.onclick=()=>{root.dataset.concept=b.dataset.c;$$("[data-c]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+$("#theme").onclick=e=>{const d=root.dataset.theme==="dark";root.dataset.theme=d?"light":"dark";e.target.setAttribute("aria-pressed",!d);e.target.textContent=d?"Dark":"Light"};
+// tabs & session
+let navActive=false,cur="home";
+function show(id){cur=id;$$(".screen").forEach(s=>s.classList.toggle("on",s.id===id));
+ $$("nav.tabs [data-tab]").forEach(b=>b.removeAttribute("aria-current"));const t=$(`nav.tabs [data-tab="${id}"]`);if(t)t.setAttribute("aria-current","page");
+ $("#back").classList.toggle("on",navActive&&id!=="results");}
+document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g)show(g.dataset.go);const t=e.target.closest("[data-tab]");if(t)show(t.dataset.tab)});
+$("#back").onclick=()=>show("results");
+$("#find").onclick=()=>{if(offline){banner("Offline: пошук недоступний. Дані не оновлено.",true);return}show("results");render();setSnap(1)};
+// data (DEMO)
+const J=[
+ {id:1,min:36,price:42,segs:[["walk",4,"🚶 4"],["bus",18,"24 · 18"],["wait",3,"3"],["tram",9,"6 · 9"],["walk",2,"2"]],state:["s-live","Real-time GPS"],stops:["Посадка: пл. Ринок","Площа Галицька","Оперний театр","Пересадка: Вокзал","Висадка: Аеропорт"]},
+ {id:2,min:28,price:null,segs:[["walk",3,"3"],["car",25,"🚗 25"]],state:["s-est","Оцінка"],stops:["Посадка: вул. Городоцька 12","Висадка: Аеропорт"],tariff:"—"},
+ {id:3,min:44,price:19,segs:[["walk",6,"6"],["bus",34,"48 · 34"],["walk",4,"4"]],state:["s-sch","За розкладом"],stops:["Посадка: Стрийський парк","Центральний ринок","Висадка: Аеропорт"]}];
+let sort="opt",sel=1,legSel=null;
+function order(){const a=[...J];if(sort==="fast")a.sort((x,y)=>x.min-y.min);if(sort==="cheap")a.sort((x,y)=>(x.price??1e9)-(y.price??1e9));return a}
+function render(){const body=$("#sheetbody");const j=J.find(x=>x.id===sel);
+ body.innerHTML=`<div class="sorts" role="group" aria-label="Сортування">${[["opt","Оптимальний"],["fast","Найшвидший"],["cheap","Найдешевший"]].map(([k,n])=>`<button data-s="${k}" aria-pressed="${sort===k}">${n}</button>`).join("")}</div>`+
+ order().map(r=>`<button class="card" data-r="${r.id}" aria-pressed="${r.id===sel}">
+  <div class="big"><span>${r.min} хв</span><span class="sep">|</span><span>${r.price==null?"—":r.price+" грн"}</span></div>
+  ${r.price==null?'<div class="meta">Тариф невідомий</div>':''}
+  <div class="thread" aria-label="Сегменти за тривалістю">${r.segs.map((s,i)=>`<span class="seg ${s[0]}" style="flex:${s[1]}" title="${s[2]}" data-leg="${r.id}-${i}">${s[2]}</span>`).join("")}</div>
+  <div class="meta"><span class="state ${r.state[0]}">${r.state[1]}</span><span class="demo">ДЕМО · НЕ LIVE</span></div></button>`).join("")+
+ `<div class="detail"><h2 style="font-size:20px">Деталі маршруту ${j.min} хв</h2><ol>${j.stops.map(s=>`<li>${s}</li>`).join("")}</ol>
+ <button class="cta" id="start">Розпочати</button></div>`;
+ drawRoutes();}
+$("#sheetbody").onclick=e=>{const s=e.target.closest("[data-s]");if(s){sort=s.dataset.s;render();return}
+ const r=e.target.closest("[data-r]");if(r){sel=+r.dataset.r;render();setSnap(Math.max(snap,2));return}
+ if(e.target.id==="start"){navActive=true;$("#hud").classList.add("on");$("#hudtop").classList.add("on");setSnap(0)}};
+$("#endnav").onclick=()=>{navActive=false;$("#hud").classList.remove("on");$("#hudtop").classList.remove("on");$("#back").classList.remove("on");setSnap(1)};
+function drawRoutes(){$("#routes").innerHTML=J.map(r=>{const on=r.id===sel;const d=r.id===1?"M90 150 C150 250 250 300 340 400":r.id===2?"M90 150 C120 350 300 350 340 400":"M90 150 C60 300 220 450 340 400";
+ return `<path d="${d}" fill="none" stroke="${on?'#005BDE':'#7B8AA0'}" stroke-width="${on?7:4}" opacity="${on?1:.45}" stroke-linecap="round" ${r.id===3?'stroke-dasharray="2 10"':''}/>`}).join("");
+ const j=J.find(x=>x.id===sel);$("#vehicle").innerHTML=(j.state[0]==="s-live"&&gps&&!offline)?`<circle cx="190" cy="250" r="8" fill="#19704B" stroke="#fff" stroke-width="3"><animate attributeName="cx" values="190;230" dur="4s" repeatCount="indefinite"/></circle>`:"";}
+// sheet: 4 snaps, drag
+const SN=[.12,.34,.64,1];let snap=1;const sheet=$("#sheet");
+function area(){return $("#results").clientHeight}
+function setSnap(i,anim=true){snap=Math.max(0,Math.min(3,i));sheet.classList.toggle("anim",anim);sheet.style.transform=`translateY(${(1-SN[snap])*100}%)`;$("#handle").setAttribute("aria-valuenow",snap)}
+let drag=null;
+$("#handle").addEventListener("pointerdown",e=>{drag={y:e.clientY,start:(1-SN[snap])*area(),h:area()};sheet.classList.remove("anim");$("#handle").setPointerCapture(e.pointerId)});
+$("#handle").addEventListener("pointermove",e=>{if(!drag)return;const y=Math.max(0,Math.min(drag.h*(1-SN[0]),drag.start+e.clientY-drag.y));sheet.style.transform=`translateY(${y}px)`;drag.cur=y});
+function end(){if(!drag)return;const v=1-(drag.cur??drag.start)/drag.h;let b=0;SN.forEach((s,i)=>{if(Math.abs(s-v)<Math.abs(SN[b]-v))b=i});drag=null;setSnap(b)}
+$("#handle").addEventListener("pointerup",end);$("#handle").addEventListener("pointercancel",end);
+$("#handle").addEventListener("keydown",e=>{if(e.key==="ArrowUp"){setSnap(snap+1);e.preventDefault()}if(e.key==="ArrowDown"){setSnap(snap-1);e.preventDefault()}});
+// toggles
+let offline=false,gps=true;
+function banner(t,off){$("#banners").innerHTML=t?`<div class="banner ${off?'off':''}" role="status">${t}</div>`:""}
+$("#offline").onclick=e=>{offline=!offline;e.target.setAttribute("aria-pressed",offline);banner(offline?"Offline: показано збережені дані. Нові дії не виконуються.":"",true);render()};
+$("#gps").onclick=e=>{gps=!gps;e.target.setAttribute("aria-pressed",gps);banner(gps?"":"GPS недоступний: рух транспорту не показується.",false);drawRoutes()};
+$("#rm").onclick=e=>{const on=e.target.getAttribute("aria-pressed")!=="true";e.target.setAttribute("aria-pressed",on);root.style.setProperty("--rm",on?1:0);sheet.style.transitionDuration=on?"0ms":""};
+render();setSnap(1,false);
+</script>
+</body>
+</html>

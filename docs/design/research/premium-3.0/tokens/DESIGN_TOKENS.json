@@ -1,0 +1,32 @@
+{
+  "$comment": "PROPOSED — not applied to production. Source: Design 3.0 master brief §5.1. Generates --mg-* CSS vars; --mode-* kept until controlled migration.",
+  "color": {
+    "canvas": {"light": "#F6F8FC", "dark": "#0B1420"},
+    "surface": {"light": "#FFFFFF", "dark": "#152333"},
+    "surfaceRaised": {"light": "#EFF4FA", "dark": "#1C2B3D"},
+    "ink": {"light": "#0B1C2D", "dark": "#F3F7FC"},
+    "inkSecondary": {"light": "#50647D", "dark": "#A8BED5"},
+    "border": {"light": "#D6E1EE", "dark": "#34475D"},
+    "brandAction": {"light": "#005BDE", "dark": "#71B5FF"},
+    "onBrandAction": {"light": "#FFFFFF", "dark": "#0B1420"},
+    "brandTint": {"light": "#E8F1FF", "dark": "#193756"},
+    "routeSelected": {"light": "#005BDE", "dark": "#71B5FF"},
+    "success": {"light": "#19704B", "dark": "#55D5A0"},
+    "warning": {"light": "#9A5900", "dark": "#FFC36D"},
+    "danger": {"light": "#B5213B", "dark": "#FF8894"},
+    "focusRing": {"light": "#005BDE", "dark": "#A8D0FF"}
+  },
+  "space": [4, 8, 12, 16, 20, 24, 32, 40],
+  "radius": {"sm": 10, "md": 14, "card": 18, "hero": 24, "sheet": 22, "pill": 999},
+  "size": {"ctaPrimary": 56, "ctaSecondary": 48, "input": 56, "touchWeb": 48, "homeTile": 112},
+  "type": {
+    "hero": [28, 34, 700], "page": [24, 30, 700], "section": [20, 26, 700],
+    "routeValue": [28, 32, 800], "body": [16, 24, 500], "label": [14, 20, 600],
+    "supporting": [13, 18, 500], "micro": [12, 16, 600]
+  },
+  "motion": {
+    "press": [90, 130], "tab": [160, 220], "disclosure": [180, 240], "sheetSnap": [220, 340],
+    "routeFocus": [220, 360], "reduce": [0, 80], "sheetSpring": {"stiffness": 360, "damping": 34}
+  },
+  "sheetSnap": [0.12, 0.34, 0.64, 1.0]
+}
