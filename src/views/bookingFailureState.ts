@@ -19,7 +19,7 @@ export function isOfferNoLongerBookable(error: unknown): boolean {
 
 export const OFFER_NO_LONGER_BOOKABLE_TEXT = 'Сервер більше не відкриває цю поїздку для бронювання: останні місця зайняли, поїздку скасовано або вона вже відправилася. Бронювання не створено.';
 
-export const NETWORK_FAILURE_TEXT = 'Сервер не відповів. Бронювання перевірено за списком «Поїздки» — якщо місця немає, спробуйте ще раз.';
+export const NETWORK_FAILURE_TEXT = 'Сервер не відповів — бронювання не підтверджено. Перевірте список «Поїздки»: якщо бронювання там немає, спробуйте ще раз.';
 
 // Deep links open a single offer, booking or demand; their failures must read as
 // product states in Ukrainian while preserving the client-side Ukrainian guards.

@@ -31,6 +31,14 @@ describe('booking confirmation honesty', () => {
       'journey leg already has a booking');
   });
 
+  it('never claims a network-failed booking was verified or created', () => {
+    // The reconciliation refresh can itself fail offline, so the copy must ask
+    // the passenger to check «Поїздки» instead of asserting a completed check.
+    assert.match(NETWORK_FAILURE_TEXT, /не підтверджено/);
+    assert.doesNotMatch(NETWORK_FAILURE_TEXT, /перевірено за списком/);
+    assert.match(NETWORK_FAILURE_TEXT, /Перевірте список «Поїздки»/);
+  });
+
   it('treats only the 404 from the bookable-offer endpoint as the trip being closed', () => {
     assert.equal(isOfferNoLongerBookable(new ProductionApiError('Offer not found', 'not_found', 404)), true);
     assert.equal(isOfferNoLongerBookable(new ProductionApiError('Request failed (500)', undefined, 500)), false);
