@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ApiJourney } from '../src/services/productionApi';
 import {
-  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyArrivalDayNote, journeyBoardingNote, journeyRouteBadge, journeyTimeBreakdown, searchPendingCopy, unavailableTransportNotices,
+  buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyArrivalDayNote, journeyBoardingNote, journeyRouteBadge, journeySummaryDepartureAt, journeyTimeBreakdown, searchPendingCopy, unavailableTransportNotices,
 } from '../src/views/journeyResultPresentation';
 
 const leg = (overrides: Partial<ApiJourney['legs'][number]>): ApiJourney['legs'][number] => ({
@@ -269,6 +269,21 @@ describe('journeyRouteBadge', () => {
 });
 
 describe('journey arrival day and time split', () => {
+  it('uses the requested start in the summary when the total includes an initial wait', () => {
+    const delayed = journey({
+      requestedDepartureAt: '2026-10-13T08:00:00+03:00',
+      totalDurationSeconds: 10_920,
+      legs: [leg({ departureAt: '2026-10-13T09:45:00+03:00', arrivalAt: '2026-10-13T11:02:00+03:00' })],
+    });
+    assert.equal(journeySummaryDepartureAt(delayed), '2026-10-13T08:00:00+03:00');
+  });
+
+  it('falls back to the first leg when the requested time is missing or invalid', () => {
+    const noRequest = journey({ requestedDepartureAt: undefined });
+    assert.equal(journeySummaryDepartureAt(noRequest), noRequest.legs[0].departureAt);
+    assert.equal(journeySummaryDepartureAt(journey({ requestedDepartureAt: 'invalid' })), journey().legs[0].departureAt);
+  });
+
   it('names an arrival after midnight instead of showing an ambiguous clock', () => {
     assert.equal(journeyArrivalDayNote('2026-11-10T00:48:00+02:00', '2026-11-09T08:00:00+02:00'), 'наступного дня');
     assert.equal(journeyArrivalDayNote('2026-11-09T23:48:00+02:00', '2026-11-09T08:00:00+02:00'), '');

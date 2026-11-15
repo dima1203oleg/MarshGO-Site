@@ -35,9 +35,20 @@ describe('MARSHGO v4.1 home tiles and central action menu', () => {
   });
 
   it('closes on Escape, on a click outside, and exposes dialog semantics', () => {
-    assert.match(marketplace, /if \(event\.key === 'Escape'\) setShowCreateMenu\(false\)/);
+    assert.match(marketplace, /if \(event\.key === 'Escape'\) \{ setShowCreateMenu\(false\); return; \}/);
     assert.match(menuBlock(marketplace), /event\.target === event\.currentTarget\) setShowCreateMenu\(false\)/);
     assert.match(menuBlock(marketplace), /role="dialog" aria-modal="true"/);
+  });
+
+  it('places the create dialog above the dock and keeps keyboard focus inside it', () => {
+    const block = menuBlock(marketplace);
+    assert.match(block, /z-\[var\(--mg-z-modal\)\]/, 'the dock must not cover the passenger create action');
+    assert.match(block, /pb-\[calc\(var\(--mg-global-nav-clearance\)\+1\.25rem\)\]/, 'the mobile dialog should sit above the dock with a clear gap');
+    assert.match(block, /ref=\{createMenuRef\} tabIndex=\{-1\} role="dialog"/);
+    assert.match(marketplace, /if \(!dialog\.contains\(active\)\) \{ event\.preventDefault\(\); \(event\.shiftKey \? last : first\)\.focus\(\); \}/);
+    assert.match(marketplace, /event\.shiftKey && active === first/);
+    assert.match(marketplace, /!event\.shiftKey && active === last/);
+    assert.match(marketplace, /createMenuTriggerRef\.current\?\.focus\(\)/, 'closing the dialog restores focus to its trigger');
   });
 
   it('every menu action reaches a real screen instead of a stub', () => {

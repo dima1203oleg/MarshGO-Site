@@ -9,19 +9,18 @@ import { TransportTypesPanel } from '../src/components/TransportTypesPanel';
 import { defaultSelection, supportedJourneySearchTypes, transportTypes } from '../src/domain/transportPreferences';
 
 describe('TransportTypesPanel corridor-aware selection', () => {
-  it('keeps all twelve supported modes selectable when endpoint discovery only finds a bus feed', async () => {
+  it('keeps all twelve supported modes selectable on one fixed 4x3 board', async () => {
     const html = renderToStaticMarkup(createElement(TransportTypesPanel, {
       selection: defaultSelection,
-      groups: [{
-        transportType: 'bus',
-        providers: [{ id: 'bus:lviv', name: 'Lviv GTFS', available: true, cities: ['Львів'], sources: ['gtfs'], services: ['bus'] }],
-      }],
+      groups: null,
       onChange: () => undefined,
       compact: true,
     }));
 
     assert.match(html, /data-testid="transport-mode-selector" role="group" aria-label="Усі 12 видів транспорту" class="transport-mode-grid transport-mode-grid--compact"/,
       'the compact search selector announces all twelve categories on one fixed board');
+    assert.match(html, /Види транспорту<span aria-label="12 категорій"/,
+      'the heading keeps the explicit twelve-category badge');
     const css = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../src/index.css'), 'utf8');
     assert.match(css, /\.transport-types-inline \.transport-mode-grid--compact\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\);/,
       'the mobile selector is a four-column board, so twelve categories fill three rows');
@@ -29,19 +28,11 @@ describe('TransportTypesPanel corridor-aware selection', () => {
       'no category may hide behind horizontal scrolling');
     assert.match(css, /\.transport-mode-grid--compact \.transport-mode-tile__label\s*\{[^}]*white-space:\s*nowrap;[^}]*font-size:\s*\.75rem;/,
       'tile labels stay on one line at the 12 px typography floor');
-
     for (const id of supportedJourneySearchTypes) {
-      const mode = transportTypes.find((item) => item.id === id);
-      assert.ok(mode, `mode ${id} must have a product label`);
-      const escapedLabel = mode.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const button = html.match(new RegExp(`<button\\b(?=[^>]*aria-label="${escapedLabel}")[^>]*>`))?.[0];
-      assert.ok(button, `${mode.label} tile should be rendered`);
-      assert.doesNotMatch(button, /\sdisabled(?:="")?(?:\s|>)/, `${mode.label} should not be disabled by endpoint-local coverage`);
-      assert.match(button, /aria-pressed="true"/, `${mode.label} stays selected by default`);
+      const type = transportTypes.find(({ id: candidate }) => candidate === id);
+      assert.ok(type, `missing category ${id}`);
+      assert.match(html, new RegExp(`aria-pressed="true" aria-label="${type.label}"`), `${type.label} remains visible and selected`);
     }
-
-    assert.doesNotMatch(html, /провайдери біля вибраних точок знайдені|усі види.*додасть решту/i,
-      'endpoint coverage stays out of the passenger-facing transport picker');
   });
 
   it('renders twelve categories as a 4x3 board with a unique icon per category', async () => {

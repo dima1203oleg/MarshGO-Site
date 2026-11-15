@@ -1,0 +1,526 @@
+/*
+ * MARSHGO responsive shell — unique desktop and tablet presentations of the SAME
+ * production screens (same tabs, same handlers, same search → results → map flow).
+ *
+ * Every rule is scoped to [data-formfactor="desktop"|"tablet"], an attribute the
+ * useFormFactor() hook writes onto the .production-app shell. There are NO mobile
+ * rules here: below 768px the phone keeps every existing index.css rule untouched.
+ *
+ * Colours come only from the --mg-* registry in index.css (paired in :root and
+ * html.dark); geometry comes from the --mg-shell-* layout tokens. No literal hex,
+ * no new spacing values — paddings reuse the numbers the desktop screens already use.
+ *
+ * The immersive route shell (.route-immersive-shell) is excluded from the full-bleed
+ * resets so the map + draggable bottom sheet keep owning the viewport at every width.
+ * .home-viewport-shell is deliberately NOT excluded: the class is applied on Home at
+ * every width, while its CSS lives under max-width:639px — excluding it here would
+ * leave desktop Home inside the old centred glass card with the sidebar on top of it.
+ */
+
+/* ============================================================
+   DESKTOP (>=1100px): full-page app, labelled left sidebar
+   ============================================================ */
+
+[data-formfactor="desktop"].production-app:not(.route-immersive-shell) {
+  display: block;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 0 32px var(--mg-shell-sidebar-w);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--mg-canvas);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+[data-formfactor="desktop"].production-app:not(.route-immersive-shell) > .app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--mg-z-sticky);
+  width: 100%;
+  max-width: none;
+  min-height: 72px;
+  margin-inline: 0;
+  padding: 14px 32px;
+  border-bottom: 1px solid var(--mg-border-subtle);
+  background: var(--mg-surface-glass);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+
+[data-formfactor="desktop"].production-app:not(.route-immersive-shell) > .pt-1 {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 24px 32px 48px;
+}
+
+/* The bottom tab bar becomes a fixed, full-height labelled sidebar. */
+[data-formfactor="desktop"].production-app > .app-tabbar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: var(--mg-z-sticky);
+  display: flex;
+  flex-direction: column;
+  width: var(--mg-shell-sidebar-w);
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  /* The phone rule pins padding-bottom with !important; the sidebar resets it. */
+  padding: 24px 12px max(12px, env(safe-area-inset-bottom)) !important;
+  border: 0;
+  border-right: 1px solid var(--mg-border-subtle);
+  border-radius: 0;
+  background: var(--mg-surface-primary);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+[data-formfactor="desktop"] .app-tabbar-inner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Create leads the sidebar as a full-width labelled pill. */
+[data-formfactor="desktop"] .app-tabbar-inner .app-create-button {
+  order: -1;
+  grid-column: auto;
+  grid-row: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: auto;
+  min-height: 44px;
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  border-radius: var(--mg-radius-pill);
+  background: var(--mg-action);
+  color: var(--mg-surface-primary);
+  box-shadow: none;
+}
+[data-formfactor="desktop"] .app-tabbar-inner .app-create-button:hover {
+  background: var(--mg-action-hover);
+}
+html.dark [data-formfactor="desktop"] .app-tabbar-inner .app-create-button {
+  color: var(--mg-ink-primary);
+}
+[data-formfactor="desktop"] .desktop-create-label {
+  display: inline;
+  font-size: .875rem;
+  font-weight: 700;
+}
+
+/* Tabs are horizontal icon + label rows, never below the 44px touch floor. */
+[data-formfactor="desktop"] .app-tabbar-inner button:not(.app-create-button) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--mg-radius-md);
+}
+[data-formfactor="desktop"] .app-tabbar-inner button:not(.app-create-button) > span {
+  font-size: .875rem;
+}
+[data-formfactor="desktop"] .app-tabbar-inner button:not(.app-create-button):hover {
+  background: var(--mg-surface-secondary);
+}
+[data-formfactor="desktop"] .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
+  background: var(--mg-surface-tint);
+  color: var(--mg-blue-ink);
+}
+[data-formfactor="desktop"] .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg {
+  color: var(--mg-blue-ink);
+}
+[data-formfactor="desktop"] .app-tabbar-inner button:focus-visible {
+  outline: 2px solid var(--mg-blue);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   DESKTOP WORKSPACE: every canonical screen recomposed to fill the
+   viewport edge-to-edge beside the sidebar. No centred reading column,
+   no 1280px cap — the phone's max-w-xl stack becomes a wide multi-panel
+   desktop app. The immersive route map is excluded above and still owns
+   the viewport (canonical list-first, map-on-selection is preserved).
+   ============================================================ */
+
+/* Home — a wide dashboard: full-width hero band, four actions across,
+   three large destination photos across (the phone stacks all of these). */
+[data-formfactor="desktop"].production-app > .pt-1 > .home-hero--canonical {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 20px;
+  align-content: start;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .home-hero--canonical > .home-canonical-banner,
+[data-formfactor="desktop"] .home-hero--canonical > .home-marshpass-slot {
+  grid-column: 1 / -1;
+  min-height: 220px;
+  margin-bottom: 0;
+  padding: 32px;
+}
+[data-formfactor="desktop"] .home-marshpass-promo__title {
+  font-size: 2rem;
+}
+[data-formfactor="desktop"] .home-hero--canonical > .home-action-grid {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: none;
+  gap: 16px;
+}
+[data-formfactor="desktop"] .home-action-card {
+  min-height: 150px;
+}
+[data-formfactor="desktop"] .home-hero--canonical > .home-popular-routes {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+[data-formfactor="desktop"] .home-popular-routes__row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  overflow: visible;
+}
+[data-formfactor="desktop"] .home-popular-route {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: 200px;
+}
+
+/* Search — a wide command canvas: a full-bleed photo hero with a horizontal
+   command bar overlapping it (places left, when/who right, categories below). */
+[data-formfactor="desktop"].production-app > .pt-1 > .search-screen {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .search-screen > .home-intro {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: 320px;
+  margin: 0;
+  padding: 48px 48px 160px;
+}
+[data-formfactor="desktop"] .search-screen > .home-search-panel {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  z-index: var(--mg-z-base);
+  margin: -128px 0 0;
+  padding-inline: 32px;
+}
+[data-formfactor="desktop"] .journey-search-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  column-gap: 24px;
+  row-gap: 16px;
+  align-items: start;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding: 24px;
+}
+[data-formfactor="desktop"] .journey-search-card > .relative {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-trip-details:not(.search-trip-details--stack) {
+  grid-column: 2;
+  grid-row: 1;
+  margin-top: 0;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-trip-details--stack {
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: 0;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-custom-budget {
+  grid-column: 1 / -1;
+}
+[data-formfactor="desktop"] .journey-search-card > .transport-types-inline {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+[data-formfactor="desktop"] .journey-search-card .transport-mode-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-direct-only {
+  grid-column: 1;
+  margin-top: 0;
+}
+[data-formfactor="desktop"] .journey-search-card > .search-submit {
+  grid-column: 2;
+  margin-top: 0;
+  align-self: stretch;
+}
+
+/* Results — a wide workspace of route cards, two across, with a sticky
+   command header. Selecting a card still opens the canonical immersive map. */
+[data-formfactor="desktop"].production-app:not(.route-immersive-shell) > .pt-1 > .journey-results {
+  display: block;
+  width: 100%;
+  max-width: none;
+  min-height: calc(100vh - 120px);
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .journey-results-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--mg-z-sticky);
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mg-border-subtle);
+  background: var(--mg-surface-glass);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+[data-formfactor="desktop"] .journey-results [data-testid="journey-results-list"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Trips — a wide board: the section card lists flow into multiple columns. */
+[data-formfactor="desktop"].production-app > .pt-1 > .trips-screen {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .trips-screen [role="tablist"] {
+  max-width: 760px;
+}
+[data-formfactor="desktop"] #trips-content > .space-y-3,
+[data-formfactor="desktop"] #trips-content section > .space-y-2,
+[data-formfactor="desktop"] #trips-content section > .space-y-2\.5 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+/* Profile — a two-column account board instead of a narrow vertical stack. */
+[data-formfactor="desktop"].production-app > .pt-1 > .profile-screen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+[data-formfactor="desktop"] .profile-screen > div:first-child {
+  grid-column: 1 / -1;
+}
+
+/* ============================================================
+   TABLET (768–1099px): full-page app, icon-only left rail
+   ============================================================ */
+
+[data-formfactor="tablet"].production-app:not(.route-immersive-shell) {
+  display: block;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 0 32px var(--mg-shell-rail-w);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--mg-canvas);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+[data-formfactor="tablet"].production-app:not(.route-immersive-shell) > .app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--mg-z-sticky);
+  width: 100%;
+  max-width: var(--mg-shell-content-max);
+  margin-inline: auto;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--mg-border-subtle);
+  background: var(--mg-surface-glass);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+
+[data-formfactor="tablet"].production-app:not(.route-immersive-shell) > .pt-1 {
+  width: 100%;
+  max-width: var(--mg-shell-content-max);
+  margin-inline: auto;
+  padding: 24px;
+}
+
+[data-formfactor="tablet"].production-app > .app-tabbar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: var(--mg-z-sticky);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--mg-shell-rail-w);
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  padding: 24px 8px max(12px, env(safe-area-inset-bottom)) !important;
+  border: 0;
+  border-right: 1px solid var(--mg-border-subtle);
+  border-radius: 0;
+  background: var(--mg-surface-primary);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+[data-formfactor="tablet"] .app-tabbar-inner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Create stays a circular action at the top of the rail. */
+[data-formfactor="tablet"] .app-tabbar-inner .app-create-button {
+  order: -1;
+  grid-column: auto;
+  grid-row: auto;
+  justify-self: center;
+  width: 56px;
+  height: 56px;
+  min-height: 56px;
+  margin: 0 0 12px;
+  padding: 0;
+  border-radius: var(--mg-radius-pill);
+  background: var(--mg-action);
+  color: var(--mg-surface-primary);
+  box-shadow: none;
+}
+[data-formfactor="tablet"] .app-tabbar-inner .app-create-button:hover {
+  background: var(--mg-action-hover);
+}
+html.dark [data-formfactor="tablet"] .app-tabbar-inner .app-create-button {
+  color: var(--mg-ink-primary);
+}
+[data-formfactor="tablet"] .desktop-create-label {
+  display: none;
+}
+
+/* Icon-only destinations: the visible label is hidden, aria-label keeps the name. */
+[data-formfactor="tablet"] .app-tabbar-inner button:not(.app-create-button) {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 56px;
+  min-height: 56px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: var(--mg-radius-lg);
+}
+[data-formfactor="tablet"] .app-tabbar-inner button:not(.app-create-button) > span {
+  display: none;
+}
+[data-formfactor="tablet"] .app-tabbar-inner button:not(.app-create-button):hover {
+  background: var(--mg-surface-secondary);
+}
+[data-formfactor="tablet"] .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] {
+  background: var(--mg-surface-tint);
+  color: var(--mg-blue-ink);
+}
+[data-formfactor="tablet"] .app-tabbar-inner button:not(.app-create-button)[aria-current="page"] svg {
+  color: var(--mg-blue-ink);
+}
+[data-formfactor="tablet"] .app-tabbar-inner button:focus-visible {
+  outline: 2px solid var(--mg-blue);
+  outline-offset: 2px;
+}
+
+/* Tablet Home: the canonical banner spans the reading column, then the four
+   square quick actions (still a two-column grid) sit beside the popular routes —
+   a composition the phone never shows. */
+[data-formfactor="tablet"] .home-hero--canonical {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-content: start;
+  max-width: 760px;
+  padding-inline: 24px;
+}
+[data-formfactor="tablet"] .home-hero--canonical > .home-canonical-banner,
+[data-formfactor="tablet"] .home-hero--canonical > .home-marshpass-slot {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+[data-formfactor="tablet"] .home-hero--canonical > .home-action-grid {
+  grid-column: 1;
+  grid-template-rows: repeat(2, 9rem);
+}
+[data-formfactor="tablet"] .home-hero--canonical > .home-popular-routes {
+  grid-column: 2;
+  margin-top: 0;
+}
+[data-formfactor="tablet"] .home-popular-routes__row {
+  flex-direction: column;
+  overflow-x: visible;
+}
+[data-formfactor="tablet"] .home-popular-route {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: 5rem;
+}
+
+/* Tablet results: the same approved list + map split the desktop uses, extended
+   down to 768px. The selector outranks the 640–1023px reading-column cap. */
+[data-formfactor="tablet"].production-app > .pt-1 > .journey-results {
+  display: grid;
+  grid-template-columns: minmax(320px, .6fr) minmax(0, 1.4fr);
+  column-gap: 24px;
+  align-items: start;
+  width: 100%;
+  max-width: none;
+  padding-inline: 0;
+}
+[data-formfactor="tablet"] .journey-results > :first-child,
+[data-formfactor="tablet"] .journey-results > :nth-child(2) {
+  grid-column: 1 / -1;
+}
+[data-formfactor="tablet"] .journey-results > :nth-child(3) {
+  grid-column: 1;
+  position: sticky;
+  top: 24px;
+}
+[data-formfactor="tablet"] .journey-results > :nth-child(n+4) {
+  grid-column: 2;
+}

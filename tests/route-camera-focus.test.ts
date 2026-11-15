@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Coordinate } from '../shared/navigation/contracts';
-import { cameraForRotatedPoints, extentMeters, maximizeFitBearing, principalBearing, segmentBearingForViewport, shortestBearingDelta, cameraMoveEffort, SEGMENT_FOCUS_MAX_ZOOM } from '../src/map/routeCameraFocus';
+import { cameraForRotatedPoints, extentMeters, maximizeFitBearing, principalBearing, segmentBearingForViewport, shortestBearingDelta, cameraMoveEffort, SEGMENT_FOCUS_MAX_ZOOM, shouldUsePointCloudFit } from '../src/map/routeCameraFocus';
 
 const line = (points: Array<[number, number]>): Coordinate[] => points;
+
+test('an explicit north-up overview uses the measured point-cloud fit', () => {
+  const twoPoints = line([[24.0, 49.8], [24.01, 49.81]]);
+  assert.equal(shouldUsePointCloudFit(twoPoints, 0), true);
+  assert.equal(shouldUsePointCloudFit(twoPoints, 32), true);
+  assert.equal(shouldUsePointCloudFit(twoPoints.slice(0, 1), 0), false);
+  assert.equal(shouldUsePointCloudFit(twoPoints, undefined), false);
+  assert.equal(shouldUsePointCloudFit(twoPoints, Number.NaN), false);
+});
 
 const mercator = ([lng, lat]: Coordinate): [number, number] => {
   const sin = Math.sin(lat * Math.PI / 180);

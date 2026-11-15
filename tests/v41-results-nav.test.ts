@@ -7,7 +7,9 @@ const source = readFileSync(new URL('../src/views/ProductionMarketplace.tsx', im
 const declaration = source.split('\n').find((line) => line.includes('const immersiveRouteView ='));
 assert.ok(declaration, 'immersiveRouteView must exist in ProductionMarketplace');
 
-test('v41: the journey results list keeps the global navigation (only the full-screen map is immersive)', () => {
-  assert.ok(!/showResults/.test(declaration!), 'immersiveRouteView must not cover showResults: it removes data-testid="global-bottom-navigation" and applies .route-immersive-shell (height:100svh; overflow:hidden), which makes later result cards unreachable');
-  assert.ok(/selectedRouteMap/.test(declaration!), 'the full-screen route map is the screen that should stay immersive');
+test('v41: results keep the global navigation and route maps move it below the viewport', () => {
+  assert.ok(!/showResults/.test(declaration!), 'the results list remains outside the immersive route shell');
+  assert.ok(/selectedRouteMap/.test(declaration!), 'the full-screen route map remains immersive');
+  assert.match(source, /aria-hidden=\{!mapNavigationVisible\} inert=\{!mapNavigationVisible\}/, 'map screens hide the dock from assistive technology and keyboard focus');
+  assert.match(source, /transform: mapNavigationVisible \? 'translateY\(0\)' : 'translateY\(calc\(100% \+ env\(safe-area-inset-bottom\)\)\)'/, 'map screens slide the dock below the safe area');
 });

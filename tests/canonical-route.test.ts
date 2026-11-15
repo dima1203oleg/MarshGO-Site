@@ -28,6 +28,10 @@ test('normalizes a navigation session without dropping its server maneuvers', ()
     current_location: null,
     current_location_accuracy_m: null,
     current_location_at: null,
+    progress_status: null,
+    progress_ordinal: null,
+    progress_fraction: null,
+    last_reliable_fix_at: null,
   };
 
   const route = canonicalRoute(session);

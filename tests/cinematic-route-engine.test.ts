@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   distanceMeters,
   interpolateLineProgress,
+  prepareRoutePathSampler,
   generateSmartStepSummary,
   calculateCalloutAnchor,
   calloutIconType,
@@ -42,6 +43,37 @@ test('cinematic route engine — interpolateLineProgress handles fractional dist
   // Handles single point or empty array safely
   assert.deepEqual(interpolateLineProgress([], 0.5), []);
   assert.deepEqual(interpolateLineProgress([[24.0, 50.0]], 0.5), [[24.0, 50.0]]);
+});
+
+test('route path sampler follows cumulative distance and returns the local course', () => {
+  const line: [number, number][] = [[24, 49], [24, 49.01], [24.01, 49.01]];
+  const sampleAt = prepareRoutePathSampler(line);
+  const first = sampleAt(0);
+  assert.ok(first);
+  assert.deepEqual(first.coordinate, line[0]);
+  assert.equal(first.bearingDegrees, 0);
+
+  const cornerProgress = distanceMeters(line[0]!, line[1]!) /
+    (distanceMeters(line[0]!, line[1]!) + distanceMeters(line[1]!, line[2]!));
+  const corner = sampleAt(cornerProgress);
+  assert.ok(corner);
+  assert.ok(Math.abs(corner.coordinate[0] - line[1]![0]) < 1e-9);
+  assert.ok(Math.abs(corner.coordinate[1] - line[1]![1]) < 1e-9);
+  assert.equal(corner.bearingDegrees, 90, 'course at a corner anticipates the outgoing segment');
+
+  const end = sampleAt(1);
+  assert.ok(end);
+  assert.deepEqual(end.coordinate, line[2]);
+  assert.equal(end.bearingDegrees, 90);
+  assert.deepEqual(sampleAt(Number.NaN), first, 'non-finite progress safely resolves to the route start');
+  assert.equal(prepareRoutePathSampler([])(0.5), null);
+});
+
+test('route path sampler tolerates duplicate vertices without losing the route course', () => {
+  const sample = prepareRoutePathSampler([[24, 49], [24, 49], [24.01, 49]])(0.5);
+  assert.ok(sample);
+  assert.equal(sample.bearingDegrees, 90);
+  assert.ok(Math.abs(sample.coordinate[0] - 24.005) < 1e-9);
 });
 
 test('cinematic route engine — calloutIconType maps modes properly', () => {

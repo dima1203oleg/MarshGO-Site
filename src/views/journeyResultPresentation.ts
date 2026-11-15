@@ -16,6 +16,14 @@ export type JourneyResultSegment = {
 
 const validTime = (value?: string) => value && Number.isFinite(Date.parse(value)) ? Date.parse(value) : null;
 
+/** Use the itinerary's requested start when its total duration includes pre-departure waiting. */
+export function journeySummaryDepartureAt(journey: ApiJourney): string | null {
+  const requestedDepartureAt = journey.requestedDepartureAt;
+  if (validTime(requestedDepartureAt) !== null && requestedDepartureAt) return requestedDepartureAt;
+  const firstLegDepartureAt = journey.legs[0]?.departureAt;
+  return validTime(firstLegDepartureAt) !== null && firstLegDepartureAt ? firstLegDepartureAt : null;
+}
+
 export function formatMoneyMinor(amountMinor: number, currency: string): string {
   if (currency.toUpperCase() === 'UAH') {
     return `${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 0 }).format(amountMinor / 100)}\u00a0₴`;

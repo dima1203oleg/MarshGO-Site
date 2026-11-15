@@ -42,36 +42,35 @@ export function JourneyLegStops({
   const stops = leg.stops ?? [];
   if (!stops.length) return <p className="text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>;
   const label = leg.routeName ?? journeyLegLabel(leg.mode, leg.transportType);
-  return <ol aria-label={`Зупинки сегмента ${label}`} className="ml-1 border-l-2 pl-3">
+  return <ol aria-label={`Зупинки сегмента ${label}`} className="min-w-0">
     {stops.map((stop, index) => {
       const endpoint = index === 0 || index === stops.length - 1;
       const isSelected = activeStopId === stop.id;
       const hasCoords = Boolean(stop.coordinates && stop.coordinates.length === 2);
       const content = <>
-        <span
-          className={`absolute -left-[1.05rem] top-[.8rem] h-2.5 w-2.5 rounded-full border-2 border-[var(--route-card)] transition-transform ${isSelected ? 'scale-125 ring-2 ring-[var(--mg-blue)]' : ''}`}
-          style={{ backgroundColor: color }}
-        />
         <time className="tabular-nums text-[var(--route-subtle)]">{stopTime(stop, index)}</time>
+        <span className="mg-journey-stop-axis" data-first={index === 0} data-last={index === stops.length - 1} aria-hidden="true">
+          <span className={`mg-journey-stop-dot${isSelected ? ' ring-2 ring-[var(--mg-blue)]' : ''}`} style={{ backgroundColor: color }}/>
+        </span>
         <span className={`mg-route-stop-copy ${endpoint ? 'font-extrabold text-[var(--route-ink)]' : stop.skipped ? 'text-[var(--route-subtle)] line-through decoration-rose-500/70' : 'text-[var(--route-muted)]'}`}>
           <span className="mg-route-stop-name" title={shortPlace(stop.name)}>{shortPlace(stop.name)}</span>
-          {stop.skipped ? <strong className="mg-route-stop-badge text-rose-600 no-underline dark:text-rose-300">· ПРОПУСКАЄТЬСЯ</strong> : index === 0 ? <strong className="mg-route-stop-badge text-[var(--mg-blue-ink)]">· ПОСАДКА</strong> : index === stops.length - 1 ? <strong className="mg-route-stop-badge text-[var(--mg-blue-ink)]">· ВИСАДКА</strong> : null}
+          {stop.skipped ? <strong className="mg-route-stop-badge mg-route-stop-badge--skipped">Пропускається</strong> : index === 0 ? <strong className="mg-route-stop-badge">Посадка</strong> : index === stops.length - 1 ? <strong className="mg-route-stop-badge">Висадка</strong> : null}
         </span>
       </>;
 
-      return <li key={`${stop.id}:${index}`} className="relative">
+      return <li key={`${stop.id}:${index}`} className="relative mg-rise mg-stagger" style={{ ['--mg-stagger-i' as string]: Math.min(index, 6) }}>
         {onStopSelect && hasCoords ? (
           <button
             type="button"
             onClick={() => onStopSelect(stop, stop.coordinates)}
             aria-pressed={isSelected}
             aria-label={`Зупинка: ${shortPlace(stop.name)}, час ${stopTime(stop, index)}`}
-            className={`relative grid min-h-9 w-full grid-cols-[44px_minmax(0,1fr)] items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs transition-colors hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)] ${isSelected ? 'bg-[var(--route-hover)] ring-1 ring-[var(--mg-blue)]' : ''}`}
+            className={`mg-journey-stop-row relative w-full rounded-lg px-1 text-left text-xs hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)] ${isSelected ? 'bg-[var(--route-hover)] ring-1 ring-[var(--mg-blue)]' : ''}`}
           >
             {content}
           </button>
         ) : (
-          <div className="relative grid min-h-9 grid-cols-[44px_minmax(0,1fr)] items-center gap-2 py-0.5 text-xs">
+          <div className="mg-journey-stop-row relative text-xs">
             {content}
           </div>
         )}
