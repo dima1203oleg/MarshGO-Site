@@ -456,6 +456,15 @@ test('the theme defaults to dark and the boot shell paints it first', async () =
   assert.doesNotMatch(html, /getItem\('mg_theme'\) === 'dark'\)/, 'the shell went dark only for an explicit stored choice, so the default flashed light');
 });
 
+// Browsers fetch the manifest without cookies by default; behind an authenticated proxy (zrok
+// share) that request gets the proxy's HTML interstitial, so install metadata silently breaks.
+test('the manifest link sends credentials so a gated origin serves JSON, not an HTML interstitial', async () => {
+  const html = await readFile(resolve(dirname(fileURLToPath(import.meta.url)), '../index.html'), 'utf8');
+  const links = html.match(/<link[^>]*rel="manifest"[^>]*>/g) ?? [];
+  assert.equal(links.length, 1, 'exactly one manifest link must exist');
+  assert.match(links[0], /crossorigin="use-credentials"/, 'an anonymous manifest fetch is answered by the proxy login page');
+});
+
 // At 320–390 px the summary row cannot hold duration + price + action chips on one line, and the
 // children are shrink-0 on purpose — a cut-off fare is worse than a taller header. So the row has to
 // wrap. With a zero flex basis the line-break test never sees the real content width, the left group
