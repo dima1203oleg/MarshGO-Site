@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ApiJourney } from '../src/services/productionApi';
+import * as presentation from '../src/views/journeyResultPresentation';
 import {
   buildJourneyResultSegments, formatJourneyDistance, formatJourneyDistanceSummary, formatJourneyDuration, formatJourneyDurationTile, formatJourneySegmentPrice, formatJourneyTotalPrice, journeyArrivalDayNote, journeyBoardingNote, journeyRouteBadge, journeySummaryDepartureAt, journeyTimeBreakdown, searchPendingCopy, unavailableTransportNotices,
 } from '../src/views/journeyResultPresentation';
@@ -265,6 +266,45 @@ describe('journeyRouteBadge', () => {
     assert.equal(journeyRouteBadge(undefined), null);
     assert.equal(journeyRouteBadge(null), null);
     assert.equal(journeyRouteBadge('   '), null);
+  });
+});
+
+describe('DATE-01 source calendar dates', () => {
+  const cases = [
+    { name: 'same day', from: '2026-11-15T15:00:00+02:00', to: '2026-11-15T22:08:00+02:00', dates: ['', ''], clocks: ['15:00', '22:08'] },
+    { name: 'overnight Nov 15/16', from: '2026-11-15T22:08:00+02:00', to: '2026-11-16T06:57:00+02:00', dates: ['15.11.2026', '16.11.2026'], clocks: ['22:08', '06:57'] },
+    { name: 'month boundary', from: '2026-11-30T22:08:00+02:00', to: '2026-12-01T06:57:00+02:00', dates: ['30.11.2026', '01.12.2026'], clocks: ['22:08', '06:57'] },
+    { name: 'year boundary', from: '2026-12-31T22:08:00+02:00', to: '2027-01-01T06:57:00+02:00', dates: ['31.12.2026', '01.01.2027'], clocks: ['22:08', '06:57'] },
+    { name: 'different UTC days, same Kyiv day', from: '2026-11-15T23:30:00Z', to: '2026-11-16T04:57:00Z', dates: ['', ''], clocks: ['01:30', '06:57'] },
+    { name: 'spring DST overnight', from: '2026-03-28T23:30:00+02:00', to: '2026-03-29T04:30:00+03:00', dates: ['28.03.2026', '29.03.2026'], clocks: ['23:30', '04:30'] },
+    { name: 'fall DST overnight', from: '2026-10-24T23:30:00+03:00', to: '2026-10-25T03:30:00+02:00', dates: ['24.10.2026', '25.10.2026'], clocks: ['23:30', '03:30'] },
+    { name: 'spring DST gap within one day', from: '2026-03-29T00:30:00Z', to: '2026-03-29T01:30:00Z', dates: ['', ''], clocks: ['02:30', '04:30'] },
+    { name: 'fall DST repeated hour within one day', from: '2026-10-25T00:30:00Z', to: '2026-10-25T01:30:00Z', dates: ['', ''], clocks: ['03:30', '03:30'] },
+    { name: 'multi-day timestamp, no +1 inference', from: '2026-11-15T22:08:00+02:00', to: '2026-11-18T06:57:00+02:00', dates: ['15.11.2026', '18.11.2026'], clocks: ['22:08', '06:57'] },
+  ];
+  for (const sample of cases) it(sample.name, () => {
+    const showDate = presentation.journeyTimesCrossCalendarDay([sample.from, sample.to]);
+    const times = [sample.from, sample.to].map(value => presentation.journeyTimeDisplay(value, showDate));
+    assert.deepEqual(times.map(time => time.date), sample.dates);
+    assert.deepEqual(times.map(time => time.clock), sample.clocks);
+    assert.deepEqual(times.map(time => time.dateTime), [sample.from, sample.to]);
+    assert.deepEqual(times.map(time => time.label), sample.clocks.map((clock, index) => sample.dates[index] ? `${clock} ${sample.dates[index]}` : clock));
+  });
+
+  it('never gives a missing or invalid time a date, even in dated context', () => {
+    for (const value of [undefined, null, '', 'invalid', '22:08']) {
+      assert.deepEqual(presentation.journeyTimeDisplay(value, true), { clock: '—', date: '', dateTime: undefined, label: '—' });
+      assert.equal(presentation.journeyTimesCrossCalendarDay([value, '2026-11-16T06:57:00+02:00']), false);
+    }
+  });
+
+  it('uses requested departure for dated summary, not first boarding', () => {
+    const delayed = journey({ requestedDepartureAt: '2026-11-15T15:00:00+02:00', legs: [leg({ departureAt: '2026-11-16T01:00:00+02:00', arrivalAt: '2026-11-16T06:57:00+02:00' })] });
+    const departureAt = journeySummaryDepartureAt(delayed);
+    const arrivalAt = delayed.legs.at(-1)!.arrivalAt;
+    const showDate = presentation.journeyTimesCrossCalendarDay([departureAt, arrivalAt]);
+    assert.equal(presentation.journeyTimeDisplay(departureAt, showDate).label, '15:00 15.11.2026');
+    assert.equal(presentation.journeyTimeDisplay(arrivalAt, showDate).label, '06:57 16.11.2026');
   });
 });
 

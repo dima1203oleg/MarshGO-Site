@@ -40,8 +40,10 @@ test('route streets and summary metrics keep compact side-by-side layouts', () =
 
 test('route summary clock starts at requested departure when waiting is included in duration', () => {
   assert.match(routeScreen, /const summaryDepartureAt = journeySummaryDepartureAt\(journey\)/);
-  assert.match(routeScreen, /aria-label=\{`\$\{summaryDepartureAt \? formatTime\(summaryDepartureAt\)/);
-  assert.match(routeScreen, /<span>\{summaryDepartureAt \? formatTime\(summaryDepartureAt\) : '—'\}<\/span>/);
+  assert.match(routeScreen, /const summaryDeparture = journeyTimeDisplay\(summaryDepartureAt, summaryShowDates\)/);
+  assert.match(routeScreen, /const summaryShowDates = journeyTimesCrossCalendarDay\(\[summaryDepartureAt, lastLeg\?\.arrivalAt\]\)/);
+  assert.match(routeScreen, /aria-label=\{`\$\{summaryDeparture\.dateTime \? summaryDeparture\.label : 'Час невідомий'\}/);
+  assert.match(routeScreen, /<time dateTime=\{summaryDeparture\.dateTime\}[^>]*>[\s\S]*?\{summaryDeparture\.clock\}[\s\S]*?\{summaryDeparture\.date &&/);
 });
 
 test('expanded route details use a 44px swipeable stage ribbon instead of a tall vertical ribbon', () => {

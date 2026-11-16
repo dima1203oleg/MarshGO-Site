@@ -1,6 +1,7 @@
 import type { ApiJourney } from '../services/productionApi';
 import { journeyLegLabel } from './journeyLegLabel';
 import { shortPlace } from './journeyStageNavigation';
+import { formatJourneyClock, journeyTimeDisplay, journeyTimesCrossCalendarDay } from './journeyResultPresentation';
 
 type JourneyLeg = ApiJourney['legs'][number];
 type JourneyStop = NonNullable<JourneyLeg['stops']>[number];
@@ -13,15 +14,12 @@ export function isScheduledRouteLeg(leg: JourneyLeg) {
   return SCHEDULED_MODES.includes(leg.mode) || SCHEDULED_TYPES.includes(leg.transportType ?? '');
 }
 
-export function formatStopClock(value?: string) {
-  if (!value || !Number.isFinite(Date.parse(value))) return '—';
-  const minute = new Date(value);
-  minute.setSeconds(0, 0);
-  return new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(minute);
-}
+export const formatStopClock = formatJourneyClock;
+
+const stopTimestamp = (stop: JourneyStop, index: number) => index === 0 ? stop.departureAt : stop.arrivalAt;
 
 export function stopTime(stop: JourneyStop, index: number) {
-  return formatStopClock(index === 0 ? stop.departureAt : stop.arrivalAt);
+  return formatStopClock(stopTimestamp(stop, index));
 }
 
 /**
@@ -42,13 +40,18 @@ export function JourneyLegStops({
   const stops = leg.stops ?? [];
   if (!stops.length) return <p className="text-xs text-[var(--route-muted)]">Перевізник не надав список зупинок для цього рейсу.</p>;
   const label = leg.routeName ?? journeyLegLabel(leg.mode, leg.transportType);
+  const showDates = journeyTimesCrossCalendarDay([leg.departureAt, leg.arrivalAt, ...stops.map(stopTimestamp)]);
   return <ol aria-label={`Зупинки сегмента ${label}`} className="min-w-0">
     {stops.map((stop, index) => {
       const endpoint = index === 0 || index === stops.length - 1;
       const isSelected = activeStopId === stop.id;
       const hasCoords = Boolean(stop.coordinates && stop.coordinates.length === 2);
+      const time = journeyTimeDisplay(stopTimestamp(stop, index), showDates);
       const content = <>
-        <time className="tabular-nums text-[var(--route-subtle)]">{stopTime(stop, index)}</time>
+        <time dateTime={time.dateTime} className="min-w-0 tabular-nums text-[var(--route-subtle)]">
+          {time.clock}
+          {time.date && <span className="block whitespace-normal text-xs leading-4 font-medium">{time.date.slice(0, 6)}<wbr/>{time.date.slice(6)}</span>}
+        </time>
         <span className="mg-journey-stop-axis" data-first={index === 0} data-last={index === stops.length - 1} aria-hidden="true">
           <span className={`mg-journey-stop-dot${isSelected ? ' ring-2 ring-[var(--mg-blue)]' : ''}`} style={{ backgroundColor: color }}/>
         </span>
@@ -64,7 +67,7 @@ export function JourneyLegStops({
             type="button"
             onClick={() => onStopSelect(stop, stop.coordinates)}
             aria-pressed={isSelected}
-            aria-label={`Зупинка: ${shortPlace(stop.name)}, час ${stopTime(stop, index)}`}
+            aria-label={`Зупинка: ${shortPlace(stop.name)}, час ${time.label}`}
             className={`mg-journey-stop-row relative w-full rounded-lg px-1 text-left text-xs hover:bg-[var(--route-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mg-blue)] ${isSelected ? 'bg-[var(--route-hover)] ring-1 ring-[var(--mg-blue)]' : ''}`}
           >
             {content}

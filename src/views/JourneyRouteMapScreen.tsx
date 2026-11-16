@@ -19,6 +19,9 @@ import { legLabel, walkHintFor } from './journeyWalkHint';
 import { diagnosticsRequested } from './resultsDiagnostics';
 import {
   journeyArrivalDayNote,
+  formatJourneyClock as formatTime,
+  journeyTimeDisplay,
+  journeyTimesCrossCalendarDay,
   formatJourneyDuration as formatDuration,
   formatJourneyDurationTile,
   formatJourneyDistance,
@@ -73,13 +76,6 @@ type TimelineItem = {
   leg?: JourneyLeg;
 };
 
-const formatTime = (value?: string) => {
-  if (!value || !Number.isFinite(Date.parse(value))) return '—';
-  const minute = new Date(value);
-  minute.setSeconds(0, 0);
-  return new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(minute);
-};
-
 function timelineFor(journey: ApiJourney): TimelineItem[] {
   const legs = journey.legs;
   const items: TimelineItem[] = [];
@@ -100,8 +96,9 @@ function timelineFor(journey: ApiJourney): TimelineItem[] {
 }
 
 function legTimeLabel(leg: JourneyLeg, durationSeconds: number) {
-  const departure = formatTime(leg.departureAt);
-  const arrival = formatTime(leg.arrivalAt);
+  const showDates = journeyTimesCrossCalendarDay([leg.departureAt, leg.arrivalAt]);
+  const departure = journeyTimeDisplay(leg.departureAt, showDates).label;
+  const arrival = journeyTimeDisplay(leg.arrivalAt, showDates).label;
   const duration = formatDuration(durationSeconds);
   return departure === arrival && durationSeconds < 60
     ? `${departure} · ${duration}`
@@ -187,6 +184,9 @@ export function JourneyRouteMapScreen({
   const firstLeg = journey.legs[0];
   const lastLeg = journey.legs.at(-1);
   const summaryDepartureAt = journeySummaryDepartureAt(journey);
+  const summaryShowDates = journeyTimesCrossCalendarDay([summaryDepartureAt, lastLeg?.arrivalAt]);
+  const summaryDeparture = journeyTimeDisplay(summaryDepartureAt, summaryShowDates);
+  const summaryArrival = journeyTimeDisplay(lastLeg?.arrivalAt, summaryShowDates);
   const primaryLeg = useMemo(() => primaryTransitLeg(journey.legs), [journey.legs]);
   const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [isDark, setIsDark] = useState(themeService.isDark());
@@ -952,6 +952,9 @@ export function JourneyRouteMapScreen({
     const transferHint = transferHints.get(leg.id);
     const originLabel = cleanStopName(leg.origin.name) || 'Початок';
     const destinationLabel = cleanStopName(leg.destination.name) || 'Кінець';
+    const showLegDates = journeyTimesCrossCalendarDay([leg.departureAt, leg.arrivalAt]);
+    const legDeparture = journeyTimeDisplay(leg.departureAt, showLegDates);
+    const legArrival = journeyTimeDisplay(leg.arrivalAt, showLegDates);
 
     return [
       (
@@ -973,7 +976,7 @@ export function JourneyRouteMapScreen({
             type="button"
             onClick={() => chooseSegment(leg.id)}
             aria-pressed={selected}
-            aria-label={`Вибрати сегмент: ${legLabel(leg)}; ${originLabel} до ${destinationLabel}${liveStatusLabel ? `; ${liveStatusLabel}` : ''}${walkHint ? `; ${walkHint.title}${walkHint.detail ? `, ${walkHint.detail}` : ''}` : ''}`}
+            aria-label={`Вибрати сегмент: ${legLabel(leg)}; ${originLabel} до ${destinationLabel}; ${legTimeLabel(leg, item.durationSeconds)}${liveStatusLabel ? `; ${liveStatusLabel}` : ''}${walkHint ? `; ${walkHint.title}${walkHint.detail ? `, ${walkHint.detail}` : ''}` : ''}`}
             className="mg-press-subtle flex min-w-0 flex-1 items-start gap-1.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mg-blue)]"
           >
             <span
@@ -1009,6 +1012,9 @@ export function JourneyRouteMapScreen({
                 <span aria-hidden="true" className="shrink-0 text-[var(--route-muted)]">—</span>
                 <span className="mg-route-endpoints__name mg-route-endpoints__name--end" title={destinationLabel}>{destinationLabel}</span>
               </span>
+              {showLegDates && <span className="block text-xs font-medium leading-4 tabular-nums text-[var(--route-muted)]">
+                <time dateTime={legDeparture.dateTime}>{legDeparture.label}</time> — <time dateTime={legArrival.dateTime}>{legArrival.label}</time>
+              </span>}
               {showDiagnostics && <span data-testid="journey-route-segment-source" title={leg.source} className="mt-0.5 block truncate text-xs leading-4 text-[var(--route-muted)]">Джерело: {leg.providerName || leg.source}</span>}
               {showDiagnostics && dataCaveat && <span data-testid="journey-route-segment-caveat" className="mt-1 block text-xs leading-4 text-[var(--route-muted)]">{dataCaveat}</span>}
             </span>
@@ -1424,13 +1430,19 @@ export function JourneyRouteMapScreen({
                 className="route-sheet-summary shrink-0"
                 data-testid="route-sheet-summary"
                 role="group"
-                aria-label={`${summaryDepartureAt ? formatTime(summaryDepartureAt) : 'Час невідомий'} — ${lastLeg ? formatTime(lastLeg.arrivalAt) : 'час невідомий'}, ${formatDuration(allDuration)}, ${formatSegmentCount(journey.legs.length)}, ${journey.transfers > 0 ? formatTransferCount(journey.transfers) : 'без пересадок'}, ціна ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`}
+                aria-label={`${summaryDeparture.dateTime ? summaryDeparture.label : 'Час невідомий'} — ${summaryArrival.dateTime ? summaryArrival.label : 'час невідомий'}, ${formatDuration(allDuration)}, ${formatSegmentCount(journey.legs.length)}, ${journey.transfers > 0 ? formatTransferCount(journey.transfers) : 'без пересадок'}, ціна ${totalPriceLabel === '—' ? 'невідома' : totalPriceLabel}`}
               >
                 <span className="route-sheet-summary__metrics mg-pop mg-stagger" style={{ ['--mg-stagger-i' as string]: 0 }}>
                   <strong className="route-sheet-summary__times tabular-nums">
-                    <span>{summaryDepartureAt ? formatTime(summaryDepartureAt) : '—'}</span>
+                    <time dateTime={summaryDeparture.dateTime} className={summaryShowDates ? 'w-11 text-center' : undefined}>
+                      {summaryDeparture.clock}
+                      {summaryDeparture.date && <span className="block whitespace-normal text-xs leading-4 font-medium text-[var(--route-muted)]">{summaryDeparture.date.slice(0, 6)}<wbr/>{summaryDeparture.date.slice(6)}</span>}
+                    </time>
                     <ArrowRight size={12} aria-hidden="true" className="shrink-0 text-[var(--route-muted)]"/>
-                    <span>{lastLeg ? formatTime(lastLeg.arrivalAt) : '—'}</span>
+                    <time dateTime={summaryArrival.dateTime} className={summaryShowDates ? 'w-11 text-center' : undefined}>
+                      {summaryArrival.clock}
+                      {summaryArrival.date && <span className="block whitespace-normal text-xs leading-4 font-medium text-[var(--route-muted)]">{summaryArrival.date.slice(0, 6)}<wbr/>{summaryArrival.date.slice(6)}</span>}
+                    </time>
                   </strong>
                   <span data-testid="canonical-route-duration" className="route-sheet-summary__detail">{formatDuration(allDuration)}</span>
                   <span className="route-sheet-summary__detail route-sheet-summary__transfers">
