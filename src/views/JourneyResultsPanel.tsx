@@ -251,6 +251,8 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
   // Transport-type tokens are availability facts, not preferences: they get their own honest lines.
   const unavailable = unavailableTransportNotices(result.blockedProviders, result.unsupportedPreferences, result.completeness);
   const notices: Array<{ tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string }> = [];
+  // Incomplete search coverage is the most useful first status for a passenger when several caveats apply.
+  truncationNotices(result).forEach(notice => notices.push(notice));
   const reasonNotices = partialReasonNotices(result.partialReasons, result.completeness);
   reasonNotices.forEach(notice => notices.push(notice));
   // The limits summary above already names every partial stage; this line only adds the
@@ -267,12 +269,10 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
 
   if (preferenceTokens.length > 0) notices.push({ tone: 'amber', text: `Не всі умови можна врахувати: ${sentenceList(preferenceTokens.map(value => preferenceMessages[value] ?? value))}.` });
   providerErrorNotices(userProviderErrors).forEach(notice => notices.push(notice));
-  truncationNotices(result).forEach(notice => notices.push(notice));
   unavailable.forEach(notice => notices.push({ tone: 'slate', text: notice.text }));
   technicalProviderErrors.forEach(text => notices.push({ tone: 'slate', text }));
   const { headline, technical } = splitResultNotices(notices);
-  const blockingHeadline = headline?.tone === 'rose' ? headline : null;
-  const detailNotices = blockingHeadline ? technical : [...notices];
+  const detailNotices = headline ? technical : [...notices];
   const showDiagnostics = diagnosticsRequested(
     typeof window !== 'undefined' ? window.location.search : '',
     typeof window !== 'undefined' ? window.localStorage.getItem('marshgo.results.diagnostics') : null,
@@ -309,7 +309,13 @@ export function JourneyResultsPanel({ result, chosenJourneyId, onOpenMap, onRetr
       })}
     </div>
 
-    {showDiagnostics && blockingHeadline && <p role="alert" className={`search-headline-note mb-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-xs font-bold leading-4 ${noticeTone.rose.softBg} ${noticeTone.rose.text}`}><Info size={13} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{blockingHeadline.text}</span></p>}
+    {headline && <p
+      role={headline.tone === 'rose' ? 'alert' : 'status'}
+      aria-live={headline.tone === 'rose' ? 'assertive' : 'polite'}
+      aria-atomic="true"
+      data-testid="journey-search-status"
+      className={`search-headline-note mb-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-xs font-bold leading-4 ${noticeTone[headline.tone].softBg} ${noticeTone[headline.tone].text}`}
+    ><Info size={13} className="mt-0.5 shrink-0" aria-hidden="true"/><span>{headline.text}</span></p>}
     {showDiagnostics && groups.length > 0 && unavailable.length > 0 && <p role="status" data-testid="journey-unavailable-summary" className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold leading-4 text-slate-600 dark:text-slate-300">
       <Info size={13} className="shrink-0" aria-hidden="true"/>
       Недоступні види транспорту в цьому пошуку · {unavailable.length}. Деталі — нижче.

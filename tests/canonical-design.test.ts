@@ -46,7 +46,7 @@ test('traveler surfaces keep technical search and map diagnostics out of the def
     readFile(resolve(root, '../docs/design/canonical/README.md'), 'utf8'),
   ]);
 
-  assert.match(panel, /showDiagnostics && blockingHeadline/);
+  assert.match(panel, /\{headline && <p/, 'passenger-safe search status remains visible without diagnostics');
   assert.match(panel, /showDiagnostics && \(detailNotices\.length/);
   assert.match(mapDetails, /showDiagnostics && dataCaveat/);
   assert.match(mapDetails, /showDiagnostics && <span data-testid="journey-route-segment-source"/);
@@ -252,7 +252,7 @@ test('compact result strips prices and keeps unknown-fare detail and segment scr
   assert.match(panel, /spokenJourneyPrice\(journeyPrice\)/, 'the spoken price has to carry the qualifier too');
   assert.match(panel, /priceAccessibleLabel=\{`Загальна вартість:/, 'the total fare keeps an accessible unknown-price explanation');
   assert.match(panel, /showDiagnostics && \(detailNotices\.length > 0/, 'technical search completeness is hidden from the passenger UI');
-  assert.match(panel, /showDiagnostics && blockingHeadline/, 'provider diagnostics are only shown in developer mode');
+  assert.match(panel, /\{headline && <p/, 'passengers receive the search completeness headline by default');
   assert.match(panel, /showDiagnostics && groups\.length > 0 && unavailable\.length > 0/, 'unavailable-mode explanations are developer-only');
 });
 
@@ -515,9 +515,9 @@ test('the search screen gives each field the width its value needs', async () =>
 // FIELD-X-1 (2026-11-05, seen in /tmp/mgshots11/70-dark-route-form.png at 390×844): the «Куди» row offered
 // «Очистити кінцеву точку» while the field was empty — a destructive control with nothing to destroy. The
 // owner's rule is a × only once there is text. Main shipped the stronger form of the same rule: the slot
-// never goes inert, it changes job — clear when there is text, «Обрати на мапі» when there is not. The
-// origin row keeps its own second job (the location arrow). Both keep one 44 px box so the card cannot jump
-// on the first keystroke.
+// never goes inert, it changes job — clear when there is text, «Обрати на мапі» when there is not. Both
+// rows keep exactly ONE trailing 44 px box (the owner removed the origin's second «parachute» locate
+// button), so the card cannot jump on the first keystroke and the two rows read as one family.
 test('a place row only offers to clear a value that is actually there', async () => {
   const read = (relative: string) => readFile(resolve(dirname(fileURLToPath(import.meta.url)), relative), 'utf8');
   const marketplace = await read('../src/views/ProductionMarketplace.tsx');
@@ -526,10 +526,12 @@ test('a place row only offers to clear a value that is actually there', async ()
   const searchForm = marketplace.slice(searchFormStart, marketplace.indexOf('</form>', searchFormStart));
   const rowFor = (label: string) => searchForm.match(new RegExp(`<div role="group" aria-label="${label}"[\\s\\S]*?</div>`))?.[0] ?? '';
   const originRow = rowFor('Початкова точка');
-  assert.match(originRow, /\{origin \? <X size=\{16\}\/> : <Navigation size=\{16\}\/>\}/,
-    'the origin row must keep its empty-state job — the location arrow, not a dead ×');
-  assert.match(originRow, /data-field-action=\{origin \? 'clear' : 'locate'\}/,
-    'the origin slot must name the job it is doing, so the icon is never the only signal');
+  assert.doesNotMatch(originRow, /data-field-action=\{origin \? 'clear' : 'locate'\}|<Navigation size=\{16\}\/>/,
+    'the origin row no longer carries the second locate «parachute» button');
+  assert.match(originRow, /\{origin \? <button type="button" aria-label="Очистити початкову точку"[\s\S]*?: <button/,
+    'the single origin slot switches from map selection to clearing once text exists');
+  assert.match(originRow, /data-field-action="pick"/,
+    'the origin empty-state job is the map picker, matching the destination row');
   assert.match(originRow, /setPicker\(\{ form: 'search', field: 'origin' \}\)/,
     'the origin row must retain a map-picker route when typed geocoding is unavailable');
   const destinationRow = rowFor('Кінцева точка');
@@ -542,7 +544,8 @@ test('a place row only offers to clear a value that is actually there', async ()
     'the same action slot switches from map selection to clearing once text exists');
   assert.match(destinationRow, /\{destination \? <button type="button" aria-label="Очистити кінцеву точку"/,
     'the clear action only appears after a destination exists');
-  assert.match(originRow, /className="grid h-11 w-11/, 'the origin location action keeps its 44 px target');
+  assert.match(originRow, /className="grid h-11 w-11/, 'the origin trailing action keeps its 44 px target');
+  assert.doesNotMatch(originRow, /<\/button>\s*<button/, 'the origin row exposes exactly one trailing control, not two side by side');
   assert.match(destinationRow, /\{destination \? <button[\s\S]{0,420}className="grid h-11 w-11/,
     'the conditional destination clear action keeps its 44 px target');
 });

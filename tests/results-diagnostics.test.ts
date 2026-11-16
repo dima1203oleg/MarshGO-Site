@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
+import { readFileSync } from 'node:fs';
 import { diagnosticsRequested, funnelLines, gtfsTruncationNotices, partialReasonNotices, showsCarpoolSection, splitResultNotices } from '../src/views/resultsDiagnostics';
 import type { ApiJourneySearchResult } from '../src/services/productionApi';
 
@@ -25,6 +26,10 @@ test('the customer list keeps one line and the rest becomes diagnostics', () => 
   const split = splitResultNotices(notices);
   assert.equal(split.headline?.text, 'Деякі розклади тимчасово недоступні.');
   assert.deepEqual(split.technical.map(notice => notice.tone), ['amber', 'slate']);
+  assert.deepEqual(splitResultNotices([{ tone: 'slate', text: 'деталь маршрутизатора' }]), {
+    headline: null,
+    technical: [{ tone: 'slate', text: 'деталь маршрутизатора' }],
+  });
   assert.deepEqual(splitResultNotices([]), { headline: null, technical: [] });
 });
 
@@ -35,6 +40,16 @@ test('diagnostics opt in only through the developer flag', () => {
   assert.equal(diagnosticsRequested('?debug=0', null), false);
   assert.equal(diagnosticsRequested('?debug=10', null), false);
   assert.equal(diagnosticsRequested('', null), false);
+});
+
+test('the passenger search status is rendered outside the developer diagnostics gate', () => {
+  const source = readFileSync(new URL('../src/views/JourneyResultsPanel.tsx', import.meta.url), 'utf8');
+  const start = source.indexOf('{headline && <p');
+  const end = source.indexOf('</p>}', start);
+  assert.ok(start >= 0 && end > start, 'passenger status block must exist');
+  const statusBlock = source.slice(start, end);
+  assert.match(statusBlock, /data-testid="journey-search-status"/);
+  assert.doesNotMatch(statusBlock, /showDiagnostics/);
 });
 
 test('funnel lines report the real counts of every search stage', () => {
