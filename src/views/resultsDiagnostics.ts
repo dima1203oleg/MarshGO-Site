@@ -2,9 +2,9 @@ import type { ApiJourneySearchResult } from '../services/productionApi';
 
 export type ResultNotice = { tone: 'amber' | 'blue' | 'rose' | 'slate'; text: string };
 
-const headlinePriority: ResultNotice['tone'][] = ['rose', 'amber', 'blue', 'slate'];
+const headlinePriority: ResultNotice['tone'][] = ['rose', 'amber', 'blue'];
 
-/** The list keeps one honest line about the search; every other limitation is developer diagnostics. */
+/** Keep one passenger-relevant status line; technical-only slate notices stay in diagnostics. */
 export function splitResultNotices(notices: ResultNotice[]): { headline: ResultNotice | null; technical: ResultNotice[] } {
   const headline = headlinePriority.map(tone => notices.find(notice => notice.tone === tone)).find(Boolean) ?? null;
   return { headline, technical: headline ? notices.filter(notice => notice !== headline) : [...notices] };

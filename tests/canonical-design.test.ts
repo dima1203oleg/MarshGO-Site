@@ -46,7 +46,7 @@ test('traveler surfaces keep technical search and map diagnostics out of the def
     readFile(resolve(root, '../docs/design/canonical/README.md'), 'utf8'),
   ]);
 
-  assert.match(panel, /showDiagnostics && blockingHeadline/);
+  assert.match(panel, /\{headline && <p/, 'passenger-safe search status remains visible without diagnostics');
   assert.match(panel, /showDiagnostics && \(detailNotices\.length/);
   assert.match(mapDetails, /showDiagnostics && dataCaveat/);
   assert.match(mapDetails, /showDiagnostics && <span data-testid="journey-route-segment-source"/);
@@ -252,7 +252,7 @@ test('compact result strips prices and keeps unknown-fare detail and segment scr
   assert.match(panel, /spokenJourneyPrice\(journeyPrice\)/, 'the spoken price has to carry the qualifier too');
   assert.match(panel, /priceAccessibleLabel=\{`Загальна вартість:/, 'the total fare keeps an accessible unknown-price explanation');
   assert.match(panel, /showDiagnostics && \(detailNotices\.length > 0/, 'technical search completeness is hidden from the passenger UI');
-  assert.match(panel, /showDiagnostics && blockingHeadline/, 'provider diagnostics are only shown in developer mode');
+  assert.match(panel, /\{headline && <p/, 'passengers receive the search completeness headline by default');
   assert.match(panel, /showDiagnostics && groups\.length > 0 && unavailable\.length > 0/, 'unavailable-mode explanations are developer-only');
 });
 
