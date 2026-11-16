@@ -11,6 +11,7 @@ export type SearchRouteState = {
   date: string;
   passengers: number;
   departure: string;
+  arrivalBy?: string;
   strategy: 'FASTEST' | 'CHEAPEST' | 'BALANCED' | 'PREMIUM' | 'RELIABLE' | 'CUSTOM';
   mode: 'offers' | 'planner';
 };
@@ -58,6 +59,9 @@ export function buildSearchRoute(state: SearchRouteState): string {
     departure: state.departure,
     strategy: state.strategy,
   });
+  // «Прибути до» bounds the trip; a shared link must restore it or the deadline silently disappears.
+  const arrivalBy = normalizeArrivalBy(state.arrivalBy, state.departure);
+  if (arrivalBy) query.set('arrivalBy', arrivalBy);
   return `/journeys/search?${query.toString()}`;
 }
 
@@ -68,6 +72,15 @@ function normalizeDeparture(value: string): string | null {
   const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2}(?:\.\d{1,3})?)?$/.exec(value);
   if (!match) return null;
   return Number.isFinite(new Date(`${match[1]}T${match[2]}:00`).getTime()) ? `${match[1]}T${match[2]}` : null;
+}
+
+/** Minute-precision Kyiv wall time sorts lexicographically, so a deadline is only
+ * carried when it is strictly after the departure; anything else is dropped. */
+function normalizeArrivalBy(value: string | null | undefined, departure: string): string | null {
+  if (!value) return null;
+  const normalized = normalizeDeparture(value);
+  const from = normalizeDeparture(departure);
+  return normalized && from && normalized > from ? normalized : null;
 }
 
 export function parseSearchRoute(search: string): SearchRouteState | null {
@@ -89,11 +102,12 @@ export function parseSearchRoute(search: string): SearchRouteState | null {
   };
   const date = query.get('date') ?? '';
   const departure = normalizeDeparture(query.get('departure') ?? '');
+  const arrivalBy = departure ? normalizeArrivalBy(query.get('arrivalBy'), departure) : null;
 
   if ((mode !== 'offers' && mode !== 'planner') || !strategy || !strategies.has(strategy as SearchRouteState['strategy'])
     || !validPlace(origin) || !validPlace(destination) || !validDate(date)
     || !Number.isInteger(passengers) || passengers < 1 || passengers > 8
     || !departure) return null;
 
-  return { origin, destination, date, passengers, departure, strategy: strategy as SearchRouteState['strategy'], mode };
+  return { origin, destination, date, passengers, departure, ...(arrivalBy ? { arrivalBy } : {}), strategy: strategy as SearchRouteState['strategy'], mode };
 }
