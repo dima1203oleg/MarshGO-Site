@@ -206,7 +206,7 @@ test('static stop rows compact while selectable stops retain a 44px touch target
   assert.match(densityCss, /button\.mg-journey-stop-row\s*\{[^}]*min-height:\s*44px;/s, 'selectable stop rows retain the accessible touch target');
   assert.match(densityCss, /\.mg-route-stop-name\s*\{[^}]*overflow-wrap:\s*anywhere;[^}]*white-space:\s*normal;/s, 'long stop names can wrap instead of disappearing');
   assert.match(densityCss, /\.mg-route-stop-badge\s*\{[^}]*white-space:\s*nowrap;/s, 'boarding, alighting and skipped-stop labels remain intact');
-  assert.match(readFileSync(new URL('../src/views/JourneyLegStops.tsx', import.meta.url), 'utf8'), /aria-label=\{`Зупинка: \$\{shortPlace\(stop\.name\)\}, час \$\{stopTime\(stop, index\)\}`\}/, 'the complete stop name and time remain available to assistive technology');
+  assert.match(readFileSync(new URL('../src/views/JourneyLegStops.tsx', import.meta.url), 'utf8'), /aria-label=\{`Зупинка: \$\{shortPlace\(stop\.name\)\}, час \$\{time\.label\}`\}/, 'the complete stop name and calendar-aware time remain available to assistive technology');
 });
 
 test('details and navigation recover the sheet when pointer capture is interrupted', () => {

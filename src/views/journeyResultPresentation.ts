@@ -182,19 +182,33 @@ export function formatJourneyDistanceSummary(legs: ApiJourney['legs']): string {
   return approximate ? `Частково ≈ ${label}` : `Відомо ${label}`;
 }
 
-export function formatJourneyClock(value: string): string {
-  if (!Number.isFinite(Date.parse(value))) return '—';
+export function formatJourneyClock(value?: string | null): string {
+  if (!value || !Number.isFinite(Date.parse(value))) return '—';
   return new Intl.DateTimeFormat('uk-UA', {
     hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv',
   }).format(new Date(value));
 }
 
-const kyivCalendarDay = (value: string): string | null => {
-  if (!Number.isFinite(Date.parse(value))) return null;
+const kyivCalendarDay = (value?: string | null): string | null => {
+  if (!value || !Number.isFinite(Date.parse(value))) return null;
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date(value));
 };
+
+/** Compare only supplied, valid timestamps in Kyiv; a clock rollover is not a date source. */
+export function journeyTimesCrossCalendarDay(values: readonly (string | null | undefined)[]): boolean {
+  return new Set(values.map(kyivCalendarDay).filter(day => day !== null)).size > 1;
+}
+
+export function journeyTimeDisplay(value?: string | null, showDate = false): {
+  clock: string; date: string; dateTime: string | undefined; label: string;
+} {
+  const day = kyivCalendarDay(value);
+  const clock = formatJourneyClock(value);
+  const date = showDate && day ? day.split('-').reverse().join('.') : '';
+  return { clock, date, dateTime: day ? value ?? undefined : undefined, label: date ? `${clock} ${date}` : clock };
+}
 
 /**
  * An arrival past midnight is a different promise than the same clock time today; the card only

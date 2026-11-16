@@ -411,8 +411,8 @@ test('compact result cards keep time in route details with transport chain and f
   assert.match(panel, /journey-result-save-button/, 'each compact card keeps its favorite action');
   assert.match(mapScreen, /data-testid="journey-alternative-departures"/, 'grouped departures remain reachable in route details');
   assert.match(mapScreen, /journey-route-recommendation/, 'strategy ranking remains in route details');
-  assert.match(mapScreen, /function legTimeLabel\(leg: JourneyLeg, durationSeconds: number\)[\s\S]{0,220}formatTime\(leg\.departureAt\)[\s\S]{0,120}formatTime\(leg\.arrivalAt\)/,
-    'exact start and end times remain in the route details timeline');
+  assert.match(mapScreen, /function legTimeLabel\(leg: JourneyLeg, durationSeconds: number\)[\s\S]{0,220}journeyTimeDisplay\(leg\.departureAt, showDates\)\.label[\s\S]{0,120}journeyTimeDisplay\(leg\.arrivalAt, showDates\)\.label/,
+    'exact source start/end times and cross-day dates remain in the route details timeline');
   assert.match(mapScreen, /\{legTimeLabel\(leg, item\.durationSeconds\)\}/,
     'each route detail segment still renders its own exact times');
   assert.match(mapScreen, /const alternativeDepartureAt = altFirst\.departureAt;/, 'alternative departure rows must use the itinerary departure, not the requested search time');
